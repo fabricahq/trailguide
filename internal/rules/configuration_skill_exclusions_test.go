@@ -62,7 +62,7 @@ func TestParseConfigurationReadsLevelExclusions(t *testing.T) {
 		t.Fatalf("skill exclusions = %+v", source.SkillExclude)
 	}
 	for level, want := range map[string]bool{"required": false, "recommended": true, "offered": false} {
-		if got := source.ExcludesLevel(level); got != want {
+		if got := source.ExcludesLevel("skills/build", level); got != want {
 			t.Errorf("recommended excludes %s = %v, want %v", level, got, want)
 		}
 	}
@@ -71,7 +71,7 @@ func TestParseConfigurationReadsLevelExclusions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for level, want := range map[string]bool{"required": false, "recommended": true, "offered": true} {
-		if got := config.Sources[0].ExcludesLevel(level); got != want {
+		if got := config.Sources[0].ExcludesLevel("skills/build", level); got != want {
 			t.Errorf("\"*\" excludes %s = %v, want %v", level, got, want)
 		}
 	}

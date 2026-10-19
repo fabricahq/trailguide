@@ -142,7 +142,7 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 		if levels != nil {
 			level = levels.Level(id)
 		}
-		return !slices.Contains(source.LibraryRequires, id) && source.ExcludesLevel(level)
+		return !slices.Contains(source.LibraryRequires, id) && source.ExcludesLevel(id, level)
 	})
 	slices.Sort(chosen)
 	return slices.Compact(chosen), nil

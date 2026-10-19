@@ -116,7 +116,7 @@ Skill selectors have no prefixes: `skills/*` and `recommended/*` are rejected. A
 
 | Entry | Leaves out |
 | --- | --- |
-| `skills/deploy-preview` | That skill. Only an entry by ID can name a `replacedBy` skill to install in its place. |
+| `skills/deploy-preview` | That skill. Only an entry by ID can name a `replacedBy` skill to install in its place, and it does so even when a level entry also covers the skill. |
 | `recommended` | Every skill the library recommends, even one `include` names. Use it with `include: ["*"]` to install the offered skills without the recommended ones. |
 | `"*"` | Every skill that isn't required, so the project installs only the library's required skills. Use it to take a library's rules without its optional skills. |
 

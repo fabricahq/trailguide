@@ -399,3 +399,23 @@ func TestSyncBuildAndList_LeaveOutTheExcludedLevels(t *testing.T) {
 		t.Fatalf("listing:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+func TestSync_ReplacesASkillItAlsoExcludesByLevel(t *testing.T) {
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"Only what the library requires."},{"id":"skills/deploy","reason":"Ours.","replacedBy":"skills/our-deploy"}]}}}}`)
+	root, err := openProject(context.Background(), options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "skills/our-deploy/SKILL.md", "---\nname: our-deploy\ndescription: Deploy our way.\n---\n# Deploy\n")
+	root.Close()
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := installedSkills(t, options), []string{"our-deploy", "ship"}; !slices.Equal(got, want) {
+		t.Fatalf("installed %v; want %v", got, want)
+	}
+	if _, err := Build(context.Background(), options); err != nil {
+		t.Fatalf("build after sync: %v", err)
+	}
+}

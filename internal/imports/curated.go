@@ -78,7 +78,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 			slices.Contains(source.Skills, id) ||
 			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
 			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
-		included = included && !source.ExcludesLevel(level)
+		included = included && !source.ExcludesLevel(id, level)
 		if !included && len(used[id]) == 0 {
 			continue
 		}
@@ -218,7 +218,12 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 			usedBy = []string{}
 		}
 		slices.Sort(usedBy)
-		imported.Snapshot.Skills[l.name+":"+id] = library.ImportedSkill{Level: skill.Level, Included: skill.Included, UsedBy: usedBy}
+		// A skill installed only because another curated skill uses it keeps the level the library lists it at, if any.
+		level := skill.Level
+		if listed, ok := imported.Snapshot.AvailableSkills[l.name+":"+id]; ok {
+			level = listed.Level
+		}
+		imported.Snapshot.Skills[l.name+":"+id] = library.ImportedSkill{Level: level, Included: skill.Included, UsedBy: usedBy}
 	}
 	prefix := library.CuratedDirectory + "/" + l.name + "/"
 	for name, data := range read.files {

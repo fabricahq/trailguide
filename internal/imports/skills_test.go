@@ -246,6 +246,7 @@ func TestChooseSkillsLeavesOutTheExcludedLevels(t *testing.T) {
 		"only the required":                  {source([]string{"*"}, "*"), levels, []string{"skills/ship"}},
 		"a named skill of an excluded level": {source([]string{"skills/review"}, "recommended"), levels, []string{"skills/ship"}},
 		"a library's required skills":        {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, LibraryRequires: []string{"skills/lint"}}, levels, []string{"skills/lint", "skills/ship"}},
+		"a skill also excluded by ID":        {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, SkillExclude: map[string]rules.SkillExclusion{"skills/build": {Reason: "Ours.", ReplacedBy: "skills/our-build"}}}, levels, []string{"skills/build", "skills/ship"}},
 		"none from another repository":       {source([]string{"*"}, "*"), nil, []string{}},
 	}
 	for name, test := range tests {

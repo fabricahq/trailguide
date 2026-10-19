@@ -362,10 +362,15 @@ func parseSkillFields(input json.RawMessage, location string, source *Source) er
 	return nil
 }
 
-// ExcludesLevel reports whether the source's skills.exclude leaves out the skills its library gives level, other than
-// the ones it requires, which a project can't exclude: "*" leaves out recommended and offered skills, and recommended
-// the recommended ones. A skill from a repository that isn't a library has no level, and only "*" leaves it out.
-func (s Source) ExcludesLevel(level string) bool {
+// ExcludesLevel reports whether the source's skills.exclude leaves out skill id, which its library gives level, by
+// that level, other than a required one, which a project can't exclude: "*" leaves out recommended and offered skills,
+// and recommended the recommended ones. A skill from a repository that isn't a library has no level, and only "*"
+// leaves it out. A skill that skills.exclude also names by ID isn't left out by its level, so the source still imports
+// it, as it does every skill excluded by ID, and its replacedBy, if any, can replace it.
+func (s Source) ExcludesLevel(id, level string) bool {
+	if _, byID := s.SkillExclude[id]; byID {
+		return false
+	}
 	if _, all := s.SkillExcludeLevels[skills.Wildcard]; all {
 		return level != skills.LevelRequired
 	}
