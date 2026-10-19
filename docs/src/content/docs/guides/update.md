@@ -43,7 +43,7 @@ One update covers both the rules and the skills your project takes from a source
 | | Rules | Skills |
 | --- | --- | --- |
 | What gets updated | Each rule updates to its own newest version. | All of a source's skills update together, to the source's newest release or commit. |
-| Update one at a time | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible: update the whole source. |
+| Update one at a time | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible. You must update all of a source's skills at the same time. |
 | Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
 | What a change level describes | What your code must do. | What the skill does: its steps and inputs. |
 
