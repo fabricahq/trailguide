@@ -97,6 +97,10 @@ type CuratedUpdate struct {
 	// commit with those at the recorded one, as SourceUpdate.Skills compares a source's own skills, by their IDs in
 	// the library. It is empty, never nil, when they don't differ.
 	Changes []SkillUpdate `json:"changes"`
+	// Replaced lists, sorted by ID, the curated skills the project replaces with authored skills whose copy at the
+	// new commit differs from the copy the replacement is based on, as SourceUpdate.ReplacedSkills lists a source's
+	// own, by their IDs in the library. It is empty, never nil, when there are none.
+	Replaced []ReplacedSkillUpdate `json:"replaced"`
 }
 
 // CommitMove is the move of a source's revision between two commits.

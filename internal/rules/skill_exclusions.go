@@ -20,7 +20,8 @@ type SkillExclusion struct {
 	// ReplacedBy is empty, or the ID of the authored skill installed in the excluded skill's place, skills/<name>,
 	// which is also its folder's path in the Trail Guide directory.
 	ReplacedBy string `json:"replacedBy,omitempty"`
-	// BasedOn is the commit of the source's repository whose copy of the skill the replacement was made from, which
+	// BasedOn is the commit of the source's repository, or, for a skill the source's library curates, of the
+	// repository it curates the skill from, whose copy of the skill the replacement was made from, which
 	// updates compare the source's newer revisions with. It is the zero GitRef when the project doesn't record one,
 	// and only a replacement has one; a nonzero one is always a full commit SHA. Configuration alone owns it.
 	BasedOn GitRef `json:"basedOn,omitzero"`
@@ -62,9 +63,6 @@ func parseSkillExclusions(input json.RawMessage, location string) (map[string]Sk
 			if exclusion.ReplacedBy, err = parseSkillReplacement(raw, where+".replacedBy"); err != nil {
 				return nil, err
 			}
-		}
-		if _, _, curated := strings.Cut(id, ":"); curated && exclusion.ReplacedBy != "" {
-			return nil, invalid(where+".replacedBy", "a curated skill can be excluded but not replaced, since its revision isn't the library's; to fork it, declare the repository it comes from as a source of your own and fork the skill from that source")
 		}
 		if raw, ok := fields["basedOn"]; ok {
 			if exclusion.ReplacedBy == "" {

@@ -175,10 +175,12 @@ skills:
     - id: skills/fix-bug
       reason: We use our own bug workflow.
       replacedBy: skills/fix-bug
-      basedOn: "1.0.0"
+      basedOn: "9f2c4e1a7b3d5f60817a2b4c6d8e0f1a3b5c7d9e"
 ```
 
-An excluded skill isn't installed into the target folders or listed in `generated/SKILLS.md`. A replacement is an authored skill in `skills/`, named by its skill ID and installed in place of the excluded skill under its own name. Each authored skill can replace only one skill, and a rule can't replace a skill or the reverse. [Forking a skill](/reference/cli/#fork-a-skill) writes the exclusion for you, with the forked version as `basedOn`. For a skill from a non-library source, which has no versions, `basedOn` is the full 40-character commit SHA the fork copied.
+An excluded skill isn't installed into the target folders or listed in `generated/SKILLS.md`. A replacement is an authored skill in `skills/`, named by its skill ID and installed in place of the excluded skill under its own name. Each authored skill can replace only one skill, and a rule can't replace a skill or the reverse. [Forking a skill](/reference/cli/#fork-a-skill) writes the exclusion for you, with the full 40-character commit SHA the fork copied as `basedOn`. A skill the source's library [curates](#curated-skills), such as `mattpocock:skills/to-spec`, can be replaced too; its `basedOn` is a commit of the repository the library curates it from.
+
+In a library repository, the same entry records where a skill the library [forked](/reference/cli/#fork-a-skill-into-the-library) came from: the source's skill is in its `skills.include`, the library's own skill replaces it, and `basedOn` is the commit the fork copied. [`trailguide library check`](/reference/cli/#library-check) lists the source's changes to the skill whenever its `ref` moves past that commit. To record that your fork has taken them in, set `basedOn` to the commit you compared. A source can exist only for such entries: one with no rules and only forked skills in its `skills.include` gives the library repository the upstream copies to compare with, and projects that use the library never install it.
 
 Excluding or forking a [required skill](#skill-levels) fails validation and names the library that requires it. To stop using a required skill, stop using the source.
 
@@ -355,6 +357,7 @@ A library can list skills from another repository in its levels, such as a third
 - **Every curated skill is listed.** A skill from a curated source reaches projects only when a level lists it.
 - **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and provenance records which library required, recommended, or offered it.
 - **Refs resolve per project.** A library release doesn't lock a curated source's `ref`. Each project resolves it when it runs `trailguide project update` and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit.
+- **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
 - **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as a level lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it.
 

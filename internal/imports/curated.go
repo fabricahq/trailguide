@@ -112,7 +112,7 @@ func curateSkills(ctx context.Context, configuration rules.Configuration, source
 		imported.Snapshot.AvailableSkills[id] = library.ImportedSkill{Level: manifest.Skills.Level(id)}
 	}
 	for _, name := range slices.Sorted(maps.Keys(selected)) {
-		origin := curatedSource{library: source.Name, name: name, declared: manifest.Curated[name]}
+		origin := curatedSource{library: source.Name, name: name, declared: manifest.Curated[name], exclude: curatedExclusions(source, name)}
 		origin.override = overridingSource(configuration, source.Name, origin.declared.Repository)
 		if origin.override != nil {
 			origin.overridden = all[origin.override.Name].Snapshot
@@ -161,6 +161,9 @@ type curatedSource struct {
 	// maintained reports that the library's own maintainer is reading the source, such as library check does, so
 	// advice names the library's configuration as theirs to fix rather than a project's.
 	maintained bool
+	// exclude holds the library source's exclusions of the skills it takes from the curated source, by their IDs in
+	// its repository; a replacement's basedOn is a commit of that repository.
+	exclude map[string]rules.SkillExclusion
 }
 
 // curate fetches the curated source's revision and adds the files of chosen, its skills the project takes, to
@@ -187,6 +190,9 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 	}()
 	revision, kept, err := l.revision(ctx, repo, recorded, planned, isPlanned)
 	if err != nil {
+		return err
+	}
+	if err := repo.requireBasedOn(ctx, replacements(l.exclude), basedOnField(l.library, l.name)); err != nil {
 		return err
 	}
 	retained := 0
@@ -407,7 +413,7 @@ func planCurated(ctx context.Context, configuration rules.Configuration, source 
 	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
 		was := before.CuratedFrom(name)
-		origin := curatedSource{library: source.Name, name: name, declared: parsed.Curated[name]}
+		origin := curatedSource{library: source.Name, name: name, declared: parsed.Curated[name], exclude: curatedExclusions(source, name)}
 		origin.override = overridingSource(configuration, source.Name, origin.declared.Repository)
 		if only != nil && !only(name, origin.override) {
 			continue
@@ -476,8 +482,17 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 	if err != nil {
 		return library.CuratedSource{}, nil, err
 	}
-	row := curatedMove(l.name, recordedRevision, revision, skillChanges(&was, read))
-	if row.Commit == nil && len(row.Changes) == 0 {
+	// A skill the library source excludes isn't installed, so its changes aren't listed; a replaced one's are
+	// listed against the copy its replacement is based on instead.
+	changes := slices.DeleteFunc(skillChanges(&was, read), func(change SkillUpdate) bool {
+		_, excluded := l.exclude[change.ID]
+		return excluded
+	})
+	row := curatedMove(l.name, recordedRevision, revision, changes)
+	if row.Replaced, err = repo.replacedRows(ctx, l.library, replacements(l.exclude), basedOnField(l.library, l.name), l.name+":", recordedRevision.Commit, revision.Commit); err != nil {
+		return library.CuratedSource{}, nil, err
+	}
+	if row.Commit == nil && len(row.Changes) == 0 && len(row.Replaced) == 0 {
 		return revision, nil, nil
 	}
 	for i := range row.Changes {
@@ -488,10 +503,11 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 
 // CuratedSkillNames resolves the ref a library declares for its curated source name, or, without one, the
 // repository's newest library release, as a project that uses the library would when it updates, for the library's
-// maintainer. It returns the name each skill of ids installs under, as project sync names it, by the skill's ID in
-// the repository, leaving out the IDs the repository has no skill for there, and the revision's name, such as main
-// or release/3.
-func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedSource, ids []string, options Options) (_ map[string]string, _ string, err error) {
+// maintainer. It returns, by the skill's ID in the repository, the name each skill of ids installs under, as project
+// sync names it, and the skills of the repository it uses, and the same for each skill those use, which a project
+// installs with them, leaving out the IDs the repository has no skill for there. It also returns the revision's name,
+// such as main or release/3.
+func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedSource, ids []string, options Options) (_ map[string]library.CuratedSkill, _ string, err error) {
 	ctx, cancel, err := withTimeout(ctx, options)
 	if err != nil {
 		return nil, "", err
@@ -520,40 +536,54 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 		at = declared.Ref.String()
 	}
 	folders := skillFolders(tree, !revision.NonLibrary)
-	entries := map[string]treeEntry{}
-	for _, id := range ids {
-		if folder, ok := folders[id]; ok {
-			file := library.SkillFolder(id) + "/" + skills.File
-			entries[file] = folder[file]
+	result := map[string]library.CuratedSkill{}
+	for pending := ids; len(pending) > 0; {
+		entries := map[string]treeEntry{}
+		for _, id := range pending {
+			if folder, ok := folders[id]; ok {
+				file := library.SkillFolder(id) + "/" + skills.File
+				entries[file] = folder[file]
+			}
 		}
-	}
-	files, _, err := repo.readFiles(ctx, name, entries, 0)
-	if err != nil {
-		return nil, "", err
-	}
-	names := map[string]string{}
-	for _, id := range ids {
-		data, ok := files[library.SkillFolder(id)+"/"+skills.File]
-		if !ok {
-			continue
-		}
-		location := name + ":" + id + "/" + skills.File
-		metadata, err := skills.ReadMetadata(data, location)
+		files, _, err := repo.readFiles(ctx, name, entries, 0)
 		if err != nil {
 			return nil, "", err
 		}
-		if names[id], err = skills.InstallName(id, metadata, location); err != nil {
-			return nil, "", err
+		next := []string{}
+		for _, id := range pending {
+			data, ok := files[library.SkillFolder(id)+"/"+skills.File]
+			if _, seen := result[id]; !ok || seen {
+				continue
+			}
+			location := name + ":" + id + "/" + skills.File
+			metadata, err := skills.ReadMetadata(data, location)
+			if err != nil {
+				return nil, "", err
+			}
+			installName, err := skills.InstallName(id, metadata, location)
+			if err != nil {
+				return nil, "", err
+			}
+			// A skill of the repository it uses has no source name; one with a source name comes from elsewhere.
+			uses := []string{}
+			for _, used := range metadata.SkillsUsed {
+				if !strings.Contains(used, ":") {
+					uses = append(uses, used)
+					next = append(next, used)
+				}
+			}
+			result[id] = library.CuratedSkill{Name: installName, Uses: uses}
 		}
+		pending = next
 	}
-	return names, at, nil
+	return result, at, nil
 }
 
 // curatedMove returns the preview row of the curated source name moving from the revision from, which the project
 // recorded, or the zero CuratedSource for one it didn't curate from before, to the revision to, whose Commit is empty
 // when the update removes the source's skills, with the changes to its skills.
 func curatedMove(name string, from, to library.CuratedSource, changes []SkillUpdate) CuratedUpdate {
-	row := CuratedUpdate{Name: name, Repository: to.Repository, Ref: to.Ref.String(), Changes: changes}
+	row := CuratedUpdate{Name: name, Repository: to.Repository, Ref: to.Ref.String(), Changes: changes, Replaced: []ReplacedSkillUpdate{}}
 	if from.Commit == to.Commit {
 		return row
 	}

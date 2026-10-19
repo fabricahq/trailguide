@@ -417,7 +417,8 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 }
 
 // formatCuratedRows lists the sources library curates skills from, each on a line naming the library, the curated
-// source, and how its revision moves, with the rows of its skills beneath it.
+// source, and how its revision moves, with the rows of its skills, and of the curated skills the project replaces,
+// beneath it.
 func formatCuratedRows(out *strings.Builder, library string, rows []imports.CuratedUpdate) {
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
@@ -426,6 +427,12 @@ func formatCuratedRows(out *strings.Builder, library string, rows []imports.Cura
 			fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, row.Ref)
 		}
 		formatSkillRows(out, row.Changes)
+		for _, replaced := range row.Replaced {
+			fmt.Fprintf(out, "  %-*s  %s  %s\n", updateKindWidth, imports.UpdateReplaced, replaced.ID, commitSpan(replaced.From, replaced.To))
+			for _, line := range replacedSkillDetails(replaced) {
+				fmt.Fprintf(out, "%s%s\n", indent, line)
+			}
+		}
 	}
 }
 

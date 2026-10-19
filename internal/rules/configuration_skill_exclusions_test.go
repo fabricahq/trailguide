@@ -114,3 +114,38 @@ func TestEditConfigurationSourceAddsSkillExclusions(t *testing.T) {
 		})
 	}
 }
+
+func TestEditConfigurationSourceIncludesTheSkillsItForks(t *testing.T) {
+	input := "schemaVersion: 2\nsources:\n  pocock:\n    repository: https://example.invalid/pocock.git\n"
+	out, err := rules.EditConfigurationSource([]byte(input), "pocock", rules.SourceEdit{
+		SkillInclude: []string{"skills/ops/deploy"},
+		SkillExclude: map[string]rules.SkillExclusion{"skills/ops/deploy": {Reason: "Ours.", ReplacedBy: "skills/deploy", BasedOn: mustRef(t, commit)}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "    skills:\n      include:\n        - skills/ops/deploy\n      exclude:\n        - id: skills/ops/deploy\n          reason: Ours.\n          replacedBy: skills/deploy\n          basedOn: \"" + commit + "\"\n"
+	if !strings.HasSuffix(string(out), want) {
+		t.Fatalf("configuration:\n%s\nwant it to end with:\n%s", out, want)
+	}
+	out, err = rules.EditConfigurationSource([]byte(skillSource), "team", rules.SourceEdit{SkillInclude: []string{"skills/fix"}})
+	if err != nil || strings.Contains(string(out), "skills/fix") {
+		t.Fatalf("got %v:\n%s\nwant the source's include list unchanged", err, out)
+	}
+}
+
+func TestReplaceLibrarySkillKeepsItsLevel(t *testing.T) {
+	input := "schemaVersion: 2\nsources:\n  pocock:\n    repository: https://example.invalid/pocock.git\nlibrary:\n  skills:\n    # Everyone deploys.\n    required: [pocock:skills/ops/deploy, skills/review]\n"
+	out, err := rules.ReplaceLibrarySkill([]byte(input), "pocock:skills/ops/deploy", "skills/deploy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "    # Everyone deploys.\n    required: [skills/deploy, skills/review]\n"; !strings.HasSuffix(string(out), want) {
+		t.Fatalf("configuration:\n%s\nwant it to end with:\n%s", out, want)
+	}
+	_, err = rules.ReplaceLibrarySkill([]byte(input), "pocock:skills/ops/grill", "skills/grill")
+	var validation errs.ValidationError
+	if !errors.As(err, &validation) || validation.ValidationLocation() != "library.skills" {
+		t.Fatalf("got %v; want a validation error at library.skills", err)
+	}
+}

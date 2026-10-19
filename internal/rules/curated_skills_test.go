@@ -51,11 +51,6 @@ func TestParseConfiguration_RejectsInvalidCuratedSkills(t *testing.T) {
 			location: "library.skills.offered[0]",
 			problem:  `expected a curated skill as the name of a source in sources, a colon, and the skill's ID in that source's repository, such as mattpocock:skills/to-spec, got "Pocock:skills/to-spec"`,
 		},
-		"replacing a curated skill": {
-			config:   "schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/team.git\n    skills:\n      include: [pocock:skills/to-spec]\n      exclude:\n        - id: pocock:skills/to-spec\n          reason: Ours is stricter.\n          replacedBy: skills/to-spec\n",
-			location: "sources.team.skills.exclude.pocock:skills/to-spec.replacedBy",
-			problem:  "a curated skill can be excluded but not replaced, since its revision isn't the library's; to fork it, declare the repository it comes from as a source of your own and fork the skill from that source",
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := rules.ParseConfigurationYAML([]byte(test.config))

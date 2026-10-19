@@ -10,6 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -151,6 +152,9 @@ type SourceEdit struct {
 	Unpin []string
 	// BasedOn sets the basedOn version of each existing replacement it names, adding or replacing the field.
 	BasedOn map[string]trailguide.RuleVersion
+	// SkillInclude names skills to add to skills.include, each after the existing selectors, unless the list
+	// already names it or has "*".
+	SkillInclude []string
 	// SkillExclude holds the entries to add to skills.exclude, by skill ID.
 	SkillExclude map[string]SkillExclusion
 	// SkillUnrename names skills whose existing skills.rename entries the edit removes.
@@ -183,6 +187,7 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 	if err := removeSkillRenames(source, edit.SkillUnrename, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
+	addSkillIncludes(source, edit.SkillInclude)
 	if err := addSkillExclusions(source, edit.SkillExclude, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
@@ -218,6 +223,30 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 		exclusion.Content = append(exclusion.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "basedOn"}, versionNode(version))
 	}
 	return encodeConfiguration(document)
+}
+
+// addSkillIncludes appends each of ids to the skills.include list of source, creating the skills mapping and the
+// list when they're absent, unless the list already names it or has "*".
+func addSkillIncludes(source *yaml.Node, ids []string) {
+	if len(ids) == 0 {
+		return
+	}
+	skillFields := mappingValue(source, "skills")
+	if skillFields == nil {
+		skillFields = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		source.Content = append(source.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "skills"}, skillFields)
+	}
+	skillFields.Style = 0
+	include := mappingValue(skillFields, "include")
+	if include == nil {
+		include = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		skillFields.Content = append([]*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "include"}, include}, skillFields.Content...)
+	}
+	for _, id := range ids {
+		if !slices.ContainsFunc(include.Content, func(entry *yaml.Node) bool { return entry.Value == id || entry.Value == skills.Wildcard }) {
+			include.Content = append(include.Content, textNode(id))
+		}
+	}
 }
 
 // addSkillExclusions appends exclude, in skill ID order, to the skills.exclude list of source, creating the list
@@ -427,4 +456,41 @@ func normalizeFoldedScalars(node *yaml.Node) {
 	for _, child := range node.Content {
 		normalizeFoldedScalars(child)
 	}
+}
+
+// ReplaceLibrarySkill returns input, a library's configuration, with the entry of its library.skills levels that
+// names the skill from replaced by to, at the same level and position, keeping comments and formatting elsewhere. It
+// fails when no level lists from. The complete resulting configuration is validated before any bytes are returned.
+func ReplaceLibrarySkill(input []byte, from, to string) ([]byte, error) {
+	document, data, err := decode.YAML(input, "configuration")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ParseConfiguration(data); err != nil {
+		return nil, err
+	}
+	levels := mappingValue(mappingValue(document.Content[0], "library"), "skills")
+	replaced := false
+	for _, level := range skills.Levels {
+		list := mappingValue(levels, level)
+		if list == nil || list.Kind != yaml.SequenceNode {
+			continue
+		}
+		for _, entry := range list.Content {
+			if entry.Kind == yaml.ScalarNode && entry.Value == from {
+				entry.Value, entry.Style, replaced = to, 0, true
+			}
+		}
+	}
+	if !replaced {
+		return nil, invalid("library.skills", "no level lists "+from)
+	}
+	output, err := encodeConfiguration(document)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ParseConfigurationYAML(output); err != nil {
+		return nil, err
+	}
+	return output, nil
 }
