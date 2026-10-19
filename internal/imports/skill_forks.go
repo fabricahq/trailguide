@@ -4,6 +4,7 @@ package imports
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -185,8 +186,8 @@ func (r *repository) replacedRows(ctx context.Context, source string, replacemen
 
 // replacementBaseline returns the copy of skill id that exclusion's replacement of it is based on, by path in the
 // skill's folder, and its commit: the exclusion's basedOn, checked as requireSkillBasedOn checks it at the field
-// where names, or else from, the commit the record of the source named source locks, or "" when there is neither. A skill from lacks has no
-// files.
+// where names, or else from, the commit the record of the source named source locks, or "" when there is neither or
+// the repository no longer has from. A skill from lacks has no files.
 func (r *repository) replacementBaseline(ctx context.Context, source string, exclusion rules.SkillExclusion, where, id, from string) (map[string]treeEntry, string, error) {
 	if based := exclusion.BasedOn; !based.IsZero() {
 		entries, err := r.skillEntries(ctx, where, id, based.Canonical())
@@ -196,6 +197,12 @@ func (r *repository) replacementBaseline(ctx context.Context, source string, exc
 		return nil, "", nil
 	}
 	if err := r.fetchCommits(ctx, []string{from}, fmt.Sprintf("The repository no longer has commit %s, which vendor/%s/_source.json records. Run trailguide project sync to check the source.", from, source)); err != nil {
+		// A branch rewritten since the project recorded from leaves nothing to compare with, which mustn't stop the
+		// update that recovers the source.
+		var failure *Error
+		if errors.As(err, &failure) && failure.Code == "version-not-found" {
+			return nil, "", nil
+		}
 		return nil, "", err
 	}
 	entries, _, err := r.skillAt(ctx, id, from)
