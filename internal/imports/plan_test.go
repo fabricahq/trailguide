@@ -830,3 +830,29 @@ func TestImport_RefKeepsItsRecordedCommitAfterAReleaseTagMoves(t *testing.T) {
 		})
 	}
 }
+
+// A branch's warning lists as changed since the last release a rule reverted to an older published version, as
+// well as an unreleased one, and leaves out a rule at the version the newest library release lists.
+func TestUnreleasedWarning_ListsRulesThatDifferFromTheNewestRelease(t *testing.T) {
+	version := func(text string) *trailguide.RuleVersion {
+		parsed, err := trailguide.ParseRuleVersion(text, "version")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &parsed
+	}
+	ref, err := rules.ParseGitRef("main", "ref")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported := map[string]library.ImportedRule{
+		"techs/go/current":  {Version: version("2.0.0")},
+		"techs/go/reverted": {Version: version("1.0.0")},
+		"techs/go/new":      {},
+	}
+	current := map[string]trailguide.RuleVersion{"techs/go/current": *version("2.0.0"), "techs/go/reverted": *version("1.1.0")}
+	warning := unreleasedWarning(rules.Source{Name: "team", Ref: ref}, imported, true, current)
+	if want := " Rules changed since the last release: techs/go/new, techs/go/reverted."; !strings.HasSuffix(warning, want) {
+		t.Fatalf("warning = %q; want it to end %q", warning, want)
+	}
+}

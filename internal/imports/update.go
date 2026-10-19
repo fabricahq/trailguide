@@ -211,7 +211,10 @@ type plannedSource struct {
 	// It is nil for a source that uses ref, which the update doesn't move.
 	moved map[string]library.ImportedRule
 	// scoped reports that the update names some of the source's rules rather than the whole source.
-	scoped   bool
+	scoped bool
+	// follows reports that the source uses ref and follows it, as followsRef decides, so the update moves it to the
+	// commit its ref names now.
+	follows  bool
 	recorded *library.Snapshot
 	history  releaseHistory
 	// skills maps each commit that can supply the source's skills once the project decides, the shared files'
@@ -303,7 +306,7 @@ func (s plannedSource) replacedRows(kept []string) []ReplacedSkillUpdate {
 // changes, the update doesn't name source, or source uses ref, which the update doesn't move.
 func (u Update) SkillLevels(source string, kept []string) []SkillLevelUpdate {
 	planned, named := u.plans[source]
-	if !named || planned.moved == nil {
+	if !named || planned.moved == nil && !planned.follows {
 		return []SkillLevelUpdate{}
 	}
 	return planned.levelRows(kept)
@@ -500,8 +503,8 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 	}
 	// Curated skills come from other repositories, or from a source that overrides the library's ref, whose
 	// revision once the update is applied is known only once every source is planned. Only an update of a whole
-	// source resolves the library's refs for them again; a scoped one, and one of a source that uses ref, which the
-	// update doesn't move, keep them where sync would.
+	// source resolves the library's refs for them again: of a source without ref, or one that follows its ref; a
+	// scoped one, and one of a source whose ref the update doesn't move, keep them where sync would.
 	overridden := map[string]library.Snapshot{}
 	for name, snapshot := range recorded {
 		overridden[name] = snapshot
@@ -517,7 +520,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 			if at.manifest == nil || at.err != nil {
 				continue
 			}
-			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero(), overridden, nil, options)
+			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero() && !planned.follows, overridden, nil, options)
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return Update{}, gitexec.ContextFailure(ctxErr)
 			}
@@ -771,7 +774,7 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 		preview.TagMoved = before.resolved == rules.GitRefTag && p.recorded.Ref.Equal(source.Ref)
 	}
 	if !source.Ref.IsZero() {
-		planned := plannedSource{before: before}
+		planned := plannedSource{before: before, follows: p.again}
 		if planned.skills, err = repo.previewSkills(ctx, source, recorded, []sourcePlan{before}); err != nil {
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
@@ -779,6 +782,9 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 		preview.ReplacedSkills = planned.replacedRows(nil)
+		if planned.follows {
+			preview.SkillLevels = planned.levelRows(nil)
+		}
 		return planned, preview, before.warnings, nil
 	}
 	for _, id := range scope {

@@ -397,6 +397,40 @@ func TestSync_KeepsACuratedBranchsCommitAndUpdateTakesItsNewest(t *testing.T) {
 	}
 }
 
+// A library source that follows its branch resolves its curated sources' refs again on update, as a library
+// source without ref does, so a curated branch moves with it.
+func TestUpdate_ALibraryOnABranchTakesItsCuratedBranchsNewestCommit(t *testing.T) {
+	ctx := context.Background()
+	b := newCuratingAt(t, "main", teamSkills, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"ref":"main","rules":{"include":["techs/go/*"]}}}}`)
+	if _, err := Sync(ctx, b.options, b.git); err != nil {
+		t.Fatal(err)
+	}
+	moved, err := b.pocock.Commit(ctx, b.pocock.Worktree(), "Improve deploy", map[string][]byte{"skills/ops/deploy/SKILL.md": []byte(strings.Replace(deploySkill, "# Deploy", "# Deploy safely", 1))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanUpdate(ctx, b.options, b.git, []imports.UpdateTarget{{Source: "team"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Sources) != 1 || len(preview.Sources[0].Curated) != 1 {
+		t.Fatalf("preview = %+v; want one curated row", preview.Sources)
+	}
+	if row := preview.Sources[0].Curated[0]; row.Commit == nil || row.Commit.From != b.pocock.LatestCommit || row.Commit.To != moved {
+		t.Fatalf("curated row = %+v; want main moving from %s to %s", row, b.pocock.LatestCommit, moved)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if installed := readRepositoryFile(t, b.options, ".claude/skills/deploy/SKILL.md"); !strings.Contains(installed, "Deploy safely") || !strings.Contains(installed, moved) {
+		t.Fatalf("update didn't take the curated skill from the branch's newest commit:\n%s", installed)
+	}
+}
+
 func TestSync_AProjectSourceForTheSameRepositoryOverridesTheLibrarysRef(t *testing.T) {
 	ctx := context.Background()
 	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"rules":{"include":["techs/go/*"]}},"mine":{"repository":POCOCK,"ref":"v1.2.0","skills":{"include":["skills/ops/deploy"]}}}}`)

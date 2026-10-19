@@ -426,8 +426,24 @@ func (p *planner) planRevision() (sourcePlan, error) {
 		return sourcePlan{}, err
 	}
 	branch := plan.resolved == rules.GitRefBranch || p.source.Ref.Kind() == rules.GitRefBranch
+	if !branch && plan.resolved == "" && p.source.Ref.Bare() && plan.release == 0 {
+		// Keeping the recorded commit doesn't resolve a bare name, which may name a branch; asking the repository
+		// keeps the branch warning on every sync. A name it can't resolve now leaves the warning to update.
+		name, err := p.repo.bareRef(p.ctx, p.source)
+		branch = err == nil && strings.HasPrefix(name, "refs/heads/")
+	}
 	if branch || plan.release == 0 {
-		if warning := unreleasedWarning(p.source, plan.rules, branch); warning != "" {
+		var current map[string]trailguide.RuleVersion
+		if branch {
+			history, err := p.releases()
+			if err != nil {
+				return sourcePlan{}, err
+			}
+			if newest := history.newest(); newest != nil {
+				current = newest.record.Rules
+			}
+		}
+		if warning := unreleasedWarning(p.source, plan.rules, branch, current); warning != "" {
 			plan.warnings = append(plan.warnings, warning)
 		}
 	}
@@ -731,8 +747,10 @@ func (p *planner) selected(id string) bool {
 }
 
 // unreleasedWarning names a source that imports a revision other than a library release, and its unreleased rules.
-// It is empty when every imported rule matches a published version, as at a library release's commit.
-func unreleasedWarning(source rules.Source, imported map[string]library.ImportedRule, branch bool) string {
+// It is empty when every imported rule matches a published version, as at a library release's commit. For a branch
+// it always warns, and lists as changed since the last release each rule that is unreleased or whose version isn't
+// the one current, the newest library release's rule versions, lists, such as a rule reverted to an older version.
+func unreleasedWarning(source rules.Source, imported map[string]library.ImportedRule, branch bool, current map[string]trailguide.RuleVersion) string {
 	unreleased := []string{}
 	for _, id := range slices.Sorted(maps.Keys(imported)) {
 		if imported[id].Version == nil {
@@ -744,9 +762,13 @@ func unreleasedWarning(source rules.Source, imported map[string]library.Imported
 		listed = " Unreleased rules: " + strings.Join(unreleased, ", ") + "."
 	}
 	if branch {
+		differ := slices.DeleteFunc(slices.Sorted(maps.Keys(imported)), func(id string) bool {
+			version, listed := current[id]
+			return imported[id].Version != nil && (!listed || *imported[id].Version == version)
+		})
 		changed := ""
-		if len(unreleased) > 0 {
-			changed = " Rules changed since the last release: " + strings.Join(unreleased, ", ") + "."
+		if len(differ) > 0 {
+			changed = " Rules changed since the last release: " + strings.Join(differ, ", ") + "."
 		}
 		return fmt.Sprintf("Source %s follows the %s branch of its library. A library publishes its changes in releases: numbered snapshots with change notes that say what changed in each rule and skill. On %s, you get every change as soon as it's made, but rules and skills changed since the last release have no change notes. Remove sources.%s.ref to follow releases instead.%s", source.Name, source.Ref.Name(), source.Ref.Name(), source.Name, changed)
 	}

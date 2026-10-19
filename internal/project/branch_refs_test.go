@@ -241,11 +241,15 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Sync(ctx, options, git); err != nil {
+	resynced, err := Sync(ctx, options, git)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if got := recordedCommit(t, options); got == moved {
 		t.Fatal("sync moved the library's branch to its newest commit")
+	}
+	if !slices.ContainsFunc(resynced.Warnings, func(w string) bool { return strings.HasPrefix(w, warning) }) {
+		t.Fatalf("a later sync's warnings = %q; want one that the source still follows the library's branch", resynced.Warnings)
 	}
 	plan, err := PlanUpdate(ctx, options, git, []imports.UpdateTarget{{Source: "skills"}}, nil)
 	if err != nil {
