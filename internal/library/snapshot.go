@@ -119,12 +119,13 @@ type ImportedSkill struct {
 
 // SelectedSkills returns, sorted, the IDs of the available skills that a source with skills.include selectors
 // include installs: the required ones, the recommended ones for skills.Recommended, every one HiddenSkill doesn't
-// hide for skills.Wildcard, and each one an ID names.
-func (s Snapshot) SelectedSkills(include []string) []string {
+// hide for skills.Wildcard, and each one an ID names, less the ones excludes reports the source's level exclusions
+// leave out by their level, which is never a required one.
+func (s Snapshot) SelectedSkills(include []string, excludes func(level string) bool) []string {
 	selected := []string{}
 	for _, id := range slices.Sorted(maps.Keys(s.AvailableSkills)) {
 		level := s.AvailableSkills[id].Level
-		if level == skills.LevelRequired || slices.Contains(include, skills.Wildcard) && !HiddenSkill(id) || slices.Contains(include, id) || level == skills.LevelRecommended && slices.Contains(include, skills.Recommended) {
+		if level == skills.LevelRequired || (slices.Contains(include, skills.Wildcard) && !HiddenSkill(id) || slices.Contains(include, id) || level == skills.LevelRecommended && slices.Contains(include, skills.Recommended)) && !excludes(level) {
 			selected = append(selected, id)
 		}
 	}

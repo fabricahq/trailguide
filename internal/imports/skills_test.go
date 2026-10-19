@@ -225,3 +225,40 @@ func TestCuratedSkillsAddsTheCuratedSkillsTheLibrarysSkillsUse(t *testing.T) {
 		t.Errorf("got %v; want the unlisted curated skill refused", err)
 	}
 }
+
+func TestChooseSkillsLeavesOutTheExcludedLevels(t *testing.T) {
+	const locked = "1111111111111111111111111111111111111111"
+	available := []string{"skills/build", "skills/lint", "skills/review", "skills/ship"}
+	levels := &rules.SkillLevels{Required: []string{"skills/ship"}, Recommended: []string{"skills/review"}, Offered: []string{"skills/build"}}
+	source := func(include []string, exclude ...string) rules.Source {
+		excluded := map[string]string{}
+		for _, id := range exclude {
+			excluded[id] = "Ours."
+		}
+		return rules.Source{Name: "team", Skills: include, SkillExcludeLevels: excluded}
+	}
+	tests := map[string]struct {
+		source rules.Source
+		levels *rules.SkillLevels
+		want   []string
+	}{
+		"every skill but the recommended":    {source([]string{"*"}, "recommended"), levels, []string{"skills/build", "skills/lint", "skills/ship"}},
+		"only the required":                  {source([]string{"*"}, "*"), levels, []string{"skills/ship"}},
+		"a named skill of an excluded level": {source([]string{"skills/review"}, "recommended"), levels, []string{"skills/ship"}},
+		"a library's required skills":        {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, LibraryRequires: []string{"skills/lint"}}, levels, []string{"skills/lint", "skills/ship"}},
+		"none from another repository":       {source([]string{"*"}, "*"), nil, []string{}},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := chooseSkills(test.source, sourcePlan{commit: locked}, available, test.levels)
+			if err != nil || !slices.Equal(got, test.want) {
+				t.Fatalf("chooseSkills = %v, %v; want %v", got, err, test.want)
+			}
+		})
+	}
+	_, err := chooseSkills(source([]string{"*"}, "recommended"), sourcePlan{commit: locked}, available, nil)
+	var validation *ValidationError
+	if !errors.As(err, &validation) || validation.Location != "sources.team.skills.exclude.recommended" || !strings.Contains(validation.Problem, "isn't a library") {
+		t.Fatalf("got %v; want the non-library recommended exclusion to fail", err)
+	}
+}

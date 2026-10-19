@@ -49,13 +49,41 @@ func TestParseConfigurationReadsSkillExclusions(t *testing.T) {
 	}
 }
 
+func TestParseConfigurationReadsLevelExclusions(t *testing.T) {
+	config, err := rules.ParseConfigurationYAML([]byte(skillSource + "      exclude:\n        - id: recommended\n          reason: We pick our own.\n        - id: skills/review\n          reason: We review in CI.\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := config.Sources[0]
+	if want := map[string]string{"recommended": "We pick our own."}; !reflect.DeepEqual(source.SkillExcludeLevels, want) {
+		t.Fatalf("level exclusions = %+v, want %+v", source.SkillExcludeLevels, want)
+	}
+	if _, ok := source.SkillExclude["skills/review"]; !ok || len(source.SkillExclude) != 1 {
+		t.Fatalf("skill exclusions = %+v", source.SkillExclude)
+	}
+	for level, want := range map[string]bool{"required": false, "recommended": true, "offered": false} {
+		if got := source.ExcludesLevel(level); got != want {
+			t.Errorf("recommended excludes %s = %v, want %v", level, got, want)
+		}
+	}
+	config, err = rules.ParseConfigurationYAML([]byte(skillSource + "      exclude:\n        - id: \"*\"\n          reason: None of them.\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for level, want := range map[string]bool{"required": false, "recommended": true, "offered": true} {
+		if got := config.Sources[0].ExcludesLevel(level); got != want {
+			t.Errorf("\"*\" excludes %s = %v, want %v", level, got, want)
+		}
+	}
+}
+
 func TestParseConfigurationRejectsInvalidSkillExclusions(t *testing.T) {
 	const entry = "      exclude:\n        - id: skills/review\n          reason: Ours.\n"
 	const at = "sources.team.skills.exclude.skills/review"
 	tests := map[string]struct{ exclude, location, problem string }{
 		"not a list":         {"      exclude: skills/review\n", "sources.team.skills.exclude", "expected a list"},
-		"wildcard":           {"      exclude:\n        - id: \"*\"\n          reason: None.\n", "sources.team.skills.exclude[0].id", `not "*"`},
-		"levels":             {"      exclude:\n        - id: recommended\n          reason: None.\n", "sources.team.skills.exclude[0].id", "remove recommended from skills.include"},
+		"level replaced":     {"      exclude:\n        - id: recommended\n          reason: None.\n          replacedBy: skills/r\n", "sources.team.skills.exclude.recommended", "leaves out skills by level, so it takes only a reason"},
+		"level no reason":    {"      exclude:\n        - id: \"*\"\n", "sources.team.skills.exclude.*.reason", "expected nonempty text"},
 		"invalid ID":         {"      exclude:\n        - id: skills/../x\n          reason: None.\n", "sources.team.skills.exclude[0].id", "expected a skill ID"},
 		"repeated ID":        {entry + "        - id: skills/review\n          reason: Again.\n", at, "listed more than once"},
 		"missing reason":     {"      exclude:\n        - id: skills/review\n", at + ".reason", "expected nonempty text"},

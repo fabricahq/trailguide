@@ -327,40 +327,37 @@ Use check in CI to detect files that need regeneration. It uses recorded commits
 ### project list skills
 
 ```sh
-trailguide project list skills [options]
+trailguide project list skills
 ```
 
-List the skills the repository's sources offer, with their levels, so you can choose which to install. Lists never write files. The command reads each library source's newest library release, or the revision its `ref` names now, and each non-library and curated source at the newest commit its `ref` names, and needs access to every configured and curated repository.
+List the skills in the project: every skill its sources offer, whether the project installs it, and its level, followed by the project's own authored skills, so you can see what you have and choose what to add. Lists never write files.
 
-| Option | Meaning |
-| --- | --- |
-| `--type TYPE` | Only skills of this type: `playbook` or `review`. |
-| `--applies-rules-from GROUP` | Only skills whose `trailguide-rules-used` names a rule in this rule group, such as `practices/architecture`. |
+The listing reads the source records the last sync wrote in `.trailguide/vendor/`, so it works offline and shows the revisions the project uses, not newer ones. After changing the configuration, run `trailguide project sync` first. To take skills a newer library release adds, run `trailguide project update SOURCE`.
 
 ```text
-$ trailguide project list skills --applies-rules-from practices/architecture
-NAME                 ID                                  LEVEL        SET BY             VERSION  STATUS
-build-feature        fabrica:skills/build-feature        recommended  fabrica release 7  1.3.0    installed
-review-architecture  fabrica:skills/review-architecture  offered      fabrica release 7  2.0.1    available
-write-design-doc     fabrica:skills/write-design-doc     offered      fabrica release 7  1.1.0    available
-
-3 skills cite rules in practices/architecture. Skills that cite no rules, including those from non-library sources, show up only without --applies-rules-from.
+$ trailguide project list skills
+SKILL                                           LEVEL        SET BY                   STATUS
+fabrica:mattpocock:skills/engineering/to-spec   recommended  fabrica, release 7       installed
+fabrica:skills/build-feature                    recommended  fabrica, release 7       installed
+fabrica:skills/deploy-preview                   offered      fabrica, release 7       excluded
+fabrica:skills/review-change                    offered      fabrica, release 7       replaced by skills/review-change
+fabrica:skills/ship-service                     required     fabrica, release 7       installed
+fabrica:skills/tdd                              offered      fabrica, release 7       available
+tools:skills/changelog                          -            tools, not a library     installed
+skills/check-release                            -            this project             installed
+skills/review-change                            -            this project             installed
 ```
 
 Each row shows:
 
-- **NAME:** the install name, which is the skill's own `name` unless the repository renames it.
-- **ID:** the skill's project ID. A curated skill's ID names the library and the curated source, such as `fabrica:mattpocock:skills/engineering/to-spec`.
-- **LEVEL:** `required`, `recommended`, or `offered`. Every skill from a non-library source is `offered`.
-- **SET BY:** the library and library release whose manifest set the level, or `-` for a non-library source.
-- **VERSION:** the skill's newest version, or, for a skill without versions, the commit it would come from.
-- **STATUS:** `installed` for a skill the repository installs, whether included, required, or used by another installed skill, and `available` for one a source offers that the repository doesn't install.
+- **SKILL:** the skill's project ID. A curated skill's ID names the library and the curated source, such as `fabrica:mattpocock:skills/engineering/to-spec`; an authored skill's ID is `skills/<name>`.
+- **LEVEL:** `required`, `recommended`, or `offered`, or `-` for a skill from a repository that isn't a library, or an authored skill.
+- **SET BY:** the library and the library release, or the commit, whose manifest set the level; `not a library` for a source without a manifest; or `this project` for an authored skill.
+- **STATUS:** `installed` for a skill the project installs, whether included, required, or used by another installed skill; `excluded` for one `skills.exclude` leaves out, by ID or by level; `replaced by` and the authored skill installed in its place; and `available` for one a source offers that the project doesn't install.
 
-Authored skills aren't listed. Skills are sorted by project ID. To install one, add it to that source's `skills.include` and run `trailguide project sync`, or `trailguide project update SOURCE` when it isn't in the recorded revision yet.
+Source skills are sorted by project ID, and authored skills follow them. To install an available skill, add it to that source's `skills.include` and run `trailguide project sync`.
 
-Skills don't belong to rule groups, so `--applies-rules-from` finds skills by the rules they cite: a skill that cites rules in several rule groups appears under each of them, and a skill that cites no rules, including every skill from a non-library source, appears only without the option. Both options can be combined.
-
-JSON output lists the skills in `value.skills`, each with its `name`, `id`, `level`, `status` (`installed` or `available`), and, where they apply, `setBy`, with the `library` and `release`, its `type`, and its `version` or `commit`.
+JSON output lists the skills in `value.skills`, each with its `id`, `status`, and, where they apply, `source`, `level`, `setBy` (the `source`, `release`, and `commit` that set the level), and `replacedBy`.
 
 ## Library commands
 

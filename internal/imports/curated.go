@@ -38,7 +38,7 @@ type curatedSkill struct {
 
 // curatedSkills returns, by curated source name, the curated skills source takes from manifest, its library's:
 // every required one, the recommended ones when skills.include names recommended, each offered one that it
-// names or includes with "*", which, as for a source's own skills, leaves out one in a folder whose name starts with
+// names or includes with "*", less those a level exclusion leaves out, as rules.Source.ExcludesLevel says, which, as for a source's own skills, leaves out one in a folder whose name starts with
 // a dot, and each one that used, as curatedUses gives it for the library's skills the source installs, says one of
 // them uses. It fails when skills.include or skills.exclude names a curated skill the library
 // doesn't list, since a curated skill reaches projects only through the library's lists, when skills.exclude
@@ -78,6 +78,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 			slices.Contains(source.Skills, id) ||
 			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
 			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
+		included = included && !source.ExcludesLevel(level)
 		if !included && len(used[id]) == 0 {
 			continue
 		}

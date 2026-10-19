@@ -78,12 +78,14 @@ func TestSync_InstallsSkillsByLevel(t *testing.T) {
 		skills string
 		want   []string
 	}{
-		"nothing included":       {``, []string{"ship"}},
-		"rules only":             {`,"rules":{"include":["techs/go/*"]}`, []string{"ship"}},
-		"recommended":            {`,"skills":{"include":["recommended"]}`, []string{"review", "ship"}},
-		"an offered skill":       {`,"skills":{"include":["skills/build-feature"]}`, []string{"build-feature", "ship"}},
-		"a required skill named": {`,"skills":{"include":["skills/ship"]}`, []string{"ship"}},
-		"every skill":            {`,"skills":{"include":["*"]}`, []string{"build-feature", "deploy", "review", "ship"}},
+		"nothing included":                {``, []string{"ship"}},
+		"rules only":                      {`,"rules":{"include":["techs/go/*"]}`, []string{"ship"}},
+		"recommended":                     {`,"skills":{"include":["recommended"]}`, []string{"review", "ship"}},
+		"an offered skill":                {`,"skills":{"include":["skills/build-feature"]}`, []string{"build-feature", "ship"}},
+		"a required skill named":          {`,"skills":{"include":["skills/ship"]}`, []string{"ship"}},
+		"every skill":                     {`,"skills":{"include":["*"]}`, []string{"build-feature", "deploy", "review", "ship"}},
+		"every skill but the recommended": {`,"skills":{"include":["*"],"exclude":[{"id":"recommended","reason":"We review our own way."}]}`, []string{"build-feature", "deploy", "ship"}},
+		"only the required":               {`,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"We pick our own."}]}`, []string{"ship"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY`+test.skills+`}}}`)
@@ -361,5 +363,39 @@ func TestSync_RenamesARequiredSkill(t *testing.T) {
 	}
 	if len(changes.Warnings) != 1 || !strings.HasPrefix(changes.Warnings[0], "team:skills/ship is installed as team-ship.") {
 		t.Fatalf("warnings = %q", changes.Warnings)
+	}
+}
+
+func TestSyncBuildAndList_LeaveOutTheExcludedLevels(t *testing.T) {
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["recommended"]}}}}`)
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	// Excluding a level the project installs leaves the installed skills out of date until sync.
+	configure(t, options, f, `"skills":{"include":["recommended"],"exclude":[{"id":"*","reason":"We pick our own."}]}`)
+	if _, err := Build(context.Background(), options); err == nil || !strings.Contains(err.Error(), "run trailguide project sync") {
+		t.Fatalf("build: got %v; want it to ask for sync", err)
+	}
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := installedSkills(t, options), []string{"ship"}; !slices.Equal(got, want) {
+		t.Fatalf("installed %v; want %v", got, want)
+	}
+	if _, err := Build(context.Background(), options); err != nil {
+		t.Fatalf("build after sync: %v", err)
+	}
+	listing, err := ListSkills(context.Background(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, skill := range listing.Skills {
+		got = append(got, skill.ID+" "+skill.Status)
+	}
+	want := []string{"team:skills/build-feature excluded", "team:skills/deploy excluded", "team:skills/review excluded", "team:skills/ship installed"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("listing:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }

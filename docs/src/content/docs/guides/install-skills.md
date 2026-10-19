@@ -74,34 +74,28 @@ Sync takes the source's newest library release, records it in `.trailguide/vendo
 
 ## See what's available
 
-List every skill your sources offer, with its level:
+List the skills in your project, with their levels:
 
 ```sh
 trailguide project list skills
 ```
 
 ```text
-NAME            ID                                               LEVEL        SET BY             VERSION  STATUS
-build-feature   fabrica:skills/build-feature                     recommended  fabrica release 7  1.3.0    installed
-deploy-preview  fabrica:skills/deploy-preview                    offered      fabrica release 7  1.0.0    installed
-review-change   fabrica:skills/review-change                     offered      fabrica release 7  3.0.0    available
-grilling        fabrica:mattpocock:skills/productivity/grilling  offered      fabrica release 7  8a41d07  available
-ship-service    fabrica:skills/ship-service                      required     fabrica release 7  1.0.0    installed
-tdd             fabrica:skills/tdd                               offered      fabrica release 7  1.1.0    installed
-to-spec         fabrica:mattpocock:skills/engineering/to-spec    recommended  fabrica release 7  8a41d07  installed
+SKILL                                            LEVEL        SET BY              STATUS
+fabrica:mattpocock:skills/engineering/to-spec    recommended  fabrica, release 7  installed
+fabrica:mattpocock:skills/productivity/grilling  offered      fabrica, release 7  available
+fabrica:skills/build-feature                     recommended  fabrica, release 7  installed
+fabrica:skills/deploy-preview                    offered      fabrica, release 7  installed
+fabrica:skills/review-change                     offered      fabrica, release 7  available
+fabrica:skills/ship-service                      required     fabrica, release 7  installed
+fabrica:skills/tdd                               offered      fabrica, release 7  installed
 ```
 
-Each row shows a skill's install name, its ID, its level and the library release that set it, its version, or a commit for a skill without versions, and whether the project installs it. `installed` covers skills you included, required skills, and skills another installed skill calls; `available` means a source offers it and the project doesn't install it.
+Each row shows a skill's ID, its level and the library release that set it, and whether the project installs it. `installed` covers skills you included, required skills, and skills another installed skill uses; `available` means a source offers it and the project doesn't install it. The list comes from the library release your project recorded, so it doesn't show skills a newer release adds until you run `trailguide project update fabrica`.
 
 The `mattpocock:` skills are **curated**: Fabrica's library lists them at a level, but their files come from the original repository, at a commit your project resolves when it updates. See [Curated skills](/reference/configuration/#curated-skills).
 
-Narrow the list:
-
-- `--type review` lists only review skills, and `--type playbook` only playbooks.
-- `--applies-rules-from practices/testing` lists only skills whose `trailguide-rules-used` names a rule in that rule group.
-- `--json` returns the list for scripts.
-
-See [project list skills](/reference/cli/#project-list-skills) for every option.
+Add `--json` to get the list for scripts. See [project list skills](/reference/cli/#project-list-skills) for every column and status.
 
 ## What lands where
 
