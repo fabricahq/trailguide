@@ -439,10 +439,10 @@ Create a skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name gra
 | `--type TYPE` | Optional. `playbook` or `review`, recorded as `trailguide-skill-type`. See [Skill types](/concepts/skill/#skill-types). |
 | `--non-interactive` | Never prompt. Supply all required inputs as flags. |
 
-The command writes `.trailguide/skills/NAME/SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete the draft and remove the marker before validation; see [Write a skill](/guides/write-skills/). An invalid name, or a description that's blank or too long, fails before prompts with exit code `2`. Existing skills are not overwritten, and the ID of a skill a library release retired can't be reused. After the first library release, the next steps include adding the new skill's change note with `trailguide library change`. Like `trailguide library add rule`, it fails with instructions in a shallow clone, or a clone with change notes but no release tags.
+The command writes `.trailguide/skills/NAME/SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete the draft and remove the marker before validation; see [Write a skill](/guides/write-skills/). An invalid name, or a description that's blank or too long, fails before prompts with exit code `2`. Existing skills are not overwritten.
 
 :::note[Preview]
-Skills have no versions or change notes yet, so the command doesn't check for retired skill IDs or name a change note in its next steps, and it doesn't need the library's release tags.
+Skill versions and change notes aren't implemented yet. Once they are, the command will refuse the ID of a skill a library release retired, and after the first library release its next steps will include the new skill's change note.
 :::
 
 #### Fork a skill into the library
