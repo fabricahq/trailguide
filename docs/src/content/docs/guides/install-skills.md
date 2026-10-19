@@ -127,7 +127,7 @@ Trail Guide writes only the skill folders it installs. Other folders in `.claude
 
 A skill can call other skills and cite rules. When you install it, Trail Guide installs those too:
 
-- **Skills it calls.** Every skill in its `trailguide-skills-used` list, and the skills those call, from the same repository and revision. `SKILLS.md` says each was installed because another skill uses it.
+- **Skills it calls.** Every skill in its `trailguide-skills-used` list, and the skills those call, from the same repository and revision, or, for a skill the library [curates](/reference/configuration/#curated-skills), from the repository the library curates it from. `SKILLS.md` says each was installed because another skill uses it.
 - **Rules it cites.** Every rule in its `trailguide-rules-used` list, from the same library, even ones your rule `include` doesn't name. These cited rules are reference-only: each gets its generated rule file, and the installed skill links to it, but `RULES.md` doesn't list it. Installing a skill never widens the rules your agents apply to all work.
 
 If you exclude or replace a cited rule, the installed skill follows your choice: it links to your replacement, or says the rule is excluded by this project, with your reason. A cited rule your project also includes is an ordinary rule.

@@ -85,11 +85,14 @@ type recordCurated struct {
 
 // recordSkill is one installed skill's record. Level is null for a skill from a source that isn't a library.
 // Included reports that skills.include, or the library's required level, selects the skill, and UsedBy lists, sorted, the source's installed skills
-// that use it; a skill that isn't included has at least one.
+// that use it; a skill that isn't included has at least one. A curated skill's UsedBy names skills of its curated
+// source by their IDs there, and UsedByLibrary lists, sorted, the library's own skills that use it, by their IDs in
+// the library, which only a curated skill records.
 type recordSkill struct {
-	Level    *string  `json:"level"`
-	Included bool     `json:"included"`
-	UsedBy   []string `json:"usedBy"`
+	Level         *string  `json:"level"`
+	Included      bool     `json:"included"`
+	UsedBy        []string `json:"usedBy"`
+	UsedByLibrary []string `json:"usedByLibrary,omitempty"`
 }
 
 // availableSkill is the record of a skill the source offers at the commit, installed or not. Level is null for a
@@ -198,7 +201,11 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot) 
 			}
 			entry.UsedBy = []string{}
 			for _, user := range skill.UsedBy {
-				entry.UsedBy = append(entry.UsedBy, strings.TrimPrefix(user, name+":"))
+				if inside, found := strings.CutPrefix(user, name+":"); found {
+					entry.UsedBy = append(entry.UsedBy, inside)
+				} else {
+					entry.UsedByLibrary = append(entry.UsedByLibrary, user)
+				}
 			}
 			origin.Skills[folder] = entry
 		}
@@ -545,12 +552,15 @@ func readSourceRecord(data []byte, name string) (parsedRecord, error) {
 // foldCurated moves what record's curated sources install into the record's own skills, files, and executable
 // files, as a snapshot holds them: a curated skill's ID becomes its source's name, a colon, and its ID in the
 // source's repository, and a file's path is in the source's folder of curated skills. It fails when the record's
-// own fields hold a curated skill or file, or a curated source records no skills or lists its executable files out
-// of order.
+// own fields hold a curated skill or file, or a library's skill records usedByLibrary, or a curated source records no
+// skills or lists its executable files or a skill's usedByLibrary out of order.
 func foldCurated(record *sourceRecord, where string) error {
-	for id := range record.Skills {
+	for id, skill := range record.Skills {
 		if isCuratedSkill(id) {
 			return invalidSnapshot(where+".skills."+id, "a curated skill is recorded in its curated source's skills")
+		}
+		if skill.UsedByLibrary != nil {
+			return invalidSnapshot(where+".skills."+id+".usedByLibrary", "only a curated skill records the library's skills that use it")
 		}
 	}
 	for _, file := range slices.Concat(slices.Collect(maps.Keys(record.Files)), record.Executable) {
@@ -568,10 +578,15 @@ func foldCurated(record *sourceRecord, where string) error {
 			if isCuratedSkill(id) {
 				return invalidSnapshot(location+".skills."+id, "expected the skill's ID in the curated repository")
 			}
-			usedBy := []string{}
+			if !slices.IsSorted(skill.UsedByLibrary) || slices.ContainsFunc(skill.UsedByLibrary, isCuratedSkill) {
+				return invalidSnapshot(location+".skills."+id+".usedByLibrary", "expected the library's own skills in sorted order")
+			}
+			// The library's skills and the curated source's are one list once both have their IDs in the library.
+			usedBy := append([]string{}, skill.UsedByLibrary...)
 			for _, user := range skill.UsedBy {
 				usedBy = append(usedBy, name+":"+user)
 			}
+			slices.Sort(usedBy)
 			if skill.UsedBy == nil {
 				usedBy = nil
 			}
@@ -807,7 +822,8 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 
 // matchSkillUses checks, without fetching Git, that snapshot records exactly the skills its included skills bring in
 // and why: the skills they use, transitively, by the trailguide-skills-used of the vendored SKILL.md files and the source's
-// skills.uses, a curated skill's from the repository it was curated from. A difference means configuration changed since sync, such as a new skills.uses entry, so it fails
+// skills.uses, a curated skill's from the repository it was curated from, and a library's skill's from the library
+// or the skills it curates. A difference means configuration changed since sync, such as a new skills.uses entry, so it fails
 // asking for sync, which checks the change against the source.
 func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 	where := "vendor/" + source.Name + "/_source.json"
@@ -819,11 +835,15 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 		if err != nil {
 			return err
 		}
-		// A curated skill uses skills of the repository it was curated from, curated with it.
+		// A curated skill uses skills of the repository it was curated from, curated with it, but not the skills
+		// that repository curates in turn, which aren't installed with it. A library's own skill names a curated
+		// skill it uses by its ID in the library, which the snapshot records it under.
 		if name, _, curated := library.SplitCurated(id); curated {
 			uses[id] = []string{}
 			for _, used := range metadata.SkillsUsed {
-				uses[id] = append(uses[id], name+":"+used)
+				if !strings.Contains(used, ":") {
+					uses[id] = append(uses[id], name+":"+used)
+				}
 			}
 		} else {
 			uses[id] = slices.Concat(metadata.SkillsUsed, source.SkillUses[id])

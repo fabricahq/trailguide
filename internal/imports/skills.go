@@ -213,9 +213,10 @@ func installedSkills(source rules.Source, plan sourcePlan, chosen []string, uses
 // skillUses reads the SKILL.md of every skill chosen reaches in folders, the skills of the plan's commit, and returns
 // what each uses: its trailguide-skills-used lines, then the skills the source's skills.uses adds. It fetches the
 // SKILL.md files one level of uses at a time, so it never downloads those of skills nothing installed uses. A used
-// skill folders lacks is absent from the result, for installedSkills to report. It fails when a SKILL.md it reads
-// has unreadable frontmatter.
-func (r *repository) skillUses(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry, chosen []string) (map[string][]string, error) {
+// skill folders lacks is absent from the result, for installedSkills to report. A library's skill can also use a
+// skill the library curates, named with its curated source's name; isLibrary leaves those out, for curateSkills to
+// install. It fails when a SKILL.md it reads has unreadable frontmatter.
+func (r *repository) skillUses(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry, chosen []string, isLibrary bool) (map[string][]string, error) {
 	uses := map[string][]string{}
 	for pending := chosen; len(pending) > 0; {
 		entries := map[string]treeEntry{}
@@ -246,11 +247,43 @@ func (r *repository) skillUses(ctx context.Context, source rules.Source, folders
 			if err != nil {
 				return nil, err
 			}
-			uses[id] = slices.Concat(metadata.SkillsUsed, source.SkillUses[id])
+			used := metadata.SkillsUsed
+			if isLibrary {
+				used = slices.DeleteFunc(slices.Clone(used), isCuratedUse)
+			}
+			uses[id] = slices.Concat(used, source.SkillUses[id])
 			pending = append(pending, uses[id]...)
 		}
 	}
 	return uses, nil
+}
+
+// isCuratedUse reports whether line, a line of trailguide-skills-used in a library's skill, names a skill the
+// library curates, which has its curated source's name and a colon before its ID.
+func isCuratedUse(line string) bool { return strings.Contains(line, ":") }
+
+// curatedUses returns, by the ID of each curated skill that a skill of installed uses, such as
+// anthropic:skills/skill-creator, the IDs of those skills, sorted. installed holds a library source's skills by ID,
+// and files their files by snapshot path; curated skills, and the skills they use, use none of the library's. It
+// fails when a SKILL.md has unreadable frontmatter, reading it at where and its path.
+func curatedUses(installed map[string]library.ImportedSkill, files map[string][]byte, where string) (map[string][]string, error) {
+	result := map[string][]string{}
+	for _, id := range slices.Sorted(maps.Keys(installed)) {
+		if _, _, curated := library.SplitCurated(id); curated {
+			continue
+		}
+		file := library.SkillFolder(id) + "/" + skills.File
+		metadata, err := skills.ReadMetadata(files[file], where+"/"+file)
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range metadata.SkillsUsed {
+			if isCuratedUse(line) && !slices.Contains(result[line], id) {
+				result[line] = append(result[line], id)
+			}
+		}
+	}
+	return result, nil
 }
 
 // isLibrary reports whether a fetched commit holds a library: a .trailguide/config.yaml with a library section, or a
@@ -351,7 +384,7 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 	if err := requireConfiguredUses(source, plan, available); err != nil {
 		return importedSkills{}, err
 	}
-	uses, err := r.skillUses(ctx, source, folders, chosen)
+	uses, err := r.skillUses(ctx, source, folders, chosen, isLibrary)
 	if err != nil {
 		return importedSkills{}, err
 	}
