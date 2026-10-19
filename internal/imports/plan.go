@@ -361,7 +361,12 @@ func (p *planner) planRevision() (sourcePlan, error) {
 	recorded := p.recorded
 	if recorded != nil && p.source.Ref.Equal(recorded.Ref) && !p.again {
 		plan.release, plan.commit = recorded.Release, recorded.Commit
-		if err := p.repo.fetchCommits(p.ctx, []string{plan.commit}, p.lostCommit()); err != nil {
+		if err := p.repo.fetchCommits(p.ctx, []string{plan.commit}, ""); err != nil {
+			// Explaining the loss can ask the repository what a bare ref names, so only a lost commit does it.
+			var failure *Error
+			if errors.As(err, &failure) && failure.Code == "version-not-found" {
+				return sourcePlan{}, fail("version-not-found", p.lostCommit(), nil)
+			}
 			return sourcePlan{}, err
 		}
 	} else {
@@ -426,11 +431,10 @@ func (p *planner) planRevision() (sourcePlan, error) {
 		return sourcePlan{}, err
 	}
 	branch := plan.resolved == rules.GitRefBranch || p.source.Ref.Kind() == rules.GitRefBranch
-	if !branch && plan.resolved == "" && p.source.Ref.Bare() && plan.release == 0 {
-		// Keeping the recorded commit doesn't resolve a bare name, which may name a branch; asking the repository
-		// keeps the branch warning on every sync. A name it can't resolve now leaves the warning to update.
-		name, err := p.repo.bareRef(p.ctx, p.source)
-		branch = err == nil && strings.HasPrefix(name, "refs/heads/")
+	if !branch && plan.resolved == "" && plan.release == 0 {
+		// Keeping the recorded commit doesn't resolve a bare name, which may name a branch, so the branch warning
+		// stays on every sync.
+		branch = p.bareBranch()
 	}
 	if branch || plan.release == 0 {
 		var current map[string]trailguide.RuleVersion
@@ -456,10 +460,21 @@ func (p *planner) planRevision() (sourcePlan, error) {
 func (p *planner) lostCommit() string {
 	name := p.source.Name
 	kind := p.source.Ref.Kind()
-	if kind == rules.GitRefBranch || p.recorded.NonLibrary && kind != rules.GitRefCommit {
+	branch := kind == rules.GitRefBranch || !p.recorded.NonLibrary && p.recorded.Release == 0 && p.bareBranch()
+	if branch || p.recorded.NonLibrary && kind != rules.GitRefCommit {
 		return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref, %s, is missing from the source's repository, so the branch or tag may have been force-pushed, moved, or deleted. Run trailguide project update %s to take the commit sources.%s.ref names now.", name, name, p.source.Ref, name, name)
 	}
 	return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or set sources.%s.ref to a tag or commit the library still has, then run trailguide project sync. As a last resort, delete vendor/%s and run trailguide project sync to resolve the ref again, which may import different content.", name, name, name, name)
+}
+
+// bareBranch reports whether the source's ref is a bare name that the repository has as a branch now. A name it
+// can't resolve, such as a deleted branch, reports false.
+func (p *planner) bareBranch() bool {
+	if !p.source.Ref.Bare() {
+		return false
+	}
+	name, err := p.repo.bareRef(p.ctx, p.source)
+	return err == nil && strings.HasPrefix(name, "refs/heads/")
 }
 
 // resolvedRef is the revision a source's ref names in its repository now.

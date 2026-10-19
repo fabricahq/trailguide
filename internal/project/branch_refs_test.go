@@ -277,6 +277,24 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 	}
 }
 
+// A library source on a bare branch name whose recorded commit a force-push removed points sync at update, which
+// takes the branch's newest commit, as for a non-library source.
+func TestSync_ALibraryBranchThatLostItsCommitNamesUpdate(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"skills":{"repository":REPOSITORY,"ref":"main","rules":{"include":["techs/go/*"]},"skills":{"include":["*"]}}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"tag", "--delete", "release/1"}, {"commit", "--quiet", "--amend", "--allow-empty", "-m", "Rewritten"}, {"reflog", "expire", "--expire=now", "--all"}, {"gc", "--quiet", "--prune=now"}} {
+		if _, err := f.CommandIn(ctx, f.Worktree(), args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := Sync(ctx, options, git)
+	requireFailure(t, err, "version-not-found", "Run trailguide project update skills to take the commit sources.skills.ref names now.")
+}
+
 // A library source whose bare ref names a tag holds that revision: update resolves the name to learn it isn't a
 // branch, and leaves the source where sync keeps it, even after the tag moves.
 func TestUpdate_ALibrarySourceOnABareTagStaysWhereSyncKeepsIt(t *testing.T) {
