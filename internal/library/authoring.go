@@ -46,6 +46,11 @@ type Options struct {
 	// Curated reads the sources the library curates skills from, so check can find their skills; nil leaves them
 	// unchecked.
 	Curated CuratedReader
+	// ReadSkill reads a skill from a source the library declares, which a fork copies.
+	ReadSkill SkillReader
+	// Forks compares the skills the library forked with the sources it forked them from, so check and release can
+	// list what the sources changed; nil leaves them uncompared.
+	Forks ForkReader
 }
 
 // Terms contains publisher-supplied text; nil Notice omits a notice while an empty value preserves an empty file.

@@ -81,7 +81,18 @@ trailguide project add skill --from fabrica:skills/fix-bug \
   --reason 'We fix bugs behind a feature flag first.'
 ```
 
-The fork copies the version the project installs into `.trailguide/skills/fix-bug/`, rewrites its citations to project IDs, and excludes the source's skill in favor of the fork. A required skill can't be forked. See [project add skill](/reference/cli/#project-add-skill).
+The fork copies the version the project installs into `.trailguide/skills/fix-bug/`, rewrites its citations to project IDs, and excludes the source's skill in favor of the fork. A required skill can't be forked. See [project add skill](/reference/cli/#project-add-skill). A skill your library source curates from another repository forks the same way, such as `--from fabrica:mattpocock:skills/to-spec`.
+
+In a library, fork a skill from one of the library's sources, such as a third party's skill you want to publish with your own changes:
+
+```sh
+trailguide library add skill --from pstack:pstack/skills/show-me-your-work \
+  --reason 'We ask for evidence before every claim.'
+```
+
+The fork copies the skill at the revision the source's `ref` names into `.trailguide/skills/show-me-your-work/`, and records the source, the skill, and the commit it copied in `config.yaml`. When you move the source's `ref`, `trailguide library check` lists what the source changed in the original since that commit. See [library add skill](/reference/cli/#fork-a-skill-into-the-library).
+
+A source can exist only to track forks. Projects that use your library never read its `sources`, so declaring a third party's repository to fork from it doesn't offer that repository to them; they get only the forks, through `library.skills`. Keep the source declared for as long as you want check to compare your forks with it, and move its `ref` to compare with a newer revision. To stop tracking a fork, delete the source's `include` and `exclude` entries for it, and the source once nothing else uses it; the fork stays a skill of your own.
 
 ## Write the steps
 

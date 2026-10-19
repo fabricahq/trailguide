@@ -119,7 +119,7 @@ func checkWithPlan(ctx context.Context, options Options) (CheckResult, releasePl
 	if err != nil {
 		return CheckResult{}, releasePlan{}, err
 	}
-	checked, err := checkLibrary(ctx, root, git, nil)
+	checked, err := checkLibrary(ctx, root, git, nil, nil)
 	return checked.result, checked.plan, err
 }
 

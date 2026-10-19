@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
@@ -22,20 +21,26 @@ import (
 // SkillForkSource names the configured source and the skill in it that a fork copies.
 type SkillForkSource struct {
 	Source string
-	// Skill is the skill's ID in the source, its folder's path there, such as skills/fix-bug.
+	// Skill is the skill's ID in the source, its folder's path there, such as skills/fix-bug, or the ID of a skill the
+	// source's library curates, such as mattpocock:skills/to-spec.
 	Skill string
 }
 
 // String returns SOURCE:SKILL.
 func (s SkillForkSource) String() string { return s.Source + ":" + s.Skill }
 
-// ParseSkillForkSource reads SOURCE:SKILL, splitting at the first colon, because source names have none.
+// ParseSkillForkSource reads SOURCE:SKILL, splitting at the first colon, because source names have none. SKILL
+// can itself name a curated skill, such as mattpocock:skills/to-spec.
 func ParseSkillForkSource(value string) (SkillForkSource, error) {
 	source, skill, found := strings.Cut(value, ":")
-	if !found || source == "" || skill == "" {
-		return SkillForkSource{}, &ValidationError{Location: "--from", Problem: fmt.Sprintf("%q: expected SOURCE:SKILL, a configured source and the skill's ID in it, such as fabrica:skills/fix-bug", value)}
+	curatedFrom, id, curated := library.SplitCurated(skill)
+	if !found || source == "" || skill == "" || curated && (curatedFrom == "" || id == "") {
+		return SkillForkSource{}, &ValidationError{Location: "--from", Problem: fmt.Sprintf("%q: expected SOURCE:SKILL, a configured source and the skill's ID in it, such as fabrica:skills/fix-bug, or fabrica:mattpocock:skills/to-spec for a skill its library curates", value)}
 	}
-	if err := skills.ValidateID(skill, "--from"); err != nil {
+	if !curated {
+		id = skill
+	}
+	if err := skills.ValidateID(id, "--from"); err != nil {
 		return SkillForkSource{}, err
 	}
 	return SkillForkSource{Source: source, Skill: skill}, nil
@@ -59,13 +64,15 @@ type SkillForkPlan struct {
 	files []filetxn.File
 }
 
-// PlanSkillFork checks the project and prepares a fork of the skill from names, copied from vendor/ as the source's
-// last sync recorded it, with its SKILL.md rewritten as forkedSkillFile rewrites it, into skills/<name>/, where name
-// is the skill's install name, the one the source's skills.rename gives it when it has one, without writing. It fails
-// when the source isn't configured, when its record doesn't match its configuration, when its last sync didn't
-// install the skill, when the source's library requires the skill, when the source already excludes the skill, when
-// the project already has an authored skill with that name or another exclusion names it as a replacement, since
-// existing authored skills and exclusions are never replaced, or when forkedSkillFile fails.
+// PlanSkillFork checks the project and prepares a fork of the skill from names, which can be one the source's
+// library curates, copied from vendor/ as the source's last sync recorded it, with its SKILL.md rewritten as
+// forkedSkillFile rewrites it, into skills/<name>/, where name is the skill's install name, the one the source's
+// skills.rename gives it when it has one, without writing. It fails when the source isn't configured, when its record
+// doesn't match its configuration, when its last sync didn't install the skill, when the source's library requires
+// the skill, when the library curates the skill from another library and the skill cites rules, which the project
+// can't name, when the source already excludes the skill, when the project already has an authored skill with that
+// name or another exclusion names it as a replacement, since existing authored skills and exclusions are never
+// replaced, or when forkedSkillFile fails.
 func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (*SkillForkPlan, error) {
 	plan := &SkillForkPlan{from: from}
 	options, err := planProjectAuthoring(ctx, options, func(root *os.Root, _ rules.Configuration) error {
@@ -79,9 +86,6 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return &ValidationError{Location: "--from", Problem: "no source named " + from.Source + " in .trailguide/config.yaml; name a configured source"}
 		}
 		source := config.Sources[index]
-		if _, _, curated := library.SplitCurated(from.Skill); curated {
-			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("%s is a skill library %s curates from another repository, which a fork can't record a revision for; declare that repository as a source of your own, run trailguide project sync, and fork the skill from that source", from.Skill, source.Name)}
-		}
 		if _, excluded := source.SkillExclude[from.Skill]; excluded {
 			return &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + from.Skill, Problem: "the source already excludes this skill, and a fork never replaces an existing exclusion; delete the entry to fork the skill"}
 		}
@@ -105,17 +109,38 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("source %s doesn't install skill %s, as its last sync recorded; name a skill its skills.include selects, and if you just added it, run trailguide project sync first", source.Name, from.Skill)}
 		}
 		files := snapshot.SkillFiles(from.Skill)
-		location := "vendor/" + source.Name + "/" + from.Skill + "/" + skills.File
+		location := "vendor/" + source.Name + "/" + library.SkillFolder(from.Skill) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(files[skills.File], location)
 		if err != nil {
 			return err
 		}
+		// A curated skill comes from the repository its library curates it from, at the commit the source record
+		// locks for it there, and its trailguide-skills-used names skills of that repository, which the library
+		// curates with it. skills.uses applies only to the source's own skills.
+		id, prefix, qualifyRules, uses := from.Skill, source.Name, !snapshot.NonLibrary, source.SkillUses[from.Skill]
+		plan.commit = snapshot.Commit
+		if curatedFrom, curatedID, curated := library.SplitCurated(from.Skill); curated {
+			origin := snapshot.Curated[curatedFrom]
+			// A curated skill the library doesn't list reaches the project only with a listed skill that uses it, and
+			// sync accepts exclusions only of skills the library lists.
+			if _, listed := snapshot.AvailableSkills[from.Skill]; !listed {
+				users := []string{}
+				for _, user := range snapshot.Skills[from.Skill].UsedBy {
+					users = append(users, source.Name+":"+user)
+				}
+				return &ValidationError{Location: "--from", Problem: fmt.Sprintf("%s's library doesn't list %s, so the project installs it only because %s uses it, and can't fork it on its own; fork the skill that uses it instead, or ask the library's maintainer to list it", source.Name, from.Skill, strings.Join(users, " and "))}
+			}
+			id, prefix, qualifyRules, uses = curatedID, source.Name+":"+curatedFrom, false, nil
+			plan.commit = origin.Commit
+			if !origin.NonLibrary && len(metadata.RulesUsed) > 0 {
+				return &ValidationError{Location: location, Problem: fmt.Sprintf("the skill cites rules of %s, the library %s curates it from, which a project can't cite, since it takes no rules from a curated source. %s", curatedFrom, source.Name, forkByHand(path.Base(curatedID)))}
+			}
+		}
 		if name, renamed := source.SkillRename[from.Skill]; renamed {
 			plan.name, plan.renamed = name, true
-		} else if plan.name, err = skills.InstallName(from.Skill, metadata, location); err != nil {
+		} else if plan.name, err = skills.InstallName(id, metadata, location); err != nil {
 			return err
 		}
-		plan.commit = snapshot.Commit
 		folder := skills.AuthoredID(plan.name)
 		if err := requireSkillForkTarget(ctx, root, config, folder); err != nil {
 			return err
@@ -130,7 +155,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 						return err
 					}
 				}
-				if content, err = forkedSkillFile(content, metadata, plan.name, source.Name, !snapshot.NonLibrary, source.SkillUses[from.Skill], location); err != nil {
+				if content, err = forkedSkillFile(content, metadata, plan.name, prefix, qualifyRules, uses, location); err != nil {
 					return err
 				}
 			}
@@ -207,15 +232,16 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 	})
 }
 
-// forkedSkillFile returns data, the SKILL.md of a skill the source named source supplies, as its fork, the authored
-// skill skills/<name>, needs it: with frontmatter that names the skill name, which a SKILL.md from a repository that
-// isn't a library can lack; with the source's name added to each bare ID its trailguide-skills-used lists, and, when the
-// source is a library, its trailguide-rules-used, since in the project a bare ID names the project's own skill or rule,
-// and each ID of a skill the library curates, such as anthropic:skills/skill-creator, since the project names that
-// skill with the library source's name first;
-// and with uses, the IDs the source's skills.uses adds for the skill, added to trailguide-skills-used the same way, since
-// skills.uses applies only to the source's own skills. metadata is data's, read at location. It rewrites only what
-// differs, replacing a list it changes with a block string. It fails, at location, when it can't rewrite the
+// forkedSkillFile returns data, the SKILL.md of a skill a source supplies, as its fork, the authored skill
+// skills/<name>, needs it: with frontmatter that names the skill name, which a SKILL.md from a repository that isn't
+// a library can lack; with source, which starts the skill's project ID, such as team, or team:pocock for a skill
+// team's library curates from pocock, and a colon added to each bare ID its trailguide-skills-used lists, and, when
+// library is true, its trailguide-rules-used, since in the project a bare ID names the project's own skill or rule;
+// when library is true, also with source added to each ID of a skill the library curates, such as
+// anthropic:skills/skill-creator, since the project names that skill with the library source's name first;
+// and with uses, the IDs the source's skills.uses adds for the skill, added to trailguide-skills-used the same way,
+// since skills.uses applies only to the source's own skills. metadata is data's, read at location. It rewrites only
+// what differs, replacing a list it changes with a block string. It fails, at location, when it can't rewrite the
 // frontmatter to say exactly that, such as a list inside a flow mapping, or when the result fails the checks build
 // applies to an authored skill, such as a type other than playbook or review.
 func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string, library bool, uses []string, location string) ([]byte, error) {
@@ -236,93 +262,21 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 	if library {
 		rulesUsed = qualify(metadata.RulesUsed, false)
 	}
-	text := string(data)
-	eol := "\n"
-	if first, _, _ := strings.Cut(text, "\n"); strings.HasSuffix(first, "\r") {
-		eol = "\r\n"
-	}
-	// A quoted name stays a string even when it reads as a number or a boolean, such as 2048.
-	nameLine := "name: " + strconv.Quote(name) + eol
-	switch {
-	case !metadata.Frontmatter:
-		text = "---" + eol + nameLine + "---" + eol + text
-	case metadata.Name == "":
-		opening, rest, _ := strings.Cut(text, "\n")
-		text = opening + "\n" + nameLine + rest
-	}
-	if !slices.Equal(skillsUsed, metadata.SkillsUsed) {
-		text = setMetadataList(text, skills.SkillsUsedKey, skillsUsed, eol)
-	}
-	if !slices.Equal(rulesUsed, metadata.RulesUsed) {
-		text = setMetadataList(text, skills.RulesUsedKey, rulesUsed, eol)
-	}
-	forked, err := skills.ReadMetadata([]byte(text), location)
-	if err != nil || forked.Name != name || !slices.Equal(forked.SkillsUsed, skillsUsed) || !slices.Equal(forked.RulesUsed, rulesUsed) || forked.Description != metadata.Description || forked.Type != metadata.Type || !slices.Equal(forked.ReservedKeys, metadata.ReservedKeys) {
+	text, ok := skills.Fork(data, metadata, name, skillsUsed, rulesUsed)
+	if !ok {
 		return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("Trail Guide can't rewrite this frontmatter for the fork, which must name the skill %s and cite the source's skills and rules with the source's name, such as %s:skills/tdd, because it isn't written as block mappings Trail Guide can edit. %s", name, source, forkByHand(name))}
+	}
+	forked, err := skills.ReadMetadata(text, location)
+	if err != nil {
+		return nil, err
 	}
 	if problems := skills.Check(name, forked, true); len(problems) > 0 {
 		return nil, &ValidationError{Location: location, Problem: problems[0] + ", and build refuses a skill you author, as a fork is, with this problem. " + forkByHand(name)}
 	}
-	return []byte(text), nil
+	return text, nil
 }
 
 // forkByHand tells how to fork the skill named name when the command can't.
 func forkByHand(name string) string {
 	return "To fork the skill, copy it into .trailguide/skills/" + name + "/, correct its frontmatter, and add the exclusion to config.yaml by hand"
-}
-
-// setMetadataList returns text, a SKILL.md whose frontmatter starts at its first line, with key of the top-level
-// metadata block mapping set to ids, one per line, as a literal block string, adding the key, and the mapping, when
-// missing. eol ends each line it writes. It returns text unchanged when the frontmatter has no closing line or
-// metadata isn't a block mapping, which the caller detects by reading the result.
-func setMetadataList(text, key string, ids []string, eol string) string {
-	lines := strings.SplitAfter(text, "\n")
-	content := func(i int) string { return strings.TrimSpace(lines[i]) }
-	indent := func(i int) int { return len(lines[i]) - len(strings.TrimLeft(lines[i], " ")) }
-	closing := slices.IndexFunc(lines[1:], func(line string) bool { return strings.TrimRight(line, "\r\n") == "---" }) + 1
-	if closing == 0 {
-		return text
-	}
-	block := func(at int) []string {
-		result := []string{strings.Repeat(" ", at) + key + ": |" + eol}
-		for _, id := range ids {
-			result = append(result, strings.Repeat(" ", at+2)+id+eol)
-		}
-		return result
-	}
-	mapping := slices.IndexFunc(lines[1:closing], func(line string) bool { return strings.HasPrefix(line, "metadata:") }) + 1
-	if mapping == 0 {
-		return strings.Join(slices.Insert(lines, closing, append([]string{"metadata:" + eol}, block(2)...)...), "")
-	}
-	if value := strings.TrimSpace(strings.TrimPrefix(content(mapping), "metadata:")); value != "" && !strings.HasPrefix(value, "#") {
-		return text
-	}
-	// last is the mapping's last line, and child the indentation of its keys, or -1 before its first key.
-	last, child := mapping, -1
-	for i := mapping + 1; i < closing && (content(i) == "" || indent(i) > 0); i++ {
-		if content(i) == "" {
-			continue
-		}
-		if child < 0 && !strings.HasPrefix(content(i), "#") {
-			child = indent(i)
-		}
-		last = i
-	}
-	if child < 0 {
-		child = 2
-	}
-	for i := mapping + 1; i <= last; i++ {
-		if indent(i) != child || !strings.HasPrefix(content(i), key+":") {
-			continue
-		}
-		// The value runs to the last line indented more than the key, which covers every scalar style.
-		end := i
-		for j := i + 1; j <= last && (content(j) == "" || indent(j) > child); j++ {
-			if content(j) != "" {
-				end = j
-			}
-		}
-		return strings.Join(slices.Replace(lines, i, end+1, block(child)...), "")
-	}
-	return strings.Join(slices.Insert(lines, last+1, block(child)...), "")
 }

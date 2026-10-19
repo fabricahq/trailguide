@@ -30,6 +30,10 @@ type CheckResult struct {
 	RuleCount      int            `json:"ruleCount"`
 	Warnings       []string       `json:"warnings"`
 	PendingRelease PendingRelease `json:"pendingRelease"`
+	// ForkedSkills lists, by source and then ID, the skills the library forked from its sources whose copies at the
+	// revisions the sources' refs name now differ from the copies the forks are based on; it is empty, never nil,
+	// when there are none.
+	ForkedSkills []ForkedSkill `json:"forkedSkills"`
 }
 
 // Check validates a captured library snapshot, ignoring unrelated files such as .git.
@@ -50,7 +54,7 @@ func Check(ctx context.Context, options Options) (CheckResult, error) {
 	if err != nil {
 		return CheckResult{}, err
 	}
-	checked, err := checkLibrary(ctx, root, git, options.Curated)
+	checked, err := checkLibrary(ctx, root, git, options.Curated, options.Forks)
 	if err != nil {
 		return CheckResult{}, err
 	}
@@ -74,8 +78,9 @@ type checkedLibrary struct {
 
 // checkLibrary validates the library under root and its change notes against git's library releases; a nil
 // git is a library outside Git. curated reads the sources the library curates skills from, or is nil to leave
-// them unchecked. The caller confirms that the library didn't change while it was read.
-func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated CuratedReader) (checkedLibrary, error) {
+// them unchecked, and forks compares the skills the library forked from its sources with them, or is nil to leave
+// them uncompared. The caller confirms that the library didn't change while it was read.
+func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated CuratedReader, forks ForkReader) (checkedLibrary, error) {
 	input, err := libraryCheckInput(ctx, root)
 	if err != nil {
 		return checkedLibrary{}, err
@@ -94,6 +99,9 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		return checkedLibrary{}, err
 	}
 	result := CheckResult{GroupCount: len(catalog.Groups), Warnings: []string{}}
+	if result.ForkedSkills, err = forkedSkills(ctx, input.tree.Files[librarytree.Manifest], forks); err != nil {
+		return checkedLibrary{}, err
+	}
 	current := []string{}
 	for _, group := range catalog.Groups {
 		result.RuleCount += len(group.Rules)

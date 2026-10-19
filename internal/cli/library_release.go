@@ -64,6 +64,7 @@ func libraryReleaseReport(result library.ReleaseResult, noGitHubRelease bool, sc
 	for _, warning := range result.Warnings {
 		fmt.Fprintf(&out, "Warning: %s\n", warning)
 	}
+	formatForkedSkills(&out, result.ForkedSkills)
 	if result.Release == 0 {
 		return commandReport{value: result, human: out.String()}
 	}
