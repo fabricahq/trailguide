@@ -184,7 +184,7 @@ func withoutCuratedCopies(resolved []resolvedSkill) ([]resolvedSkill, map[string
 // describeSkill reads skill's SKILL.md, at location for diagnostics, for its install name, description, type, and
 // cited rules. A non-empty rename, the name the source's skills.rename gives the skill, is its install name, and the
 // name it replaces is recorded as RenamedFrom unless they're the same; the replaced name needn't follow the name
-// grammar, so a rename can install a skill whose own name agents couldn't find it by. An authored skill's frontmatter must also pass skills.Check, which reports its first problem; a
+// grammar, so a rename can install a skill whose own name agents couldn't find it by. An authored skill must also be complete, without the draft marker, and its frontmatter must pass skills.Check, which reports its first problem; a
 // source's skills were checked by their library, or, from a repository that isn't a library, install as they are.
 func describeSkill(skill *resolvedSkill, rename, location string) error {
 	data, ok := skill.Files.Files[skills.File]
@@ -196,6 +196,9 @@ func describeSkill(skill *resolvedSkill, rename, location string) error {
 		return err
 	}
 	if skill.Source == "" {
+		if rules.HasDraftMarker(data) {
+			return invalid(location, "complete the draft and remove its trailguide:draft marker")
+		}
 		if problems := skills.Check(path.Base(skill.Folder), metadata, true); len(problems) > 0 {
 			return invalid(location, problems[0])
 		}

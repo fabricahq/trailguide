@@ -1,4 +1,5 @@
-// Register library add skill, which forks a skill from a source the library declares through library.PlanSkillFork.
+// Register library add skill, which creates a draft skill through library.PlanSkill, or forks a skill from a source
+// the library declares through library.PlanSkillFork.
 
 package cli
 
@@ -11,15 +12,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// librarySkillCommand registers library add skill. It only forks: a new skill is written by hand.
+// librarySkillCommand registers library add skill: NAME creates a draft skill, and --from forks one under its name.
 func librarySkillCommand(options Options, output *commandOutput) *cobra.Command {
-	cmd, f := newLibraryCommand("skill --from SOURCE:SKILL", "Fork a skill from a source the library declares", librarySkillArguments, options)
-	cmd.Long = cmd.Short + ", to publish your own version of it.\n\nCopies the skill, with every file's executable bit, from the source's repository\nat the revision its ref names now, or its newest library release without one,\ninto .trailguide/skills/<name>/, where <name> is the skill's name. The skills its\nSKILL.md uses get the source's name, such as pstack:skills/tdd, so they name\nskills the library curates from the source. config.yaml gets an entry in the\nsource's skills.exclude that names the fork as the skill's replacement, records\nthe commit it copied as basedOn, and records your reason; when library.skills\nlists the skill as one the library curates, the fork takes its place at the same\nlevel. trailguide library check then lists the source's later changes to the\nskill whenever its ref moves.\n\nTo write a new skill instead, create .trailguide/skills/<name>/SKILL.md." + documentationHelp
-	f.add(cmd, "from", "The skill to fork, as `SOURCE:SKILL`: a source in the library's configuration and the skill's ID in its repository, such as pstack:skills/tdd")
-	f.add(cmd, "reason", "Why the library publishes its own version instead of the source's skill")
-	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		if !cmd.Flags().Changed("from") {
-			return usage(fmt.Errorf("--from is required: name the skill to fork as SOURCE:SKILL, such as pstack:skills/tdd. To write a new skill instead, create .trailguide/skills/<name>/SKILL.md"))
+	cmd, f := newLibraryCommand("skill NAME | --from SOURCE:SKILL", "Create a draft skill, or fork a skill from a source the library declares", skillArguments("fix-bug"), options)
+	cmd.Long = cmd.Short + ".\n\nWith NAME, writes .trailguide/skills/NAME/SKILL.md with the name, the description,\nand the type in its frontmatter, and a body with the trailguide:draft marker.\nComplete the steps and remove the marker; library check fails until you do. A\nnew skill is offered; to require or recommend it, add it to library.skills.\n\nWith --from, forks the skill to publish your own version of it. Copies the\nskill, with every file's executable bit, from the source's repository at the\nrevision its ref names now, or its newest library release without one, into\n.trailguide/skills/<name>/, where <name> is the skill's name. The skills its\nSKILL.md uses get the source's name, such as pstack:skills/tdd, so they name\nskills the library curates from the source. config.yaml gets an entry in the\nsource's skills.exclude that names the fork as the skill's replacement, records\nthe commit it copied as basedOn, and records your reason; when library.skills\nlists the skill as one the library curates, the fork takes its place at the same\nlevel. trailguide library check then lists the source's later changes to the\nskill whenever its ref moves." + documentationHelp
+	f.addSkillFlags(cmd)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 1 {
+			return createLibrarySkill(cmd, f, args[0], output)
+		}
+		if err := refuseOptions(cmd, "a fork, which keeps the source skill's frontmatter", "description", "type"); err != nil {
+			return err
 		}
 		from, err := project.ParseSkillForkSource(f.value("from"))
 		if err != nil {
@@ -53,12 +56,30 @@ func librarySkillCommand(options Options, output *commandOutput) *cobra.Command 
 	return cmd
 }
 
-// librarySkillArguments refuses a skill name, because library add skill only forks.
-func librarySkillArguments(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return nil
+// createLibrarySkill writes the draft skill name, validating its inputs before prompting for a missing description.
+func createLibrarySkill(cmd *cobra.Command, f *authoringFlags, name string, output *commandOutput) error {
+	kind, err := f.collectSkill(cmd, name)
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("library add skill takes no arguments: it forks the skill --from names, keeping its name. To write a new skill instead, create .trailguide/skills/%s/SKILL.md.\n\nUsage:\n  %s", args[0], cmd.UseLine())
+	target, err := f.libraryOptions(cmd.Context(), false)
+	if err != nil {
+		return err
+	}
+	plan, err := library.PlanSkill(cmd.Context(), name, target)
+	if err != nil {
+		return err
+	}
+	description, err := f.askDescription(name, true)
+	if err != nil {
+		return err
+	}
+	result, err := plan.Commit(cmd.Context(), description, kind)
+	if err != nil {
+		return err
+	}
+	output.report = skillCreatedReport(result.Added, result.Changed, result.Warnings, name, authoringScope{library: true, directory: f.value("directory"), workdir: f.directory})
+	return nil
 }
 
 // librarySkillForkedReport lists the fork's files and explains what the library now records and publishes.

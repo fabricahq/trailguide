@@ -18,7 +18,7 @@ const skillsDirectory = ".trailguide/" + skills.Directory
 
 // skillProblems returns every problem in the skills tree holds, by path in the library's skills/ folder, in path
 // order, each starting with the file or folder it's about: a file directly in skills/, a folder whose name breaks the
-// skill name grammar or that has no SKILL.md, frontmatter skills.ReadMetadata or skills.Check rejects, and a cited
+// skill name grammar or that has no SKILL.md, frontmatter skills.ReadMetadata or skills.Check rejects, a SKILL.md that still has the draft marker, and a cited
 // rule that isn't one of current, the library's rules, naming the replacement when the library's release history or
 // a pending change note retired it, and a skill a skill uses that isn't a folder of skills/ with a SKILL.md or, when
 // the line names a source, one of curated, the curated skills the library's levels list. A nil tree has no skills.
@@ -57,6 +57,9 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 		if err != nil {
 			problems = append(problems, err.Error())
 			continue
+		}
+		if rules.HasDraftMarker(tree.Files[folder+"/"+skills.File]) {
+			problems = append(problems, location+": complete the draft and remove its trailguide:draft marker")
 		}
 		for _, problem := range skills.Check(folder, metadata, false) {
 			problems = append(problems, location+": "+problem)

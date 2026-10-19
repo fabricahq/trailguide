@@ -4,14 +4,17 @@ package project
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -135,4 +138,80 @@ func checkSourceAlias(config rules.Configuration, alias string) error {
 		}
 	}
 	return nil
+}
+
+// LocalSkillPlan identifies a new authored skill in the project's skills/; Commit rechecks that its folder is still
+// absent.
+type LocalSkillPlan struct {
+	name    string
+	options Options
+}
+
+// PlanLocalSkill checks the skill's name and that the project has no authored skill folder by that name before
+// collecting the skill's description.
+func PlanLocalSkill(ctx context.Context, name string, options Options) (*LocalSkillPlan, error) {
+	options, err := planProjectAuthoring(ctx, options, func(root *os.Root, _ rules.Configuration) error { return checkLocalSkill(ctx, root, name) })
+	if err != nil {
+		return nil, err
+	}
+	return &LocalSkillPlan{name, options}, nil
+}
+
+// Commit rechecks the target before creating the skill's SKILL.md, a marked draft with description and kind, a
+// trailguide-skill-type or empty, in its frontmatter. It warns when a skill the project last installed from a source
+// has the same name, unless the configuration replaces that skill with this one, since sync and build then fail
+// until one of them is renamed or excluded.
+func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (AuthoringResult, error) {
+	if p == nil || p.name == "" {
+		return AuthoringResult{}, failure("invalid-operation", "expected a planned skill", nil)
+	}
+	if err := skills.ValidateDescription(description); err != nil {
+		return AuthoringResult{}, &ValidationError{Location: "--description", Problem: err.Error()}
+	}
+	if err := skills.ValidateType(kind); err != nil {
+		return AuthoringResult{}, &ValidationError{Location: "--type", Problem: err.Error()}
+	}
+	data, err := skills.Draft(p.name, description, kind, rules.DraftMarker)
+	if err != nil {
+		return AuthoringResult{}, err
+	}
+	var clash string
+	result, err := editProject(ctx, p.options, func(root *os.Root, _ []byte, config rules.Configuration) ([]filetxn.File, error) {
+		if err := checkLocalSkill(ctx, root, p.name); err != nil {
+			return nil, err
+		}
+		record, err := filetxn.ReadOptional(ctx, root, path.Join("generated", build.InstalledSkillsFile))
+		if err != nil {
+			return nil, err
+		}
+		for _, installed := range build.InstalledSkills(record) {
+			source, id, fromSource := strings.Cut(installed.ID, ":")
+			if installed.Name == p.name && fromSource && !replacedBy(config, source, id, skills.AuthoredID(p.name)) {
+				clash = installed.ID
+				break
+			}
+		}
+		return []filetxn.File{{Path: path.Join(skills.AuthoredID(p.name), skills.File), Content: data}}, nil
+	})
+	if err == nil && clash != "" {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("The project installs %s as %s too, so trailguide project sync and build fail with skill-name-clash until you rename this skill's folder and name, or exclude %s.", clash, p.name, clash))
+	}
+	return result, err
+}
+
+// replacedBy reports whether config's source excludes its skill id, replacing it with the authored skill replacement.
+func replacedBy(config rules.Configuration, source, id, replacement string) bool {
+	for _, declared := range config.Sources {
+		if declared.Name == source {
+			return declared.SkillExclude[id].ReplacedBy == replacement
+		}
+	}
+	return false
+}
+
+func checkLocalSkill(ctx context.Context, root *os.Root, name string) error {
+	if !skills.ValidName(name) {
+		return &ValidationError{Location: "skill name", Problem: "a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen, such as release-checklist"}
+	}
+	return filetxn.RequireAbsent(ctx, root, skills.AuthoredID(name))
 }
