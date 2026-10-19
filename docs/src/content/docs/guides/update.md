@@ -45,7 +45,7 @@ One update covers both the rules and the skills your project takes from a source
 | What gets updated | Each rule updates to its own newest version. | All of a source's skills update together, to the source's newest release or commit. |
 | Update one at a time | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible. You must update all of a source's skills at the same time. |
 | Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
-| What a change level describes | What your code must do. | What the skill does: its steps and inputs. |
+| What a change level tells you | Whether code that followed the old version still complies. | Whether whatever relied on the old version, such as your workflow or another skill that uses it, still works the same way. |
 
 Skills update together because they often call one another, and skills from one revision always match. The rest of this section explains the preview using rule rows; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
 
