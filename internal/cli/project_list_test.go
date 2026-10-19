@@ -68,6 +68,31 @@ func TestFormatUpdatePreview_ShowsCuratedSourcesAndTheirSkillChanges(t *testing.
 	}
 }
 
+func TestFormatUpdatePreview_ShowsTheCommitASourceThatFollowsItsRefMovesTo(t *testing.T) {
+	var out strings.Builder
+	formatUpdatePreview(&out, []imports.SourceUpdate{
+		{Name: "skills", Ref: "main", FollowsRef: true, Rules: []imports.RuleUpdate{}, Commit: &imports.CommitMove{From: "1111111111111111111111111111111111111111", To: "2222222222222222222222222222222222222222"},
+			Skills: []imports.SkillUpdate{{ID: "tools/review", Change: imports.SkillChanged, Files: []string{"SKILL.md"}, Scripts: []imports.ScriptUpdate{}}}},
+		{Name: "pinned", Ref: "v1.0", FollowsRef: true, TagMoved: true, Rules: []imports.RuleUpdate{}, Commit: &imports.CommitMove{From: "3333333333333333333333333333333333333333", To: "4444444444444444444444444444444444444444"}},
+		{Name: "still", Ref: "main", FollowsRef: true, Rules: []imports.RuleUpdate{}},
+		{Name: "team", Ref: "release/2", Rules: []imports.RuleUpdate{}},
+	})
+	want := "skills\n" +
+		"  main: 111111111111 -> 222222222222\n" +
+		"  changed   tools/review\n" +
+		"            Changed: SKILL.md\n" +
+		"pinned\n" +
+		"  v1.0: 333333333333 -> 444444444444\n" +
+		"            The tag v1.0 now names a different commit than at the last update.\n" +
+		"still\n" +
+		"  main: no new commit.\n" +
+		"team\n" +
+		"  Imports release/2 with ref, so update doesn't move it.\n"
+	if out.String() != want {
+		t.Fatalf("preview:\n%s\nwant:\n%s", out.String(), want)
+	}
+}
+
 func TestFormatUpdatePreview_ShowsACuratedSourceTheProjectNoLongerTakesSkillsFrom(t *testing.T) {
 	var out strings.Builder
 	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{}, Curated: []imports.CuratedUpdate{{

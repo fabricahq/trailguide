@@ -35,8 +35,8 @@ type Configuration struct {
 type Source struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
-	// Ref is the tag or full commit SHA the source imports, keeping its authored text, or the zero GitRef when the
-	// source follows rule versions.
+	// Ref is the branch, tag, or full commit SHA the source imports, keeping its authored text, or the zero GitRef
+	// when the source follows rule versions.
 	Ref GitRef `json:"ref,omitzero"`
 	// Groups holds the wildcard and group selectors of rules.include, such as techs/go/*; it is empty when the
 	// source selects only individual rules.

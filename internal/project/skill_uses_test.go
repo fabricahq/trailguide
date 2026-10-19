@@ -208,7 +208,7 @@ func TestSync_FailsWhenSkillsUsesNamesASkillTheLockedRevisionLacks(t *testing.T)
 	setConfiguration(t, options, f, strings.Replace(config, "USES", `,"uses":{"skills/architect":["skills/how"]}`, 1))
 	_, err := Sync(ctx, options, git)
 	var failure *imports.Error
-	if !errors.As(err, &failure) || failure.Code != "skill-not-in-revision" || !strings.Contains(err.Error(), "sources.pstack.skills.uses.skills/architect names skills/how, which isn't in commit "+f.FirstCommit) || !strings.Contains(err.Error(), "set sources.pstack.ref to a tag or commit that has it") {
+	if !errors.As(err, &failure) || failure.Code != "skill-not-in-revision" || !strings.Contains(err.Error(), "sources.pstack.skills.uses.skills/architect names skills/how, which isn't in commit "+f.FirstCommit) || !strings.Contains(err.Error(), "If sources.pstack.ref names a branch, run trailguide project update pstack") || !strings.Contains(err.Error(), "Otherwise, set sources.pstack.ref to a tag or commit that has it") {
 		t.Fatalf("got %v; want skill-not-in-revision", err)
 	}
 	if exists(t, options, ".claude/skills/how") {

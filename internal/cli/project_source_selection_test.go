@@ -39,7 +39,8 @@ func TestSourceSelectionFlags(t *testing.T) {
 		{"skill prefix", []string{"--skills", "skills/*"}, 1, nil},
 		{"wildcard and a skill", []string{"--skills", "*", "--skills", "skills/build-feature"}, 1, nil},
 		{"version range", []string{"--ref", ">= 1.2.0, < 2.0.0", "--rules", "techs/go/*"}, 2, nil},
-		{"branch", []string{"--ref", "refs/heads/main", "--rules", "techs/go/*"}, 2, nil},
+		{"every skill from a branch", []string{"--ref", "refs/heads/main", "--skills", "*"}, 0, map[string]any{"repository": repository, "ref": "refs/heads/main", "skills": include("*")}},
+		{"remote-tracking ref", []string{"--ref", "refs/remotes/origin/main", "--rules", "techs/go/*"}, 2, nil},
 		{"group as rule", []string{"--rules", "techs/go"}, 1, nil},
 		{"duplicate rules", []string{"--rules", "techs/go/a", "--rules", "techs/go/a"}, 1, nil},
 	} {

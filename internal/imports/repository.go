@@ -126,13 +126,46 @@ func (r *repository) unreachable(ctx context.Context) error {
 	return remoteFailure(result.Diagnostics)
 }
 
-// hasBranch reports whether the library has a branch named name, to explain a ref that names no tag.
-func (r *repository) hasBranch(ctx context.Context, name string) (bool, error) {
-	result, err := r.runner.Run(ctx, r.directory, []string{"ls-remote", "--exit-code", "--heads", fetchRemote, "refs/heads/" + name}, 64<<10, nil)
+// bareRef returns the full name of the branch or tag that the source's bare ref, such as main, names in the
+// repository. It fails with code ambiguous-ref when the repository has both, and with version-not-found when it has
+// neither.
+func (r *repository) bareRef(ctx context.Context, source rules.Source) (string, error) {
+	branch, tag := "refs/heads/"+source.Ref.Name(), "refs/tags/"+source.Ref.Name()
+	listed, err := r.runner.Run(ctx, r.directory, []string{"ls-remote", "--exit-code", fetchRemote, branch, tag}, 64<<10, nil)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	return result.Status == 0, nil
+	// ls-remote exits with 2 when the repository answers and lists no ref the patterns match.
+	if listed.Status != 0 && listed.Status != 2 {
+		return "", remoteFailure(listed.Diagnostics)
+	}
+	found := map[string]bool{}
+	for line := range strings.Lines(string(listed.Output)) {
+		if _, name, ok := strings.Cut(strings.TrimSuffix(line, "\n"), "\t"); ok && (name == branch || name == tag) {
+			found[name] = true
+		}
+	}
+	switch {
+	case found[branch] && found[tag]:
+		return "", fail("ambiguous-ref", fmt.Sprintf("sources.%s.ref: the repository has both a branch and a tag named %s. Set sources.%s.ref to %s for the branch, or to %s for the tag.", source.Name, source.Ref, source.Name, branch, tag), nil)
+	case found[branch]:
+		return branch, nil
+	case found[tag]:
+		return tag, nil
+	}
+	return "", fail("version-not-found", missingRef(source), nil)
+}
+
+// missingRef explains that the repository has no revision the source's ref names.
+func missingRef(source rules.Source) string {
+	ref := source.Ref
+	switch {
+	case ref.Bare():
+		return fmt.Sprintf("sources.%s.ref: the repository has no branch or tag %s; check the ref, and whether a branch of that name was renamed or deleted.", source.Name, ref)
+	case ref.Kind() == rules.GitRefBranch:
+		return fmt.Sprintf("sources.%s.ref: the repository has no branch %s; check the ref, and whether the branch was renamed or deleted.", source.Name, ref)
+	}
+	return fmt.Sprintf("sources.%s.ref: the repository has no %s %s; check the ref.", source.Name, ref.Kind(), ref)
 }
 
 // fetchCommits fetches each commit that isn't present yet. A commit the server says it doesn't have fails with
@@ -163,40 +196,48 @@ func (r *repository) fetchCommits(ctx context.Context, commits []string, missing
 	return nil
 }
 
-// fetchRef fetches the source's ref, an exact tag or full commit SHA, and returns its commit. A revision the
-// repository doesn't have fails with code version-not-found.
-func (r *repository) fetchRef(ctx context.Context, source rules.Source) (string, error) {
+// fetchRef fetches the source's ref and returns its commit and what the ref named: a commit, or a tag or branch,
+// which for a bare name, such as main, the repository decides, as bareRef does. A revision the repository doesn't
+// have fails with code version-not-found.
+func (r *repository) fetchRef(ctx context.Context, source rules.Source) (string, rules.GitRefKind, error) {
 	ref := source.Ref
-	refspec := ref.Canonical()
-	if ref.Kind() == rules.GitRefTag {
-		refspec = "+" + ref.Canonical() + ":" + ref.Canonical()
+	name := ref.Canonical()
+	if ref.Bare() {
+		var err error
+		if name, err = r.bareRef(ctx, source); err != nil {
+			return "", "", err
+		}
+	}
+	return r.fetchName(ctx, source, name)
+}
+
+// fetchName fetches name, the full name of the branch or tag the source's ref names, or the ref's commit, and
+// returns its commit and what it named, as fetchRef does.
+func (r *repository) fetchName(ctx context.Context, source rules.Source, name string) (string, rules.GitRefKind, error) {
+	ref := source.Ref
+	kind := ref.Kind()
+	if strings.HasPrefix(name, "refs/heads/") {
+		kind = rules.GitRefBranch
+	}
+	refspec := name
+	if kind != rules.GitRefCommit {
+		refspec = "+" + name + ":" + name
 	}
 	fetched, err := r.fetch(ctx, []string{refspec}, true)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if fetched.Status != 0 {
-		err := fetchFailure(fetched.Diagnostics, "sources."+source.Name+".ref", fmt.Sprintf("sources.%s.ref: the library has no tag or commit %s; check the ref.", source.Name, source.Ref))
-		// Only a server that says it has no such tag can mean that the ref names a branch.
-		if isMissing(err) && ref.Kind() == rules.GitRefTag {
-			branch, branchErr := r.hasBranch(ctx, strings.TrimPrefix(ref.Canonical(), "refs/tags/"))
-			if branchErr != nil {
-				return "", branchErr
-			}
-			if branch {
-				return "", fail("ref-is-branch", fmt.Sprintf("sources.%s.ref: %s is a branch; ref accepts a tag or a full commit SHA, not a branch, so every import can be reproduced.", source.Name, source.Ref), nil)
-			}
-		}
-		return "", err
+		return "", "", fetchFailure(fetched.Diagnostics, "sources."+source.Name+".ref", missingRef(source))
 	}
-	commit, err := r.commit(ctx, ref.Canonical())
+	commit, err := r.commit(ctx, name)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	if ref.Kind() == rules.GitRefCommit && commit != ref.Canonical() {
-		return "", fail("git-failed", "Git returned a different or unsupported commit identity.", nil)
+	if kind == rules.GitRefCommit && commit != ref.Canonical() {
+		return "", "", fail("git-failed", "Git returned a different or unsupported commit identity.", nil)
 	}
-	return commit, nil
+	return commit, kind, nil
 }
 
 // commit resolves a fetched revision to its commit and marks it present; a tag of something else is unsupported.

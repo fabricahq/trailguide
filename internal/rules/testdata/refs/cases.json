@@ -245,7 +245,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: the all-zero SHA names no commit; use a full commit SHA or a tag",
+        "message": "sources.team.ref: the all-zero SHA names no commit; use a full commit SHA, a tag, or a branch",
         "location": "sources.team.ref"
       }
     }
@@ -259,7 +259,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA or a tag name, such as release/2",
+        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA, or a tag or branch name, such as release/2 or main",
         "location": "sources.team.ref"
       }
     }
@@ -273,7 +273,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA or a tag name, such as release/2",
+        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA, or a tag or branch name, such as release/2 or main",
         "location": "sources.team.ref"
       }
     }
@@ -287,7 +287,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA or a tag name, such as release/2",
+        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA, or a tag or branch name, such as release/2 or main",
         "location": "sources.team.ref"
       }
     }
@@ -301,7 +301,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -315,7 +315,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -329,7 +329,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -343,7 +343,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -357,7 +357,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -371,7 +371,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -385,7 +385,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -399,7 +399,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -413,7 +413,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -427,7 +427,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -441,7 +441,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -455,7 +455,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -469,7 +469,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -483,7 +483,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -497,22 +497,88 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
   },
   {
-    "id": "ref-branch-ref",
+    "id": "ref-branch",
     "operation": "gitRef",
     "input": "refs/heads/main",
+    "location": "sources.team.ref",
+    "expected": {
+      "ok": true,
+      "value": {
+        "kind": "branch",
+        "name": "refs/heads/main"
+      }
+    }
+  },
+  {
+    "id": "ref-nested-branch",
+    "operation": "gitRef",
+    "input": "refs/heads/feature/skills",
+    "location": "sources.team.ref",
+    "expected": {
+      "ok": true,
+      "value": {
+        "kind": "branch",
+        "name": "refs/heads/feature/skills"
+      }
+    }
+  },
+  {
+    "id": "ref-branch-hex",
+    "operation": "gitRef",
+    "input": "refs/heads/deadbeef",
+    "location": "sources.team.ref",
+    "expected": {
+      "ok": true,
+      "value": {
+        "kind": "branch",
+        "name": "refs/heads/deadbeef"
+      }
+    }
+  },
+  {
+    "id": "ref-empty-branch",
+    "operation": "gitRef",
+    "input": "refs/heads/",
     "location": "sources.team.ref",
     "expected": {
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: refs/heads/main is a branch; ref accepts a tag or a full commit SHA, not a branch",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
+      }
+    }
+  },
+  {
+    "id": "ref-branch-reflog",
+    "operation": "gitRef",
+    "input": "refs/heads/main@{1}",
+    "location": "sources.team.ref",
+    "expected": {
+      "ok": false,
+      "error": {
+        "name": "ValidationError",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
+        "location": "sources.team.ref"
+      }
+    }
+  },
+  {
+    "id": "ref-tag-and-branch-prefix",
+    "operation": "gitRef",
+    "input": "refs/tags/refs/heads/main",
+    "location": "sources.team.ref",
+    "expected": {
+      "ok": true,
+      "value": {
+        "kind": "tag",
+        "name": "refs/tags/refs/heads/main"
       }
     }
   },
@@ -525,7 +591,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -539,7 +605,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -553,7 +619,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -567,7 +633,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -581,7 +647,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -595,7 +661,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -609,7 +675,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -623,7 +689,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -637,7 +703,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -651,7 +717,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -665,7 +731,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
