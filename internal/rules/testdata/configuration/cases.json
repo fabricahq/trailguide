@@ -726,11 +726,26 @@
     "input": "{\"schemaVersion\": 2, \"sources\": {\"team\": {\"repository\": \"https://github.com/fixture/team.git\", \"ref\": \"refs/heads/main\", \"rules\": {\"include\": [\"techs/go/*\"]}}}}",
     "location": "configuration",
     "expected": {
-      "ok": false,
-      "error": {
-        "name": "ValidationError",
-        "message": "sources.team.ref: refs/heads/main is a branch; ref accepts a tag or a full commit SHA, not a branch",
-        "location": "sources.team.ref"
+      "ok": true,
+      "value": {
+        "sources": [
+          {
+            "name": "team",
+            "repository": "https://github.com/fixture/team.git",
+            "ref": "refs/heads/main",
+            "parsedRef": {
+              "kind": "branch",
+              "name": "refs/heads/main"
+            },
+            "groups": [
+              "techs/go"
+            ],
+            "rules": [],
+            "pins": {},
+            "exclude": {},
+            "skills": []
+          }
+        ]
       }
     }
   },
@@ -743,7 +758,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: expected a full commit SHA or exact tag name",
+        "message": "sources.team.ref: expected a full commit SHA, a tag, or a branch name",
         "location": "sources.team.ref"
       }
     }
@@ -757,7 +772,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA or a tag name, such as release/2",
+        "message": "sources.team.ref: abbreviated commits are unsupported; use a full commit SHA, or a tag or branch name, such as release/2 or main",
         "location": "sources.team.ref"
       }
     }

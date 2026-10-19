@@ -22,7 +22,7 @@ import (
 // projectUpdateCommand previews newer rule versions and applies them after confirmation or with --yes.
 func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rules and skills from your sources", Args: cobra.ArbitraryArgs}
-	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release.\nSources that use ref don't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\noverwriting your edits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
+	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release. A\nsource whose ref is a branch moves to the branch's newest commit; a library\nsource whose ref is a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\noverwriting your edits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
 	f := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory}
 	cmd.PostRunE = f.finishPrompts
 	cmd.Flags().Bool("yes", false, "Apply the previewed changes without asking; required without a terminal or with --json")
@@ -393,6 +393,13 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 	for _, source := range sources {
 		out.WriteString(source.Name + "\n")
 		switch {
+		case source.FollowsRef && source.Commit != nil:
+			fmt.Fprintf(out, "  %s: %s -> %s\n", source.Ref, shortCommit(source.Commit.From), shortCommit(source.Commit.To))
+			if source.TagMoved {
+				fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, source.Ref)
+			}
+		case source.FollowsRef:
+			fmt.Fprintf(out, "  %s: no new commit.\n", source.Ref)
 		case source.Ref != "":
 			fmt.Fprintf(out, "  Imports %s with ref, so update doesn't move it.\n", source.Ref)
 		case len(source.Rules) == 0 && len(source.Skills) == 0 && source.SharedFiles == nil && len(source.Curated) == 0:

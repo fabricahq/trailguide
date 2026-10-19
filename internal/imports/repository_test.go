@@ -47,7 +47,7 @@ func fetchRevision(ctx context.Context, source rules.Source, ref string, options
 	if err != nil {
 		return nil, "", err
 	}
-	commit, err := repo.fetchRef(ctx, source)
+	commit, _, err := repo.fetchRef(ctx, source)
 	if err != nil {
 		return nil, "", errors.Join(err, repo.Close())
 	}
@@ -104,6 +104,64 @@ func TestFetchRevision(t *testing.T) {
 	requireCode(t, err, "version-not-found")
 	if revision != nil {
 		t.Fatal("partial result")
+	}
+}
+
+// TestFetchRef_ResolvesABranchOrTagToItsCommit resolves a bare name as the branch or the tag the repository has by
+// that name, and a prefixed name as that kind only, reporting which one it named, and fails with ambiguous-ref for a
+// bare name of both and version-not-found, naming the ref, for one of neither.
+func TestFetchRef_ResolvesABranchOrTagToItsCommit(t *testing.T) {
+	f := fixtureRepository(t)
+	ctx := context.Background()
+	options := Options{GitPath: f.GitPath, Environment: f.Environment}
+	if _, err := f.Command(ctx, "branch", "stable", f.FirstCommit); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Command(ctx, "tag", "stable", f.LatestCommit); err != nil {
+		t.Fatal(err)
+	}
+	resolve := func(ref string) (string, rules.GitRefKind, error) {
+		source := rules.Source{Name: "skills", Repository: f.Repository, Ref: gitRef(t, ref)}
+		repo, err := openRepository(ctx, source, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := repo.Close(); err != nil {
+				t.Error(err)
+			}
+		}()
+		return repo.fetchRef(ctx, source)
+	}
+	for _, tc := range []struct {
+		ref, commit string
+		kind        rules.GitRefKind
+	}{
+		{"main", f.LatestCommit, rules.GitRefBranch},
+		{"refs/heads/main", f.LatestCommit, rules.GitRefBranch},
+		{"v1.2.0", f.LatestCommit, rules.GitRefTag},
+		{"refs/heads/stable", f.FirstCommit, rules.GitRefBranch},
+		{"refs/tags/stable", f.LatestCommit, rules.GitRefTag},
+	} {
+		if commit, kind, err := resolve(tc.ref); err != nil || commit != tc.commit || kind != tc.kind {
+			t.Errorf("%s: got %s, %s, %v; want %s, %s", tc.ref, commit, kind, err, tc.commit, tc.kind)
+		}
+	}
+	_, _, err := resolve("stable")
+	requireCode(t, err, "ambiguous-ref")
+	if want := "sources.skills.ref: the repository has both a branch and a tag named stable. Set sources.skills.ref to refs/heads/stable for the branch, or to refs/tags/stable for the tag."; err.Error() != want {
+		t.Errorf("ambiguous: %v", err)
+	}
+	for ref, want := range map[string]string{
+		"gone":              "sources.skills.ref: the repository has no branch or tag gone; check the ref, and whether a branch of that name was renamed or deleted.",
+		"refs/heads/gone":   "sources.skills.ref: the repository has no branch refs/heads/gone; check the ref, and whether the branch was renamed or deleted.",
+		"refs/heads/v1.0.0": "sources.skills.ref: the repository has no branch refs/heads/v1.0.0; check the ref, and whether the branch was renamed or deleted.",
+	} {
+		_, _, err := resolve(ref)
+		requireCode(t, err, "version-not-found")
+		if err.Error() != want {
+			t.Errorf("%s: %v", ref, err)
+		}
 	}
 }
 

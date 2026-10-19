@@ -4,7 +4,8 @@ package project
 
 import "testing"
 
-// TestParseSourceRefAcceptsOnlyExactRevisions accepts tags and full commits, and rejects ranges and branches.
+// TestParseSourceRefAcceptsOnlyExactRevisions accepts tags, branches, and full commits, and rejects ranges and
+// abbreviated commits.
 func TestParseSourceRefAcceptsOnlyExactRevisions(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
 		{"0123456789012345678901234567890123456789", "0123456789012345678901234567890123456789"},
@@ -16,7 +17,8 @@ func TestParseSourceRefAcceptsOnlyExactRevisions(t *testing.T) {
 		{">= 1.2.0, < 2.0.0", ""},
 		{"~> 1.2.0", ""},
 		{"^1.2.0", ""},
-		{"refs/heads/main", ""},
+		{"refs/heads/main", "refs/heads/main"},
+		{"refs/remotes/origin/main", ""},
 		{"abcdef1", ""},
 		{"", ""},
 	} {

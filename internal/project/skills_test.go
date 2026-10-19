@@ -247,7 +247,7 @@ func TestSync_InstallsSkillsFromARepositoryThatIsNotALibrary(t *testing.T) {
 	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["agents"],"sources":{"skills":{"repository":REPOSITORY,"skills":{"include":["*"]}}}}`)
 	_, err = Sync(ctx, options, git)
 	var failure *imports.Error
-	if !errors.As(err, &failure) || failure.Code != "ref-required" || !strings.Contains(err.Error(), "Set sources.skills.ref to the tag or full commit SHA") {
+	if !errors.As(err, &failure) || failure.Code != "ref-required" || !strings.Contains(err.Error(), "Set sources.skills.ref to the branch, tag, or full commit SHA") {
 		t.Fatalf("got %v; want ref-required", err)
 	}
 	root, err := openProject(ctx, options, false)

@@ -188,7 +188,7 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	revision, kept, err := l.revision(ctx, repo, recorded, planned, isPlanned)
+	revision, kept, _, err := l.revision(ctx, repo, recorded, planned, isPlanned)
 	if err != nil {
 		return err
 	}
@@ -278,26 +278,27 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 }
 
 // revision returns the revision the curated source's skills come from, fetched, and reports whether a source record
-// locked it, which sync never moves.
-func (l curatedSource) revision(ctx context.Context, repo *repository, recorded, planned library.CuratedSource, isPlanned bool) (library.CuratedSource, bool, error) {
+// locked it, which sync never moves, and, for a ref it resolved now, what the ref named, a tag or a branch; resolved
+// is empty for any other revision.
+func (l curatedSource) revision(ctx context.Context, repo *repository, recorded, planned library.CuratedSource, isPlanned bool) (_ library.CuratedSource, kept bool, resolved rules.GitRefKind, _ error) {
 	if l.override != nil {
 		revision := library.CuratedSource{Repository: l.override.Repository, Ref: l.override.Ref, Release: l.overridden.Release, Commit: l.overridden.Commit, Source: l.override.Name, NonLibrary: l.overridden.NonLibrary}
-		return revision, true, repo.fetchCommits(ctx, []string{revision.Commit}, fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync again, or delete vendor/%s and run trailguide project sync to resolve sources.%s again.", l.override.Name, l.override.Name, l.override.Name, l.override.Name))
+		return revision, true, "", repo.fetchCommits(ctx, []string{revision.Commit}, fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync again, or delete vendor/%s and run trailguide project sync to resolve sources.%s again.", l.override.Name, l.override.Name, l.override.Name, l.override.Name))
 	}
 	if isPlanned && l.declares(planned) {
-		return planned, false, repo.fetchCommits(ctx, []string{planned.Commit}, l.vanished("trailguide project update "+l.library))
+		return planned, false, "", repo.fetchCommits(ctx, []string{planned.Commit}, l.vanished("trailguide project update "+l.library))
 	}
 	if recorded.Source == "" && l.declares(recorded) {
 		missing := fmt.Sprintf("The commit that vendor/%s/_source.json records for the skills library %s curates from %s is missing from that repository, so it may have rewritten its history. Run trailguide project update %s to resolve the library's ref for %s again.", l.library, l.library, l.name, l.library, l.name)
 		if err := repo.fetchCommits(ctx, []string{recorded.Commit}, missing); err != nil {
-			return library.CuratedSource{}, false, err
+			return library.CuratedSource{}, false, "", err
 		}
 		isLibrary, err := repo.isLibrary(ctx, recorded.Commit)
 		recorded.NonLibrary = !isLibrary
-		return recorded, true, err
+		return recorded, true, "", err
 	}
-	revision, err := l.resolve(ctx, repo)
-	return revision, false, err
+	revision, resolved, err := l.resolve(ctx, repo)
+	return revision, false, resolved, err
 }
 
 // vanished explains a commit of the curated source that its repository no longer has, although Trail Guide just read it,
@@ -312,32 +313,34 @@ func (l curatedSource) declares(revision library.CuratedSource) bool {
 }
 
 // resolve resolves the ref the library declares for the curated source, or, without one, the repository's newest
-// library release, and fetches the revision.
-func (l curatedSource) resolve(ctx context.Context, repo *repository) (library.CuratedSource, error) {
+// library release, and fetches the revision. It reports what a ref named: a commit, a tag, or a branch, or "" without
+// one.
+func (l curatedSource) resolve(ctx context.Context, repo *repository) (_ library.CuratedSource, resolved rules.GitRefKind, _ error) {
 	p := &planner{ctx: ctx, repo: repo, source: rules.Source{Name: l.name, Repository: l.declared.Repository, Ref: l.declared.Ref}}
 	revision := library.CuratedSource{Repository: l.declared.Repository, Ref: l.declared.Ref}
-	var err error
 	if l.declared.Ref.IsZero() {
-		history, historyErr := p.releases()
-		if historyErr != nil {
-			return library.CuratedSource{}, historyErr
+		history, err := p.releases()
+		if err != nil {
+			return library.CuratedSource{}, "", err
 		}
 		newest := history.newest()
 		if newest == nil {
-			return library.CuratedSource{}, fail("ref-required", fmt.Sprintf("%s curates skills from its source %s, whose repository has no release/<number> tags, so the library must name a ref for it. %s", l.subject(), l.name, l.fixRef("set")), nil)
+			return library.CuratedSource{}, "", fail("ref-required", fmt.Sprintf("%s curates skills from its source %s, whose repository has no release/<number> tags, so the library must name a ref for it. %s", l.subject(), l.name, l.fixRef("set")), nil)
 		}
 		revision.Release, revision.Commit = newest.number, newest.commit
-		if err := repo.fetchCommits(ctx, []string{revision.Commit}, l.vanished("the command")); err != nil {
-			return library.CuratedSource{}, err
+	} else {
+		ref, err := p.resolveRef()
+		if err != nil {
+			return library.CuratedSource{}, "", l.libraryRef(err)
 		}
-	} else if revision.Release, revision.Commit, err = p.resolveRef(); err != nil {
-		return library.CuratedSource{}, l.libraryRef(err)
-	} else if err := repo.fetchCommits(ctx, []string{revision.Commit}, l.vanished("the command")); err != nil {
-		return library.CuratedSource{}, err
+		revision.Release, revision.Commit, resolved = ref.release, ref.commit, ref.kind
+	}
+	if err := repo.fetchCommits(ctx, []string{revision.Commit}, l.vanished("the command")); err != nil {
+		return library.CuratedSource{}, "", err
 	}
 	isLibrary, err := repo.isLibrary(ctx, revision.Commit)
 	revision.NonLibrary = !isLibrary
-	return revision, err
+	return revision, resolved, err
 }
 
 // libraryRef rewords a failure resolving the ref the library declares, which names sources.<name>.ref as if it
@@ -474,7 +477,7 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 	if !keep {
 		recorded = library.CuratedSource{}
 	}
-	revision, kept, err := l.revision(ctx, repo, recorded, library.CuratedSource{}, false)
+	revision, kept, resolved, err := l.revision(ctx, repo, recorded, library.CuratedSource{}, false)
 	if err != nil {
 		return library.CuratedSource{}, nil, err
 	}
@@ -489,6 +492,7 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 		return excluded
 	})
 	row := curatedMove(l.name, recordedRevision, revision, changes)
+	row.TagMoved = row.Commit != nil && row.Commit.From != "" && resolved == rules.GitRefTag && recordedRevision.Ref.Equal(revision.Ref)
 	if row.Replaced, err = repo.replacedRows(ctx, l.library, replacements(l.exclude), basedOnField(l.library, l.name), l.name+":", recordedRevision.Commit, revision.Commit); err != nil {
 		return library.CuratedSource{}, nil, err
 	}
@@ -523,7 +527,7 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 		}
 	}()
 	origin := curatedSource{name: name, declared: declared, maintained: true}
-	revision, err := origin.resolve(ctx, repo)
+	revision, _, err := origin.resolve(ctx, repo)
 	if err != nil {
 		return nil, "", err
 	}
@@ -581,7 +585,8 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 
 // curatedMove returns the preview row of the curated source name moving from the revision from, which the project
 // recorded, or the zero CuratedSource for one it didn't curate from before, to the revision to, whose Commit is empty
-// when the update removes the source's skills, with the changes to its skills.
+// when the update removes the source's skills, with the changes to its skills. It leaves TagMoved to the caller,
+// which knows whether to's ref named a tag.
 func curatedMove(name string, from, to library.CuratedSource, changes []SkillUpdate) CuratedUpdate {
 	row := CuratedUpdate{Name: name, Repository: to.Repository, Ref: to.Ref.String(), Changes: changes, Replaced: []ReplacedSkillUpdate{}}
 	if from.Commit == to.Commit {
@@ -591,7 +596,6 @@ func curatedMove(name string, from, to library.CuratedSource, changes []SkillUpd
 	if from.Release != 0 && to.Release != 0 && to.Ref.IsZero() {
 		row.Release = &SharedFilesUpdate{From: from.Release, To: to.Release}
 	}
-	row.TagMoved = from.Commit != "" && to.Commit != "" && to.Ref.Kind() == rules.GitRefTag && from.Ref.Equal(to.Ref)
 	return row
 }
 

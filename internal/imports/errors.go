@@ -3,11 +3,7 @@
 
 package imports
 
-import (
-	"errors"
-
-	"github.com/fabricahq/trailguide/internal/gitexec"
-)
+import "github.com/fabricahq/trailguide/internal/gitexec"
 
 // Error is the type of every import failure, including Git failures. Its Code is stable for callers.
 type Error = gitexec.Error
@@ -50,12 +46,6 @@ func gitFailure(code, problem string, diagnostics []byte) error {
 
 // missingObjects are the texts a server prints when it doesn't have an object a fetch requested by its ID.
 var missingObjects = []string{"not our ref", "no such remote ref", "couldn't find remote ref"}
-
-// isMissing reports whether err is fetchFailure's report of a revision the server doesn't have.
-func isMissing(err error) bool {
-	var failure *Error
-	return errors.As(err, &failure) && failure.Code == "version-not-found"
-}
 
 // fetchFailure explains a failed fetch of revisions, such as commits by their IDs or a ref, from its diagnostics,
 // which it never shows: a server it couldn't verify or reach, as unreachable explains; a server that refuses

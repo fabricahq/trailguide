@@ -16,7 +16,7 @@ This page explains how to run sync, what it changes, and what to do when files a
 ## Choose the right command
 
 - **`trailguide project sync`**: Restore each source at its recorded revision, or take a new source at its newest one. Sync validates the vendored files, regenerates agent guidance, and installs skills into the target folders.
-- **`trailguide project update`**: Move each source along its `ref`, previewing newer versions, new rules and skills, level changes, retirements, and new commits, and apply them after you confirm. Pinned rules, and sources whose `ref` names a commit, don't move. Update then does everything sync does.
+- **`trailguide project update`**: Move each source along its `ref`, previewing newer versions, new rules and skills, level changes, retirements, and new commits, and apply them after you confirm. Pinned rules, library sources whose `ref` names a tag or commit, and sources whose `ref` names a commit don't move. Update then does everything sync does.
 - **`trailguide project build`**: Apply changes to your authored rules and skills or your exceptions using the files you already have. Build regenerates guidance and installed skills without contacting a repository.
 - **`trailguide project check`**: Find out whether generated guidance, installed skills, the managed Trail Guide guide, and the `AGENTS.md` section are up to date. Check validates stored inputs and output, reports problems, and leaves files unchanged.
 
