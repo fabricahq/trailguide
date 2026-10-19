@@ -122,8 +122,9 @@ func TestForkSkill_RejectsMissingAndExtraInputs(t *testing.T) {
 		args    []string
 		message string
 	}{
-		{[]string{"--reason", "Ours."}, "--from is required: name the skill to fork as SOURCE:SKILL, such as fabrica:skills/fix-bug. To write a new skill instead, create .trailguide/skills/<name>/SKILL.md"},
-		{[]string{"build-feature", "--from", "team:skills/build-feature"}, "project add skill takes no arguments: it forks the skill --from names, keeping its name. To write a new skill instead, create .trailguide/skills/build-feature/SKILL.md."},
+		{[]string{"--reason", "Ours."}, "missing skill name: name the skill to create, such as release-checklist, or fork a skill with --from SOURCE:SKILL."},
+		{[]string{"build-feature", "--from", "team:skills/build-feature"}, "trailguide project add skill takes a skill name or --from, not both: a fork keeps the source skill's name, so leave out build-feature."},
+		{[]string{"--from", "team:skills/build-feature", "--description", "Ours.", "--reason", "Ours."}, "--description doesn't apply to a fork, which keeps the source skill's frontmatter"},
 		{[]string{"--from", "skills/build-feature", "--reason", "Ours."}, `"skills/build-feature": expected SOURCE:SKILL`},
 		{[]string{"--from", "team:skills/build-feature"}, "--reason is required: the fork replaces team's skills/build-feature, and the exclusion that makes it the replacement records why"},
 	} {

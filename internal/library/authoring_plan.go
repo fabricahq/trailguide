@@ -5,12 +5,14 @@ package library
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -126,4 +128,72 @@ func checkNewRule(ctx context.Context, root *os.Root, id string, options Options
 		return failure("missing-group", "group "+group+" does not exist; create it first with "+command+", then retry adding the rule", nil)
 	}
 	return filetxn.RequireAbsent(ctx, root, librarytree.RepositoryPath(id+".md"))
+}
+
+// SkillPlan identifies a new skill in the library's .trailguide/skills/; Commit rechecks that its folder is still
+// absent.
+type SkillPlan struct {
+	name    string
+	options Options
+}
+
+// PlanSkill checks the skill's name and that the library has no skill folder by that name before collecting the
+// skill's description.
+func PlanSkill(ctx context.Context, name string, options Options) (*SkillPlan, error) {
+	options, err := planAuthoring(ctx, options, func(root *os.Root, _ Options) error { return checkNewSkill(ctx, root, name) })
+	if err != nil {
+		return nil, err
+	}
+	return &SkillPlan{name, options}, nil
+}
+
+// Commit revalidates live state before creating the skill's SKILL.md, a marked draft with description and kind, a
+// trailguide-skill-type or empty, in its frontmatter.
+func (p *SkillPlan) Commit(ctx context.Context, description, kind string) (AuthoringResult, error) {
+	if p == nil || p.name == "" {
+		return AuthoringResult{}, failure("invalid-operation", "expected a planned skill", nil)
+	}
+	data, err := draftSkill(p.name, description, kind)
+	if err != nil {
+		return AuthoringResult{}, err
+	}
+	root, err := openLibrary(ctx, p.options, false)
+	if err != nil {
+		return AuthoringResult{}, err
+	}
+	defer root.Close()
+	dir, err := openTrailGuideDirectory(ctx, root, false)
+	if err != nil {
+		return AuthoringResult{}, err
+	}
+	defer dir.Close()
+	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+		if _, _, err := libraryManifest(ctx, root); err != nil {
+			return nil, err
+		}
+		if err := checkNewSkill(ctx, root, p.name); err != nil {
+			return nil, err
+		}
+		return []filetxn.File{{Path: path.Join(skillsDirectory, p.name, skills.File), Content: data}}, nil
+	})
+	return authoringResult(changes, err)
+}
+
+// draftSkill returns the SKILL.md draft of the skill name, failing at the flag that supplied an invalid description
+// or kind.
+func draftSkill(name, description, kind string) ([]byte, error) {
+	if err := skills.ValidateDescription(description); err != nil {
+		return nil, &ValidationError{Location: "--description", Problem: err.Error()}
+	}
+	if err := skills.ValidateType(kind); err != nil {
+		return nil, &ValidationError{Location: "--type", Problem: err.Error()}
+	}
+	return skills.Draft(name, description, kind, rules.DraftMarker)
+}
+
+func checkNewSkill(ctx context.Context, root *os.Root, name string) error {
+	if !skills.ValidName(name) {
+		return &ValidationError{Location: "skill name", Problem: "a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen, such as fix-bug"}
+	}
+	return filetxn.RequireAbsent(ctx, root, path.Join(skillsDirectory, name))
 }
