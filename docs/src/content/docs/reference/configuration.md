@@ -112,7 +112,15 @@ Each rule ID in `include` must name a rule the source publishes, and each prefix
 
 Skill selectors have no prefixes: `skills/*` and `recommended/*` are rejected. A library's required skills always install, whatever `include` says; see [Skill levels](#skill-levels). A skill a library curates from another repository is named as the library's manifest names it, with the curated source's name, such as `mattpocock:skills/engineering/to-spec`; see [Curated skills](#curated-skills).
 
-`exclude` entries take a skill ID, `recommended`, or `"*"`, with a reason. Excluding a required skill fails validation, however the exclusion names it.
+`exclude` leaves skills out, each entry with a reason. An entry names one skill by its ID, or a level:
+
+| Entry | Leaves out |
+| --- | --- |
+| `skills/deploy-preview` | That skill. Only an entry by ID can name a `replacedBy` skill to install in its place, and it does so even when a level entry also covers the skill. |
+| `recommended` | Every skill the library recommends, even one `include` names. Use it with `include: ["*"]` to install the offered skills without the recommended ones. |
+| `"*"` | Every skill that isn't required, so the project installs only the library's required skills. Use it to take a library's rules without its optional skills. |
+
+An exclusion wins over `include`, but never over a required skill: excluding a required skill by ID fails validation, and a level exclusion leaves required skills installed. A level exclusion also leaves in a skill that another installed skill uses, so the installed skill works; to leave such a skill out, exclude it by ID. `recommended` fails for a source that isn't a library, since such a repository recommends nothing; exclude its skills by ID, or exclude `"*"` to install none of them.
 
 ## Skill levels
 

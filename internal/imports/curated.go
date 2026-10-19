@@ -38,7 +38,7 @@ type curatedSkill struct {
 
 // curatedSkills returns, by curated source name, the curated skills source takes from manifest, its library's:
 // every required one, the recommended ones when skills.include names recommended, each offered one that it
-// names or includes with "*", which, as for a source's own skills, leaves out one in a folder whose name starts with
+// names or includes with "*", less those a level exclusion leaves out, as rules.Source.ExcludesLevel says, which, as for a source's own skills, leaves out one in a folder whose name starts with
 // a dot, and each one that used, as curatedUses gives it for the library's skills the source installs, says one of
 // them uses. It fails when skills.include or skills.exclude names a curated skill the library
 // doesn't list, since a curated skill reaches projects only through the library's lists, when skills.exclude
@@ -78,6 +78,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 			slices.Contains(source.Skills, id) ||
 			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
 			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
+		included = included && !source.ExcludesLevel(id, level)
 		if !included && len(used[id]) == 0 {
 			continue
 		}
@@ -217,7 +218,12 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 			usedBy = []string{}
 		}
 		slices.Sort(usedBy)
-		imported.Snapshot.Skills[l.name+":"+id] = library.ImportedSkill{Level: skill.Level, Included: skill.Included, UsedBy: usedBy}
+		// A skill installed only because another curated skill uses it keeps the level the library lists it at, if any.
+		level := skill.Level
+		if listed, ok := imported.Snapshot.AvailableSkills[l.name+":"+id]; ok {
+			level = listed.Level
+		}
+		imported.Snapshot.Skills[l.name+":"+id] = library.ImportedSkill{Level: level, Included: skill.Included, UsedBy: usedBy}
 	}
 	prefix := library.CuratedDirectory + "/" + l.name + "/"
 	for name, data := range read.files {

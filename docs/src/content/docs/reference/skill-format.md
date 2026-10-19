@@ -113,7 +113,7 @@ Other `metadata` keys, such as `author`, are preserved and ignored. Keys that st
 
 ### Skill type
 
-`trailguide-skill-type` labels the skill as a `playbook` or a `review`; see [Skill types](/concepts/skill/#skill-types). Leave it out when neither fits. The type is a plain label: Trail Guide shows it, and `trailguide project list skills --type` filters by it, but it installs, checks, and updates every skill the same way, whatever its type.
+`trailguide-skill-type` labels the skill as a `playbook` or a `review`; see [Skill types](/concepts/skill/#skill-types). Leave it out when neither fits. The type is a plain label: Trail Guide installs, checks, and updates every skill the same way, whatever its type.
 
 The canonical type list is `canonical-skill-types.yaml` in the Trail Guide repository. Each Trail Guide release builds the list in, so a new type needs a Trail Guide release, and your library's CI must use that release before a skill can declare the type. Only `trailguide library check` checks the type: a project installs a skill whose type its Trail Guide doesn't know without complaint, and shows the type as written.
 

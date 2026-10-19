@@ -40,7 +40,7 @@ A skill can declare one [type](/concepts/skill/#skill-types) in `trailguide-skil
 - **`playbook`**: ordered steps for carrying out one kind of engineering task, citing the rules each step applies, such as building a feature or fixing a bug.
 - **`review`**: examines existing work, such as a diff, a plan, or a test suite, against stated criteria and reports findings.
 
-Ask what the skill's main job is: a playbook changes the work, and a review judges work that already exists. A playbook can include a review step, and a review can offer to fix what it found. If neither fits, leave the type out. The type is a label for people and for filters such as `trailguide project list skills --type review`; Trail Guide treats every skill the same way.
+Ask what the skill's main job is: a playbook changes the work, and a review judges work that already exists. A playbook can include a review step, and a review can offer to fix what it found. If neither fits, leave the type out. The type is a label for people and for catalogs that browse skills by type; Trail Guide treats every skill the same way.
 
 ## Create the skill
 

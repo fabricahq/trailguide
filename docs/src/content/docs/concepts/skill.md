@@ -58,7 +58,7 @@ All three keys are optional. The standard sets `metadata` aside for properties i
 
 ## Skill types
 
-A skill type classifies what a skill is for, so skills are easier to search and browse. You can already filter by type, such as `trailguide project list skills --type review`. The full payoff comes from interfaces that show types, such as a catalog like [Rulemart](https://rulemart.fabricahq.com) that lets you browse every review skill across libraries.
+A skill type classifies what a skill is for, so skills are easier to search and browse. The payoff comes from interfaces that show types, such as a catalog like [Rulemart](https://rulemart.fabricahq.com) that lets you browse every review skill across libraries.
 
 There are probably many useful kinds of skills, but we're conservative about which types we name, because removing or redefining a type later would break the skills that use it. For now there are two, and a skill can declare one:
 
