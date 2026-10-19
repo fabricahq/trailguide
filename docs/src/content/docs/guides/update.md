@@ -36,6 +36,21 @@ Update never changes your project without showing you first. It prints a preview
 
 The versions and summaries in the preview come from **library releases**. A library publishes its changes in numbered releases, tagged `release/1`, `release/2`, and so on, and each release gives every changed rule and skill a new version and a one-line summary of what changed.
 
+### Rules and skills move differently
+
+One update covers both the rules and the skills your project takes from a source, and the preview lists them together. But they move in different ways:
+
+| | Rules | Skills |
+| --- | --- | --- |
+| What moves | Each rule moves to its own newest version. | All of a source's skills move together, to the source's newest release or commit. |
+| Take just one | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible: update the whole source. |
+| Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
+| What a change level describes | What your code must do. | What the skill does: its steps and inputs. |
+
+Skills move together because they often call one another, and skills from one revision always match. The rest of this section walks through rule changes; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
+
+### Run the update
+
 From the project root, run:
 
 ```sh
@@ -90,7 +105,7 @@ Most rows need no action, but a few can change what your code must do, so read t
 - **`new`:** your agents will start following a rule they didn't follow before.
 - **`retired`:** your agents will stop following the rule; check whether its replacement covers what you need.
 
-Skills appear in the same list, and work a little differently; see [Update skills](#update-skills). Rows marked `replaced` need a decision from you, described next.
+For skill rows, see [Update skills](#update-skills). Rows marked `replaced` need a decision from you, described next.
 
 When you confirm, the update applies exactly the changes the preview showed, and nothing else.
 
@@ -197,7 +212,7 @@ To keep following a rule the library retires, choose to keep it when the update 
 
 ## Update skills
 
-Skills update differently from rules. Rules move one at a time and can be pinned. All of a source's skills come from the one library release or commit the project recorded for it, the same revision that supplies its [library-wide files](/reference/rule-versions/#what-a-version-covers), so skills that call each other always match. When an update moves that revision, every installed skill from the source moves with it.
+Unlike rules, skills don't move one at a time; see [Rules and skills move differently](#rules-and-skills-move-differently). All of a source's skills come from the one library release or commit the project recorded for it, the same revision that supplies its [library-wide files](/reference/rule-versions/#what-a-version-covers), so skills that call each other always match. When an update moves that revision, every installed skill from the source moves with it.
 
 Library skills have versions too, so the preview lists them beside the rules, with the same changes and summaries. It lists each skill whose version changed:
 
