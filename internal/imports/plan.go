@@ -355,7 +355,7 @@ func selectsMore(recorded *library.Snapshot, source rules.Source) bool {
 // is written, keeps its commit and rule versions, unless the planner resolves the ref again; otherwise the ref is
 // resolved again. Rules newly selected at the revision record the version its library release record lists, or, for
 // any other revision, the newest published version whose files match, or none. A ref that names a branch of a
-// library fails with code ref-is-branch.
+// library warns that the source takes the library's unreleased changes.
 func (p *planner) planRevision() (sourcePlan, error) {
 	plan := sourcePlan{rules: map[string]library.ImportedRule{}, individual: []string{}, warnings: []string{}}
 	recorded := p.recorded
@@ -385,9 +385,6 @@ func (p *planner) planRevision() (sourcePlan, error) {
 		}
 		plan.nonLibrary = true
 		return plan, nil
-	}
-	if plan.resolved == rules.GitRefBranch {
-		return sourcePlan{}, fail("ref-is-branch", fmt.Sprintf("sources.%s.ref: %s is a branch, and the repository is a library, whose rules and skills a project takes at a library release, a tag, or a full commit SHA. Remove ref to follow the library's releases, or set it to a tag or commit. A branch ref is for repositories of skills that aren't libraries.", p.source.Name, p.source.Ref), nil)
 	}
 	tree, err := p.repo.tree(p.ctx, plan.commit)
 	if err != nil {
@@ -428,8 +425,9 @@ func (p *planner) planRevision() (sourcePlan, error) {
 	if err := p.requireEntries(&plan); err != nil {
 		return sourcePlan{}, err
 	}
-	if plan.release == 0 {
-		if warning := unreleasedWarning(p.source, plan.rules); warning != "" {
+	branch := plan.resolved == rules.GitRefBranch || p.source.Ref.Kind() == rules.GitRefBranch
+	if branch || plan.release == 0 {
+		if warning := unreleasedWarning(p.source, plan.rules, branch); warning != "" {
 			plan.warnings = append(plan.warnings, warning)
 		}
 	}
@@ -437,11 +435,12 @@ func (p *planner) planRevision() (sourcePlan, error) {
 }
 
 // lostCommit explains that the repository no longer has the commit the source record holds for the source's ref.
-// A source that isn't a library and whose ref can move, a branch or a tag, takes the commit its ref names now with
-// trailguide project update.
+// A source whose ref certainly moves, a branch, or a tag of a repository that isn't a library, takes the commit its
+// ref names now with trailguide project update.
 func (p *planner) lostCommit() string {
 	name := p.source.Name
-	if p.recorded.NonLibrary && p.source.Ref.Kind() != rules.GitRefCommit {
+	kind := p.source.Ref.Kind()
+	if kind == rules.GitRefBranch || p.recorded.NonLibrary && kind != rules.GitRefCommit {
 		return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref, %s, is missing from the source's repository, so the branch or tag may have been force-pushed, moved, or deleted. Run trailguide project update %s to take the commit sources.%s.ref names now.", name, name, p.source.Ref, name, name)
 	}
 	return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or set sources.%s.ref to a tag or commit the library still has, then run trailguide project sync. As a last resort, delete vendor/%s and run trailguide project sync to resolve the ref again, which may import different content.", name, name, name, name)
@@ -733,17 +732,24 @@ func (p *planner) selected(id string) bool {
 
 // unreleasedWarning names a source that imports a revision other than a library release, and its unreleased rules.
 // It is empty when every imported rule matches a published version, as at a library release's commit.
-func unreleasedWarning(source rules.Source, imported map[string]library.ImportedRule) string {
+func unreleasedWarning(source rules.Source, imported map[string]library.ImportedRule, branch bool) string {
 	unreleased := []string{}
 	for _, id := range slices.Sorted(maps.Keys(imported)) {
 		if imported[id].Version == nil {
 			unreleased = append(unreleased, id)
 		}
 	}
-	if len(unreleased) == 0 {
+	listed := ""
+	if len(unreleased) > 0 {
+		listed = " Unreleased rules: " + strings.Join(unreleased, ", ") + "."
+	}
+	if branch {
+		return fmt.Sprintf("Source %s follows the library's branch %s, so it takes changes the library hasn't released: rules and skills changed since its last library release have no version or change notes, and update can't ask whether to keep a major change or apply a pin to them. Remove sources.%s.ref to follow the library's releases instead.%s", source.Name, source.Ref, source.Name, listed)
+	}
+	if listed == "" {
 		return ""
 	}
-	return fmt.Sprintf("Source %s imports %s, which isn't a library release, so rules with unreleased changes have no version. Unreleased rules: %s.", source.Name, source.Ref, strings.Join(unreleased, ", "))
+	return fmt.Sprintf("Source %s imports %s, which isn't a library release, so rules with unreleased changes have no version.%s", source.Name, source.Ref, listed)
 }
 
 // ruleGroup returns the group of a valid library rule ID.

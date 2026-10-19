@@ -281,7 +281,7 @@ sources:
 
 `trailguide project update` doesn't move this source past release 5. To take another library release, change the tag and run `trailguide project update vendor-rules`; sync never moves a source, so it reports that the record is out of date. To go back to following library releases, remove `ref` and update the source.
 
-`ref` also accepts any other tag or a full commit SHA, which library authors use to test unreleased changes. A library source can't take a branch: its `ref` fails with `ref-is-branch`, so set it to a commit on the branch instead. Rules and skills with unreleased changes have no version, so Trail Guide warns about them every time you sync or update. See [Take one revision](/reference/configuration/#take-one-revision).
+`ref` also accepts any other tag or a full commit SHA, which library authors use to test unreleased changes, or a branch, such as `main`, to always take the library's newest commit, so the library never has to publish a library release. Unlike a tag or commit, a branch moves when you update. Rules and skills with unreleased changes have no version or change notes, update can't ask whether to keep a major change or apply a pin to them, and its preview shows the commit move and skill changes but not each rule, so Trail Guide warns about such a source when you sync or update. See [Take one revision](/reference/configuration/#take-one-revision).
 
 ## Review and commit the update
 

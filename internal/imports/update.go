@@ -44,8 +44,8 @@ type SourceUpdate struct {
 	Name string `json:"name"`
 	// Ref is the source's ref, so Rules is empty; it is empty for other sources.
 	Ref string `json:"ref,omitempty"`
-	// FollowsRef reports that the update resolves Ref again, which it does for a branch or tag of a repository that
-	// isn't a library. Any other source that uses ref stays at the commit sync keeps.
+	// FollowsRef reports that the update resolves Ref again, which it does for a branch, and for a tag of a
+	// repository that isn't a library. Any other source that uses ref stays at the commit sync keeps.
 	FollowsRef bool `json:"followsRef,omitempty"`
 	// Commit moves a source that follows its ref from the commit its source record locks to the one its ref names
 	// now; it is nil when the commit doesn't move, and for other sources. TagMoved reports that Ref names a tag that
@@ -703,12 +703,21 @@ func updateScopes(configuration rules.Configuration, recorded map[string]library
 }
 
 // followsRef reports whether an update resolves source's ref again, given recorded, its snapshot from the last
-// sync, or nil: a branch or tag of a repository that wasn't a library at the recorded commit, so a branch moves to
-// its newest commit and a tag to the commit it names now. A library source that uses ref, a ref that is a commit, and
-// a source sync hasn't recorded stay where sync keeps them.
+// sync, or nil: a branch, which moves to its newest commit, or a tag of a repository that wasn't a library at the
+// recorded commit, which moves to the commit it names now. A library's bare name other than a library release may
+// name a branch, so it is resolved again too, and planSourceUpdate keeps it where it was when it names a tag. A
+// library's tag, a ref that is a commit, and a source sync hasn't recorded stay where sync keeps them.
 func followsRef(source rules.Source, recorded *library.Snapshot) bool {
-	kind := source.Ref.Kind()
-	return (kind == rules.GitRefBranch || kind == rules.GitRefTag) && recorded != nil && recorded.NonLibrary && recorded.Repository == source.Repository
+	if recorded == nil || recorded.Repository != source.Repository {
+		return false
+	}
+	switch source.Ref.Kind() {
+	case rules.GitRefBranch:
+		return true
+	case rules.GitRefTag:
+		return recorded.NonLibrary || source.Ref.Bare() && recorded.Release == 0
+	}
+	return false
 }
 
 // planSourceUpdate plans one source within the same deadline as an import, and returns its preview and the
@@ -740,6 +749,13 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	before, err := p.choose()
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
+	}
+	// A library's bare name that names a tag, not a branch, holds one revision, like any library tag.
+	if p.again && !before.nonLibrary && before.resolved == rules.GitRefTag {
+		p.again = false
+		if before, err = p.choose(); err != nil {
+			return plannedSource{}, SourceUpdate{}, nil, err
+		}
 	}
 	preview := SourceUpdate{Name: source.Name, Ref: source.Ref.String(), FollowsRef: p.again, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
 	if p.again && before.commit != p.recorded.Commit {

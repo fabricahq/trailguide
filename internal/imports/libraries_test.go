@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -319,17 +320,24 @@ func TestCatalogMutationPreservesSnapshot(t *testing.T) {
 
 }
 
-// TestImport_ABranchOfALibraryFails refuses a ref that names a branch of a library, written bare or with
-// refs/heads/, since a library's rules and skills come from library releases, tags, or commits.
-func TestImport_ABranchOfALibraryFails(t *testing.T) {
+// TestImport_ABranchOfALibraryWarns imports a library at a branch, written bare or with refs/heads/, at the branch's
+// newest commit, and warns that the source takes the library's unreleased changes.
+func TestImport_ABranchOfALibraryWarns(t *testing.T) {
 	f := newLibraryFixture(t, libraryFiles())
 	for _, ref := range []string{"main", "refs/heads/main"} {
 		config := libraryConfig(t, f.Repository)
 		config.Sources[0].Ref = gitRef(t, ref)
-		_, err := ImportLibraries(context.Background(), config, nil, Options{GitPath: f.GitPath, Environment: f.Environment})
-		requireCode(t, err, "ref-is-branch")
-		if want := "sources.team.ref: " + ref + " is a branch, and the repository is a library"; !strings.HasPrefix(err.Error(), want) {
-			t.Fatalf("unexpected diagnostic: %s", err)
+		result, err := ImportLibraries(context.Background(), config, nil, Options{GitPath: f.GitPath, Environment: f.Environment})
+		if err != nil {
+			t.Fatal(err)
+		}
+		imported := result["team"]
+		if imported.Snapshot.Commit != f.LatestCommit || imported.Snapshot.Release != 0 || imported.Snapshot.NonLibrary {
+			t.Fatalf("%s imported %+v; want main's newest commit %s", ref, imported.Snapshot, f.LatestCommit)
+		}
+		want := "Source team follows the library's branch " + ref + ", so it takes changes the library hasn't released"
+		if !slices.ContainsFunc(imported.Warnings, func(w string) bool { return strings.HasPrefix(w, want) }) {
+			t.Fatalf("%s warnings = %q; want one that the source follows the library's branch", ref, imported.Warnings)
 		}
 	}
 }

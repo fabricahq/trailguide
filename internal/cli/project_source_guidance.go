@@ -82,11 +82,13 @@ tools/review; * takes every one outside folders whose names start with a dot.
 Taking one revision:
   Without --ref, the source follows the library's newest library release when
   the project updates. --ref takes the source at a tag, such as the library
-  release tag release/5, a full commit SHA, or, for a repository that isn't a
-  library, a branch such as main. A repository without release/<number> tags
-  needs --ref. Sync keeps the commit it recorded for a branch, and trailguide
-  project update moves it to the branch's newest commit. --ref can't be
-  combined with pins. Abbreviated commits are not supported.
+  release tag release/5, a full commit SHA, or a branch such as main. A
+  repository without release/<number> tags needs --ref. Sync keeps the commit
+  it recorded for a branch, and trailguide project update moves it to the
+  branch's newest commit. A library source on a branch takes changes the
+  library hasn't released, without versions or change notes, and sync and
+  update warn about it. --ref can't be combined with pins. Abbreviated commits
+  are not supported.
 
 After adding the source, fetch it, build guidance, and install its skills:
   trailguide project sync`

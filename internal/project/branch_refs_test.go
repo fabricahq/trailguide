@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -46,6 +47,16 @@ func recordedCommit(t *testing.T, options Options) string {
 		t.Fatal(err)
 	}
 	return record.Commit
+}
+
+// headCommit returns the commit f's served repository has checked out.
+func headCommit(t *testing.T, f *gitfixture.Fixture) string {
+	t.Helper()
+	commit, err := f.CommandIn(context.Background(), f.Worktree(), "rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(commit)
 }
 
 // requireFailure fails the test unless err is an import failure with code whose message contains text.
@@ -201,5 +212,92 @@ func TestUpdate_ATargetedBranchSourceThatSyncHasNotRecordedTakesTheBranch(t *tes
 	}
 	if got := recordedCommit(t, options); got != f.LatestCommit {
 		t.Fatalf("update recorded %s; want main's newest commit %s", got, f.LatestCommit)
+	}
+}
+
+// A library source can follow a branch too: sync records the branch's commit and warns that the source takes the
+// library's unreleased changes, sync keeps that commit, and a targeted update moves it to the branch's newest
+// commit, with the same warning.
+func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"skills":{"repository":REPOSITORY,"ref":"main","rules":{"include":["techs/go/*"]},"skills":{"include":["*"]}}}}`)
+	synced, err := Sync(ctx, options, git)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const warning = "Source skills follows the library's branch main, so it takes changes the library hasn't released"
+	if !slices.ContainsFunc(synced.Warnings, func(w string) bool { return strings.HasPrefix(w, warning) }) {
+		t.Fatalf("sync warnings = %q; want one that the source follows the library's branch", synced.Warnings)
+	}
+	if got, want := recordedCommit(t, options), headCommit(t, f); got != want {
+		t.Fatalf("sync recorded %s; want main's newest commit %s", got, want)
+	}
+	moved, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
+		".trailguide/skills/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got := recordedCommit(t, options); got == moved {
+		t.Fatal("sync moved the library's branch to its newest commit")
+	}
+	plan, err := PlanUpdate(ctx, options, git, []imports.UpdateTarget{{Source: "skills"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := preview.Sources[0]
+	if !source.FollowsRef || source.Commit == nil || source.Commit.To != moved || source.TagMoved {
+		t.Fatalf("preview = %+v; want main moving to %s", source, moved)
+	}
+	if !slices.ContainsFunc(preview.Warnings, func(w string) bool { return strings.HasPrefix(w, warning) }) {
+		t.Fatalf("update warnings = %q; want one that the source follows the library's branch", preview.Warnings)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := recordedCommit(t, options); got != moved || !strings.Contains(readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"), "carefully") {
+		t.Fatalf("update recorded %s; want %s and the skill from it", got, moved)
+	}
+}
+
+// A library source whose bare ref names a tag holds that revision: update resolves the name to learn it isn't a
+// branch, and leaves the source where sync keeps it, even after the tag moves.
+func TestUpdate_ALibrarySourceOnABareTagStaysWhereSyncKeepsIt(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	if err := f.Tag(ctx, f.Worktree(), "v1", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	tagged := headCommit(t, f)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"skills":{"repository":REPOSITORY,"ref":"v1","rules":{"include":["techs/go/*"]},"skills":{"include":["*"]}}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
+		".trailguide/skills/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.CommandIn(ctx, f.Worktree(), "tag", "--force", "--annotate", "--message", "v1", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source := preview.Sources[0]; source.FollowsRef || source.Commit != nil || preview.Moves() {
+		t.Fatalf("preview = %+v; want the tagged library to stay at %s", source, tagged)
 	}
 }
