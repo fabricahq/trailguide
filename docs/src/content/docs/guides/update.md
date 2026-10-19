@@ -218,7 +218,7 @@ A skill that becomes required while your project excludes or forks it stops the 
 
 ## Update a non-library source
 
-A **non-library source** is any Git repository of skills that hasn't adopted Trail Guide, that is, one without a Trail Guide library manifest. Most skill collections you'll find, such as a third party's, are non-library sources. Because such a repository publishes no library releases, its skills have no versions or change notes, so the source must name a `ref`, and an update follows that `ref` instead. See [Non-library sources](/reference/imports/#non-library-sources).
+A **non-library source** is any Git repository of skills that hasn't adopted Trail Guide, that is, one without a Trail Guide library manifest. Most skill collections you'll find, such as a third party's, are non-library sources. Such a repository may tag its own releases, such as `v1.2.0`, and you can set `ref` to one of those tags. What it doesn't have is what a library release adds: a version for each skill, and a change note saying what changed in it. So the update preview can't say how each skill changed; it lists the skill folders and files that changed instead. With no library releases to follow, the source must name a `ref`, and an update follows that `ref`. See [Non-library sources](/reference/imports/#non-library-sources).
 
 When its `ref` names a branch, the update moves it to the newest commit on the branch. The preview shows the commit it moves from and to, then lists each installed skill folder that changed between the two, with the files that changed:
 
