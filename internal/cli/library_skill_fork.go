@@ -68,7 +68,8 @@ func librarySkillForkedReport(result library.AuthoringResult, from project.Skill
 	formatAuthored(&out, result.Added, result.Changed, result.Warnings, scope.workdir)
 	id := "skills/" + plan.Name()
 	instruction := "Next: Edit the forked skill to change its steps. The source's license still applies\nto the copied files; credit the source in your library's notices." +
-		"\nconfig.yaml now records that " + id + " is based on " + from.String() + " at commit\n" + shortCommit(plan.Skill().Commit) + ", so trailguide library check lists the source's later changes to it."
+		"\nconfig.yaml now records that " + id + " is based on " + from.String() + " at commit\n" + shortCommit(plan.Skill().Commit) + ", so trailguide library check lists the source's later changes to it." +
+		"\nProjects that use the library don't get " + from.Source + " from it; keep the source declared so\ncheck can keep comparing the fork with it."
 	if plan.Listed() {
 		instruction += "\nlibrary.skills now lists " + id + " in place of " + from.String() + ", at the same level."
 	} else {
