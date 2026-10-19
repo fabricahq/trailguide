@@ -28,18 +28,23 @@ type curating struct {
 }
 
 // curatedSkill is a curated skill a project takes from a library source: its ID in the library, such as
-// mattpocock:skills/to-spec, and the level the library lists it at.
+// mattpocock:skills/to-spec, and the level the library lists it at. included reports that the project's selection
+// takes it, and usedBy lists, sorted, the library's own installed skills that use it, by their IDs in the library.
 type curatedSkill struct {
 	id, level string
+	included  bool
+	usedBy    []string
 }
 
 // curatedSkills returns, by curated source name, the curated skills source takes from manifest, its library's:
-// every required one, the recommended ones when skills.include names recommended, and each offered one that it
+// every required one, the recommended ones when skills.include names recommended, each offered one that it
 // names or includes with "*", which, as for a source's own skills, leaves out one in a folder whose name starts with
-// a dot. It fails when skills.include or skills.exclude names a curated skill the library
-// doesn't list, since a curated skill reaches projects only through the library's lists, and when skills.exclude
-// names a required one, since a project that uses the library can't diverge from it.
-func curatedSkills(manifest *rules.Library, source rules.Source, release int) (map[string][]curatedSkill, error) {
+// a dot, and each one that used, as curatedUses gives it for the library's skills the source installs, says one of
+// them uses. It fails when skills.include or skills.exclude names a curated skill the library
+// doesn't list, since a curated skill reaches projects only through the library's lists, when skills.exclude
+// names a required one, since a project that uses the library can't diverge from it, and when an installed skill
+// of the library uses a curated skill the library doesn't list.
+func curatedSkills(manifest *rules.Library, source rules.Source, release int, used map[string][]string) (map[string][]curatedSkill, error) {
 	listed := rules.SkillLevels{}
 	if manifest != nil {
 		listed = manifest.Skills
@@ -60,20 +65,24 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int) (m
 			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.RequiredSkillProblem(source.Name, id, release)}
 		}
 	}
+	for _, id := range slices.Sorted(maps.Keys(used)) {
+		if !slices.Contains(curated, id) {
+			return nil, fail("unsupported-content", fmt.Sprintf("sources.%s: the library's skill %s uses %s, which the library doesn't list at any level, so Trail Guide can't install it. Ask the library's maintainer to list it in library.skills; trailguide library check catches this.", source.Name, used[id][0], id), nil)
+		}
+	}
 	result := map[string][]curatedSkill{}
 	for _, id := range curated {
 		level := listed.Level(id)
 		_, folder, _ := library.SplitCurated(id)
-		switch {
-		case level == skills.LevelRequired:
-		case slices.Contains(source.Skills, id):
-		case slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder):
-		case level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended):
-		default:
+		included := level == skills.LevelRequired ||
+			slices.Contains(source.Skills, id) ||
+			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
+			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
+		if !included && len(used[id]) == 0 {
 			continue
 		}
 		name, _, _ := library.SplitCurated(id)
-		result[name] = append(result[name], curatedSkill{id: id, level: level})
+		result[name] = append(result[name], curatedSkill{id: id, level: level, included: included, usedBy: used[id]})
 	}
 	return result, nil
 }
@@ -90,7 +99,11 @@ func curateSkills(ctx context.Context, configuration rules.Configuration, source
 	if err != nil {
 		return err
 	}
-	selected, err := curatedSkills(manifest, source, imported.Snapshot.Release)
+	used, err := curatedUses(imported.Snapshot.Skills, imported.Snapshot.Files, "vendor/"+source.Name)
+	if err != nil {
+		return err
+	}
+	selected, err := curatedSkills(manifest, source, imported.Snapshot.Release, used)
 	if err != nil {
 		return err
 	}
@@ -190,11 +203,20 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 	if err != nil {
 		return err
 	}
+	// The library's own skills use a curated skill by its ID in the library, which they're recorded under too.
+	ownUsers := map[string][]string{}
+	for _, skill := range chosen {
+		ownUsers[skill.id] = skill.usedBy
+	}
 	for id, skill := range read.skills {
-		usedBy := []string{}
+		usedBy := slices.Clone(ownUsers[l.name+":"+id])
 		for _, user := range skill.UsedBy {
 			usedBy = append(usedBy, l.name+":"+user)
 		}
+		if usedBy == nil {
+			usedBy = []string{}
+		}
+		slices.Sort(usedBy)
 		imported.Snapshot.Skills[l.name+":"+id] = library.ImportedSkill{Level: skill.Level, Included: skill.Included, UsedBy: usedBy}
 	}
 	prefix := library.CuratedDirectory + "/" + l.name + "/"
@@ -220,17 +242,19 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 		return importedSkills{}, err
 	}
 	folders := skillFolders(tree, !revision.NonLibrary)
-	ids, levels := []string{}, map[string]string{}
+	ids, levels, usedOnly := []string{}, map[string]string{}, map[string]bool{}
 	for _, skill := range chosen {
 		_, id, _ := library.SplitCurated(skill.id)
 		if _, ok := folders[id]; !ok {
 			return importedSkills{}, l.missing(skill.id, revision, kept)
 		}
-		ids, levels[id] = append(ids, id), skill.level
+		ids, levels[id], usedOnly[id] = append(ids, id), skill.level, !skill.included
 	}
 	origin := rules.Source{Name: l.library}
 	plan := sourcePlan{release: revision.Release, commit: revision.Commit}
-	uses, err := repo.skillUses(ctx, origin, folders, ids)
+	// A curated library's skills can use skills it curates in turn, which levels don't chain to, so they aren't
+	// followed.
+	uses, err := repo.skillUses(ctx, origin, folders, ids, !revision.NonLibrary)
 	if err != nil {
 		return importedSkills{}, err
 	}
@@ -245,7 +269,8 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 		if !ok {
 			level = skills.LevelOffered
 		}
-		result.skills[id] = library.ImportedSkill{Level: level, Included: installed[id].Included, UsedBy: installed[id].UsedBy}
+		// A skill the library's own skills use, which the project's selection doesn't take, is installed for them.
+		result.skills[id] = library.ImportedSkill{Level: level, Included: installed[id].Included && !usedOnly[id], UsedBy: installed[id].UsedBy}
 		maps.Copy(files, folders[id])
 	}
 	result.files, result.executable, err = repo.readFiles(ctx, l.library, files, retained)
@@ -357,7 +382,8 @@ func (l curatedSource) missing(id string, revision library.CuratedSource, kept b
 }
 
 // planCurated plans the revision of each source a library curates skills from, given manifest, the library's
-// .trailguide/config.yaml at a revision the update can take source's skills from, and recorded, the source's snapshot,
+// .trailguide/config.yaml at a revision the update can take source's skills from, used, the curated skills the
+// library's skills that the source installs there use, as curatedUses gives them, and recorded, the source's snapshot,
 // or nil. It resolves the ref the library names again, as an update of the whole source does, unless keep is set,
 // which keeps the recorded revision while the library still names its repository and ref, as sync does. A curated repository that
 // a project source declares too comes from overridden, that source's revision once the update is applied, by source
@@ -365,12 +391,12 @@ func (l curatedSource) missing(id string, revision library.CuratedSource, kept b
 // project source that overrides it, or nil. It returns the revisions it
 // resolved, by curated source name, leaving out overridden ones, and a preview row for each curated source whose
 // commit or skills differ from those recorded, including one the project no longer takes any skills from.
-func planCurated(ctx context.Context, configuration rules.Configuration, source rules.Source, manifest []byte, recorded *library.Snapshot, keep bool, overridden map[string]library.Snapshot, only func(name string, override *rules.Source) bool, options Options) (map[string]library.CuratedSource, []CuratedUpdate, error) {
+func planCurated(ctx context.Context, configuration rules.Configuration, source rules.Source, manifest []byte, used map[string][]string, recorded *library.Snapshot, keep bool, overridden map[string]library.Snapshot, only func(name string, override *rules.Source) bool, options Options) (map[string]library.CuratedSource, []CuratedUpdate, error) {
 	parsed, err := rules.ParseLibraryManifest(manifest, source.Name+"/"+librarytree.RepositoryPath(librarytree.Manifest))
 	if err != nil {
 		return nil, nil, err
 	}
-	selected, err := curatedSkills(parsed, source, 0)
+	selected, err := curatedSkills(parsed, source, 0, used)
 	if err != nil {
 		return nil, nil, err
 	}

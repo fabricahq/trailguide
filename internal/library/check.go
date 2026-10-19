@@ -117,7 +117,15 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if problems := changes.review(); len(problems) > 0 {
 		return checkedLibrary{}, failure("change-notes", "change notes don't match the rule changes since "+changes.history.latest.tagName()+":\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
-	if problems := skillProblems(input.skills, current, changes); len(problems) > 0 {
+	declaration, err := rules.ParseLibraryManifest(input.tree.Files[librarytree.Manifest], manifestPath)
+	if err != nil {
+		return checkedLibrary{}, err
+	}
+	curatedSkills := []string{}
+	if declaration != nil {
+		curatedSkills = declaration.Skills.Curated()
+	}
+	if problems := skillProblems(input.skills, current, curatedSkills, changes); len(problems) > 0 {
 		return checkedLibrary{}, failure("invalid-skill", "skills don't pass library check:\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
 	plan, err := changes.plan()

@@ -237,16 +237,19 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 // a library can lack; with source, which starts the skill's project ID, such as team, or team:pocock for a skill
 // team's library curates from pocock, and a colon added to each bare ID its trailguide-skills-used lists, and, when
 // library is true, its trailguide-rules-used, since in the project a bare ID names the project's own skill or rule;
+// when library is true, also with source added to each ID of a skill the library curates, such as
+// anthropic:skills/skill-creator, since the project names that skill with the library source's name first;
 // and with uses, the IDs the source's skills.uses adds for the skill, added to trailguide-skills-used the same way,
 // since skills.uses applies only to the source's own skills. metadata is data's, read at location. It rewrites only
 // what differs, replacing a list it changes with a block string. It fails, at location, when it can't rewrite the
 // frontmatter to say exactly that, such as a list inside a flow mapping, or when the result fails the checks build
 // applies to an authored skill, such as a type other than playbook or review.
 func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string, library bool, uses []string, location string) ([]byte, error) {
-	qualify := func(ids []string) []string {
+	// curated reports that a qualified ID names a skill the source's library curates, which needs the source's name too.
+	qualify := func(ids []string, curated bool) []string {
 		result := []string{}
 		for _, id := range ids {
-			if !strings.Contains(id, ":") {
+			if curated || !strings.Contains(id, ":") {
 				id = source + ":" + id
 			}
 			if !slices.Contains(result, id) {
@@ -255,9 +258,9 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 		}
 		return result
 	}
-	skillsUsed, rulesUsed := qualify(slices.Concat(metadata.SkillsUsed, uses)), metadata.RulesUsed
+	skillsUsed, rulesUsed := qualify(slices.Concat(metadata.SkillsUsed, uses), library), metadata.RulesUsed
 	if library {
-		rulesUsed = qualify(metadata.RulesUsed)
+		rulesUsed = qualify(metadata.RulesUsed, false)
 	}
 	text, ok := skills.Fork(data, metadata, name, skillsUsed, rulesUsed)
 	if !ok {

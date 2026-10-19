@@ -359,8 +359,55 @@ A library can list skills from another repository in its levels, such as a third
 - **Refs resolve per project.** A library release doesn't lock a curated source's `ref`. Each project resolves it when it runs `trailguide project update` and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit.
 - **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
+- **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as a level lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it.
 
-The library repository is a project too: it installs the required skills of the sources it curates from, as any project would, and whatever it includes from them for its own use.
+The library repository is a project too: it installs the required skills of the sources it curates from, as any project would, and whatever it includes from them for its own use. Listing a curated skill in `library.skills` publishes it to projects but doesn't install it in the library repository. When the library's own skills call it there, also list it in that source's `skills.include`.
+
+For example, Fabrica's library authors `add-skill`, which calls Anthropic's `skill-creator`. The library's configuration curates `skill-creator`, publishes both skills, and installs `skill-creator` for its own use:
+
+```yaml
+# fabricahq/.trailguide: .trailguide/config.yaml
+schemaVersion: 2
+skillTargets: [claude]
+sources:
+  anthropic:
+    repository: https://github.com/anthropics/skills.git
+    ref: main
+    skills:
+      include: [skills/skill-creator] # installs it in this repository
+library:
+  skills:
+    recommended: [skills/add-skill]
+    offered: [anthropic:skills/skill-creator] # publishes it to projects
+```
+
+`add-skill` names the curated skill by the ID `library.skills` lists it under:
+
+```markdown
+<!-- fabricahq/.trailguide: .trailguide/skills/add-skill/SKILL.md -->
+---
+name: add-skill
+description: Add a skill to this library.
+metadata:
+  trailguide-skills-used: |
+    anthropic:skills/skill-creator
+---
+```
+
+A project that uses the library names only the library and the skill it wants:
+
+```yaml
+# A project: .trailguide/config.yaml
+schemaVersion: 2
+skillTargets: [claude]
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/.trailguide.git
+    skills:
+      include: [skills/add-skill]
+```
+
+`trailguide project sync` installs `add-skill` from Fabrica's library and `skill-creator` from anthropics/skills, though the project never names either `skill-creator` or Anthropic's repository.
 
 ## Repository addresses
 

@@ -126,10 +126,24 @@ func TestLibraryCheck_AsksToForkTheCuratedSkillThatUsesAFork(t *testing.T) {
 	}
 }
 
-func TestLibraryAddSkill_AsksToForkTheSkillsAForkUsesFirst(t *testing.T) {
-	directory, _, environment := forkingLibrary(t, "    recommended: [pocock:skills/ops/deploy]\n")
+func TestLibraryAddSkill_NamesTheCuratedSkillsAForkUses(t *testing.T) {
+	directory, _, environment := forkingLibrary(t, "    recommended: [pocock:skills/ops/deploy, pocock:skills/ops/release]\n")
+	binary := buildCLI(t)
+	if out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/release", "--reason", "Ours."); code != 0 {
+		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
+	}
+	if skill, err := os.ReadFile(filepath.Join(directory, ".trailguide", "skills", "release", "SKILL.md")); err != nil || !strings.Contains(string(skill), "trailguide-skills-used: |\n    pocock:skills/ops/deploy\n") {
+		t.Fatalf("forked release:\n%s, %v; want it to use the curated deploy", skill, err)
+	}
+	if out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "check"); code != 0 {
+		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
+	}
+}
+
+func TestLibraryAddSkill_AsksToListOrForkTheSkillsAForkUses(t *testing.T) {
+	directory, _, environment := forkingLibrary(t, "    recommended: [pocock:skills/ops/release]\n")
 	out, diagnostic, code := runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/release", "--reason", "Ours.")
-	if want := "the skill uses pocock:skills/ops/deploy, which the library hasn't forked"; code == 0 || !strings.Contains(out+diagnostic, want) {
+	if want := "the skill uses pocock:skills/ops/deploy, which the library neither forked nor lists"; code == 0 || !strings.Contains(out+diagnostic, want) {
 		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
 	}
 }
@@ -154,7 +168,7 @@ func TestLibraryAddSkill_ReadsTheSkillsTheSourcesUsesAdds(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, diagnostic, code := runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/deploy", "--reason", "Ours.")
-	if want := "the skill uses pocock:skills/ops/release, which the library hasn't forked"; code == 0 || !strings.Contains(out+diagnostic, want) {
+	if want := "the skill uses pocock:skills/ops/release, which the library neither forked nor lists"; code == 0 || !strings.Contains(out+diagnostic, want) {
 		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
 	}
 }

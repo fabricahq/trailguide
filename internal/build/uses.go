@@ -13,7 +13,8 @@ import (
 )
 
 // linkSkillUses sets the Uses and UsedBy of every skill in resolved, the project's installed skills. A source's skill
-// uses the skills its trailguide-skills-used names, which are skill IDs in the same source, and those its source's skills.uses
+// uses the skills its trailguide-skills-used names, which are skill IDs in the same source, or, for a library's skill,
+// the IDs of skills the library curates, such as anthropic:skills/skill-creator, and those its source's skills.uses
 // adds; sync installed them all. An authored skill uses another authored skill by its bare ID, such as skills/tdd,
 // and a source's skill by its project ID, such as fabrica:skills/tdd. It fails at an authored skill's SKILL.md when
 // it uses a skill the project doesn't install, or when authored skills use each other in a cycle; a source's skill
@@ -46,7 +47,12 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 		case replacement != "":
 			return replacement, true
 		}
-		warnings = append(warnings, fmt.Sprintf("%s uses %s, which the project excludes without a replacement, so the skill it uses isn't installed. Add replacedBy to the exclusion, or stop excluding the skill.", skill.ID, id))
+		fix := "Add replacedBy to the exclusion, or stop excluding the skill."
+		if _, rest, _ := strings.Cut(id, ":"); strings.Contains(rest, ":") {
+			// A curated skill can't be replaced; see rules.ParseConfiguration's exclusion checks.
+			fix = "Stop excluding the skill, or remove the use from the skill that uses it, which you can fork. A curated skill can't be replaced."
+		}
+		warnings = append(warnings, fmt.Sprintf("%s uses %s, which the project excludes without a replacement, so the skill it uses isn't installed. %s", skill.ID, id, fix))
 		return "", false
 	}
 	uses := map[string][]string{}
@@ -64,6 +70,10 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 				prefix, declared = prefix+skill.Curated+":", nil
 			}
 			for _, id := range slices.Concat(skill.SkillsUsed, declared) {
+				// A curated skill's uses of skills its own library curates aren't installed with it.
+				if skill.Curated != "" && strings.Contains(id, ":") {
+					continue
+				}
 				target, kept := redirect(skill, prefix+id)
 				if !kept {
 					continue
@@ -109,7 +119,8 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 }
 
 // authoredUseProblem explains why an authored skill can't use citation, a line of its trailguide-skills-used that names no
-// skill the project installs. sources holds the configuration's sources by name.
+// skill the project installs, such as a curated skill its library stopped listing. sources holds the configuration's
+// sources by name.
 func authoredUseProblem(citation skills.Citation, sources map[string]rules.Source) string {
 	source, configured := sources[citation.Source]
 	switch {
@@ -117,6 +128,9 @@ func authoredUseProblem(citation skills.Citation, sources map[string]rules.Sourc
 		return fmt.Sprintf("%s names %s, which isn't a skill in .trailguide/skills/; write the skill, or name a source's skill with its source name, such as fabrica:%s", skills.SkillsUsedKey, citation.ID, citation.ID)
 	case !configured:
 		return fmt.Sprintf("%s names %s, but the configuration has no source named %s; add the source, or correct the source name", skills.SkillsUsedKey, citation, citation.Source)
+	case strings.Contains(citation.ID, ":"):
+		// The ID names a skill the source's library curates, which the project takes only through its lists.
+		return fmt.Sprintf("%s names %s, which library %s doesn't curate at the revision the project installs; remove it, or declare the skill's repository as a source of your own and name the skill with that source's name", skills.SkillsUsedKey, citation, source.Name)
 	}
 	return fmt.Sprintf("%s names %s, which the project doesn't install; add %s to sources.%s.skills.include, then run trailguide project sync", skills.SkillsUsedKey, citation, citation.ID, source.Name)
 }

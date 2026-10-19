@@ -135,7 +135,7 @@ func PlanSkillFork(ctx context.Context, source, id string, options Options) (*Sk
 						return err
 					}
 				}
-				if content, err = forkedLibrarySkill(content, metadata, plan.name, declared, id, !plan.skill.NonLibrary, plan.skill.Commit, location); err != nil {
+				if content, err = forkedLibrarySkill(content, metadata, plan.name, declared, id, !plan.skill.NonLibrary, config.Library.Skills.Listed(), plan.skill.Commit, location); err != nil {
 					return err
 				}
 			}
@@ -204,11 +204,12 @@ func requireForkTarget(ctx context.Context, root *os.Root, config rules.Configur
 // its trailguide-skills-used, or source's skills.uses for it, names, as the library does: by the library's own fork
 // of it, when source's skills.exclude replaces it with one, and otherwise with the source's name, such as
 // pstack:skills/tdd, since in the library a bare ID names the library's own skill. library reports that the source
-// is a library, whose rules the fork can't cite, and commit is the commit the fork copies. It fails when the skill
-// cites such rules, names a skill its source curates from another repository, or uses a skill the library hasn't
-// forked while library skills can't name a source's skills, when the frontmatter can't be rewritten, and when the
-// result fails the checks library check applies to the library's skills.
-func forkedLibrarySkill(data []byte, metadata skills.Metadata, name string, source rules.Source, skill string, library bool, commit, location string) ([]byte, error) {
+// is a library, whose rules the fork can't cite, curated lists the skills the library's levels list, and commit is
+// the commit the fork copies. It fails when the skill cites such rules, names a skill its source curates from another
+// repository, or uses a skill the library neither forked nor lists, which projects couldn't install with the fork,
+// when the frontmatter can't be rewritten, and when the result fails the checks library check applies to the
+// library's skills.
+func forkedLibrarySkill(data []byte, metadata skills.Metadata, name string, source rules.Source, skill string, library bool, curated []string, commit, location string) ([]byte, error) {
 	byHand := forkLibrarySkillByHand(name, source.Name, commit)
 	if library && len(metadata.RulesUsed) > 0 {
 		return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill cites rules of library %s, and a library's skills cite only the library's own rules. %s", source.Name, byHand)}
@@ -222,8 +223,8 @@ func forkedLibrarySkill(data []byte, metadata skills.Metadata, name string, sour
 		citation := source.Name + ":" + id
 		if fork := source.SkillExclude[id].ReplacedBy; fork != "" {
 			citation = fork
-		} else if !skills.ValidSkillCitation(citation, false) {
-			return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill uses %s, which the library hasn't forked, and a library's skills name only the library's own skills. Fork %s first, so this fork uses your fork", citation, citation)}
+		} else if !slices.Contains(curated, citation) {
+			return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill uses %s, which the library neither forked nor lists, so projects couldn't install it with the fork. List %s in library.skills, at any level, or fork it first, so this fork uses your fork", citation, citation)}
 		}
 		if !slices.Contains(used, citation) {
 			used = append(used, citation)

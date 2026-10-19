@@ -508,7 +508,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 			if at.manifest == nil || at.err != nil {
 				continue
 			}
-			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero(), overridden, nil, options)
+			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero(), overridden, nil, options)
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return Update{}, gitexec.ContextFailure(ctxErr)
 			}
@@ -599,8 +599,12 @@ func planOverriddenCurating(ctx context.Context, configuration rules.Configurati
 	if err != nil || manifest == nil {
 		return []CuratedUpdate{}, err
 	}
+	used, err := curatedUses(recorded.Skills, recorded.Files, "vendor/"+source.Name)
+	if err != nil {
+		return nil, err
+	}
 	// Only the curated sources a named source overrides move; sync keeps the others where they are.
-	_, rows, err := planCurated(ctx, configuration, source, manifest, recorded, true, overridden, func(_ string, override *rules.Source) bool {
+	_, rows, err := planCurated(ctx, configuration, source, manifest, used, recorded, true, overridden, func(_ string, override *rules.Source) bool {
 		return moves(override)
 	}, options)
 	return rows, err

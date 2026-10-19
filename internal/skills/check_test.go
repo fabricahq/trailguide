@@ -53,9 +53,7 @@ func TestCheckReportsEachProblemInAnAuthoredSkillsFrontmatter(t *testing.T) {
 		"skill by name only": {with(func(m *skills.Metadata) { m.SkillsUsed = []string{"tdd"} }), false, []string{
 			`trailguide-skills-used names "tdd"; expected skills/ and a skill's name, such as skills/tdd`,
 		}},
-		"qualified skill in a library": {with(func(m *skills.Metadata) { m.SkillsUsed = []string{"fabrica:skills/tdd"} }), false, []string{
-			`trailguide-skills-used names "fabrica:skills/tdd"; name a skill in this library by its ID, without a source name, such as skills/tdd`,
-		}},
+		"curated skill in a library": {with(func(m *skills.Metadata) { m.SkillsUsed = []string{"anthropic:skills/skill-creator"} }), false, []string{}},
 		"qualified skill without an ID": {with(func(m *skills.Metadata) { m.SkillsUsed = []string{"fabrica:"} }), true, []string{
 			`trailguide-skills-used names "fabrica:"; expected a source name, a colon, and the skill's ID in that source, such as fabrica:skills/tdd`,
 		}},

@@ -196,7 +196,7 @@ func TestCuratedSkillsWildcardSkipsDotFolders(t *testing.T) {
 		{[]string{"*"}, []string{"pocock:skills/grilling"}},
 		{[]string{"*", "pocock:.claude/skills/local"}, []string{"pocock:.claude/skills/local", "pocock:skills/grilling"}},
 	} {
-		got, err := curatedSkills(manifest, rules.Source{Name: "team", Skills: test.include}, 1)
+		got, err := curatedSkills(manifest, rules.Source{Name: "team", Skills: test.include}, 1, nil)
 		ids := []string{}
 		for _, skill := range got["pocock"] {
 			ids = append(ids, skill.id)
@@ -204,5 +204,24 @@ func TestCuratedSkillsWildcardSkipsDotFolders(t *testing.T) {
 		if err != nil || !slices.Equal(ids, test.want) {
 			t.Errorf("include %v: curatedSkills = %v, %v; want %v", test.include, ids, err, test.want)
 		}
+	}
+}
+
+func TestCuratedSkillsAddsTheCuratedSkillsTheLibrarysSkillsUse(t *testing.T) {
+	manifest := &rules.Library{Skills: rules.SkillLevels{Required: []string{}, Recommended: []string{"anthropic:skills/skill-creator"}, Offered: []string{"pocock:skills/grilling"}}}
+	got, err := curatedSkills(manifest, rules.Source{Name: "team", Skills: []string{"pocock:skills/grilling"}}, 1, map[string][]string{"anthropic:skills/skill-creator": {"skills/add-skill"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]curatedSkill{
+		"anthropic": {{id: "anthropic:skills/skill-creator", level: "recommended", usedBy: []string{"skills/add-skill"}}},
+		"pocock":    {{id: "pocock:skills/grilling", level: "offered", included: true}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("curatedSkills = %+v; want %+v", got, want)
+	}
+	_, err = curatedSkills(manifest, rules.Source{Name: "team"}, 1, map[string][]string{"anthropic:skills/unlisted": {"skills/add-skill"}})
+	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses anthropic:skills/unlisted, which the library doesn't list at any level") {
+		t.Errorf("got %v; want the unlisted curated skill refused", err)
 	}
 }
