@@ -30,9 +30,11 @@ The split exists so that changes arrive only when someone chooses them. A teamma
 
 Sync does take something new in two cases. A source that's new to the project is taken as an update would take it, and a source whose `ref` you changed is taken at the new `ref`. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
 
-## Update your sources
+## Run an update and read the preview
 
-A full update checks every source at once. Most libraries publish changes in **library releases**: numbered snapshots, tagged `release/1`, `release/2`, and so on, that give each changed rule and skill a new version and a summary of what changed. Without a `ref`, a library source follows those releases, and update moves it to the newest one.
+Update never changes your project without showing you first. It prints a preview of every change, waits for you to read it, and applies nothing until you confirm. This section walks through that preview and what to look for in it.
+
+The versions and summaries in the preview come from **library releases**. A library publishes its changes in numbered releases, tagged `release/1`, `release/2`, and so on, and each release gives every changed rule and skill a new version and a one-line summary of what changed.
 
 From the project root, run:
 
@@ -78,23 +80,41 @@ When a rule moves through several versions, each summary starts with the version
 | `replaced` | The library changed a rule you [replaced with your own](/guides/select-rules/#replace-a-rule) since the version your rule is based on, its `basedOn`, which a fork records. The preview lists those changes. Without `basedOn`, it lists the changes since the version your project's lock records, which your rule may already have. Your rule doesn't change unless you replace it with a fork of the newest version. |
 | `pinned` | A newer version exists, but your [pin](#keep-a-rule-at-its-current-version) keeps the rule where it is. |
 
-When a library release changed [library-wide files](/reference/rule-versions/#what-a-version-covers), such as rule group descriptions or shared diagrams, the preview ends the source with a line such as `Shared files: release 3 -> 4`. The update brings them in even when no rule changes.
+At the end of a source's list, the preview may show a line such as `Shared files: release 3 -> 4`. Besides rules and skills, a library publishes files that every rule draws on, such as rule group descriptions and shared diagrams; see [What a version covers](/reference/rule-versions/#what-a-version-covers). This line means a newer release changed some of them, and the update brings them in even when no rule changes.
 
-Read the major changes, new rules, and retirements closely: each can change what your code must do. Skills appear in the same list; see [Update skills](#update-skills). For each replaced rule, check whether your own rule needs the same change. Then confirm, and the update applies exactly the changes the preview showed.
+### What to check before you confirm
 
-For a replaced rule you forked and never edited, or whose edits you no longer need, replace your rule with a fork of the newest version. In a terminal, answer `replace` when the update asks about the rule; it first names the files that replacing replaces or removes. In a script, pass `--update-fork team:<rule>` with `--yes`; the preview, without `--yes`, lists the files it would replace and those it would remove. Either writes the new fork exactly as [forking](/reference/cli/#fork-a-library-rule) that version would, at your rule's path, replaces your rule's asset directory, and sets the exclusion's `basedOn` to the version, all in the same step as the rest of the update. Your edits to the rule and its assets are overwritten, so commit them first; see [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
+Most rows need no action, but a few can change what your code must do, so read these closely:
 
-To keep your edits, merge the library's changes into your rule by hand instead, then set `basedOn` in `.trailguide/config.yaml` to the version you merged, so later updates list only newer changes. Trail Guide never moves `basedOn` on its own, because only you know whether your rule took the changes in.
+- **`major`:** code that followed the old version may break the new one.
+- **`new`:** your agents will start following a rule they didn't follow before.
+- **`retired`:** your agents will stop following the rule; check whether its replacement covers what you need.
 
-The preview lists a skill you [forked](/guides/install-skills/#fork-a-skill) as `replaced` too, when the source's copy changed since the commit your fork is based on, naming the files that changed. The update never changes your fork: compare the files, merge what you need, and set the exclusion's `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
+Skills appear in the same list, and work a little differently; see [Update skills](#update-skills). Rows marked `replaced` need a decision from you, described next.
+
+When you confirm, the update applies exactly the changes the preview showed, and nothing else.
+
+### Rules you replaced with your own
+
+You may have [replaced a library rule with your own rule](/guides/select-rules/#replace-a-rule), often by forking it: copying the library's rule into your project so you can edit it. Your rule doesn't follow the library, so when the library changes the original, the preview flags it as `replaced` and lists what changed. Update never touches your rule on its own; you choose one of two ways to bring it up to date.
+
+**Take the library's newest version, discarding your edits.** Choose this when you never edited your fork, or no longer need your edits. In a terminal, answer `replace` when the update asks about the rule; it first names the files it would replace or remove. In a script, pass `--update-fork team:<rule>` with `--yes`. Either way, your rule becomes a fresh fork of the newest version, exactly as [forking](/reference/cli/#fork-a-library-rule) that version would write it, its asset directory is replaced, and Trail Guide records the version you're now based on. Your edits are overwritten, so commit them first. See [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
+
+**Keep your edits and merge by hand.** Copy the library's changes you want into your rule. Then set the rule's `basedOn` in `.trailguide/config.yaml` to the version you merged. `basedOn` is how Trail Guide knows which library changes your rule already has: later previews list only the changes after it. Trail Guide never moves `basedOn` itself, because only you know whether you took the changes in.
+
+A [forked skill](/guides/install-skills/#fork-a-skill) works the same way. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed. Merge what you need, and set `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
 
 :::note[Preview]
 Forking skills comes in the next Trail Guide release.
 :::
 
-In a terminal, the command also asks about each new rule: add it, or exclude it. Excluding a rule asks for a reason and writes an [exclusion](/guides/select-rules/#exclude-a-rule), so the rule doesn't join now or on later updates. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes` to do the same.
+### New rules: add or exclude
 
-In a script or CI job, where there's no terminal to confirm in, the command only shows the preview. To apply it, pass `--yes`:
+When a library adds a rule to a rule group you include, your project takes it by default. If the rule doesn't fit your project, you can turn it down with an [exclusion](/guides/select-rules/#exclude-a-rule): a line in `.trailguide/config.yaml` that leaves the rule out, with the reason why, so later updates don't offer it again. In a terminal, the update asks about each new rule and asks for the reason if you exclude it. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes`.
+
+### Apply an update in a script or CI
+
+A script or CI job has no terminal to answer the confirmation, so there the command only prints the preview and changes nothing. To apply the update without being asked, pass `--yes`:
 
 ```sh
 trailguide project update --yes
@@ -247,7 +267,7 @@ A skill that becomes required while your project excludes or forks it stops the 
 
 ## Update a non-library source
 
-A **non-library source** is a Git repository of skills without a library manifest, such as a third party's skill collection. It has no versions, change notes, or library releases, so it must name a `ref`, and an update follows that `ref` instead. See [Non-library sources](/reference/imports/#non-library-sources).
+A **non-library source** is any Git repository of skills that hasn't adopted Trail Guide, that is, one without a Trail Guide library manifest. Most skill collections you'll find, such as a third party's, are non-library sources. Because such a repository publishes no library releases, its skills have no versions or change notes, so the source must name a `ref`, and an update follows that `ref` instead. See [Non-library sources](/reference/imports/#non-library-sources).
 
 When its `ref` names a branch, the update moves it to the newest commit on the branch. The preview shows the commit it moves from and to, then lists each installed skill folder that changed between the two, with the files that changed:
 

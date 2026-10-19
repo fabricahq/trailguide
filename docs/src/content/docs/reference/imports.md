@@ -37,7 +37,7 @@ Installed skills live outside it, in the target folders at the repository root. 
 Sources have no declared type. Trail Guide decides each time it fetches one:
 
 - A repository with a [library manifest](/reference/library-format/#the-manifest) in `.trailguide/config.yaml` is a **library**. It publishes rules, rule groups, and skills from its Trail Guide directory, sets skill levels, and, once it has `release/<number>` tags, versioned rules and skills.
-- A repository without one is a **non-library source**. It supplies skills only, and every skill in it is offered. See [Non-library sources](#non-library-sources).
+- A repository without one is a **non-library source**: any repository of skills that hasn't adopted Trail Guide. It supplies skills only, and every skill in it is offered. See [Non-library sources](#non-library-sources).
 
 A source without `release/<number>` tags must have a `ref`, so Trail Guide never takes a repository from an unknown revision. `trailguide project add source` adds either kind; see [project add source](/reference/cli/#project-add-source).
 
