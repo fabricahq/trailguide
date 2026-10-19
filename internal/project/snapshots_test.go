@@ -325,7 +325,7 @@ func TestSnapshotRecordRelationships(t *testing.T) {
 		{"older release", func(r map[string]any) { r["release"] = 1 }},
 		{"invalid commit", func(r map[string]any) { r["resolvedCommit"] = "main" }},
 		{"changed ref", func(r map[string]any) { r["ref"] = "v2.0.0" }},
-		{"invalid ref", func(r map[string]any) { r["ref"] = "refs/heads/main" }},
+		{"invalid ref", func(r map[string]any) { r["ref"] = "refs/remotes/origin/main" }},
 		{"changed selection", func(r map[string]any) { r["groupSelection"] = "*" }},
 		{"missing group", func(r map[string]any) { r["groups"] = []string{} }},
 		{"duplicate group", func(r map[string]any) { r["groups"] = []string{"techs/go", "techs/go"} }},

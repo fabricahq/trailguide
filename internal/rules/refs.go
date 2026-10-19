@@ -1,4 +1,4 @@
-// Classify exact Git refs and validate strict semantic-version tags without Git access.
+// Classify Git refs and validate strict semantic-version tags without Git access.
 
 package rules
 
@@ -10,20 +10,24 @@ import (
 	"github.com/fabricahq/trailguide/internal/decode"
 )
 
-// GitRefKind distinguishes a complete commit SHA from an exact tag name.
+// GitRefKind distinguishes a complete commit SHA, a tag name, and a branch name.
 type GitRefKind string
 
 const (
 	GitRefCommit GitRefKind = "commit"
+	// GitRefTag is a tag written with refs/tags/, or a bare name, such as main or release/5, which a repository can
+	// resolve as a branch instead; see GitRef.Bare.
 	GitRefTag    GitRefKind = "tag"
+	GitRefBranch GitRefKind = "branch"
 )
 
-// GitRef is a validated, exact revision: a full commit SHA or a tag, without establishing that it exists. It keeps
-// the text as authored for display and records, and compares by its canonical form. Outside this package, only
+// GitRef is a validated revision: a full commit SHA, a tag, or a branch, without establishing that it exists. It
+// keeps the text as authored for display and records, and compares by its canonical form. Outside this package, only
 // ParseGitRef and UnmarshalText build a nonzero GitRef, so every nonzero one is valid. The zero value means no ref.
 type GitRef struct {
 	kind GitRefKind
-	// canonical is the lowercase 40-digit SHA of a commit, or a tag's full name, including refs/tags/.
+	// canonical is the lowercase 40-digit SHA of a commit, or the full name of a tag, including refs/tags/, or of a
+	// branch, including refs/heads/. A bare name's is its tag's.
 	canonical string
 	// text is the ref as authored, such as release/5 or an uppercase SHA.
 	text string
@@ -32,11 +36,27 @@ type GitRef struct {
 // IsZero reports whether the ref is the zero value, which means no ref.
 func (r GitRef) IsZero() bool { return r.kind == "" }
 
-// Kind returns GitRefCommit or GitRefTag, or "" for the zero value.
+// Kind returns GitRefCommit, GitRefTag, or GitRefBranch, or "" for the zero value. A bare name is GitRefTag.
 func (r GitRef) Kind() GitRefKind { return r.kind }
 
-// Canonical returns the lowercase SHA of a commit, or a tag's full name including refs/tags/, which Git resolves
-// exactly; it is empty for the zero value.
+// Bare reports whether the ref is a name written without refs/tags/ or refs/heads/, such as main or release/5. Only
+// the repository decides whether such a name is a tag or a branch, though Kind and Canonical describe it as a tag.
+func (r GitRef) Bare() bool {
+	return r.kind == GitRefTag && !strings.HasPrefix(r.text, "refs/tags/")
+}
+
+// Name returns a tag's or branch's name without refs/tags/ or refs/heads/, such as main; it is empty for a commit
+// and for the zero value.
+func (r GitRef) Name() string {
+	if r.kind == GitRefCommit {
+		return ""
+	}
+	_, name, _ := strings.Cut(strings.TrimPrefix(r.canonical, "refs/"), "/")
+	return name
+}
+
+// Canonical returns the lowercase SHA of a commit, or the full name of a tag, including refs/tags/, or of a branch,
+// including refs/heads/, which Git resolves exactly; it is empty for the zero value. A bare name's is its tag's.
 func (r GitRef) Canonical() string { return r.canonical }
 
 // String returns the ref as authored, such as release/5 even when it equals refs/tags/release/5; it is empty for
@@ -44,7 +64,7 @@ func (r GitRef) Canonical() string { return r.canonical }
 func (r GitRef) String() string { return r.text }
 
 // Equal reports whether two refs have the same canonical form, so release/5 equals refs/tags/release/5 and a
-// commit SHA equals its uppercase spelling. Two zero values are equal.
+// commit SHA equals its uppercase spelling, while main never equals refs/heads/main. Two zero values are equal.
 func (r GitRef) Equal(other GitRef) bool {
 	return r.kind == other.kind && r.canonical == other.canonical
 }
@@ -73,37 +93,38 @@ var (
 	unsafeRef      = regexp.MustCompile(`[\x00-\x20\x7f~^:?*\[\\]|\.\.|@\{`)
 )
 
-// ParseGitRef accepts a full commit SHA or an exact tag, optionally prefixed with
-// refs/tags/. A bare name such as main means a tag, never a branch. Abbreviated
-// commit-shaped tags require the explicit tag prefix. Errors return a zero GitRef.
-// Location is the caller's complete diagnostic field path, such as sources.team.ref.
+// ParseGitRef accepts a full commit SHA, a tag prefixed with refs/tags/, a branch prefixed with refs/heads/, or a
+// bare name, such as main, which a repository resolves as its tag or branch of that name. Abbreviated commit-shaped
+// names require a prefix. Errors return a zero GitRef. Location is the caller's complete diagnostic field path, such
+// as sources.team.ref.
 func ParseGitRef(ref, location string) (GitRef, error) {
 	if strings.TrimFunc(ref, decode.IsSpace) == "" {
 		return GitRef{}, invalid(location, "expected nonempty text")
 	}
 	if commitRef.MatchString(ref) {
 		if strings.Trim(ref, "0") == "" {
-			return GitRef{}, invalid(location, "the all-zero SHA names no commit; use a full commit SHA or a tag")
+			return GitRef{}, invalid(location, "the all-zero SHA names no commit; use a full commit SHA, a tag, or a branch")
 		}
 		return GitRef{kind: GitRefCommit, canonical: strings.ToLower(ref), text: ref}, nil
 	}
+	kind, prefix := GitRefTag, "refs/tags/"
 	if strings.HasPrefix(ref, "refs/heads/") {
-		return GitRef{}, invalid(location, ref+" is a branch; ref accepts a tag or a full commit SHA, not a branch")
+		kind, prefix = GitRefBranch, "refs/heads/"
 	}
-	tag := strings.TrimPrefix(ref, "refs/tags/")
-	if unsafeRef.MatchString(tag) || tag == "@" || strings.HasPrefix(tag, "-") ||
-		(strings.HasPrefix(ref, "refs/") && !strings.HasPrefix(ref, "refs/tags/")) {
-		return GitRef{}, invalid(location, "expected a full commit SHA or exact tag name")
+	name := strings.TrimPrefix(ref, prefix)
+	if unsafeRef.MatchString(name) || name == "@" || strings.HasPrefix(name, "-") ||
+		(strings.HasPrefix(ref, "refs/") && !strings.HasPrefix(ref, prefix)) {
+		return GitRef{}, invalid(location, "expected a full commit SHA, a tag, or a branch name")
 	}
-	for _, part := range strings.Split(tag, "/") {
+	for _, part := range strings.Split(name, "/") {
 		if part == "" || strings.HasPrefix(part, ".") || strings.HasSuffix(part, ".lock") || strings.HasSuffix(part, ".") {
-			return GitRef{}, invalid(location, "expected a full commit SHA or exact tag name")
+			return GitRef{}, invalid(location, "expected a full commit SHA, a tag, or a branch name")
 		}
 	}
 	if shortCommitRef.MatchString(ref) {
-		return GitRef{}, invalid(location, "abbreviated commits are unsupported; use a full commit SHA or a tag name, such as release/2")
+		return GitRef{}, invalid(location, "abbreviated commits are unsupported; use a full commit SHA, or a tag or branch name, such as release/2 or main")
 	}
-	return GitRef{kind: GitRefTag, canonical: "refs/tags/" + tag, text: ref}, nil
+	return GitRef{kind: kind, canonical: prefix + name, text: ref}, nil
 }
 
 const (

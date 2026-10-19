@@ -69,6 +69,23 @@ func TestLibraryCheck_AcceptsCuratedSkillsTheirSourceHas(t *testing.T) {
 	}
 }
 
+func TestLibraryCheck_AcceptsCuratedSkillsFromABranch(t *testing.T) {
+	for _, ref := range []string{"main", "refs/heads/main"} {
+		out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: "+ref+"\nlibrary:\n  skills:\n    required: [pocock:skills/ops/deploy]\n")
+		if code != 0 || !strings.Contains(out, "Library is valid") {
+			t.Fatalf("%s: exit %d:\n%s%s", ref, code, out, diagnostic)
+		}
+	}
+}
+
+func TestLibraryCheck_NamesACuratedBranchItCannotResolve(t *testing.T) {
+	out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: trunk\nlibrary:\n  skills:\n    required: [pocock:skills/ops/deploy]\n")
+	want := "The library curates skills from its source pocock at ref trunk, which the repository doesn't resolve: the repository has no branch or tag trunk; check the ref, and whether a branch of that name was renamed or deleted. Fix sources.pocock.ref in .trailguide/config.yaml."
+	if code == 0 || !strings.Contains(out+diagnostic, want) {
+		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
+	}
+}
+
 func TestLibraryCheck_RejectsACuratedSkillItsSourceLacks(t *testing.T) {
 	out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  skills:\n    offered: [pocock:skills/ops/grill]\n")
 	want := "library.skills.offered names pocock:skills/ops/grill, which pocock doesn't have at stable; check the skill ID, or set sources.pocock.ref to a revision that has it"

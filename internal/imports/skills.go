@@ -163,8 +163,14 @@ func skillNotInRevision(source rules.Source, plan sourcePlan, field, id string) 
 	revision := revisionName(plan.release, plan.commit)
 	if plan.locked != "" && plan.locked == plan.commit {
 		next := fmt.Sprintf("Run trailguide project update %s, which moves the source to its newest library release, and takes the skill from it if it has it, or check the skill ID.", source.Name)
-		if !source.Ref.IsZero() {
-			next = fmt.Sprintf("To take the skill, set sources.%s.ref to a tag or commit that has it, then run trailguide project sync, or check the skill ID.", source.Name)
+		retag := fmt.Sprintf("set sources.%s.ref to a tag or commit that has it, then run trailguide project sync, or check the skill ID.", source.Name)
+		switch {
+		case plan.nonLibrary && source.Ref.Kind() == rules.GitRefBranch:
+			next = fmt.Sprintf("Run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it, or check the skill ID.", source.Name)
+		case plan.nonLibrary && source.Ref.Bare():
+			next = fmt.Sprintf("If sources.%s.ref names a branch, run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it. Otherwise, %s", source.Name, source.Name, retag)
+		case !source.Ref.IsZero():
+			next = "To take the skill, " + retag
 		}
 		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision vendor/%s/_source.json records for the source. Sync never moves a source, so it takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)
 	}

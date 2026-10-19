@@ -96,7 +96,7 @@ Skills don't belong to [rule groups](/concepts/groups/), and including a rule gr
 A repository gets skills from three places:
 
 - **Libraries.** A [library](/concepts/libraries/) publishes the skills in its `.trailguide/skills/` folder, and can list skills it **curates** from other repositories. It sets a level for each one; see [Skill levels](#skill-levels).
-- **Non-library sources.** Any Git repository with skill folders and no library manifest, such as a third party's skill collection. Every skill in it is offered. Because it has no library releases, its `ref` names a branch, tag, or commit, and Trail Guide records the exact commit.
+- **Non-library sources.** Any Git repository of skills that hasn't adopted Trail Guide, so it has skill folders but no library manifest, such as a third party's skill collection. Every skill in it is offered. Because it has no library releases, its `ref` names a branch, tag, or commit, and Trail Guide records the exact commit.
 - **Your repository.** Skills you author live in `.trailguide/skills/`.
 
 When a skill calls others in the same repository, Trail Guide installs them alongside it from that repository and revision.

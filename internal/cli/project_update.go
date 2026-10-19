@@ -22,7 +22,7 @@ import (
 // projectUpdateCommand previews newer rule versions and applies them after confirmation or with --yes.
 func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rule versions from libraries", Args: cobra.ArbitraryArgs}
-	cmd.Long = "Preview newer rule versions, new rules, and retirements from your libraries, then\napply them after you confirm. With no arguments, every source is updated.\nSOURCE, such as team, updates one library. SOURCE:RULE, such as\nteam:techs/go/errors, moves only that rule and adds no new rules. Sources that\nuse ref don't move.\n\nIn a terminal, update asks about each major change and retirement (adopt it, or\nkeep the current version with a pin), each new rule (add it, or exclude it), and\neach local rule that replaces a changed library rule (review the changes later,\nor replace your rule with a fork of the newest version, overwriting your edits),\nthen asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
+	cmd.Long = "Preview newer rule versions, new rules, and retirements from your libraries, then\napply them after you confirm. With no arguments, every source is updated.\nSOURCE, such as team, updates one library. SOURCE:RULE, such as\nteam:techs/go/errors, moves only that rule and adds no new rules. A source whose\nref is a branch moves to the branch's newest commit; a library source whose ref\nis a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement (adopt it, or\nkeep the current version with a pin), each new rule (add it, or exclude it), and\neach local rule that replaces a changed library rule (review the changes later,\nor replace your rule with a fork of the newest version, overwriting your edits),\nthen asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
 	f := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory}
 	cmd.PostRunE = f.finishPrompts
 	cmd.Flags().Bool("yes", false, "Apply the previewed changes without asking; required without a terminal or with --json")
@@ -390,6 +390,13 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 	for _, source := range sources {
 		out.WriteString(source.Name + "\n")
 		switch {
+		case source.FollowsRef && source.Commit != nil:
+			fmt.Fprintf(out, "  %s: %s -> %s\n", source.Ref, shortCommit(source.Commit.From), shortCommit(source.Commit.To))
+			if source.TagMoved {
+				fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, source.Ref)
+			}
+		case source.FollowsRef:
+			fmt.Fprintf(out, "  %s: no new commit.\n", source.Ref)
 		case source.Ref != "":
 			fmt.Fprintf(out, "  Imports %s with ref, so update doesn't move it.\n", source.Ref)
 		case len(source.Rules) == 0 && len(source.Skills) == 0 && source.SharedFiles == nil && len(source.Curated) == 0:

@@ -267,7 +267,7 @@ trailguide project add skill review-migration \
   --non-interactive
 ```
 
-The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Run `trailguide project build` to install it. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
+The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
 
 ## Personal skills with the same name
 

@@ -29,7 +29,7 @@ func TestAuthoringCLIProcess(t *testing.T) {
 			t.Fatalf("%v: exit%d stdout=%s stderr=%s", args, code, stdout, stderr)
 		}
 	}
-	for _, args := range [][]string{{"project", "add", "group", "techs/rust"}, {"project", "add", "source", "branch", "--repository", "https://github.com/acme/other", "--ref", "refs/heads/main"}} {
+	for _, args := range [][]string{{"project", "add", "group", "techs/rust"}, {"project", "add", "source", "remote", "--repository", "https://github.com/acme/other", "--ref", "refs/remotes/origin/main"}} {
 		stdout, stderr, code := runCLI(t, binary, directory, args...)
 		if code != 2 || stdout != "" || !strings.Contains(stderr, "usage") {
 			t.Fatal(args, code, stdout, stderr)

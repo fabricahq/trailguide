@@ -37,7 +37,7 @@ Installed skills live outside it, in the target folders at the repository root. 
 Sources have no declared type. Trail Guide decides each time it fetches one:
 
 - A repository with a [library manifest](/reference/library-format/#the-manifest) in `.trailguide/config.yaml` is a **library**. It publishes rules, rule groups, and skills from its Trail Guide directory, sets skill levels, and, once it has `release/<number>` tags, versioned rules and skills.
-- A repository without one is a **non-library source**. It supplies skills only, and every skill in it is offered. See [Non-library sources](#non-library-sources).
+- A repository without one is a **non-library source**: any repository of skills that hasn't adopted Trail Guide. It supplies skills only, and every skill in it is offered. See [Non-library sources](#non-library-sources).
 
 A source without `release/<number>` tags must have a `ref`, so Trail Guide never takes a repository from an unknown revision. `trailguide project add source` adds either kind; see [project add source](/reference/cli/#project-add-source).
 
@@ -107,7 +107,8 @@ Each source's `vendor/<source-name>/_source.json` records the library release or
 `trailguide project update` moves each source along its `ref`, previews every change, and applies it once you confirm:
 
 - A library without `ref` moves to its newest library release. Each rule moves to its newest version, unless it's [pinned](/reference/configuration/#pin-a-rule), and all of the source's skills move together.
-- A source whose `ref` names a branch moves to the branch's newest commit, and one whose `ref` names a tag moves to the tag's commit, warning when the tag moved. A commit never moves.
+- A non-library source whose `ref` names a branch moves to the branch's newest commit, and one whose `ref` names a tag moves to the tag's commit, warning when the tag moved. A commit never moves.
+- A library whose `ref` names a tag or commit stays there until you change `ref`. A library whose `ref` names a branch moves to the branch's newest commit, and warns that it takes changes the library hasn't released.
 - Each curated source a library lists is resolved again from the `ref` the library names, or from your own source for that repository.
 
 With the same configuration and recorded versions, Trail Guide produces the same paths and file contents. With unchanged vendored files, authored content, tool version, and rendering options, a build produces the same generated guidance and installed skills. Reordering sources or selectors in configuration does not change their generated order.
@@ -140,7 +141,7 @@ Generated rules link to retained terms under `generated/libraries/<source-name>/
 
 A source whose repository has no library manifest at the revision Trail Guide reads is a **non-library source**. It supplies only skills, and has no release tags, versions, or change notes:
 
-- **Revision.** `ref` is required. `trailguide project sync` reads the commit recorded in `_source.json`, and `trailguide project update` resolves `ref` again: a branch's newest commit, or a tag's commit. Either way, `_source.json` records the exact commit, and every skill from the source comes from it.
+- **Revision.** `ref` is required. `trailguide project sync` reads the commit recorded in `_source.json`, and `trailguide project update` resolves `ref` again: a branch's newest commit, or a tag's commit. A bare name, such as `main`, can name a branch or a tag. Either way, `_source.json` records the exact commit, and every skill from the source comes from it.
 - **Skills.** Each folder in the repository that has a `SKILL.md` file is a skill, offered at no level, with its folder's path from the repository root as its ID. Trail Guide copies each installed skill's folder, as Git tracks it, to its path under `vendor/<source-name>/`, such as `vendor/pstack/skills/architect/`.
 - **Calls.** A skill's `trailguide-skills-used` list names skills in the same repository. Declare calls it leaves out with [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls). Its `trailguide-rules-used` list is ignored, because the repository has no rules.
 - **Validation.** Lenient: where a skill doesn't follow the Agent Skills format, such as a `name` that doesn't match its folder, a missing `description`, or a link outside the skill's folder, sync warns and installs the skill as it is. The checks that protect your project still fail: unsafe paths, symbolic links, submodules, Git LFS pointers, and the [source limits](#source-limits-and-version-errors).
@@ -217,7 +218,7 @@ When resolving refs, finding versions, or finding license terms, Trail Guide can
 | Error | Meaning and next step |
 | --- | --- |
 | `ref-required` | The source has no `release/<number>` tags and no `ref`, such as a non-library source or a library that hasn't published its first library release. Set `ref` to a branch, tag, or commit, or ask the maintainer to publish a library release. |
-| `version-not-found` | A pin names a version the rule never published, the branch, tag, or commit in `ref` doesn't exist, or the server says it doesn't have a commit that `vendor/<source-name>/_source.json` records, because the library rewrote its history. Check the pin or `ref`. For a missing recorded commit, ask the library's maintainer to restore it, or set `ref` to a tag or commit the library still has; deleting `vendor/<source-name>/` and syncing is the last resort, because it chooses versions again. A fetch that fails for any other reason, such as a dropped connection, reports that reason's code instead, never this one. |
+| `version-not-found` | A pin names a version the rule never published, the branch, tag, or commit in `ref` doesn't exist, such as a branch that was renamed or deleted, or the server says it doesn't have a commit that `vendor/<source-name>/_source.json` records, because the library rewrote its history or someone force-pushed the branch. The message names the ref. Check the pin or `ref`. For a missing recorded commit of a source whose `ref` is a branch, or of a non-library source whose `ref` is a tag, run `trailguide project update SOURCE` to take the commit the ref names now. For any other library's missing recorded commit, ask the library's maintainer to restore it, or set `ref` to a tag or commit the library still has; deleting `vendor/<source-name>/` and syncing is the last resort, because it chooses versions again. A fetch that fails for any other reason, such as a dropped connection, reports that reason's code instead, never this one. |
 | `ambiguous-ref` | The source's `ref` is a bare name, such as `main`, that the source has as both a branch and a tag. Set `ref` to `refs/heads/<name>` for the branch or `refs/tags/<name>` for the tag. |
 | `unsupported-release-record` | A library release's [release record](/reference/rule-versions/#release-record) uses a newer format than this Trail Guide reads, because a later Trail Guide published it. Upgrade Trail Guide. |
 | `skill-not-in-revision` | Configuration includes a skill or rule that isn't in the source's recorded library release or commit, such as one published after the project's last update. Sync never moves a source; run `trailguide project update SOURCE` to move it. |

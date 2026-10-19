@@ -311,6 +311,36 @@ func TestUpdate_PreviewsLevelChangesAndInstallsNewRequiredSkills(t *testing.T) {
 	}
 }
 
+// A library source that follows its branch previews the level changes at the branch's newest commit, as one
+// without ref previews those of its newest library release.
+func TestUpdate_PreviewsLevelChangesOfALibraryOnABranch(t *testing.T) {
+	ctx := context.Background()
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"main"}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	releaseNewLevels(t, f)
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []imports.SkillLevelUpdate{{ID: "skills/audit", To: "required"}, {ID: "skills/review", From: "recommended", To: "required"}}
+	if got := preview.Sources[0].SkillLevels; !slices.Equal(got, want) {
+		t.Fatalf("level rows = %+v; want %+v", got, want)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedSkills(t, options); !slices.Equal(got, []string{"audit", "review", "ship"}) {
+		t.Fatalf("after update, installed %v; want the new required skills too", got)
+	}
+}
+
 // TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose keeps the only rule a scoped update moves, so the
 // skills stay at release/1 and the preview shows none of release/2's level changes.
 func TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose(t *testing.T) {

@@ -12,7 +12,8 @@ import (
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
-// projectedRef is a ref's canonical form as the fixtures describe it: a commit's lowercase SHA or a tag's full name.
+// projectedRef is a ref's canonical form as the fixtures describe it: a commit's lowercase SHA, or a tag's or branch's
+// full name.
 type projectedRef struct {
 	Kind rules.GitRefKind `json:"kind"`
 	SHA  string           `json:"sha,omitempty"`
@@ -128,6 +129,9 @@ func TestGitRef_EqualComparesCanonicalFormsAndStringKeepsTheSpelling(t *testing.
 		{"release/5", "release/6", false},
 		{"release/5", "refs/tags/release/50", false},
 		{strings.ToLower(sha), "refs/tags/" + strings.ToLower(sha), false},
+		{"refs/heads/main", "refs/heads/main", true},
+		{"main", "refs/heads/main", false},
+		{"refs/tags/main", "refs/heads/main", false},
 	} {
 		a, b := ref(t, test.a), ref(t, test.b)
 		if a.Equal(b) != test.equal || b.Equal(a) != test.equal {
@@ -157,14 +161,37 @@ func TestGitRef_JSONCarriesTheAuthoredText(t *testing.T) {
 	}
 	var decoded rules.GitRef
 	var validation *rules.ValidationError
-	if err := json.Unmarshal([]byte(`"refs/heads/main"`), &decoded); !errors.As(err, &validation) || !decoded.IsZero() {
-		t.Fatalf("decoded a branch: %#v, %v", decoded, err)
+	if err := json.Unmarshal([]byte(`"refs/remotes/origin/main"`), &decoded); !errors.As(err, &validation) || !decoded.IsZero() {
+		t.Fatalf("decoded a remote-tracking ref: %#v, %v", decoded, err)
+	}
+}
+
+// TestGitRef_BareAndNameTellHowANameWasWritten reports a name written without refs/tags/ or refs/heads/ as bare,
+// which a repository resolves as a tag or a branch, and names tags and branches without their prefix.
+func TestGitRef_BareAndNameTellHowANameWasWritten(t *testing.T) {
+	sha := "abcdef0123456789abcdef0123456789abcdef01"
+	for _, test := range []struct {
+		text, name string
+		bare       bool
+	}{
+		{"main", "main", true},
+		{"release/5", "release/5", true},
+		{"refs/tags/release/5", "release/5", false},
+		{"refs/heads/feature/skills", "feature/skills", false},
+		{sha, "", false},
+	} {
+		if got := ref(t, test.text); got.Bare() != test.bare || got.Name() != test.name {
+			t.Errorf("%q: bare %v, name %q; want %v, %q", test.text, got.Bare(), got.Name(), test.bare, test.name)
+		}
+	}
+	if none := (rules.GitRef{}); none.Bare() || none.Name() != "" {
+		t.Errorf("zero value: bare %v, name %q", none.Bare(), none.Name())
 	}
 }
 
 // TestGitRefErrorLocation checks that the caller owns the diagnostic path.
 func TestGitRefErrorLocation(t *testing.T) {
-	_, err := rules.ParseGitRef("refs/heads/main", "config.sources.other.ref")
+	_, err := rules.ParseGitRef("refs/remotes/origin/main", "config.sources.other.ref")
 	var validation *rules.ValidationError
 	if !errors.As(err, &validation) || validation.Location != "config.sources.other.ref" {
 		t.Fatalf("unexpected error location: %v", err)

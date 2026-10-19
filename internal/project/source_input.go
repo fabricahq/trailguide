@@ -21,8 +21,8 @@ type SourceInput struct {
 	Skills     []string
 }
 
-// ParseSourceRef returns the tag or full commit SHA, without surrounding whitespace, as a validated ref.
-// Branch names, abbreviated commits, and version ranges are rejected.
+// ParseSourceRef returns the branch, tag, or full commit SHA, without surrounding whitespace, as a validated ref.
+// Abbreviated commits and version ranges are rejected.
 func ParseSourceRef(input string) (rules.GitRef, error) {
 	return rules.ParseGitRef(strings.TrimSpace(input), "--ref")
 }

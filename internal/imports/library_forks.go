@@ -100,7 +100,7 @@ func withSourceRevision(ctx context.Context, name string, declared rules.Curated
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	revision, err := curatedSource{name: name, declared: declared, maintained: true}.resolve(ctx, repo)
+	revision, _, err := curatedSource{name: name, declared: declared, maintained: true}.resolve(ctx, repo)
 	if err != nil {
 		return err
 	}
