@@ -159,7 +159,7 @@ func PlanLocalSkill(ctx context.Context, name string, options Options) (*LocalSk
 
 // Commit rechecks the target before creating the skill's SKILL.md, a marked draft with description and kind, a
 // trailguide-skill-type or empty, in its frontmatter. It warns when a skill the project last installed from a source
-// has the same name, unless the configuration replaces that skill with this one, since sync and build then fail
+// has the same name, unless the configuration now excludes that skill, since sync and build then fail
 // until one of them is renamed or excluded.
 func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (AuthoringResult, error) {
 	if p == nil || p.name == "" {
@@ -186,7 +186,7 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 		}
 		for _, installed := range build.InstalledSkills(record) {
 			source, id, fromSource := strings.Cut(installed.ID, ":")
-			if installed.Name == p.name && fromSource && !replacedBy(config, source, id, skills.AuthoredID(p.name)) {
+			if installed.Name == p.name && fromSource && !excludes(config, source, id) {
 				clash = installed.ID
 				break
 			}
@@ -199,11 +199,13 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 	return result, err
 }
 
-// replacedBy reports whether config's source excludes its skill id, replacing it with the authored skill replacement.
-func replacedBy(config rules.Configuration, source, id, replacement string) bool {
+// excludes reports whether config's source excludes its skill id, so build no longer installs it, whatever the last
+// build's record lists.
+func excludes(config rules.Configuration, source, id string) bool {
 	for _, declared := range config.Sources {
 		if declared.Name == source {
-			return declared.SkillExclude[id].ReplacedBy == replacement
+			_, excluded := declared.SkillExclude[id]
+			return excluded
 		}
 	}
 	return false

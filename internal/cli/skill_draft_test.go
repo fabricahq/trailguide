@@ -122,3 +122,14 @@ func TestProjectAddSkill_WarnsWhenASourcesSkillHasTheName(t *testing.T) {
 		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
 	}
 }
+
+// TestProjectAddSkill_DoesNotWarnAboutASkillTheProjectNowExcludes skips a source's skill that the last build installed
+// but the configuration excludes, since the next build doesn't install it.
+func TestProjectAddSkill_DoesNotWarnAboutASkillTheProjectNowExcludes(t *testing.T) {
+	u, _ := newSkillForkFixture(t)
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    skills:\n      include: ['*']\n      exclude:\n        - id: skills/build-feature\n          reason: We write our own.\n")
+	out, diagnostic, code := u.run(t, "project", "add", "skill", "build-feature", "--description", "Build a feature our way.")
+	if code != 0 || strings.Contains(out, "skill-name-clash") {
+		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
+	}
+}
