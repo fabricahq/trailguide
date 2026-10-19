@@ -47,7 +47,7 @@ One update covers both the rules and the skills your project takes from a source
 | Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
 | What a change level describes | What your code must do. | What the skill does: its steps and inputs. |
 
-Skills update together because they often call one another, and skills from one revision always match. The rest of this section walks through rule changes; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
+Skills update together because they often call one another, and skills from one revision always match. The rest of this section explains the preview using rule rows; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
 
 ### Run the update
 
@@ -57,7 +57,7 @@ From the project root, run:
 trailguide project update
 ```
 
-The command previews every change in each source, with each [rule version](/concepts/rule/#how-a-rule-is-versioned)'s summary, then asks you to confirm:
+The command previews every change to the rules and skills in each source, with the summary of each new [version](/concepts/rule/#how-a-rule-is-versioned), then asks you to confirm:
 
 ```text
 team
@@ -81,7 +81,18 @@ team
   pinned    practices/testing/verify-backoff       1.3.0
             Newest version: 2.0.0.
             Reason: Waiting on the author's response to acme/.trailguide#45.
+  minor     skills/build-feature                   1.2.0 -> 1.3.0
+            Add a step that writes a failing test before each slice.
+            script changed: scripts/verify.sh
+  new       skills/tdd                             1.1.0
+            Write a failing test before each change.
+            Installed because skills/build-feature uses it.
+            script added: scripts/run-tests.sh
+
+Warning: some skills in this update add or change scripts. Trail Guide never runs them, but your agents may; read them before you confirm.
 ```
+
+Each source lists its rules first, then its skills. Here, `team` has seven rule rows and two skill rows: a newer version of `skills/build-feature`, and a new skill, `skills/tdd`, that it now uses.
 
 When a rule moves through several versions, each summary starts with the version it belongs to, such as `1.4.0: Add an example.`
 
