@@ -202,13 +202,13 @@ trailguide project update team:practices/testing/verify-retry-limits
 
 A pin can also move a rule to a specific version. Set `version`, and `trailguide project sync` moves the rule to exactly that version, up or down, when your recorded library release or an earlier one published it. For a later version, run `trailguide project update SOURCE`. To change what a rule says instead, [fork it](/reference/cli/#fork-a-library-rule) into your project's `.trailguide/rules/`. See [Pin a rule](/reference/configuration/#pin-a-rule) for the details.
 
-## Handle retirements
+## Handle retired rules and skills
 
 Libraries retire rules and skills that no longer earn their place, often because a broader one replaces them. A retirement removes guidance your agents relied on, so the preview shows it for you to check. A retired rule or skill appears with its last version, the summary explaining why, and its replacement if it has one. A rule never replaces a skill, or the reverse. If the library later retired the replacement too, the preview says so and names the rule that replaced it, if any.
 
-When you confirm, the rule is dropped, or the skill's installed folders are removed. For a rule with a replacement, read the replacement and check that your selectors include it. For a skill, check that you include its replacement. To keep using a skill the library retires, [fork it](/guides/install-skills/#fork-a-skill) before you apply the update.
+**Retired rules.** When you confirm, the rule is dropped and your agents stop following it. If it has a replacement, read the replacement and check that your selectors include it. To keep following the retired rule, choose to keep it when the update asks, or pin it to its last version before you confirm; once the retirement is applied, the rule is gone and can't be pinned. If you exclude, replace, or include by ID a rule that the library retires, that entry no longer does anything; sync and update warn about it so you can delete it. A fork of the retired rule stays. When the retired rule was the only source of its rule group's metadata, the update writes that metadata to `.trailguide/rules/<group-id>/_group.yaml`, so the fork keeps its rule group.
 
-To keep following a rule the library retires, choose to keep it when the update preview offers, or pin it to its last version before you confirm. Once the retirement is applied, the rule is gone and can't be pinned. If you exclude, replace, or include by ID a rule that the library retires, that entry no longer does anything; sync and update warn about it so you can delete it. A fork of the retired rule stays. When the retired rule was the only source of its rule group's metadata, the update writes that metadata to `.trailguide/rules/<group-id>/_group.yaml`, so the fork keeps its rule group.
+**Retired skills.** When you confirm, the skill's installed folders are removed. If it has a replacement, check that you include it. To keep using the skill, [fork it](/guides/install-skills/#fork-a-skill) before you apply the update.
 
 ## Update skills
 
