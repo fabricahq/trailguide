@@ -17,11 +17,19 @@ import (
 // skills/team/review, and skills/ops/ship, whose SKILL.md names it review, tagged stable.
 func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 	t.Helper()
+	return checkCuratingLibraryWith(t, config, nil)
+}
+
+// checkCuratingLibraryWith runs library check, with args, on a library whose config is config and whose authored
+// skills include skills, by path under .trailguide/skills/, besides review.
+func checkCuratingLibraryWith(t *testing.T, config string, skills map[string]string, args ...string) (string, string, int) {
+	t.Helper()
 	ctx := context.Background()
 	pocock, err := gitfixture.New(ctx, map[string][]byte{
 		"skills/ops/deploy/SKILL.md":  []byte("---\nname: deploy\ndescription: Deploy a service.\n---\n# Deploy\n"),
 		"skills/team/review/SKILL.md": []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n"),
 		"skills/ops/ship/SKILL.md":    []byte("---\nname: review\ndescription: Ship and review a change.\n---\n# Ship\n"),
+		"skills/grill/SKILL.md":       []byte("---\nname: grill\ndescription: Grill a plan.\n---\n# Grill\n"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -35,10 +43,14 @@ func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	for name, text := range map[string]string{
+	files := map[string]string{
 		".trailguide/config.yaml":            config,
 		".trailguide/skills/review/SKILL.md": "---\nname: review\ndescription: Review a pull request.\n---\n# Review\n",
-	} {
+	}
+	for name, text := range skills {
+		files[".trailguide/skills/"+name] = text
+	}
+	for name, text := range files {
 		file := filepath.Join(directory, name)
 		if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 			t.Fatal(err)
@@ -47,7 +59,7 @@ func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 			t.Fatal(err)
 		}
 	}
-	return runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "check")
+	return runCLIWithEnvironment(t, buildCLI(t), directory, environment, append([]string{"library", "check"}, args...)...)
 }
 
 func TestLibraryCheck_AcceptsCuratedSkillsTheirSourceHas(t *testing.T) {

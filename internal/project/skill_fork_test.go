@@ -430,7 +430,8 @@ func TestForkedSkillFile_NamesTheSourceInAForkedSkillsCitations(t *testing.T) {
 	}{
 		{"library", cited, true, nil, qualified},
 		{"repository that isn't a library", cited, false, nil, strings.Replace(qualified, "team:practices/testing/tdd", "practices/testing/tdd", 1)},
-		{"nothing to qualify", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n"},
+		{"curated skill", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    anthropic:skills/skill-creator\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:anthropic:skills/skill-creator\n---\n"},
+		{"nothing to qualify", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n", false, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n"},
 		{"quoted list", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: \"skills/tdd\"\n  trailguide-skill-type: playbook\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:skills/tdd\n  trailguide-skill-type: playbook\n---\n"},
 		{"plain list on two lines", "---\nname: fix-bug\nmetadata:\n    trailguide-skills-used:\n      skills/tdd\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n    trailguide-skills-used: |\n      team:skills/tdd\n---\n"},
 		{"configured uses", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    skills/tdd\n---\n", true, []string{"skills/plan", "skills/tdd"}, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:skills/tdd\n    team:skills/plan\n---\n"},
