@@ -744,7 +744,11 @@ func unreleasedWarning(source rules.Source, imported map[string]library.Imported
 		listed = " Unreleased rules: " + strings.Join(unreleased, ", ") + "."
 	}
 	if branch {
-		return fmt.Sprintf("Source %s follows the library's branch %s, so it takes changes the library hasn't released: rules and skills changed since its last library release have no version or change notes, and update can't ask whether to keep a major change or apply a pin to them. Remove sources.%s.ref to follow the library's releases instead.%s", source.Name, source.Ref, source.Name, listed)
+		changed := ""
+		if len(unreleased) > 0 {
+			changed = " Rules changed since the last release: " + strings.Join(unreleased, ", ") + "."
+		}
+		return fmt.Sprintf("Source %s follows the %s branch of its library. A library publishes its changes in releases: numbered snapshots with change notes that say what changed in each rule and skill. On %s, you get every change as soon as it's made, but rules and skills changed since the last release have no change notes. Remove sources.%s.ref to follow releases instead.%s", source.Name, source.Ref.Name(), source.Ref.Name(), source.Name, changed)
 	}
 	if listed == "" {
 		return ""

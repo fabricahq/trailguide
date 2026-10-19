@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/fabricahq/trailguide/internal/imports"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/test/gitfixture"
 )
 
@@ -226,7 +227,7 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	const warning = "Source skills follows the library's branch main, so it takes changes the library hasn't released"
+	const warning = "Source skills follows the main branch of its library. A library publishes its changes in releases"
 	if !slices.ContainsFunc(synced.Warnings, func(w string) bool { return strings.HasPrefix(w, warning) }) {
 		t.Fatalf("sync warnings = %q; want one that the source follows the library's branch", synced.Warnings)
 	}
@@ -234,7 +235,8 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 		t.Fatalf("sync recorded %s; want main's newest commit %s", got, want)
 	}
 	moved, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
-		".trailguide/skills/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		".trailguide/skills/review/SKILL.md":             []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		librarytree.RepositoryPath("techs/go/errors.md"): []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -265,6 +267,9 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 	}
 	if got := recordedCommit(t, options); got != moved || !strings.Contains(readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"), "carefully") {
 		t.Fatalf("update recorded %s; want %s and the skill from it", got, moved)
+	}
+	if rule := readRepositoryFile(t, options, ".trailguide/vendor/skills/rules/techs/go/errors.md"); !strings.Contains(rule, "wrapped") {
+		t.Fatalf("update left the vendored rule %q; want the rule from %s", rule, moved)
 	}
 }
 

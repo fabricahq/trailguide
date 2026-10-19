@@ -86,8 +86,8 @@ Taking one revision:
   repository without release/<number> tags needs --ref. Sync keeps the commit
   it recorded for a branch, and trailguide project update moves it to the
   branch's newest commit. A library source on a branch takes changes the
-  library hasn't released, without versions or change notes, and sync and
-  update warn about it. --ref can't be combined with pins. Abbreviated commits
+  library hasn't released, without change notes, and sync and update warn
+  about it. --ref can't be combined with pins. Abbreviated commits
   are not supported.
 
 After adding the source, fetch it, build guidance, and install its skills:

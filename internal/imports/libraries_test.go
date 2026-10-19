@@ -335,7 +335,7 @@ func TestImport_ABranchOfALibraryWarns(t *testing.T) {
 		if imported.Snapshot.Commit != f.LatestCommit || imported.Snapshot.Release != 0 || imported.Snapshot.NonLibrary {
 			t.Fatalf("%s imported %+v; want main's newest commit %s", ref, imported.Snapshot, f.LatestCommit)
 		}
-		want := "Source team follows the library's branch " + ref + ", so it takes changes the library hasn't released"
+		want := "Source team follows the main branch of its library. A library publishes its changes in releases"
 		if !slices.ContainsFunc(imported.Warnings, func(w string) bool { return strings.HasPrefix(w, want) }) {
 			t.Fatalf("%s warnings = %q; want one that the source follows the library's branch", ref, imported.Warnings)
 		}
