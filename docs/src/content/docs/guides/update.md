@@ -19,7 +19,7 @@ You need a project that already takes rules or skills from at least one source; 
 
 ## Sync and update
 
-Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**, kept in `.trailguide/vendor/`. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.
+Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**: one file per source, `.trailguide/vendor/<source-name>/_source.json`, which names the source's exact Git commit and the version of each rule and skill it took. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.
 
 Two commands work with the lock, and they have opposite jobs:
 
