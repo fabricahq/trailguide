@@ -206,7 +206,7 @@ fabrica
 
 - A move that installs a skill, such as `offered -> required`, or `offered -> recommended` when you include `recommended`, shows the skill as `added`, with the move on the line below.
 - A move that stops installing one, such as `recommended -> offered` when you don't name the skill, shows it as `removed`. To keep it, add its ID to the source's `skills.include` before you confirm.
-- When the skill's files change too, the move appears under its `changed` row, before the files.
+- When the skill's files change too, the move appears under its `changed` row, or its `replaced` row for a skill you forked, before the files.
 - A move that installs or removes nothing, such as `offered -> recommended` when you don't include `recommended`, gets a `level` row of its own, so you can decide whether to include the skill.
 
 A skill that becomes required while your project excludes or forks it stops the update: required skills can't be excluded or forked. The error names the library and your exclusion; remove the exclusion, or stop using the source. Levels don't chain: a project sees only the levels of the libraries it names as sources.

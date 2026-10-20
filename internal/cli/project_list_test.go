@@ -140,3 +140,18 @@ func TestFormatUpdatePreview_ShowsACuratedSkillsLevelChangeOnItsRow(t *testing.T
 		t.Fatalf("preview:\n%s\nwant:\n%s", out.String(), want)
 	}
 }
+
+func TestFormatUpdatePreview_ShowsAReplacedSkillsLevelChangeOnItsRow(t *testing.T) {
+	var out strings.Builder
+	from, to := strings.Repeat("1", 40), strings.Repeat("2", 40)
+	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{},
+		SkillLevels:    []imports.SkillLevelUpdate{{ID: "skills/review", From: "recommended", To: "offered"}},
+		ReplacedSkills: []imports.ReplacedSkillUpdate{{ID: "skills/review", LocalSkill: "skills/review", From: from, To: to, Files: []string{"SKILL.md"}}},
+	}})
+	if !strings.Contains(out.String(), "  replaced  skills/review  commit "+shortCommit(from)) || !strings.Contains(out.String(), "            level: recommended -> offered\n") {
+		t.Fatalf("preview doesn't show the level change under the replaced row:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "  level     skills/review") {
+		t.Fatalf("preview shows the replaced skill's level change on a row of its own too:\n%s", out.String())
+	}
+}

@@ -413,6 +413,7 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 		formatSkillRows(out, source.Skills, levels)
 		for _, row := range source.ReplacedSkills {
 			fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, imports.UpdateReplaced, idWidth, row.ID, commitSpan(row.From, row.To))
+			writeLevelLines(out, levels, row.ID)
 			for _, line := range replacedSkillDetails(row) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
@@ -438,6 +439,7 @@ func formatCuratedRows(out *strings.Builder, library string, rows []imports.Cura
 		formatSkillRows(out, row.Changes, levels)
 		for _, replaced := range row.Replaced {
 			fmt.Fprintf(out, "  %-*s  %s  %s\n", updateKindWidth, imports.UpdateReplaced, replaced.ID, commitSpan(replaced.From, replaced.To))
+			writeLevelLines(out, levels, replaced.ID)
 			for _, line := range replacedSkillDetails(replaced) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
@@ -445,16 +447,22 @@ func formatCuratedRows(out *strings.Builder, library string, rows []imports.Cura
 	}
 }
 
-// formatLevelRows lists the source's skill level changes that no skill row of the source or its curated sources
-// shows, since the skill's files don't change, as rows of their own with the skill ID, in a column idWidth wide,
+// formatLevelRows lists the source's skill level changes that no skill or replaced skill row of the source or its
+// curated sources shows, since the skill's files don't change, as rows of their own with the skill ID, in a column idWidth wide,
 // and the levels it moves between, each row's detail indented beneath it.
 func formatLevelRows(out *strings.Builder, source imports.SourceUpdate, idWidth int) {
 	shown := map[string]bool{}
 	for _, row := range source.Skills {
 		shown[row.ID] = true
 	}
+	for _, row := range source.ReplacedSkills {
+		shown[row.ID] = true
+	}
 	for _, curated := range source.Curated {
 		for _, row := range curated.Changes {
+			shown[row.ID] = true
+		}
+		for _, row := range curated.Replaced {
 			shown[row.ID] = true
 		}
 	}
@@ -465,6 +473,14 @@ func formatLevelRows(out *strings.Builder, source imports.SourceUpdate, idWidth 
 		}
 		fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, "level", idWidth, row.ID, levelSpan(row))
 		fmt.Fprintf(out, "%s%s\n", indent, levelDetail(row))
+	}
+}
+
+// writeLevelLines writes, indented under the row of skill id, the skill's level change from levels, if it has one.
+func writeLevelLines(out *strings.Builder, levels map[string]imports.SkillLevelUpdate, id string) {
+	if level, ok := levels[id]; ok {
+		indent := strings.Repeat(" ", 2+updateKindWidth+2)
+		fmt.Fprintf(out, "%slevel: %s\n%s%s\n", indent, levelSpan(level), indent, levelDetail(level))
 	}
 }
 
@@ -507,9 +523,7 @@ func formatSkillRows(out *strings.Builder, rows []imports.SkillUpdate, levels ma
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
 		fmt.Fprintf(out, "  %-*s  %s\n", updateKindWidth, row.Change, row.ID)
-		if level, ok := levels[row.ID]; ok {
-			fmt.Fprintf(out, "%slevel: %s\n%s%s\n", indent, levelSpan(level), indent, levelDetail(level))
-		}
+		writeLevelLines(out, levels, row.ID)
 		for _, line := range skillUpdateDetails(row) {
 			fmt.Fprintf(out, "%s%s\n", indent, line)
 		}
@@ -542,7 +556,10 @@ func answeredSkills(before, after project.UpdateResult) string {
 		for _, row := range source.SkillLevels {
 			idWidth = max(idWidth, len(row.ID))
 		}
-		formatLevelRows(&out, source, idWidth)
+		// This list leaves out the source's own replaced rows, so their level changes get rows of their own.
+		unreplaced := source
+		unreplaced.ReplacedSkills = nil
+		formatLevelRows(&out, unreplaced, idWidth)
 		formatCuratedRows(&out, source.Name, source.Curated, levels)
 	}
 	if warning := after.ScriptsWarning(); out.Len() > 0 && warning != "" {
