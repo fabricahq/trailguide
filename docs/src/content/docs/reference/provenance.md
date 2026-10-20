@@ -3,19 +3,11 @@ title: "Provenance"
 description: "Where to find a rule's or skill's source, version, level, replacement reason, and declared license."
 ---
 
-:::caution[Preview]
-This page describes the records Trail Guide writes for version 2 configuration and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 **Provenance** records where your project's rules and skills came from. The main file is `generated/provenance.json` in the **Trail Guide directory**, so its path from the project root is `.trailguide/generated/provenance.json`. It identifies the sources and versions your project uses, the source of each active rule and installed skill, the library that set each skill's level, and any replacements.
 
 Read it when you want to understand why a rule or skill is present, investigate a library update, or find out why your project replaced a rule or skill. Tools can also read the JSON to report this information. To find and follow the rules themselves, agents start with [the generated rule index](/reference/files/#where-agents-start).
 
 This page shows where the records live, how Trail Guide creates them, and how to trace a rule or skill back to its source.
-
-:::note[Preview]
-Skills, source record format 3, and the `kind`, `skillInclude`, `skills`, and `executable` fields, and the `upstream`, `replacementReason`, and `basedOn` fields of a skill, come in the next Trail Guide release.
-:::
 
 ## Where to look
 

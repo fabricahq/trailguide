@@ -3,10 +3,6 @@ title: "Adapt a third-party rule"
 description: "Package external guidance in a compatible library with one library-wide license and preserved attribution."
 ---
 
-:::caution[Preview]
-This guide uses the version 2 library layout, which isn't in a released version of Trail Guide yet. The released CLI reads the license declaration from `rule-library.yaml` and rules at the repository root.
-:::
-
 **Adapting a rule** means turning guidance from another source, such as a linter or style guide, into a Trail Guide rule. You can reuse useful advice even when its author hasn't published a compatible library. The adapted rule needs to preserve the original meaning, attribution, and applicable terms.
 
 In this guide, you'll adapt a JavaScript rule from ESLint Unicorn. You'll check the source and its terms, create a library for the adaptation, write the rule, and inspect the result in a consuming project.

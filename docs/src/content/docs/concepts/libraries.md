@@ -3,10 +3,6 @@ title: "Library"
 description: "Share rule groups and skills across projects, and set which skills each project gets."
 ---
 
-:::caution[Preview]
-This page describes the version 2 library layout and skill levels, which aren't in a released version of Trail Guide yet. The released CLI reads `rule-library.yaml` and rules at the repository root.
-:::
-
 A **library** is a repository whose manifest publishes its authored [rule groups](/concepts/groups/) and [skills](/concepts/skill/) for other repositories. Libraries let you share engineering practices across projects, within your organization, or with third parties.
 
 You can publish your team's rules and skills in a library, or take them from libraries others publish. Rules and skills needed by only one project can live in that project.
@@ -52,6 +48,10 @@ Running `trailguide project sync` downloads the included rules and skills, gener
 A project records the library release it took from each library, and the version of every rule and skill. Running `trailguide project update` moves them to newer versions and reports every one that changed, so each project takes updates on its own schedule. A project can also pin a rule to a version, with a reason, or include only specific rules instead of whole rule groups. Skills aren't pinned: all of a library's skills come from one library release, and move together when the project updates. See [Include rules](/guides/select-rules/), [Install skills](/guides/install-skills/), and [Update rules and skills](/guides/update/) for the steps.
 
 ## How a library publishes rules
+
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet: a library release versions rules only, and skills ship at the release's commit.
+:::
 
 A library doesn't have one version for all of its rules and skills. Each rule and skill has its own version ([rules](/concepts/rule/#how-a-rule-is-versioned), [skills](/concepts/skill/#how-a-skill-is-versioned)), so a project can see exactly which rules changed in a library release and whether work that complied with the previous version could fail the new one.
 

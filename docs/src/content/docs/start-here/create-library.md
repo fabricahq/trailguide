@@ -3,10 +3,6 @@ title: "Create your first library"
 description: "Write and validate one shared rule, then publish it for projects to take."
 ---
 
-:::caution[Preview]
-This walkthrough uses the version 2 library layout, with the manifest in `.trailguide/config.yaml`, which isn't in a released version of Trail Guide yet. The released CLI writes `rule-library.yaml` and keeps rules at the repository root.
-:::
-
 Let's publish rules that other projects can use. A **library** is a repository whose manifest publishes its rule groups, and optionally skills, for other projects to take. You maintain it independently of those projects. A **rule** is a Markdown file that explains one practice you want agents to follow.
 
 In this walkthrough, you'll:
@@ -17,10 +13,6 @@ In this walkthrough, you'll:
 4. Include the rule in a project and inspect the guidance its agents will read.
 
 You need [Trail Guide installed](/start-here/install/) and Git. You don't need to complete the project walkthrough first. Rules intended for only one codebase can live [in that project](/start-here/set-up-project/).
-
-:::note[Preview]
-This walkthrough uses the library layout of the next Trail Guide release, which keeps a library's files in `.trailguide/`. Released versions keep `rule-library.yaml` and rule folders at the repository root.
-:::
 
 ## 1. Create a repository for your library
 
