@@ -3,10 +3,6 @@ title: "Project"
 description: "The codebase that uses rules and skills, and the files Trail Guide adds to it."
 ---
 
-:::caution[Preview]
-This page describes the version 2 layout, which isn't in a released version of Trail Guide yet. The released CLI keeps a project's own rules in `.trailguide/local/`.
-:::
-
 A **project** is the codebase whose rules and skills Trail Guide manages, such as a web application, a service, or a CLI tool. The **project root** is that codebase's top-level directory.
 
 A project can use rules and skills written just for it, ones it takes from [libraries](/concepts/libraries/) and other repositories, or both. Each project chooses which ones to include and when to take updates. A repository can be a project and a library at once, with the same files.

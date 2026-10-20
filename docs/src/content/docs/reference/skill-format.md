@@ -3,10 +3,6 @@ title: "Skill format"
 description: "What Trail Guide accepts in a skill folder and its SKILL.md: IDs, frontmatter, metadata keys, links, files, and every library check."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This page describes how it will work.
-:::
-
 This page defines what Trail Guide accepts in a [skill](/concepts/skill/): its folder, its `SKILL.md` file, and the Trail Guide keys in its metadata. The same format applies to every skill a repository authors, whether it's a library, a project, or both. For how to write a skill well, see [Write a skill](/guides/write-skills/).
 
 A skill uses the [Agent Skills](https://agentskills.io) format. Trail Guide adds three optional `metadata` keys and checks the rest of the format as the Agent Skills specification defines it, so a skill that passes `trailguide library check` also works in tools that read Agent Skills directly.

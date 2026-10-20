@@ -3,10 +3,6 @@ title: "Rule group"
 description: "How rule groups organize rules and help agents find relevant guidance."
 ---
 
-:::caution[Preview]
-The `.trailguide/rules/` path on this page is the version 2 layout, which isn't in a released version of Trail Guide yet. The released CLI reads a library's rule groups at the repository root, and a project's own rule groups in `.trailguide/local/`.
-:::
-
 A **rule group** is a collection of related [rules](/concepts/rule/) and tells agents when to read them.
 
 Rule groups can live in a **library** for projects to take, or in a **project** for that project alone. Projects can combine rule groups from libraries with their own rules.

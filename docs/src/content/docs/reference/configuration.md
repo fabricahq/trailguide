@@ -3,10 +3,6 @@ title: "Configuration"
 description: "Fields in .trailguide/config.yaml, the one configuration file of every project and library."
 ---
 
-:::caution[Preview]
-This page describes version 2 configuration and branch refs, which aren't in a released version of Trail Guide yet. The released CLI reads version 1 configuration, and its `ref` takes only a tag or a full commit SHA.
-:::
-
 Every repository that uses Trail Guide has one configuration file, `.trailguide/config.yaml`. It records the repository's sources, the rules and skills it includes from each, its exceptions, and where to install skills. A repository whose configuration also has a [`library` section](#library-manifest) is a **library**, and publishes its authored rules and skills for other repositories. A repository can be a project, a library, or both, with the same file and the same [layout](/reference/files/).
 
 Initialize from the repository root. In Git repositories, other commands find the nearest Git root and use its `.trailguide/config.yaml`. Outside Git, run commands from the repository root. See [Working directories](/reference/cli/#working-directories).

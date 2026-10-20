@@ -3,10 +3,6 @@ title: "Include rules"
 description: "Choose rule groups and rules from libraries and adapt them to your project."
 ---
 
-:::caution[Preview]
-This guide uses version 2 configuration, which isn't in a released version of Trail Guide yet. The released CLI reads version 1 configuration, with `groups` and `rules` lists and authored rules in `.trailguide/local/`.
-:::
-
 You can **include rules** written by your team or others instead of writing every rule yourself. These rules come from **libraries**, repositories that publish rules for other projects to take.
 
 In this guide, you'll choose **rule groups** and rules to include, record your choices in `.trailguide/config.yaml`, and add any project-specific rules or exceptions. Then you'll generate and review the files your agent will read.

@@ -3,10 +3,6 @@ title: "Skill"
 description: "A reusable procedure that tells an agent what to do, step by step, and which rules each step applies."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This page describes how it will work.
-:::
-
 A **skill** is the AI skill you already know, officially a folder that follows the open [Agent Skills](https://agentskills.io) standard. It holds a `SKILL.md` file that tells an agent how to carry out one kind of task, plus any scripts, references, or assets it bundles.
 
 Skills are coarse-grained. A skill that builds a feature combines many practices, from where the code lives to how it's tested and verified, and not all of them apply every time. That makes skills good for playbooks, techniques, and coordinating a whole task, but clumsy as the only way to deliver guidance: you can't adopt, update, or version one practice inside a skill on its own.
@@ -132,6 +128,10 @@ A person can also install **personal skills** outside any repository, which thei
 Skill decisions layer in this order, each overriding the ones before it: a library, an org library, the project, then each person's personal skills. Required skills are a floor the project can't remove.
 
 ## How a skill is versioned
+
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet. This section describes the planned design; today a project's skills move with their source's revision and carry no version.
+:::
 
 A library skill has its own semantic version, which covers its whole folder and follows the same levels as a [rule's](/concepts/rule/#how-a-rule-is-versioned):
 

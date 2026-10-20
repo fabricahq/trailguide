@@ -5,17 +5,9 @@ description: "Layout, manifest, skill levels, curated skills, shared assets, and
 
 import { FileTree } from '@astrojs/starlight/components';
 
-:::caution[Preview]
-This page describes the version 2 layout and manifest, which aren't in a released version of Trail Guide yet. The released CLI reads `rule-library.yaml` and rules at the repository root.
-:::
-
 A **library** is a repository whose manifest publishes its authored **rule groups**, **skills**, and shared assets for other repositories. Libraries are useful because projects take from them: you write rules and skills once and reuse them in every codebase that needs them. A **project** is a repository that takes rules and skills for its own work. A repository can be both.
 
 Libraries live in Git repositories. This page covers what makes a repository a library. For the rule and rule group files inside it, see [Rule and rule group format](/reference/rule-format/); for skill folders, see [Skill format](/reference/skill-format/). For how each rule and skill is versioned, see [Rule and skill versions](/reference/rule-versions/).
-
-:::note[Preview]
-This page describes the library layout of the next Trail Guide release, which keeps a library's files in `.trailguide/`, the same directory a project uses. Released versions read `rule-library.yaml` and rule folders at the repository root; see [Libraries in the earlier layout](#libraries-in-the-earlier-layout).
-:::
 
 ## Library layout
 

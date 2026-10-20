@@ -3,10 +3,6 @@ title: "How sources work"
 description: "How a repository's sources become vendor snapshots, generated guidance, and installed skills, what changes when you update, and what Trail Guide supports."
 ---
 
-:::caution[Preview]
-This page describes version 2 configuration, skill support, and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 A **source** is a Git repository that your repository takes rules or skills from: a library, such as your organization's, or any other repository that holds skills.
 
 Sources let you reuse your team's engineering practices across projects without writing and maintaining the same rules and skills in each one. You can also take rules and skills from third-party libraries and repositories whose practices you want to follow. Each project chooses which rules and skills to include, adds its own, and replaces ones it includes to fit its needs.
