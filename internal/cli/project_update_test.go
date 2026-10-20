@@ -722,3 +722,68 @@ func TestUpdateReport_CountsARefreshedGuideAsAWrite(t *testing.T) {
 		t.Fatalf("report:\n%s", report.human)
 	}
 }
+
+// skillLevelSkill is a valid SKILL.md for the skill name.
+func skillLevelSkill(name string) []byte {
+	return []byte("---\nname: " + name + "\ndescription: Do " + name + ".\n---\n# " + name + "\n")
+}
+
+// TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow syncs a project that includes a library's recommended skills,
+// then publishes a release that stops recommending review, requires the new audit, and only recommends ship, and
+// checks that the preview shows each skill once: review and audit with their level changes beneath their rows, and
+// ship, which the update neither installs nor removes, on a level row of its own.
+func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
+	ctx := context.Background()
+	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
+		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
+		"techs/go/_group.yaml":               []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
+		"techs/go/errors.md":                 updateRule("errors 1.0.0"),
+		".trailguide/skills/ship/SKILL.md":   skillLevelSkill("ship"),
+		".trailguide/skills/review/SKILL.md": skillLevelSkill("review"),
+		".trailguide/skills/deploy/SKILL.md": skillLevelSkill("deploy"),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+		t.Fatal(err)
+	}
+	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
+	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    skills:\n      include: [recommended]\n")
+	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+	second := map[string][]byte{
+		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/audit"],"recommended":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`),
+		".trailguide/skills/audit/SKILL.md": skillLevelSkill("audit"),
+	}
+	if _, err := f.Commit(ctx, f.Worktree(), "Change levels", gitfixture.Library(second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+		t.Fatal(err)
+	}
+	out, diagnostic, code := u.run(t, "project", "update")
+	want := "team\n" +
+		"  added     skills/audit\n" +
+		"            level: none -> required\n" +
+		"            New required skill: it installs whatever skills.include says.\n" +
+		"  removed   skills/review\n" +
+		"            level: recommended -> offered\n" +
+		"            No longer recommended: it installs only when skills.include names it or has \"*\".\n"
+	if code != 0 || !strings.Contains(out, want) {
+		t.Fatalf("exit %d, stderr %q, stdout:\n%s\nwant it to contain:\n%s", code, diagnostic, out, want)
+	}
+	for _, id := range []string{"skills/audit", "skills/review", "skills/ship"} {
+		if strings.Count(out, id) != 1 {
+			t.Errorf("preview lists %s more than once:\n%s", id, out)
+		}
+	}
+	if !strings.Contains(out, "  level     skills/ship    required -> recommended\n            No longer required: it stays installed only when skills.include selects it.\n") {
+		t.Errorf("preview lacks ship's own level row:\n%s", out)
+	}
+}

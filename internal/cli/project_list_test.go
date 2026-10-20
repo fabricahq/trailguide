@@ -34,19 +34,24 @@ skills/check-release  -         this project               installed
 
 func TestFormatUpdatePreview_ShowsSkillLevelChanges(t *testing.T) {
 	var out strings.Builder
-	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{}, SharedFiles: &imports.SharedFilesUpdate{From: 1, To: 2}, SkillLevels: []imports.SkillLevelUpdate{
+	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{}, SharedFiles: &imports.SharedFilesUpdate{From: 1, To: 2}, Skills: []imports.SkillUpdate{
+		{ID: "skills/audit", Change: imports.SkillAdded, Files: []string{}, Scripts: []imports.ScriptUpdate{}},
+	}, SkillLevels: []imports.SkillLevelUpdate{
 		{ID: "skills/audit", To: "required"},
 		{ID: "skills/review", From: "recommended", To: "required"},
 		{ID: "skills/ship", From: "required", To: "offered"},
 	}}})
 	for _, want := range []string{
-		"  level     skills/audit   none -> required\n            New required skill: it installs whatever skills.include says.\n",
+		"  added     skills/audit\n            level: none -> required\n            New required skill: it installs whatever skills.include says.\n",
 		"  level     skills/review  recommended -> required\n            Now required: it installs whatever skills.include says, and the project can't exclude or fork it.\n",
 		"  level     skills/ship    required -> offered\n            No longer required: it stays installed only when skills.include selects it.\n",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("preview lacks %q:\n%s", want, out.String())
 		}
+	}
+	if strings.Contains(out.String(), "level     skills/audit") {
+		t.Errorf("preview shows the added skill's level change on a row of its own too:\n%s", out.String())
 	}
 }
 
@@ -115,5 +120,38 @@ func TestFormatUpdatePreview_ShowsACuratedLibraryMovingBetweenReleases(t *testin
 	}}}})
 	if want := "team\n  team curates shared  release 3 -> 4\n"; out.String() != want {
 		t.Fatalf("preview:\n%s\nwant:\n%s", out.String(), want)
+	}
+}
+
+func TestFormatUpdatePreview_ShowsACuratedSkillsLevelChangeOnItsRow(t *testing.T) {
+	var out strings.Builder
+	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{},
+		SkillLevels: []imports.SkillLevelUpdate{{ID: "pocock:skills/to-spec", From: "offered", To: "recommended"}},
+		Curated: []imports.CuratedUpdate{{Name: "pocock", Ref: "stable",
+			Commit:  &imports.CommitMove{From: "1111111111111111111111111111111111111111", To: "2222222222222222222222222222222222222222"},
+			Changes: []imports.SkillUpdate{{ID: "pocock:skills/to-spec", Change: imports.SkillAdded, Files: []string{}, Scripts: []imports.ScriptUpdate{}}},
+		}}}})
+	want := "team\n" +
+		"  team curates pocock  stable: 111111111111 -> 222222222222\n" +
+		"  added     pocock:skills/to-spec\n" +
+		"            level: offered -> recommended\n" +
+		"            Now recommended: it installs when skills.include has recommended.\n"
+	if out.String() != want {
+		t.Fatalf("preview:\n%s\nwant:\n%s", out.String(), want)
+	}
+}
+
+func TestFormatUpdatePreview_ShowsAReplacedSkillsLevelChangeOnItsRow(t *testing.T) {
+	var out strings.Builder
+	from, to := strings.Repeat("1", 40), strings.Repeat("2", 40)
+	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{},
+		SkillLevels:    []imports.SkillLevelUpdate{{ID: "skills/review", From: "recommended", To: "offered"}},
+		ReplacedSkills: []imports.ReplacedSkillUpdate{{ID: "skills/review", LocalSkill: "skills/review", From: from, To: to, Files: []string{"SKILL.md"}}},
+	}})
+	if !strings.Contains(out.String(), "  replaced  skills/review  commit "+shortCommit(from)) || !strings.Contains(out.String(), "            level: recommended -> offered\n") {
+		t.Fatalf("preview doesn't show the level change under the replaced row:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "  level     skills/review") {
+		t.Fatalf("preview shows the replaced skill's level change on a row of its own too:\n%s", out.String())
 	}
 }

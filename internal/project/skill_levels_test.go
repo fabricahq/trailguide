@@ -449,3 +449,38 @@ func TestSync_ReplacesASkillItAlsoExcludesByLevel(t *testing.T) {
 		t.Fatalf("build after sync: %v", err)
 	}
 }
+
+// A level change that stops installing a skill shows on the skill's removed row, which the preview prints with the
+// level change beneath it.
+func TestUpdate_PreviewsALevelChangeThatRemovesASkillOnItsRow(t *testing.T) {
+	ctx := context.Background()
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["recommended"]}}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`)}
+	if _, err := f.Commit(ctx, f.Worktree(), "Stop recommending review", gitfixture.Library(files)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := preview.Sources[0]
+	if !slices.ContainsFunc(source.Skills, func(row imports.SkillUpdate) bool {
+		return row.ID == "skills/review" && row.Change == imports.SkillRemoved
+	}) {
+		t.Fatalf("skill rows = %+v; want review removed", source.Skills)
+	}
+	if want := []imports.SkillLevelUpdate{{ID: "skills/review", From: "recommended", To: "offered"}}; !slices.Equal(source.SkillLevels, want) {
+		t.Fatalf("level rows = %+v; want %+v", source.SkillLevels, want)
+	}
+}
