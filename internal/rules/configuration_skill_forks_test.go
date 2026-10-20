@@ -76,17 +76,17 @@ func TestParseConfigurationRejectsInvalidSkillExclusions(t *testing.T) {
 	const entry = "      exclude:\n        - id: skills/review\n          reason: Ours.\n"
 	const at = "sources.team.skills.exclude.skills/review"
 	tests := map[string]struct{ exclude, location, problem string }{
-		"not a list":         {"      exclude: skills/review\n", "sources.team.skills.exclude", "expected a list"},
-		"level replaced":     {"      exclude:\n        - id: recommended\n          reason: None.\n          replacedBy: skills/r\n", "sources.team.skills.exclude.recommended", "leaves out skills by level, so it takes only a reason"},
-		"level no reason":    {"      exclude:\n        - id: \"*\"\n", "sources.team.skills.exclude.*.reason", "expected nonempty text"},
-		"invalid ID":         {"      exclude:\n        - id: skills/../x\n          reason: None.\n", "sources.team.skills.exclude[0].id", "expected a skill ID"},
-		"repeated ID":        {entry + "        - id: skills/review\n          reason: Again.\n", at, "listed more than once"},
-		"missing reason":     {"      exclude:\n        - id: skills/review\n", at + ".reason", "expected nonempty text"},
-		"blank reason":       {"      exclude:\n        - id: skills/review\n          reason: \" \"\n", at + ".reason", "expected nonempty text"},
-		"unknown field":      {entry + "          version: 1.0.0\n", at, "version"},
-		"old fork shape":     {entry + "          replacedBy: skills/our-review\n          basedOn: \"" + commit + "\"\n", at, "skills.exclude no longer records forks"},
-		"basedOn alone":      {entry + "          basedOn: \"" + commit + "\"\n", at, "skills.exclude no longer records forks"},
-		"bare ID entry":      {"      exclude:\n        - skills/review\n", "sources.team.skills.exclude[0]", ""},
+		"not a list":      {"      exclude: skills/review\n", "sources.team.skills.exclude", "expected a list"},
+		"level replaced":  {"      exclude:\n        - id: recommended\n          reason: None.\n          replacedBy: skills/r\n", "sources.team.skills.exclude.recommended", "leaves out skills by level, so it takes only a reason"},
+		"level no reason": {"      exclude:\n        - id: \"*\"\n", "sources.team.skills.exclude.*.reason", "expected nonempty text"},
+		"invalid ID":      {"      exclude:\n        - id: skills/../x\n          reason: None.\n", "sources.team.skills.exclude[0].id", "expected a skill ID"},
+		"repeated ID":     {entry + "        - id: skills/review\n          reason: Again.\n", at, "listed more than once"},
+		"missing reason":  {"      exclude:\n        - id: skills/review\n", at + ".reason", "expected nonempty text"},
+		"blank reason":    {"      exclude:\n        - id: skills/review\n          reason: \" \"\n", at + ".reason", "expected nonempty text"},
+		"unknown field":   {entry + "          version: 1.0.0\n", at, "version"},
+		"old fork shape":  {entry + "          replacedBy: skills/our-review\n          basedOn: \"" + commit + "\"\n", at, "skills.exclude no longer records forks"},
+		"basedOn alone":   {entry + "          basedOn: \"" + commit + "\"\n", at, "skills.exclude no longer records forks"},
+		"bare ID entry":   {"      exclude:\n        - skills/review\n", "sources.team.skills.exclude[0]", ""},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
