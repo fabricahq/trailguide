@@ -101,10 +101,10 @@ func TestInstalledFoldersListsOnlySkillTargetFolders(t *testing.T) {
 }
 
 // replacementConfig parses a configuration whose source team, from a non-library repository, includes every skill
-// and has the skills.exclude entries in exclude, a JSON list.
-func replacementConfig(t *testing.T, exclude string) rules.Configuration {
+// and has the skills fields in fields, JSON object members such as "forks":{...}.
+func replacementConfig(t *testing.T, fields string) rules.Configuration {
 	t.Helper()
-	config, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":"https://example.invalid/team.git","ref":"main","skills":{"include":["*"],"exclude":` + exclude + `}}}}`))
+	config, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":"https://example.invalid/team.git","ref":"main","skills":{"include":["*"],` + fields + `}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,8 +123,8 @@ func skillSnapshot() map[string]build.Library {
 	}}}
 }
 
-func TestGenerateInstallsAReplacementInPlaceOfTheSkillItReplaces(t *testing.T) {
-	config := replacementConfig(t, `[{"id":"skills/review","reason":"Ours.","replacedBy":"skills/our-review","basedOn":"`+strings.Repeat("b", 40)+`"},{"id":"skills/fix","reason":"We fix in CI."}]`)
+func TestGenerateInstallsAForkInPlaceOfTheSkillItForks(t *testing.T) {
+	config := replacementConfig(t, `"exclude":[{"id":"skills/fix","reason":"We fix in CI."}],"forks":{"skills/review":{"as":"skills/our-review","reason":"Ours.","basedOn":"`+strings.Repeat("b", 40)+`"}}`)
 	local := map[string]build.SkillFiles{"skills/our-review": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: our-review\ndescription: Our review.\n---\n# Review\n")}}}
 	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{ToolVersion: "test", LocalSkills: local})
 	if err != nil {
@@ -135,7 +135,7 @@ func TestGenerateInstallsAReplacementInPlaceOfTheSkillItReplaces(t *testing.T) {
 	}
 	index := string(output.Files["SKILLS.md"])
 	for _, want := range []string{
-		"- **Replaces:** `team:skills/review`, which the project excludes, based on its copy at commit `" + strings.Repeat("b", 40) + "`\n- **Reason:** Ours.",
+		"- **Replaces:** `team:skills/review`, which the project forks, based on its copy at commit `" + strings.Repeat("b", 40) + "`\n- **Reason:** Ours.",
 		"## Excluded skills\n\nThe project's configuration excludes these skills, so they aren't installed.",
 		"- `team:skills/fix`: We fix in CI.",
 	} {
@@ -145,15 +145,40 @@ func TestGenerateInstallsAReplacementInPlaceOfTheSkillItReplaces(t *testing.T) {
 	}
 }
 
-func TestGenerateRejectsInvalidReplacements(t *testing.T) {
+func TestGenerateKeepsAForkOfASkillItsSourceDeleted(t *testing.T) {
+	config := replacementConfig(t, `"forks":{"skills/plan":{"as":"skills/plan","reason":"Ours."}}`)
+	local := map[string]build.SkillFiles{"skills/plan": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: plan\ndescription: Plan.\n---\n# Plan\n")}}}
+	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{ToolVersion: "test", LocalSkills: local})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output.Skills[".claude/skills/plan"].Files == nil || !strings.Contains(string(output.Files["SKILLS.md"]), "- **Replaces:** `team:skills/plan`, which the project forks") {
+		t.Fatalf("installed %v:\n%s", output.SkillIDs, output.Files["SKILLS.md"])
+	}
+}
+
+func TestGenerateRejectsInvalidForks(t *testing.T) {
 	local := map[string]build.SkillFiles{"skills/ours": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: ours\n---\n")}}}
-	for name, test := range map[string]struct{ exclude, location, problem string }{
-		"missing skill":     {`[{"id":"skills/plan","reason":"No."}]`, "sources.team.skills.exclude.skills/plan", "the source doesn't install skill skills/plan"},
-		"no authored skill": {`[{"id":"skills/review","reason":"No.","replacedBy":"skills/missing"}]`, "sources.team.skills.exclude.skills/review.replacedBy", "the project has no authored skill skills/missing; add .trailguide/skills/missing/SKILL.md"},
-		"one replacing two": {`[{"id":"skills/fix","reason":"No.","replacedBy":"skills/ours"},{"id":"skills/review","reason":"No.","replacedBy":"skills/ours"}]`, "sources.team.skills.exclude.skills/review.replacedBy", "skills/ours already replaces the skill sources.team.skills.exclude.skills/fix names"},
+	twoSources, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"sources":{"other":{"repository":"https://example.invalid/other.git","ref":"main","skills":{"forks":{"skills/fix":{"as":"skills/ours","reason":"No."}}}},"team":{"repository":"https://example.invalid/team.git","ref":"main","skills":{"forks":{"skills/review":{"as":"skills/ours","reason":"No."}}}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	libraries := skillSnapshot()
+	libraries["other"] = libraries["team"]
+	for name, test := range map[string]struct {
+		config            rules.Configuration
+		location, problem string
+	}{
+		"excluded missing skill": {replacementConfig(t, `"exclude":[{"id":"skills/plan","reason":"No."}]`), "sources.team.skills.exclude.skills/plan", "the source doesn't install skill skills/plan"},
+		"no authored skill":      {replacementConfig(t, `"forks":{"skills/review":{"as":"skills/missing","reason":"No."}}`), "sources.team.skills.forks.skills/review.as", "the project has no authored skill skills/missing; add .trailguide/skills/missing/SKILL.md"},
+		"one replacing two":      {twoSources, "sources.team.skills.forks.skills/review.as", "skills/ours already replaces the skill sources.other.skills.forks.skills/fix names"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := build.Generate(replacementConfig(t, test.exclude), skillSnapshot(), nil, build.Options{ToolVersion: "test", LocalSkills: local})
+			libraries := skillSnapshot()
+			if len(test.config.Sources) > 1 {
+				libraries["other"] = libraries["team"]
+			}
+			_, err := build.Generate(test.config, libraries, nil, build.Options{ToolVersion: "test", LocalSkills: local})
 			var validation errs.ValidationError
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location || !strings.Contains(validation.ValidationProblem(), test.problem) {
 				t.Fatalf("got %v; want %q at %s", err, test.problem, test.location)

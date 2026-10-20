@@ -3,10 +3,6 @@ title: "Rule and rule group format"
 description: "What Trail Guide accepts in rule files, rule group metadata, and supporting assets."
 ---
 
-:::caution[Preview]
-The `.trailguide/rules/` and `.trailguide/assets/` paths on this page are the version 2 layout, which isn't in a released version of Trail Guide yet. The released CLI reads a library's rule groups and shared assets at the repository root, and a project's own rule groups in `.trailguide/local/`.
-:::
-
 This page defines what Trail Guide accepts in a rule file and in rule group metadata. The same format applies to rules in a library and to a project's own rules. For how to write a rule well, see [Rule rubric and template](/reference/rule-authoring/).
 
 Each rule is a Markdown file, and related rules belong to a **rule group**: a directory under `.trailguide/rules/techs/` or `.trailguide/rules/practices/` that holds a `_group.yaml` file. [Library format](/reference/library-format/) covers where rule groups live in a library.

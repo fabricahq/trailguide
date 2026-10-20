@@ -23,7 +23,7 @@ func TestPlanSkillFork_ForksACuratedSkillAndUpdateListsItsSourcesChanges(t *test
 	}
 	forkSkill(t, b.options, "team:pocock:skills/ops/deploy", "We deploy with our pipeline.")
 	config := readRepositoryFile(t, b.options, ".trailguide/config.yaml")
-	for _, want := range []string{"pocock:skills/ops/deploy", "replacedBy: skills/deploy", b.pocock.FirstCommit} {
+	for _, want := range []string{"pocock:skills/ops/deploy", "as: skills/deploy", b.pocock.FirstCommit} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("config lacks %q:\n%s", want, config)
 		}
@@ -104,5 +104,36 @@ func TestUpdate_ACuratedForkWithoutBasedOnSurvivesARewrittenBranch(t *testing.T)
 	}
 	if _, err := plan.Apply(ctx, nil); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A curated repository can delete a skill its library still lists; a fork of it stays installed.
+func TestUpdate_KeepsAForkOfACuratedSkillItsRepositoryDeletes(t *testing.T) {
+	ctx := context.Background()
+	b := newCuratingFrom(t, "    recommended: [pocock:skills/ops/deploy]\n", `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"rules":{"include":["techs/go/*"]},"skills":{"include":["pocock:skills/ops/deploy"]}}}}`)
+	if _, err := Sync(ctx, b.options, b.git); err != nil {
+		t.Fatal(err)
+	}
+	forkSkill(t, b.options, "team:pocock:skills/ops/deploy", "We deploy with our pipeline.")
+	moved, err := b.pocock.Commit(ctx, b.pocock.Worktree(), "Delete deploy", map[string][]byte{"skills/ops/deploy/SKILL.md": nil, "skills/ops/deploy/scripts/deploy.sh": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.pocock.Command(ctx, "tag", "--force", "stable", moved); err != nil {
+		t.Fatal(err)
+	}
+	plan, preview := b.previewUpdate(t, imports.UpdateTarget{Source: "team"})
+	curated := preview.Sources[0].Curated
+	if len(curated) != 1 || len(curated[0].Replaced) != 1 || !curated[0].Replaced[0].Removed {
+		t.Fatalf("curated rows = %+v; want deploy's fork listed as removed upstream", curated)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if installed := readRepositoryFile(t, b.options, ".claude/skills/deploy/SKILL.md"); strings.Contains(installed, "team:pocock:skills/ops/deploy") {
+		t.Fatalf("installed the curated skill, not the fork:\n%s", installed)
+	}
+	if result, err := Check(ctx, b.options); err != nil || !result.Current() {
+		t.Fatalf("check = %+v, %v", result, err)
 	}
 }

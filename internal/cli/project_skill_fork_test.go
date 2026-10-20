@@ -63,7 +63,7 @@ func TestForkSkill_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 	out, diagnostic, code := u.run(t, "project", "add", "skill", "--from", "team:skills/build-feature", "--reason", "We build with make.", "--non-interactive")
 	want := "Skill forked from team:skills/build-feature at commit " + commit[:12] + ".\nAdded:\n  .trailguide/skills/build-feature/SKILL.md\n  .trailguide/skills/build-feature/scripts/run.sh\nChanged:\n  .trailguide/config.yaml\n\n" +
 		"Next: Edit the forked skill to change its steps. A fork has no version: it changes\nonly when you edit it. The source's license still applies to the copied files.\n" +
-		"config.yaml now excludes team:skills/build-feature and names skills/build-feature as its replacement,\nbased on commit " + commit[:12] + "; trailguide project update lists the source's later changes to it.\n\n" +
+		"config.yaml now forks team:skills/build-feature as skills/build-feature, based on commit " + commit[:12] + ";\ntrailguide project update lists the source's later changes to it.\n\n" +
 		"Then install the fork in place of the source's skill:\n  trailguide project build\n  trailguide project check\n"
 	if code != 0 || diagnostic != "" || out != want {
 		t.Fatalf("exit %d, stderr %q, stdout:\n%s\nwant:\n%s", code, diagnostic, out, want)
@@ -126,7 +126,7 @@ func TestForkSkill_RejectsMissingAndExtraInputs(t *testing.T) {
 		{[]string{"build-feature", "--from", "team:skills/build-feature"}, "trailguide project add skill takes a skill name or --from, not both: a fork keeps the source skill's name, so leave out build-feature."},
 		{[]string{"--from", "team:skills/build-feature", "--description", "Ours.", "--reason", "Ours."}, "--description doesn't apply to a fork, which keeps the source skill's frontmatter"},
 		{[]string{"--from", "skills/build-feature", "--reason", "Ours."}, `"skills/build-feature": expected SOURCE:SKILL`},
-		{[]string{"--from", "team:skills/build-feature"}, "--reason is required: the fork replaces team's skills/build-feature, and the exclusion that makes it the replacement records why"},
+		{[]string{"--from", "team:skills/build-feature"}, "--reason is required: the fork replaces team's skills/build-feature, and its skills.forks entry records why"},
 	} {
 		out, diagnostic, code := u.run(t, append([]string{"project", "add", "skill", "--non-interactive"}, test.args...)...)
 		if code != 2 || out != "" || !strings.Contains(diagnostic, test.message) {

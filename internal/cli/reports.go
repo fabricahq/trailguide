@@ -257,14 +257,14 @@ func formatForkedSkills(out *strings.Builder, rows []library.ForkedSkill) {
 		fmt.Fprintf(out, "  %s, forked from %s:%s at commit %s\n", row.Skill, row.Source, row.ID, shortCommit(row.BasedOn))
 		if row.Removed {
 			fmt.Fprintf(out, "    %s no longer has the skill at %s, commit %s.\n", row.Source, row.Revision, shortCommit(row.Commit))
-			fmt.Fprintf(out, "    To keep your fork as the library's own skill, remove %s from sources.%s.skills.include\n    and its entry from sources.%s.skills.exclude; this repository can't sync the source until you do.\n", row.ID, row.Source, row.Source)
+			fmt.Fprintf(out, "    Your fork stays the library's own skill. To stop comparing it with the source, remove\n    sources.%s.skills.forks.%s.basedOn.\n", row.Source, row.ID)
 			continue
 		}
 		fmt.Fprintf(out, "    Changed at %s, commit %s:\n", row.Revision, shortCommit(row.Commit))
 		for _, file := range row.Files {
 			fmt.Fprintf(out, "      %s\n", file)
 		}
-		fmt.Fprintf(out, "    Once your fork has the changes you want, set sources.%s.skills.exclude.%s.basedOn\n    to %q.\n", row.Source, row.ID, row.Commit)
+		fmt.Fprintf(out, "    Once your fork has the changes you want, set sources.%s.skills.forks.%s.basedOn\n    to %q.\n", row.Source, row.ID, row.Commit)
 	}
 	out.WriteString("  Compare them with your forks, which check leaves as they are.\n")
 }

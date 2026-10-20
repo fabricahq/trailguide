@@ -3,10 +3,6 @@ title: "Install skills"
 description: "Install skills from libraries and other repositories into the folders your agents read, and manage their levels, names, and exceptions."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **[skill](/concepts/skill/)** tells an agent how to carry out one kind of task, step by step, and which rules each step applies. Installing skills with Trail Guide gives every checkout of your project the same skills, from the revisions you choose, beside the rules they cite.
 
 Skills come from **sources**: the repositories your project takes skills and rules from. A source is usually a [library](/concepts/libraries/), but any Git repository of skill folders works too.
@@ -243,18 +239,18 @@ trailguide project add skill \
   --non-interactive
 ```
 
-The command copies the version your project installs into `.trailguide/skills/fix-bug/`, and adds an exclusion that names the fork:
+The command copies the version your project installs into `.trailguide/skills/fix-bug/`, and records the fork under the source:
 
 ```yaml
 skills:
-  exclude:
-    - id: skills/fix-bug
+  forks:
+    skills/fix-bug:
+      as: skills/fix-bug
+      basedOn: "9f2c4e1a7b3d5f60817a2b4c6d8e0f1a3b5c7d9e"
       reason: We use our own bug workflow.
-      replacedBy: skills/fix-bug
-      basedOn: "1.0.0"
 ```
 
-Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill. With `basedOn`, `trailguide project update` lists the library's later changes to the skill, so you can decide whether your fork needs them, or replace it with a fork of the newest version with `--update-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. See [project add skill](/reference/cli/#project-add-skill).
+Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill, which the project no longer installs. `basedOn` is the commit the fork copied. `trailguide project update` lists the library's later changes to the skill, so you can decide whether your fork needs them, or replace it with a fork of the newest version with `--update-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. See [project add skill](/reference/cli/#project-add-skill).
 
 ## Write your own skill
 

@@ -5,10 +5,6 @@ description: "The package manager for the agent skills and engineering rules age
 
 Trail Guide is the package manager for your agent skills and rules.
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This page describes how it will work.
-:::
-
 Most teams today use skills to guide their agents, but skills aren't always the ideal package for delivering guidance, and managing skills across repos, organizations, and your local environment can be tricky.
 
 Trail Guide solves these problems with two key insights:

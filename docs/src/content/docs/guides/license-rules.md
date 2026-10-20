@@ -3,10 +3,6 @@ title: "License rules"
 description: "Choose clear terms for rules and skills, and preserve them when projects take rules and install skills."
 ---
 
-:::caution[Preview]
-This guide uses the version 2 manifest and describes skill licensing, which aren't in a released version of Trail Guide yet. The released CLI reads the license declaration from `rule-library.yaml`.
-:::
-
 A library's **license** states the terms for using, copying, modifying, and sharing its rules and skills. Clear terms help projects understand what they can do with your guidance and what notices they need to keep.
 
 This guide walks through choosing what your terms should cover, declaring them in your library's manifest, and checking what Trail Guide preserves when projects take your rules. Trail Guide carries declared license text and notices with the rules; it does not choose a license or grant additional rights.

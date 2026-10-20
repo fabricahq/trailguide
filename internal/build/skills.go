@@ -84,9 +84,9 @@ type resolvedSkill struct {
 }
 
 // resolveSkills returns, sorted by project ID, the skills of every configured source's snapshot that the source
-// doesn't exclude, and the authored skills in local, keyed by ID, skills/<name>, each with the skill it replaces and
+// doesn't exclude or fork, and the authored skills in local, keyed by ID, skills/<name>, each with the skill it replaces and
 // the skills it uses and those that use it. It fails when a SKILL.md is missing or its frontmatter unreadable, when
-// an install name isn't valid, when an exclusion is invalid, as skillReplacements checks it, when a rename names a
+// an install name isn't valid, when an exclusion or fork is invalid, as skillReplacements checks it, when a rename names a
 // skill the source doesn't install, with *ClashError when two skills share an install name, after renames, and as
 // linkSkillUses does for an authored skill's uses. It also returns linkSkillUses' warnings about uses of skills the
 // project excludes without a replacement.
@@ -100,6 +100,9 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 		snapshot := libraries[source.Name].Snapshot
 		for _, id := range slices.Sorted(maps.Keys(snapshot.Skills)) {
 			if _, excluded := source.SkillExclude[id]; excluded {
+				continue
+			}
+			if _, forked := source.SkillForks[id]; forked {
 				continue
 			}
 			skill := sourceSkill(source, snapshot, id)
@@ -448,7 +451,7 @@ func replacementFacts(replacement *skillReplacement) []string {
 	if replacement == nil {
 		return nil
 	}
-	replaces := "- **Replaces:** `" + replacement.Upstream.ID + "`, which the project excludes"
+	replaces := "- **Replaces:** `" + replacement.Upstream.ID + "`, which the project forks"
 	if !replacement.BasedOn.IsZero() {
 		replaces += ", based on its copy at commit `" + replacement.BasedOn.Canonical() + "`"
 	}

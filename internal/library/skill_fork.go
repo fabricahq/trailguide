@@ -36,7 +36,7 @@ type SourceSkill struct {
 // for the source names differs from the copy the fork is based on.
 type ForkedSkill struct {
 	// Source names the library's source, ID is the skill's ID in it, and Skill the library's own skill that forks it,
-	// as the exclusion's replacedBy names it.
+	// as the fork's as names it.
 	Source string `json:"source"`
 	ID     string `json:"id"`
 	Skill  string `json:"skill"`
@@ -58,9 +58,9 @@ type ForkedSkill struct {
 type SkillReader func(ctx context.Context, name string, source rules.CuratedSource, id string) (SourceSkill, error)
 
 // ForkReader compares the skills the library forked from the source it declares under name with the source's copies
-// at the revision a SkillReader reads, given the source's exclusions that name a replacement, by skill ID, and
-// returns a row, sorted by ID, for each one that differs from the copy its fork is based on.
-type ForkReader func(ctx context.Context, name string, source rules.CuratedSource, forks map[string]rules.SkillExclusion) ([]ForkedSkill, error)
+// at the revision a SkillReader reads, given the source's forks, by skill ID, and returns a row, sorted by ID, for
+// each one that differs from the copy its fork is based on.
+type ForkReader func(ctx context.Context, name string, source rules.CuratedSource, forks map[string]rules.SkillFork) ([]ForkedSkill, error)
 
 // SkillForkPlan is a planned fork of a skill from a source the library declares. Planning reads the library and the
 // source without writing; Commit writes the fork.
@@ -73,7 +73,7 @@ type SkillForkPlan struct {
 	name  string
 	skill SourceSkill
 	// renamed reports whether the source's skills.rename gave the skill its install name; Commit then removes that
-	// entry, since the exclusion replaces it.
+	// entry, since the fork replaces it.
 	renamed bool
 	// listed reports that library.skills lists the skill as one the library curates from the source; Commit lists
 	// the fork in its place, at the same level.
@@ -89,9 +89,9 @@ type SkillForkPlan struct {
 // source, copied at the revision options.ReadSkill reads, into .trailguide/skills/<name>/, where name is the skill's
 // install name, the one the source's skills.rename gives it when it has one, without writing. The fork's SKILL.md
 // names the skill name, and its trailguide-skills-used names each skill of the source it uses as forkedLibrarySkill
-// does. It fails when the library doesn't declare the source, already excludes the skill, or already has an authored
-// skill with that name or another exclusion that names it as a replacement, since existing skills and exclusions are
-// never replaced; when options.ReadSkill fails, such as for a skill the source's library requires; when the skill
+// does. It fails when the library doesn't declare the source, already excludes or forks the skill, or already has an
+// authored skill with that name or another fork that installs as it, since existing skills, exclusions, and forks
+// are never replaced; when options.ReadSkill fails, such as for a skill the source's library requires; when the skill
 // cites rules of a source that is a library, which the library can't cite; and when its frontmatter can't be
 // rewritten, or the result fails the checks library check applies to the library's skills.
 func PlanSkillFork(ctx context.Context, source, id string, options Options) (*SkillForkPlan, error) {
@@ -169,7 +169,8 @@ func readLibraryConfiguration(ctx context.Context, root *os.Root) ([]byte, rules
 }
 
 // forkSource returns the source config declares under name, from which the library forks skill id. It fails when
-// there is none, when id names a skill that source's library curates, and when the source already excludes id.
+// there is none, when id names a skill that source's library curates, and when the source already excludes or forks
+// id.
 func forkSource(config rules.Configuration, name, id string) (rules.Source, error) {
 	index := slices.IndexFunc(config.Sources, func(source rules.Source) bool { return source.Name == name })
 	if index < 0 {
@@ -182,17 +183,20 @@ func forkSource(config rules.Configuration, name, id string) (rules.Source, erro
 	if _, excluded := source.SkillExclude[id]; excluded {
 		return rules.Source{}, &ValidationError{Location: "sources." + name + ".skills.exclude." + id, Problem: "the source already excludes this skill, and a fork never replaces an existing exclusion; delete the entry to fork the skill"}
 	}
+	if _, forked := source.SkillForks[id]; forked {
+		return rules.Source{}, &ValidationError{Location: "sources." + name + ".skills.forks." + id, Problem: "the library already forks this skill, and a fork never replaces an existing one; delete the entry and the fork's folder to fork the skill again"}
+	}
 	return source, nil
 }
 
-// requireForkTarget fails when the library already has the skill name in .trailguide/skills/, or an exclusion
-// already names that skill as its replacement.
+// requireForkTarget fails when the library already has the skill name in .trailguide/skills/, or another fork
+// already installs that skill.
 func requireForkTarget(ctx context.Context, root *os.Root, config rules.Configuration, name string) error {
 	id := skills.AuthoredID(name)
 	for _, source := range config.Sources {
-		for _, excluded := range slices.Sorted(maps.Keys(source.SkillExclude)) {
-			if source.SkillExclude[excluded].ReplacedBy == id {
-				return &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + excluded + ".replacedBy", Problem: fmt.Sprintf("this exclusion already names %s, the fork's folder, as its replacement, and each authored skill replaces one skill; remove that replacement first", id)}
+		for _, forked := range slices.Sorted(maps.Keys(source.SkillForks)) {
+			if source.SkillForks[forked].As == id {
+				return &ValidationError{Location: "sources." + source.Name + ".skills.forks." + forked + ".as", Problem: fmt.Sprintf("this fork already installs as %s, the new fork's folder, and each authored skill replaces one skill; remove that fork first", id)}
 			}
 		}
 	}
@@ -202,7 +206,7 @@ func requireForkTarget(ctx context.Context, root *os.Root, config rules.Configur
 // forkedLibrarySkill returns data, the SKILL.md of skill, by its ID in source, whose metadata is metadata, read at
 // location, as the library's fork, skills/<name>, needs it: naming the skill name, and naming once each skill that
 // its trailguide-skills-used, or source's skills.uses for it, names, as the library does: by the library's own fork
-// of it, when source's skills.exclude replaces it with one, and otherwise with the source's name, such as
+// of it, when source's skills.forks has one, and otherwise with the source's name, such as
 // pstack:skills/tdd, since in the library a bare ID names the library's own skill. library reports that the source
 // is a library, whose rules the fork can't cite, curated lists the skills the library's levels list, and commit is
 // the commit the fork copies. It fails when the skill cites such rules, names a skill its source curates from another
@@ -221,7 +225,7 @@ func forkedLibrarySkill(data []byte, metadata skills.Metadata, name string, sour
 			return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("%s names %s, a skill %s curates from another repository. The library can name it only by declaring that repository as a source of its own. %s", skills.SkillsUsedKey, id, source.Name, byHand)}
 		}
 		citation := source.Name + ":" + id
-		if fork := source.SkillExclude[id].ReplacedBy; fork != "" {
+		if fork := source.SkillForks[id].As; fork != "" {
 			citation = fork
 		} else if !slices.Contains(curated, citation) {
 			return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill uses %s, which the library neither forked nor lists, so projects couldn't install it with the fork. List %s in library.skills, at any level, or fork it first, so this fork uses your fork", citation, citation)}
@@ -247,7 +251,7 @@ func forkedLibrarySkill(data []byte, metadata skills.Metadata, name string, sour
 // forkLibrarySkillByHand tells how to fork the skill named name, from the source named source at commit, into the
 // library when the command can't.
 func forkLibrarySkillByHand(name, source, commit string) string {
-	return fmt.Sprintf("To fork the skill by hand, copy its folder into .trailguide/skills/%s/ and correct its frontmatter. Then add the skill to sources.%s.skills.include, and add an entry to sources.%s.skills.exclude with a reason, replacedBy: skills/%s, and basedOn: \"%s\"", name, source, source, name, commit)
+	return fmt.Sprintf("To fork the skill by hand, copy its folder into .trailguide/skills/%s/ and correct its frontmatter. Then add an entry for it to sources.%s.skills.forks with as: skills/%s, basedOn: \"%s\", and a reason", name, source, name, commit)
 }
 
 // Name returns the fork's name, which is the skill's install name, so its ID is skills/<name>.
@@ -263,9 +267,8 @@ func (p *SkillForkPlan) Listed() bool { return p.listed }
 // source's newest library release.
 func (p *SkillForkPlan) FollowsReleases() bool { return p.followsReleases }
 
-// Commit writes the fork under writer ownership, and, in the same edit, adds the skill to the source's
-// skills.include, unless it already selects it, with an exclusion of it with reason, the fork as replacedBy, and the commit it copied as basedOn, removing the skill's skills.rename entry,
-// and, when library.skills lists the skill the library curates, lists the fork in its place. It writes nothing when
+// Commit writes the fork under writer ownership, and, in the same edit, adds the skill to the source's skills.forks,
+// with the fork as as, the commit it copied as basedOn, and reason, removing the skill's skills.rename entry, and, when library.skills lists the skill the library curates, lists the fork in its place. It writes nothing when
 // reason is blank, when the configuration changed after planning, or when any of the fork's files exists.
 func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringResult, error) {
 	if p == nil || p.name == "" {
@@ -299,9 +302,9 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		if err := requireForkTarget(ctx, root, config, p.name); err != nil {
 			return nil, err
 		}
-		// The library repository is a project too: it includes the source's skill for its own use and replaces it
-		// with the fork, so the exclusion records where the fork came from, as a project's fork does.
-		edit := rules.SourceEdit{SkillInclude: []string{p.id}, SkillExclude: map[string]rules.SkillExclusion{p.id: {Reason: reason, ReplacedBy: skills.AuthoredID(p.name), BasedOn: basedOn}}}
+		// The library repository is a project too, and the fork records where the skill came from, as a project's
+		// fork does, so library check can compare it with the source's later copies.
+		edit := rules.SourceEdit{SkillForks: map[string]rules.SkillFork{p.id: {As: skills.AuthoredID(p.name), Reason: reason, BasedOn: basedOn}}}
 		if p.renamed {
 			edit.SkillUnrename = []string{p.id}
 		}
@@ -320,7 +323,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 }
 
 // forkedSkills compares the skills the library forked with the sources it forked them from, as manifest, its
-// configuration, records them in each source's skills.exclude, using forks, and returns a row for each that its
+// configuration, records them in each source's skills.forks, using forks, and returns a row for each that its
 // source changed since, by source in configuration order, then by ID. A nil forks compares nothing.
 func forkedSkills(ctx context.Context, manifest []byte, forks ForkReader) ([]ForkedSkill, error) {
 	rows := []ForkedSkill{}
@@ -332,10 +335,10 @@ func forkedSkills(ctx context.Context, manifest []byte, forks ForkReader) ([]For
 		return nil, err
 	}
 	for _, source := range config.Sources {
-		replaced := map[string]rules.SkillExclusion{}
-		for id, exclusion := range source.SkillExclude {
-			if _, _, curated := SplitCurated(id); !curated && exclusion.ReplacedBy != "" && !exclusion.BasedOn.IsZero() {
-				replaced[id] = exclusion
+		replaced := map[string]rules.SkillFork{}
+		for id, fork := range source.SkillForks {
+			if _, _, curated := SplitCurated(id); !curated && !fork.BasedOn.IsZero() {
+				replaced[id] = fork
 			}
 		}
 		if len(replaced) == 0 {

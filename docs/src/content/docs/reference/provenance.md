@@ -3,19 +3,11 @@ title: "Provenance"
 description: "Where to find a rule's or skill's source, version, level, replacement reason, and declared license."
 ---
 
-:::caution[Preview]
-This page describes the records Trail Guide writes for version 2 configuration and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 **Provenance** records where your project's rules and skills came from. The main file is `generated/provenance.json` in the **Trail Guide directory**, so its path from the project root is `.trailguide/generated/provenance.json`. It identifies the sources and versions your project uses, the source of each active rule and installed skill, the library that set each skill's level, and any replacements.
 
 Read it when you want to understand why a rule or skill is present, investigate a library update, or find out why your project replaced a rule or skill. Tools can also read the JSON to report this information. To find and follow the rules themselves, agents start with [the generated rule index](/reference/files/#where-agents-start).
 
 This page shows where the records live, how Trail Guide creates them, and how to trace a rule or skill back to its source.
-
-:::note[Preview]
-Skills, source record format 3, and the `kind`, `skillInclude`, `skills`, and `executable` fields, and the `upstream`, `replacementReason`, and `basedOn` fields of a skill, come in the next Trail Guide release.
-:::
 
 ## Where to look
 
@@ -134,7 +126,7 @@ Installed skills are in the top-level `skills` array, one entry per skill the pr
 | `uses` | The project IDs of the skills this one uses, from its `trailguide-skills-used` list and your configuration's `skills.uses`. When your project replaces one, the replacement's ID is listed. |
 | `rulesUsed` | The project IDs of the rules its `trailguide-rules-used` list names. Each of those rules' entries in `rules` lists this skill in `citedBy`. |
 | `targets` | The folders it's installed in, relative to the project root, as in `generated/installed-skills.json`. Empty when the project has no skill targets. |
-| `upstream`, `replacementReason`, and `basedOn` | For an authored skill that replaces one from a source, the replaced skill's origin, your configured reason, and the version or, for a non-library source, the commit your skill is based on; otherwise `null`. |
+| `upstream`, `replacementReason`, and `basedOn` | For a [fork](/reference/configuration/#fork-a-skill), the forked skill's origin, your configured reason, and the commit your skill is based on; otherwise `null`. |
 | `license` and `licenseBasis` | Declared terms, explained [below](#find-declared-licenses-and-source-credits). |
 
 ## Inspect library versions and rule group guidance

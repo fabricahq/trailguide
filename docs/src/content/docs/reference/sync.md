@@ -3,10 +3,6 @@ title: "Sync and recovery"
 description: "When to run sync, build, or check, which files they change, who owns installed skill folders, and how to recover from problems."
 ---
 
-:::caution[Preview]
-This page describes version 2 configuration, skill support, and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 The `trailguide project sync` command restores your repository's vendor snapshots, regenerates the guidance your agents read, and installs your repository's skills. Run it after adding a source, changing what you include from it, its pins, or its `ref`, changing `skillTargets`, or to restore vendored files.
 
 Sync takes each source from the library release or commit recorded for it, its lock, so it never moves a source. To move to newer versions, run `trailguide project update`, which previews every change and applies it only after you confirm, offering to pin each major rule change or retirement instead. See [Update rules and skills](/guides/update/).
@@ -121,7 +117,7 @@ Two errors protect folders Trail Guide doesn't own. Each fails before writing an
 
 | Error | Meaning and next step |
 | --- | --- |
-| `skill-folder-not-managed` | A target already has a folder with the install name of a skill the repository installs, and Trail Guide didn't install it, such as a hand-copied skill or another tool's. To let Trail Guide manage the skill, move or delete that folder and run the command again. To keep the folder, [rename](/reference/configuration/#rename-a-skill) or [exclude](/reference/configuration/#exclude-or-replace-a-skill) the skill instead. |
+| `skill-folder-not-managed` | A target already has a folder with the install name of a skill the repository installs, and Trail Guide didn't install it, such as a hand-copied skill or another tool's. To let Trail Guide manage the skill, move or delete that folder and run the command again. To keep the folder, [rename](/reference/configuration/#rename-a-skill) or [exclude](/reference/configuration/#exclude-a-skill) the skill instead. |
 | `skill-name-clash` | Two skills the repository installs have the same install name, such as `fabrica:skills/review` and `pstack:skills/review`, or a skill from a source and an authored skill. Installed folders are named by install name, so both can't be installed. [Rename](/reference/configuration/#rename-a-skill) or exclude one of them. Trail Guide never renames a skill on its own. |
 
 When `generated/installed-skills.json` is missing or was changed outside Trail Guide, Trail Guide can't tell which folders it owns, so it treats the folders it would write as not managed. Restore the record from Git, such as with `git checkout -- .trailguide/generated/installed-skills.json`, then run the command again.

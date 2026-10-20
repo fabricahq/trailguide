@@ -3,10 +3,6 @@ title: "Write a skill"
 description: "Turn a repeatable task into ordered steps that cite the rules each step applies, then check, version, and retire it."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **skill** tells an agent how to carry out one kind of task, step by step. Writing a skill turns a workflow you keep explaining, such as how your team fixes a bug or reviews tests, into steps every agent follows the same way. A useful skill names the task that should trigger it, orders the steps, and cites the rules each step applies.
 
 This guide covers deciding between a skill and a rule, creating a skill, writing and checking it, setting its level in a library, and versioning it. For every field and check, see [Skill format](/reference/skill-format/).
@@ -244,6 +240,10 @@ Levels are library-wide settings, like rule group metadata: changing one needs n
 
 ## Record a change note
 
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet, so `trailguide library change` records rule changes only. This section describes the planned workflow.
+:::
+
 Skills are versioned like rules. Before your library's first library release, skills need no change notes; the first library release gives every skill version `1.0.0`. After it, record every new or changed skill with `trailguide library change`, in the same pull request as the change.
 
 For a new skill, leave out `--bump`:
@@ -293,7 +293,7 @@ skills:
   skills/fix-bug: new
 ```
 
-In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and excluding the source's skill with `replacedBy: skills/<name>`; see [Configuration](/reference/configuration/#exclude-or-replace-a-skill). To remove one of your own skills, delete its folder and any exclusion that names it as `replacedBy`, then run `trailguide project build`.
+In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and adding a `skills.forks` entry for the source's skill with `as: skills/<name>`; see [Configuration](/reference/configuration/#fork-a-skill). To remove one of your own skills, delete its folder and any `skills.forks` entry that names it as `as`, then run `trailguide project build`.
 
 ## Next steps
 

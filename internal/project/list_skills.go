@@ -93,11 +93,12 @@ func ListSkills(ctx context.Context, options Options) (SkillListing, error) {
 			if skill.Level != "" {
 				skill.SetBy = &LevelSetter{Source: source.Name, Release: snapshot.Release, Commit: snapshot.Commit}
 			}
-			exclusion, excluded := source.SkillExclude[id]
+			fork, forked := source.SkillForks[id]
+			_, excluded := source.SkillExclude[id]
 			_, installed := snapshot.Skills[id]
 			switch {
-			case excluded && exclusion.ReplacedBy != "":
-				skill.Status, skill.ReplacedBy = SkillReplaced, exclusion.ReplacedBy
+			case forked:
+				skill.Status, skill.ReplacedBy = SkillReplaced, fork.As
 			case excluded:
 				skill.Status = SkillExcluded
 			case installed:
