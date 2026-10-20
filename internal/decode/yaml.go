@@ -5,7 +5,10 @@ package decode
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"unicode/utf8"
 
 	"go.yaml.in/yaml/v4"
@@ -14,7 +17,13 @@ import (
 // YAML decodes input like Document and also converts its content to JSON like JSON, for schemas that read every
 // field.
 func YAML(input []byte, location string) (*yaml.Node, []byte, error) {
-	document, err := Document(input, location)
+	return YAMLAt(input, location, 1)
+}
+
+// YAMLAt decodes input like YAML when input starts on line firstLine of its file, such as 2 for frontmatter after
+// its opening --- line, so that syntax errors give the file's line numbers.
+func YAMLAt(input []byte, location string, firstLine int) (*yaml.Node, []byte, error) {
+	document, err := document(input, location, firstLine)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -26,17 +35,22 @@ func YAML(input []byte, location string) (*yaml.Node, []byte, error) {
 // of an authored document: no anchors, aliases, explicit tags, or duplicate keys, scalar mapping keys, and at most
 // 32 levels of nesting. It interprets no scalar values, so callers can ignore fields whose values they can't read.
 func Document(input []byte, location string) (*yaml.Node, error) {
+	return document(input, location, 1)
+}
+
+// document decodes input like Document when input starts on line firstLine of its file.
+func document(input []byte, location string, firstLine int) (*yaml.Node, error) {
 	if !utf8.Valid(input) {
 		return nil, invalid(location, "expected UTF-8 YAML")
 	}
 	decoder := yaml.NewDecoder(bytes.NewReader(input))
 	var document yaml.Node
 	if err := decoder.Decode(&document); err != nil {
-		return nil, invalid(location, "expected one YAML document")
+		return nil, syntaxError(err, location, firstLine)
 	}
 	var extra yaml.Node
 	if err := decoder.Decode(&extra); err != io.EOF {
-		return nil, invalid(location, "expected one YAML document")
+		return nil, syntaxError(err, location, firstLine)
 	}
 	if len(document.Content) != 1 {
 		return nil, invalid(location, "expected a mapping")
@@ -45,6 +59,25 @@ func Document(input []byte, location string) (*yaml.Node, error) {
 		return nil, err
 	}
 	return &document, nil
+}
+
+// syntaxError reports err, which decoding input that starts on line firstLine of its file returned, at location: the
+// parser's message and position when err is a syntax error, and otherwise that the input isn't one YAML document,
+// as when it is empty or holds a second document.
+func syntaxError(err error, location string, firstLine int) error {
+	var load *yaml.LoadError
+	if !errors.As(err, &load) || load.Message == "" {
+		return invalid(location, "expected one YAML document")
+	}
+	problem := "invalid YAML: " + load.Message
+	if load.Mark.Line > 0 {
+		problem = fmt.Sprintf("invalid YAML at line %d, column %d: %s", load.Mark.Line+firstLine-1, load.Mark.Column, load.Message)
+	}
+	// The parser reports an unquoted ": " inside a value, a common mistake in descriptions, this way.
+	if strings.HasPrefix(load.Message, "mapping values are not allowed") {
+		problem += "; quote a value that contains a colon followed by a space"
+	}
+	return invalid(location, problem)
 }
 
 // hygiene checks node and everything below it against Document's rules.
