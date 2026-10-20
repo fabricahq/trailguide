@@ -9,6 +9,10 @@ This guide starts with a full update and what it does to your [skills](#update-s
 
 You need a project that already takes rules or skills from at least one source; if yours doesn't yet, start with [Select rules](/guides/select-rules/) or [Install skills](/guides/install-skills/). If you're publishing new rule versions from a library you maintain, see [Version your rules](/guides/version-rules/). If you're looking for exactly which files each command writes, see [Sync and recovery](/reference/sync/).
 
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet: an update lists a library skill as changed or added, with its changed files, but without a version or summary.
+:::
+
 ## Sync and update
 
 Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**: one file per source, `.trailguide/vendor/<source-name>/_source.json`, which names the source's exact Git commit and the version of each rule and skill it took. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.

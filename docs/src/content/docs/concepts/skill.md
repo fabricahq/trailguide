@@ -129,6 +129,10 @@ Skill decisions layer in this order, each overriding the ones before it: a libra
 
 ## How a skill is versioned
 
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet. This section describes the planned design; today a project's skills move with their source's revision and carry no version.
+:::
+
 A library skill has its own semantic version, which covers its whole folder and follows the same levels as a [rule's](/concepts/rule/#how-a-rule-is-versioned):
 
 - **Major:** the skill now produces or requires something different, such as a removed or reordered step that people rely on, a new required input, or a new rule or skill it uses.
