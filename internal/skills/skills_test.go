@@ -86,6 +86,16 @@ func TestReadMetadataRejectsUnreadableFrontmatter(t *testing.T) {
 	}
 }
 
+func TestReadMetadataReportsTheYAMLErrorAtItsLineInTheFile(t *testing.T) {
+	input := "---\nname: ratchet-files\ndescription: Ratchet source file size: find every file over budget.\n---\n# Ratchet\n"
+	_, err := skills.ReadMetadata([]byte(input), "skills/ratchet-files/SKILL.md")
+	want := "invalid YAML at line 3, column 38: mapping values are not allowed in this context; quote a value that contains a colon followed by a space"
+	var invalid errs.ValidationError
+	if !errors.As(err, &invalid) || invalid.ValidationLocation() != "skills/ratchet-files/SKILL.md" || invalid.ValidationProblem() != want {
+		t.Fatalf("ReadMetadata = %v; want skills/ratchet-files/SKILL.md: %s", err, want)
+	}
+}
+
 func TestInstallNameFallsBackToTheFolderName(t *testing.T) {
 	tests := []struct {
 		id       string
