@@ -293,7 +293,7 @@ skills:
   skills/fix-bug: new
 ```
 
-In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and excluding the source's skill with `replacedBy: skills/<name>`; see [Configuration](/reference/configuration/#exclude-or-replace-a-skill). To remove one of your own skills, delete its folder and any exclusion that names it as `replacedBy`, then run `trailguide project build`.
+In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and adding a `skills.forks` entry for the source's skill with `as: skills/<name>`; see [Configuration](/reference/configuration/#fork-a-skill). To remove one of your own skills, delete its folder and any `skills.forks` entry that names it as `as`, then run `trailguide project build`.
 
 ## Next steps
 

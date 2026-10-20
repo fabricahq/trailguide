@@ -126,7 +126,7 @@ Installed skills are in the top-level `skills` array, one entry per skill the pr
 | `uses` | The project IDs of the skills this one uses, from its `trailguide-skills-used` list and your configuration's `skills.uses`. When your project replaces one, the replacement's ID is listed. |
 | `rulesUsed` | The project IDs of the rules its `trailguide-rules-used` list names. Each of those rules' entries in `rules` lists this skill in `citedBy`. |
 | `targets` | The folders it's installed in, relative to the project root, as in `generated/installed-skills.json`. Empty when the project has no skill targets. |
-| `upstream`, `replacementReason`, and `basedOn` | For an authored skill that replaces one from a source, the replaced skill's origin, your configured reason, and the version or, for a non-library source, the commit your skill is based on; otherwise `null`. |
+| `upstream`, `replacementReason`, and `basedOn` | For a [fork](/reference/configuration/#fork-a-skill), the forked skill's origin, your configured reason, and the commit your skill is based on; otherwise `null`. |
 | `license` and `licenseBasis` | Declared terms, explained [below](#find-declared-licenses-and-source-credits). |
 
 ## Inspect library versions and rule group guidance

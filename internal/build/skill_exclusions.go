@@ -1,4 +1,4 @@
-// Apply the skills each source excludes, and pair each authored replacement with the skill it replaces.
+// Apply the skills each source excludes, and pair each fork with the skill it replaces.
 
 package build
 
@@ -10,12 +10,12 @@ import (
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
-// skillReplacement is what an authored skill replaces: a source's skill, which the project excludes and installs
-// the authored skill in place of.
+// skillReplacement is what an authored skill replaces: a source's skill, which the project forks, installing the
+// authored skill in its place.
 type skillReplacement struct {
-	// Upstream is the replaced skill as its source supplies it, without its files.
+	// Upstream is the forked skill as its source supplies it, without its files; its source needn't have it any more.
 	Upstream resolvedSkill
-	// Reason is the exclusion's reason, and BasedOn the commit the replacement was copied from, or the zero GitRef.
+	// Reason is the fork's reason, and BasedOn the commit the fork was copied from, or the zero GitRef.
 	Reason  string
 	BasedOn rules.GitRef
 }
@@ -27,8 +27,9 @@ type excludedSkill struct {
 }
 
 // skillReplacements returns, by authored skill ID, the skill each authored skill in local replaces. It fails when an
-// exclusion names a skill its source's snapshot doesn't hold, when a replacement isn't an authored skill, and when
-// one authored skill replaces two skills.
+// exclusion names a skill its source's snapshot doesn't hold, when a fork's authored skill doesn't exist, and when
+// forks of two sources install the same authored skill. A forked skill the source's revision no longer has still
+// replaces it, so the fork keeps working after its source deletes the skill.
 func skillReplacements(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) (map[string]skillReplacement, error) {
 	result := map[string]skillReplacement{}
 	// replaces maps each authored skill that replaces one to the configuration entry that names it.
@@ -36,23 +37,21 @@ func skillReplacements(config rules.Configuration, libraries map[string]Library,
 	for _, source := range config.Sources {
 		snapshot := libraries[source.Name].Snapshot
 		for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
-			exclusion := source.SkillExclude[id]
-			where := "sources." + source.Name + ".skills.exclude." + id
 			if _, installs := snapshot.Skills[id]; !installs {
-				return nil, invalid(where, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to exclude; name a skill its skills.include selects, or remove the entry", id))
+				return nil, invalid("sources."+source.Name+".skills.exclude."+id, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to exclude; name a skill its skills.include selects, or remove the entry", id))
 			}
-			if exclusion.ReplacedBy == "" {
-				continue
+		}
+		for _, id := range slices.Sorted(maps.Keys(source.SkillForks)) {
+			fork := source.SkillForks[id]
+			where := "sources." + source.Name + ".skills.forks." + id + ".as"
+			if _, authored := local[fork.As]; !authored {
+				return nil, invalid(where, fmt.Sprintf("the project has no authored skill %s; add .trailguide/%s/SKILL.md, or remove the fork", fork.As, fork.As))
 			}
-			if _, authored := local[exclusion.ReplacedBy]; !authored {
-				return nil, invalid(where+".replacedBy", fmt.Sprintf("the project has no authored skill %s; add .trailguide/%s/SKILL.md, or remove replacedBy to exclude the skill without a replacement", exclusion.ReplacedBy, exclusion.ReplacedBy))
+			if other, taken := replaces[fork.As]; taken {
+				return nil, invalid(where, fmt.Sprintf("%s already replaces the skill %s names; each authored skill replaces one skill", fork.As, other))
 			}
-			if other, taken := replaces[exclusion.ReplacedBy]; taken {
-				return nil, invalid(where+".replacedBy", fmt.Sprintf("%s already replaces the skill %s names; each authored skill replaces one skill", exclusion.ReplacedBy, other))
-			}
-			replaces[exclusion.ReplacedBy] = where
-			upstream := sourceSkill(source, snapshot, id)
-			result[exclusion.ReplacedBy] = skillReplacement{Upstream: upstream, Reason: exclusion.Reason, BasedOn: exclusion.BasedOn}
+			replaces[fork.As] = "sources." + source.Name + ".skills.forks." + id
+			result[fork.As] = skillReplacement{Upstream: sourceSkill(source, snapshot, id), Reason: fork.Reason, BasedOn: fork.BasedOn}
 		}
 	}
 	return result, nil
@@ -64,7 +63,7 @@ func excludedSkills(sources []resolvedSource) []excludedSkill {
 	result := []excludedSkill{}
 	for _, source := range sources {
 		for _, id := range source.Skills {
-			if exclusion, excluded := source.Configured.SkillExclude[id]; excluded && exclusion.ReplacedBy == "" {
+			if exclusion, excluded := source.Configured.SkillExclude[id]; excluded {
 				result = append(result, excludedSkill{ID: source.Name + ":" + id, Reason: exclusion.Reason})
 			}
 		}

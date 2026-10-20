@@ -39,7 +39,7 @@ func (f *authoringFlags) readSourceSkill(ctx context.Context, name string, sourc
 }
 
 // readForks compares the skills the library forked from a source with the source's copies.
-func (f *authoringFlags) readForks(ctx context.Context, name string, source rules.CuratedSource, forks map[string]rules.SkillExclusion) ([]library.ForkedSkill, error) {
+func (f *authoringFlags) readForks(ctx context.Context, name string, source rules.CuratedSource, forks map[string]rules.SkillFork) ([]library.ForkedSkill, error) {
 	return imports.LibraryForks(ctx, name, source, forks, f.imports)
 }
 
