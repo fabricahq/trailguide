@@ -9,6 +9,7 @@ import (
 
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/project"
+	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/spf13/cobra"
 )
 
@@ -96,7 +97,11 @@ func librarySkillForkedReport(result library.AuthoringResult, from project.Skill
 	} else {
 		instruction += "\nThe fork is offered. To require or recommend it, add " + id + " to library.skills."
 	}
-	steps := []nextStep{{Instruction: instruction}}
+	steps := []nextStep{}
+	if fixes := plan.Fixes(); len(fixes) > 0 {
+		steps = append(steps, nextStep{Instruction: forkFixesInstruction(fixes, "library check fails and projects can't install the fork")})
+	}
+	steps = append(steps, nextStep{Instruction: instruction})
 	// This repository is a project too, which installs the fork once it takes the revision the fork copied.
 	if plan.FollowsReleases() {
 		steps = append(steps, nextStep{Instruction: "To install the fork in this repository, update the source to the release the fork copied:", Commands: []string{"trailguide project update " + from.Source}})
@@ -105,4 +110,16 @@ func librarySkillForkedReport(result library.AuthoringResult, from project.Skill
 	}
 	steps = append(steps, nextStep{Instruction: "Then validate the library:", Commands: []string{scope.command("check")}})
 	return authoredReport(&out, result.Added, result.Changed, result.Warnings, steps)
+}
+
+// forkFixesInstruction asks the author to make fixes, the changes a fork's SKILL.md needs that Trail Guide couldn't
+// make, and then remove the draft marker; consequence says what the marker blocks until then.
+func forkFixesInstruction(fixes []string, consequence string) string {
+	var out strings.Builder
+	fmt.Fprintf(&out, "Finish the fork: Trail Guide couldn't finish adapting the skill's SKILL.md, so it marked\nthe fork as a draft. Until you finish it, %s.\nIn SKILL.md:\n", consequence)
+	for _, fix := range fixes {
+		fmt.Fprintf(&out, "  - %s\n", fix)
+	}
+	out.WriteString("Then remove the " + rules.DraftMarker + " line.")
+	return out.String()
 }

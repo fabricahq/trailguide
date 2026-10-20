@@ -88,6 +88,10 @@ func skillForkedReport(result project.AuthoringResult, from project.SkillForkSou
 	formatAuthored(&out, result.Added, result.Changed, result.Warnings, workdir)
 	instruction := "Next: Edit the forked skill to change its steps. A fork has no version: it changes\nonly when you edit it. The source's license still applies to the copied files." +
 		"\nconfig.yaml now forks " + from.String() + " as skills/" + plan.Name() + ", based on commit " + shortCommit(plan.BasedOn()) + ";\ntrailguide project update lists the source's later changes to it."
-	steps := []nextStep{{Instruction: instruction}, {Instruction: "Then install the fork in place of the source's skill:", Commands: []string{"trailguide project build", "trailguide project check"}}}
+	steps := []nextStep{}
+	if fixes := plan.Fixes(); len(fixes) > 0 {
+		steps = append(steps, nextStep{Instruction: forkFixesInstruction(fixes, "trailguide project build refuses it")})
+	}
+	steps = append(steps, nextStep{Instruction: instruction}, nextStep{Instruction: "Then install the fork in place of the source's skill:", Commands: []string{"trailguide project build", "trailguide project check"}})
 	return authoredReport(&out, result.Added, result.Changed, result.Warnings, steps)
 }

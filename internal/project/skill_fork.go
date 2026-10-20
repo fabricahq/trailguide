@@ -62,6 +62,9 @@ type SkillForkPlan struct {
 	renamed bool
 	// files holds the fork's files, by path relative to the Trail Guide directory, with their executable bits.
 	files []filetxn.File
+	// fixes says what the author must change in the fork's SKILL.md that Trail Guide couldn't, in which case the
+	// fork's SKILL.md carries the draft marker, so build refuses it until the author fixes it.
+	fixes []string
 }
 
 // PlanSkillFork checks the project and prepares a fork of the skill from names, which can be one the source's
@@ -69,10 +72,11 @@ type SkillForkPlan struct {
 // forkedSkillFile rewrites it, into skills/<name>/, where name is the skill's install name, the one the source's
 // skills.rename gives it when it has one, without writing. It fails when the source isn't configured, when its record
 // doesn't match its configuration, when its last sync didn't install the skill, when the source's library requires
-// the skill, when the library curates the skill from another library and the skill cites rules, which the project
-// can't name, when the source already excludes or forks the skill, when the project already has an authored skill
+// the skill, when the source already excludes or forks the skill, or when the project already has an authored skill
 // with that name or another fork installs as it, since existing authored skills, exclusions, and forks are never
-// replaced, or when forkedSkillFile fails.
+// replaced. When Trail Guide can't make the fork's SKILL.md what the project needs, because forkedSkillFile can't, or
+// because the library curates the skill from another library and the skill cites rules, which the project can't
+// name, the fork's SKILL.md carries the draft marker, and Fixes says what the author must change.
 func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (*SkillForkPlan, error) {
 	plan := &SkillForkPlan{from: from}
 	options, err := planProjectAuthoring(ctx, options, func(root *os.Root, _ rules.Configuration) error {
@@ -136,7 +140,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			id, prefix, qualifyRules, uses = curatedID, source.Name+":"+curatedFrom, false, nil
 			plan.commit = origin.Commit
 			if !origin.NonLibrary && len(metadata.RulesUsed) > 0 {
-				return &ValidationError{Location: location, Problem: fmt.Sprintf("the skill cites rules of %s, the library %s curates it from, which a project can't cite, since it takes no rules from a curated source. %s", curatedFrom, source.Name, forkByHand(path.Base(curatedID)))}
+				plan.fixes = append(plan.fixes, fmt.Sprintf("Remove the rules of %s from %s: the project takes no rules from a library %s curates a skill from, so it can't cite them.", curatedFrom, skills.RulesUsedKey, source.Name))
 			}
 		}
 		if name, renamed := source.SkillRename[from.Skill]; renamed {
@@ -158,8 +162,12 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 						return err
 					}
 				}
-				if content, err = forkedSkillFile(content, metadata, plan.name, prefix, qualifyRules, uses, location); err != nil {
+				var fixes []string
+				if content, fixes, err = forkedSkillFile(content, metadata, plan.name, prefix, qualifyRules, uses, location); err != nil {
 					return err
+				}
+				if plan.fixes = append(plan.fixes, fixes...); len(plan.fixes) > 0 {
+					content = skills.Mark(content, rules.DraftMarker)
 				}
 			}
 			plan.files = append(plan.files, filetxn.File{Path: path.Join(folder, name), Content: content, Executable: slices.Contains(executable, name)})
@@ -188,6 +196,10 @@ func requireSkillForkTarget(ctx context.Context, root *os.Root, config rules.Con
 
 // Name returns the fork's name, which is the skill's install name, so its ID is skills/<name>.
 func (p *SkillForkPlan) Name() string { return p.name }
+
+// Fixes says what the author must change in the fork's SKILL.md, which then carries the draft marker, or is empty
+// when the fork is complete.
+func (p *SkillForkPlan) Fixes() []string { return p.fixes }
 
 // BasedOn returns the full commit SHA the fork copies the skill from, which skills.forks records as basedOn.
 func (p *SkillForkPlan) BasedOn() string { return p.commit }
@@ -244,10 +256,11 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 // anthropic:skills/skill-creator, since the project names that skill with the library source's name first;
 // and with uses, the IDs the source's skills.uses adds for the skill, added to trailguide-skills-used the same way,
 // since skills.uses applies only to the source's own skills. metadata is data's, read at location. It rewrites only
-// what differs, replacing a list it changes with a block string. It fails, at location, when it can't rewrite the
-// frontmatter to say exactly that, such as a list inside a flow mapping, or when the result fails the checks build
-// applies to an authored skill, such as a type other than playbook or review.
-func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string, library bool, uses []string, location string) ([]byte, error) {
+// what differs, replacing a list it changes with a block string. When it can't rewrite the frontmatter to say
+// exactly that, such as a list inside a flow mapping, it returns data unchanged, and when the result fails the
+// checks build applies to an authored skill, such as a type other than playbook or review, the result; either way
+// with fixes, what the author must change.
+func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string, library bool, uses []string, location string) ([]byte, []string, error) {
 	// curated reports that a qualified ID names a skill the source's library curates, which needs the source's name too.
 	qualify := func(ids []string, curated bool) []string {
 		result := []string{}
@@ -267,19 +280,19 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 	}
 	text, ok := skills.Fork(data, metadata, name, skillsUsed, rulesUsed)
 	if !ok {
-		return nil, &ValidationError{Location: location, Problem: fmt.Sprintf("Trail Guide can't rewrite this frontmatter for the fork, which must name the skill %s and cite the source's skills and rules with the source's name, such as %s:skills/tdd, because it isn't written as block mappings Trail Guide can edit. %s", name, source, forkByHand(name))}
+		fix := fmt.Sprintf("Name the skill %s, and cite the source's skills and rules with the source's name, such as %s:skills/tdd; Trail Guide edits only frontmatter written as block mappings.", name, source)
+		if len(skillsUsed) > 0 {
+			fix += fmt.Sprintf(" List exactly these in %s: %s.", skills.SkillsUsedKey, strings.Join(skillsUsed, ", "))
+		}
+		return data, []string{fix}, nil
 	}
 	forked, err := skills.ReadMetadata(text, location)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if problems := skills.Check(name, forked, true); len(problems) > 0 {
-		return nil, &ValidationError{Location: location, Problem: problems[0] + ", and build refuses a skill you author, as a fork is, with this problem. " + forkByHand(name)}
+	fixes := []string{}
+	for _, problem := range skills.Check(name, forked, true) {
+		fixes = append(fixes, "Fix what build reports: "+problem+".")
 	}
-	return text, nil
-}
-
-// forkByHand tells how to fork the skill named name when the command can't.
-func forkByHand(name string) string {
-	return "To fork the skill, copy it into .trailguide/skills/" + name + "/, correct its frontmatter, and add an entry for it to the source's skills.forks in config.yaml by hand, with as: skills/" + name + " and a reason"
+	return text, fixes, nil
 }

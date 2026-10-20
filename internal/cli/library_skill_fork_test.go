@@ -13,7 +13,7 @@ import (
 )
 
 // forkingLibrary returns a library whose library.skills lists listed, YAML indented under it, from pocock at tag
-// stable, whose release skill uses deploy and rollback uses a skill it lacks, with the pocock fixture and the
+// stable, whose release skill uses deploy, rollback uses a skill it lacks, and ratchet's frontmatter isn't valid YAML, with the pocock fixture and the
 // environment that routes to it.
 func forkingLibrary(t *testing.T, listed string) (string, *gitfixture.Fixture, []string) {
 	t.Helper()
@@ -22,6 +22,7 @@ func forkingLibrary(t *testing.T, listed string) (string, *gitfixture.Fixture, [
 		"skills/ops/deploy/SKILL.md":          []byte("---\nname: deploy\ndescription: Deploy a service.\n---\n# Deploy\n"),
 		"skills/ops/deploy/scripts/deploy.sh": []byte("#!/bin/sh\necho deploy\n"),
 		"skills/ops/release/SKILL.md":         []byte("---\nname: release\ndescription: Release a service.\nmetadata:\n  trailguide-skills-used: |\n    skills/ops/deploy\n---\n# Release\n"),
+		"skills/ops/ratchet/SKILL.md":         []byte("---\nname: ratchet\ndescription: Ratchet file size so each file stays small: run it before commits.\n---\n# Ratchet\n"),
 		"skills/ops/rollback/SKILL.md":        []byte("---\nname: rollback\ndescription: Roll back a release.\nmetadata:\n  trailguide-skills-used: |\n    skills/ops/missing\n---\n# Roll back\n"),
 	})
 	if err != nil {
@@ -108,6 +109,60 @@ func TestLibraryAddSkill_ForksACuratedSkillAndCheckListsTheSourcesChanges(t *tes
 	out, diagnostic, code = runCLIWithEnvironment(t, binary, directory, environment, "library", "check")
 	if code != 0 || !strings.Contains(out, "pocock no longer has the skill at stable") || !strings.Contains(out, "Your fork stays the library's own skill.") {
 		t.Fatalf("exit %d after the source deleted the skill:\n%s%s", code, out, diagnostic)
+	}
+}
+
+func TestLibraryAddSkill_ForksASkillItCantAdaptAsADraftToFinish(t *testing.T) {
+	directory, pocock, environment := forkingLibrary(t, "    offered: [pocock:skills/ops/ratchet]\n")
+	binary := buildCLI(t)
+	out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/ratchet", "--reason", "Ours.")
+	for _, want := range []string{
+		"Finish the fork: Trail Guide couldn't finish adapting the skill's SKILL.md",
+		"Until you finish it, library check fails and projects can't install the fork.\nIn SKILL.md:\n",
+		"  - Correct its frontmatter: ",
+		"  - Name the skill ratchet, and name the skills it uses with the source's name, such as pocock:skills/tdd.",
+		"Then remove the <!-- trailguide:draft --> line.",
+		"library.skills now lists skills/ratchet in place of pocock:skills/ops/ratchet",
+	} {
+		if code != 0 || !strings.Contains(out, want) {
+			t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
+		}
+	}
+	file := filepath.Join(directory, ".trailguide", "skills", "ratchet", "SKILL.md")
+	skill, err := os.ReadFile(file)
+	if want := "description: Ratchet file size so each file stays small: run it before commits.\n---\n<!-- trailguide:draft -->\n# Ratchet\n"; err != nil || !strings.HasSuffix(string(skill), want) {
+		t.Fatalf("forked SKILL.md:\n%s, %v; want the source's, marked as a draft", skill, err)
+	}
+	config, err := os.ReadFile(filepath.Join(directory, ".trailguide", "config.yaml"))
+	if err != nil || !strings.Contains(string(config), "as: skills/ratchet") || !strings.Contains(string(config), "basedOn: \""+pocock.FirstCommit+"\"") {
+		t.Fatalf("config.yaml:\n%s, %v; want the fork recorded", config, err)
+	}
+	if out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "check"); code == 0 || !strings.Contains(out+diagnostic, "skills/ratchet/SKILL.md") {
+		t.Fatalf("library check passed an unfinished fork: exit %d:\n%s%s", code, out, diagnostic)
+	}
+
+	if err := os.WriteFile(file, []byte("---\nname: ratchet\ndescription: \"Ratchet file size so each file stays small: run it before commits.\"\n---\n# Ratchet\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "check"); code != 0 {
+		t.Fatalf("library check refused the finished fork: exit %d:\n%s%s", code, out, diagnostic)
+	}
+}
+
+func TestLibraryAddSkill_AsksADraftForkToListTheSkillsTheSourcesUsesAdds(t *testing.T) {
+	directory, _, environment := forkingLibrary(t, "    offered: [pocock:skills/ops/deploy]\n")
+	file := filepath.Join(directory, ".trailguide", "config.yaml")
+	config, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config = []byte(strings.Replace(string(config), "    ref: stable\n", "    ref: stable\n    skills:\n      include: [skills/ops/ratchet]\n      uses:\n        skills/ops/ratchet: [skills/ops/deploy]\n", 1))
+	if err := os.WriteFile(file, config, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, diagnostic, code := runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/ratchet", "--reason", "Ours.")
+	if want := "List these in trailguide-skills-used too, since sources.pocock.skills.uses adds them for the skill: pocock:skills/ops/deploy."; code != 0 || !strings.Contains(out, want) {
+		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
 	}
 }
 
