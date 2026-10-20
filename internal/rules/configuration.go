@@ -61,6 +61,9 @@ type Source struct {
 	// SkillExclude maps the ID of each skill that skills.exclude leaves out to its exclusion; it is empty, never nil,
 	// when there are none. An excluded skill is still imported, so updates can compare it with its replacement.
 	SkillExclude map[string]SkillExclusion `json:"skillExclude,omitempty"`
+	// SkillExcludeLevels maps recommended or "*", when skills.exclude lists it, to the exclusion's reason; it is
+	// empty, never nil, when it lists neither. See ExcludesLevel.
+	SkillExcludeLevels map[string]string `json:"skillExcludeLevels,omitempty"`
 	// SkillRename maps the ID of each skill that skills.rename installs under another name to that name; it is nil when
 	// there are none, and never names an excluded skill. Whether the source installs each skill is
 	// checked when skills resolve.
@@ -325,7 +328,7 @@ func parseSource(name string, input json.RawMessage, repositories map[string]str
 // parseSkillRenames reads it. A missing object includes no skills, declares no uses, excludes none, and renames
 // none. include may be left out only beside rename. A skill can't be both excluded and renamed.
 func parseSkillFields(input json.RawMessage, location string, source *Source) error {
-	source.Skills, source.SkillUses, source.SkillExclude = []string{}, map[string][]string{}, map[string]SkillExclusion{}
+	source.Skills, source.SkillUses, source.SkillExclude, source.SkillExcludeLevels = []string{}, map[string][]string{}, map[string]SkillExclusion{}, map[string]string{}
 	if input == nil {
 		return nil
 	}
@@ -345,7 +348,7 @@ func parseSkillFields(input json.RawMessage, location string, source *Source) er
 	if source.SkillUses, err = parseSkillUses(fields["uses"], location+".uses"); err != nil {
 		return err
 	}
-	if source.SkillExclude, err = parseSkillExclusions(fields["exclude"], location+".exclude"); err != nil {
+	if source.SkillExclude, source.SkillExcludeLevels, err = parseSkillExclusions(fields["exclude"], location+".exclude"); err != nil {
 		return err
 	}
 	if source.SkillRename, err = parseSkillRenames(fields["rename"], location+".rename"); err != nil {
@@ -357,6 +360,22 @@ func parseSkillFields(input json.RawMessage, location string, source *Source) er
 		}
 	}
 	return nil
+}
+
+// ExcludesLevel reports whether the source's skills.exclude leaves out skill id, which its library gives level, by
+// that level, other than a required one, which a project can't exclude: "*" leaves out recommended and offered skills,
+// and recommended the recommended ones. A skill from a repository that isn't a library has no level, and only "*"
+// leaves it out. A skill that skills.exclude also names by ID isn't left out by its level, so the source still imports
+// it, as it does every skill excluded by ID, and its replacedBy, if any, can replace it.
+func (s Source) ExcludesLevel(id, level string) bool {
+	if _, byID := s.SkillExclude[id]; byID {
+		return false
+	}
+	if _, all := s.SkillExcludeLevels[skills.Wildcard]; all {
+		return level != skills.LevelRequired
+	}
+	_, recommended := s.SkillExcludeLevels[skills.Recommended]
+	return recommended && level == skills.LevelRecommended
 }
 
 // parseSkillUses validates skills.uses, a mapping of skill IDs to lists of the skill IDs each uses, each list

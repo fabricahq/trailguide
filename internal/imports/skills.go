@@ -83,7 +83,8 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 // .claude/skills/, and each skill it names. A named skill the revision lacks fails: with skill-not-in-revision when
 // the revision is the one the source record locks, since sync never moves a source, and otherwise as invalid
 // configuration. Excluding a required skill fails too, since a project that uses the library can't diverge from it,
-// as does excluding one LibraryRequires lists.
+// as does excluding one LibraryRequires lists. A level exclusion, recommended or "*" in skills.exclude, then leaves
+// out the chosen skills of its levels, as rules.Source.ExcludesLevel says, but never a required one.
 // The skills the library curates, whose IDs have a colon, are curateSkills' to choose, and naming one of a repository
 // that isn't a library fails, since only a library curates skills; the skills the configuration's own library section
 // requires of the source, LibraryRequires, are chosen as required too.
@@ -133,6 +134,16 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			return nil, skillNotInRevision(source, plan, "sources."+source.Name+".skills.include", id)
 		}
 	}
+	if _, recommended := source.SkillExcludeLevels[skills.Recommended]; recommended && levels == nil {
+		return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + skills.Recommended, Problem: fmt.Sprintf("the repository isn't a library at %s, so it recommends no skills to exclude; exclude its skills by ID, or exclude \"*\" to install none of them", revision)}
+	}
+	chosen = slices.DeleteFunc(chosen, func(id string) bool {
+		level := skills.LevelOffered
+		if levels != nil {
+			level = levels.Level(id)
+		}
+		return !slices.Contains(source.LibraryRequires, id) && source.ExcludesLevel(id, level)
+	})
 	slices.Sort(chosen)
 	return slices.Compact(chosen), nil
 }

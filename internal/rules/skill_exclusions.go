@@ -28,53 +28,61 @@ type SkillExclusion struct {
 }
 
 // parseSkillExclusions validates each entry of a source's skills.exclude: its skill ID and reason, and, optionally,
-// the ID of the authored skill that replaces it and the commit the replacement is based on. A missing field is no
-// exclusions. Whether the source installs each skill, and whether the replacement exists, are checked when skills
+// the ID of the authored skill that replaces it and the commit the replacement is based on, and returns them by ID.
+// An entry whose id is recommended or "*" is a level exclusion instead, returned in levels with its reason: it leaves
+// out every skill of those levels that the source isn't required to install, and replaces none. A missing field is
+// no exclusions. Whether the source installs each skill, and whether the replacement exists, are checked when skills
 // resolve; whether the repository has the basedOn commit, when sync reads the source.
-func parseSkillExclusions(input json.RawMessage, location string) (map[string]SkillExclusion, error) {
-	result := map[string]SkillExclusion{}
+func parseSkillExclusions(input json.RawMessage, location string) (result map[string]SkillExclusion, levels map[string]string, err error) {
+	result, levels = map[string]SkillExclusion{}, map[string]string{}
 	if input == nil {
-		return result, nil
+		return result, levels, nil
 	}
 	ids, entries, err := listEntries(input, location, func(id, where string) error {
-		switch id {
-		case skills.Wildcard:
-			return invalid(where, `an exclusion names one skill by ID, such as skills/build-feature, not "*"; to install none of the source's skills, remove skills.include`)
-		case skills.Recommended:
-			return invalid(where, "an exclusion names one skill by ID, such as skills/build-feature, not recommended; to install none of the recommended skills, remove recommended from skills.include")
+		if id == skills.Wildcard || id == skills.Recommended {
+			return nil
 		}
 		return skills.ValidateID(id, where)
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, id := range ids {
 		where := location + "." + id
 		fields := entries[id]
+		if id == skills.Wildcard || id == skills.Recommended {
+			if err := decode.KnownFields(fields, []string{"reason"}, where); err != nil {
+				return nil, nil, invalid(where, "an exclusion of "+decode.Quote(id)+" leaves out skills by level, so it takes only a reason; to replace one skill with your own, exclude it by ID with replacedBy")
+			}
+			if levels[id], err = decode.Text(fields["reason"], where+".reason"); err != nil {
+				return nil, nil, err
+			}
+			continue
+		}
 		if err := decode.KnownFields(fields, []string{"reason", "replacedBy", "basedOn"}, where); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		reason, err := decode.Text(fields["reason"], where+".reason")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		exclusion := SkillExclusion{Reason: reason}
 		if raw, ok := fields["replacedBy"]; ok {
 			if exclusion.ReplacedBy, err = parseSkillReplacement(raw, where+".replacedBy"); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 		if raw, ok := fields["basedOn"]; ok {
 			if exclusion.ReplacedBy == "" {
-				return nil, invalid(where+".basedOn", "basedOn records the commit a replacement was copied from, so it needs replacedBy")
+				return nil, nil, invalid(where+".basedOn", "basedOn records the commit a replacement was copied from, so it needs replacedBy")
 			}
 			if exclusion.BasedOn, err = parseBasedOnCommit(raw, where+".basedOn"); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 		result[id] = exclusion
 	}
-	return result, nil
+	return result, levels, nil
 }
 
 // parseSkillReplacement reads replacedBy, the ID of an authored skill, skills/<name>, explaining how to write a

@@ -102,6 +102,8 @@ func ListSkills(ctx context.Context, options Options) (SkillListing, error) {
 				skill.Status = SkillExcluded
 			case installed:
 				skill.Status = SkillInstalled
+			case source.ExcludesLevel(id, levels[id].Level):
+				skill.Status = SkillExcluded
 			}
 			listing.Skills = append(listing.Skills, skill)
 		}

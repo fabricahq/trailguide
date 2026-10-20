@@ -758,10 +758,10 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 		}
 	}
 	slices.Sort(included)
-	selected := slices.Concat(record.SelectedSkills(source.Skills), source.LibraryRequires)
+	selected := slices.Concat(record.SelectedSkills(source.Skills, source.ExcludesLevel), source.LibraryRequires)
 	slices.Sort(selected)
 	if !slices.Equal(slices.Compact(selected), included) {
-		return invalidSnapshot(where, "recorded skills differ from sources."+source.Name+".skills.include and the library's required skills; run trailguide project sync")
+		return invalidSnapshot(where, "recorded skills differ from what sources."+source.Name+".skills.include and skills.exclude select with the library's required skills; run trailguide project sync")
 	}
 	if record.NonLibrary && source.Ref.IsZero() {
 		return invalidSnapshot(where, "a source that isn't a library needs a ref; run trailguide project sync")

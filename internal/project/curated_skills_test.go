@@ -717,6 +717,32 @@ func TestCheck_RejectsACuratedSkillInTheLibrarysOwnRecord(t *testing.T) {
 	}
 }
 
+func TestSync_InstallsALevelExcludedCuratedSkillThatAnInstalledSkillUses(t *testing.T) {
+	ctx := context.Background()
+	listed := "    required: [pocock:skills/ops/deploy, pocock:skills/engineering/to-spec]\n    recommended: [pocock:skills/engineering/interview]\n    offered: [pocock:skills/productivity/grilling]\n"
+	b := newCuratingFrom(t, listed, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"Only what the library requires."}]}}}}`)
+	if _, err := Sync(ctx, b.options, b.git); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"deploy", "to-spec", "interview"} {
+		if !exists(t, b.options, ".claude/skills/"+name+"/SKILL.md") {
+			t.Errorf("didn't install %s", name)
+		}
+	}
+	if exists(t, b.options, ".claude/skills/grilling") {
+		t.Error("installed an offered skill the project excludes by level")
+	}
+	curated, _ := b.teamRecord(t)["curated"].(map[string]any)
+	pocock, _ := curated["pocock"].(map[string]any)
+	skills, _ := pocock["skills"].(map[string]any)
+	if interview, _ := skills["skills/engineering/interview"].(map[string]any); interview["included"] != false || len(interview["usedBy"].([]any)) != 1 {
+		t.Fatalf("interview's record = %v; want a skill installed only because to-spec uses it", interview)
+	}
+	if _, err := Check(ctx, b.options); err != nil {
+		t.Fatalf("check after sync: %v", err)
+	}
+}
+
 func TestSync_CuratesFromABranchNamedLikeALibraryRelease(t *testing.T) {
 	ctx := context.Background()
 	b := newCuratingAt(t, "release/5", teamSkills, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"rules":{"include":["techs/go/*"]}}}}`)
