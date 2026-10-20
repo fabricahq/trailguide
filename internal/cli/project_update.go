@@ -121,10 +121,15 @@ func updateTargets(args []string) ([]imports.UpdateTarget, error) {
 		}
 		if scoped {
 			if err := librarytree.ValidateRuleID(rule, arg); err != nil {
-				if group := strings.ToLower(rule); skills.ValidateID(rule, arg) == nil && !strings.HasPrefix(group, "techs/") && !strings.HasPrefix(group, "practices/") {
-					return nil, fmt.Errorf("%s: SOURCE:RULE names one rule, such as team:techs/go/errors, and %s isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update %s", arg, rule, source)
+				if skills.ValidateID(rule, arg) != nil {
+					return nil, err
 				}
-				return nil, err
+				// A path under a group may be a malformed rule ID or a non-library skill in a folder of that name, so
+				// it keeps the rule error and adds the skill guidance.
+				if group := strings.ToLower(rule); strings.HasPrefix(group, "techs/") || strings.HasPrefix(group, "practices/") {
+					return nil, fmt.Errorf("%w. If %s is a skill, run trailguide project update %s: a source's skills all come from one revision, so they update only together", err, rule, source)
+				}
+				return nil, fmt.Errorf("%s: SOURCE:RULE names one rule, such as team:techs/go/errors, and %s isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update %s", arg, rule, source)
 			}
 		}
 		targets = append(targets, imports.UpdateTarget{Source: source, Rule: rule})
