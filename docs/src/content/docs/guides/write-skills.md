@@ -3,10 +3,6 @@ title: "Write a skill"
 description: "Turn a repeatable task into ordered steps that cite the rules each step applies, then check, version, and retire it."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **skill** tells an agent how to carry out one kind of task, step by step. Writing a skill turns a workflow you keep explaining, such as how your team fixes a bug or reviews tests, into steps every agent follows the same way. A useful skill names the task that should trigger it, orders the steps, and cites the rules each step applies.
 
 This guide covers deciding between a skill and a rule, creating a skill, writing and checking it, setting its level in a library, and versioning it. For every field and check, see [Skill format](/reference/skill-format/).

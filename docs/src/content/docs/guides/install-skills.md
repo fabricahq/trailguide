@@ -3,10 +3,6 @@ title: "Install skills"
 description: "Install skills from libraries and other repositories into the folders your agents read, and manage their levels, names, and exceptions."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **[skill](/concepts/skill/)** tells an agent how to carry out one kind of task, step by step, and which rules each step applies. Installing skills with Trail Guide gives every checkout of your project the same skills, from the revisions you choose, beside the rules they cite.
 
 Skills come from **sources**: the repositories your project takes skills and rules from. A source is usually a [library](/concepts/libraries/), but any Git repository of skill folders works too.

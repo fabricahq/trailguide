@@ -4,7 +4,7 @@ description: "How rules and skills change, how their versions describe those cha
 ---
 
 :::caution[Preview]
-Skill versions, skill levels, and the `.trailguide/` library layout aren't in a released version of Trail Guide yet. The released CLI versions rules only, and keeps change notes in a root-level `changes/` directory.
+Skill versions and change notes aren't implemented yet. Trail Guide versions rules only.
 :::
 
 Rules change over time. Some changes are small: an author fixes a typo, rewords a confusing sentence, or adds an example. Others are large: a rule becomes stricter, starts requiring something it previously only recommended, or is retired entirely.

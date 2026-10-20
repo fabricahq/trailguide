@@ -3,10 +3,6 @@ title: "CLI commands"
 description: "Syntax, arguments, options, and results for every supported Trail Guide command."
 ---
 
-:::caution[Preview]
-This page describes the commands as they work with version 2 configuration, skill levels, and branch refs, which aren't in a released version of Trail Guide yet. The released CLI has no skill commands, adds a library with `trailguide project add library`, writes authored rules to `.trailguide/local/`, and doesn't move a source that uses `ref`.
-:::
-
 Find each command's syntax and options below. Every command also accepts `--json` and `-h` / `--help`; [shared behavior](#shared-options-and-prompts) and [output formats](#command-output) are documented at the end.
 
 ## Project commands
@@ -259,10 +255,6 @@ The preview doesn't list changes to rules or skills you excluded without a repla
 An update of a whole source also moves its [library-wide files](/reference/rule-versions/#what-a-version-covers), such as the manifest, rule group metadata, shared assets, and the library's license files, to the newest library release, or the commit its `ref` names now, even when no rule moves; the preview shows it as `Shared files: release 3 -> 4`, and JSON output as the source's `sharedFiles`, with the library releases `from` and `to`, which is absent when they don't move. A library source whose `ref` names a tag or commit doesn't move, and neither does a non-library source whose `ref` names a commit; change `ref` and run `trailguide project sync` to take the revision it names. A library source whose `ref` names a branch moves its library-wide files with the branch's newest commit. A `SOURCE:RULE` update leaves the library-wide files where they are, unless a rule it moves comes from a newer library release: then they move to that library release, since a rule version can rely on the shared files its library release published. The source's skills and skill levels always move with its library-wide files.
 
 #### Skills and their scripts
-
-:::note[Preview]
-Skill rows and the scripts warning in the update preview come in the next Trail Guide release.
-:::
 
 A source's skills come from the revision that supplies its library-wide files, so they move with them. For each source the update names, the preview compares the skills the source installs once updated with the copies its source record holds, and lists, after the rules, one row for each skill that differs:
 

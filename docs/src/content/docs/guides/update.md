@@ -3,10 +3,6 @@ title: "Update rules and skills"
 description: "Move the rules and skills your project takes from its sources to newer versions: preview each change, keep rules where they are when you need to, and take the rest deliberately."
 ---
 
-:::caution[Preview]
-Skills, skill levels, curated skills, non-library sources, and branch refs aren't in a released version of Trail Guide yet. This guide describes how updating them will work. The released CLI doesn't move a source that uses `ref`.
-:::
-
 The rules and skills your project takes from libraries and other repositories keep changing after you add them: authors fix mistakes, improve advice, add new rules and skills, and retire old ones. Your project doesn't pick up those changes on its own, so every so often you'll want to bring it up to date. This guide shows how to do that with `trailguide project update`, how to see what will change before you accept it, and how to handle the cases where you don't want every change, such as keeping one rule where it is.
 
 This guide starts with a full update and what it does to your [skills](#update-skills), including sources that [aren't libraries](#update-a-non-library-source) and rules and skills a library [retires](#handle-retired-rules-and-skills). [Advanced use cases](#advanced-use-cases) cover the less common needs, such as updating [one rule](#update-one-rule-to-its-newest-version) or [keeping a rule](#keep-a-rule-at-its-current-version) where it is. The guide ends with how to [recover from a failed update](#recover-from-a-failed-update).
@@ -125,10 +121,6 @@ You may have [replaced a library rule with your own rule](/guides/select-rules/#
 **Keep your edits and merge by hand.** Copy the library's changes you want into your rule. Then set the rule's `basedOn` in `.trailguide/config.yaml` to the version you merged. `basedOn` is how Trail Guide knows which library changes your rule already has: later previews list only the changes after it. Trail Guide never moves `basedOn` itself, because only you know whether you took the changes in.
 
 A [forked skill](/guides/install-skills/#fork-a-skill) works the same way. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed. Merge what you need, and set `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
-
-:::note[Preview]
-Forking skills comes in the next Trail Guide release.
-:::
 
 ### New rules: add or exclude
 

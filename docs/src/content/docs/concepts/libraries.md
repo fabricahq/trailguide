@@ -3,10 +3,6 @@ title: "Library"
 description: "Share rule groups and skills across projects, and set which skills each project gets."
 ---
 
-:::caution[Preview]
-This page describes the version 2 library layout and skill levels, which aren't in a released version of Trail Guide yet. The released CLI reads `rule-library.yaml` and rules at the repository root.
-:::
-
 A **library** is a repository whose manifest publishes its authored [rule groups](/concepts/groups/) and [skills](/concepts/skill/) for other repositories. Libraries let you share engineering practices across projects, within your organization, or with third parties.
 
 You can publish your team's rules and skills in a library, or take them from libraries others publish. Rules and skills needed by only one project can live in that project.

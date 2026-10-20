@@ -3,10 +3,6 @@ title: "Sync and recovery"
 description: "When to run sync, build, or check, which files they change, who owns installed skill folders, and how to recover from problems."
 ---
 
-:::caution[Preview]
-This page describes version 2 configuration, skill support, and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 The `trailguide project sync` command restores your repository's vendor snapshots, regenerates the guidance your agents read, and installs your repository's skills. Run it after adding a source, changing what you include from it, its pins, or its `ref`, changing `skillTargets`, or to restore vendored files.
 
 Sync takes each source from the library release or commit recorded for it, its lock, so it never moves a source. To move to newer versions, run `trailguide project update`, which previews every change and applies it only after you confirm, offering to pin each major rule change or retirement instead. See [Update rules and skills](/guides/update/).
