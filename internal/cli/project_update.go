@@ -21,8 +21,8 @@ import (
 
 // projectUpdateCommand previews newer rule versions and applies them after confirmation or with --yes.
 func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command {
-	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rule versions from libraries", Args: cobra.ArbitraryArgs}
-	cmd.Long = "Preview newer rule versions, new rules, and retirements from your libraries, then\napply them after you confirm. With no arguments, every source is updated.\nSOURCE, such as team, updates one library. SOURCE:RULE, such as\nteam:techs/go/errors, moves only that rule and adds no new rules. A source whose\nref is a branch moves to the branch's newest commit; a library source whose ref\nis a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement (adopt it, or\nkeep the current version with a pin), each new rule (add it, or exclude it), and\neach local rule that replaces a changed library rule (review the changes later,\nor replace your rule with a fork of the newest version, overwriting your edits),\nthen asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
+	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rules and skills from your sources", Args: cobra.ArbitraryArgs}
+	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release. A\nsource whose ref is a branch moves to the branch's newest commit; a library\nsource whose ref is a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\noverwriting your edits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
 	f := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory}
 	cmd.PostRunE = f.finishPrompts
 	cmd.Flags().Bool("yes", false, "Apply the previewed changes without asking; required without a terminal or with --json")
@@ -121,7 +121,15 @@ func updateTargets(args []string) ([]imports.UpdateTarget, error) {
 		}
 		if scoped {
 			if err := librarytree.ValidateRuleID(rule, arg); err != nil {
-				return nil, err
+				if skills.ValidateID(rule, arg) != nil {
+					return nil, err
+				}
+				// A path under a group may be a malformed rule ID or a non-library skill in a folder of that name, so
+				// it keeps the rule error and adds the skill guidance.
+				if group := strings.ToLower(rule); strings.HasPrefix(group, "techs/") || strings.HasPrefix(group, "practices/") {
+					return nil, fmt.Errorf("%w. If %s is a skill, run trailguide project update %s: a source's skills all come from one revision, so they update only together", err, rule, source)
+				}
+				return nil, fmt.Errorf("%s: SOURCE:RULE names one rule, such as team:techs/go/errors, and %s isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update %s", arg, rule, source)
 			}
 		}
 		targets = append(targets, imports.UpdateTarget{Source: source, Rule: rule})
