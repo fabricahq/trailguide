@@ -33,7 +33,29 @@ type ReplacedSkillUpdate struct {
 	// is then empty; the fork stays installed.
 	Files   []string `json:"files"`
 	Removed bool     `json:"removed,omitempty"`
+	// Merge reports, for a fork with basedOn of a skill the source still has, whether the source's changes since
+	// basedOn merge into the fork: SkillMergeClean when they do, which includes a fork with no edits of its own, and
+	// SkillMergeConflicts when the fork's edits and the source's touch the same lines of Conflicts, its files, sorted.
+	// It's empty for any other row, which has nothing to merge.
+	Merge     SkillMerge `json:"merge,omitempty"`
+	Conflicts []string   `json:"conflicts,omitempty"`
+	// Decision is "update-fork" when the update merges the source's changes into the fork and sets basedOn to To.
+	Decision string `json:"decision,omitempty"`
+	// Base and Upstream are the source's copies of the skill at BasedOn and To, set only when Merge can be: the row
+	// has basedOn and the source still has the skill. Library reports whether the source is a library at To, which
+	// decides how a fork cites the skills and rules its copy cites.
+	Base, Upstream *SkillCopy `json:"-"`
+	Library        bool       `json:"-"`
 }
+
+// SkillMerge is whether a source's changes to a forked skill merge into the fork.
+type SkillMerge string
+
+// The merge states of a forked skill's preview row.
+const (
+	SkillMergeClean     SkillMerge = "clean"
+	SkillMergeConflicts SkillMerge = "conflicts"
+)
 
 // requireSkillBasedOn checks that the repository has the commit each of the source's skill forks is based on,
 // failing with code version-not-found when it doesn't, and that the skill is in that commit, failing validation
@@ -187,9 +209,21 @@ func (r *repository) replacedRows(ctx context.Context, source string, forks map[
 		case before != nil:
 			row.Removed = true
 		}
-		if row.Removed || len(row.Files) > 0 {
-			rows = append(rows, row)
+		if !row.Removed && len(row.Files) == 0 {
+			continue
 		}
+		if row.BasedOn != "" && !row.Removed {
+			if row.Base, err = r.skillCopy(ctx, source, before); err != nil {
+				return nil, err
+			}
+			if row.Upstream, err = r.skillCopy(ctx, source, after); err != nil {
+				return nil, err
+			}
+			if row.Library, err = r.isLibrary(ctx, commit); err != nil {
+				return nil, err
+			}
+		}
+		rows = append(rows, row)
 	}
 	return rows, nil
 }
@@ -217,6 +251,15 @@ func (r *repository) replacementBaseline(ctx context.Context, source string, for
 	}
 	entries, _, err := r.skillAt(ctx, id, from)
 	return entries, from, err
+}
+
+// skillCopy reads the files entries lists, a skill's tree entries by path in its folder, of the source named source.
+func (r *repository) skillCopy(ctx context.Context, source string, entries map[string]treeEntry) (*SkillCopy, error) {
+	files, executable, err := r.readFiles(ctx, source, entries, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &SkillCopy{Files: files, Executable: executable}, nil
 }
 
 // differentEntries returns, sorted, the paths whose entries differ between before and after: present in only one,

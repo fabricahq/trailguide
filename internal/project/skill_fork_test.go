@@ -354,7 +354,11 @@ func TestUpdate_ListsChangesToAReplacedSkill(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []imports.ReplacedSkillUpdate{{ID: "skills/build-feature", LocalSkill: "skills/build-feature", BasedOn: basedOn, From: commit, To: later, Files: []string{"SKILL.md", "scripts/check.sh"}}}
-			if len(preview.Sources) != 1 || !reflect.DeepEqual(preview.Sources[0].ReplacedSkills, want) {
+			// Only a fork with basedOn has an unedited copy to merge the source's changes into.
+			if recorded {
+				want[0].Merge = imports.SkillMergeClean
+			}
+			if len(preview.Sources) != 1 || !reflect.DeepEqual(visibleSkillRows(preview.Sources[0].ReplacedSkills), want) {
 				t.Fatalf("preview = %+v\nwant replaced skills %+v", preview.Sources, want)
 			}
 			fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md")
@@ -640,4 +644,14 @@ func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
 		t.Fatalf("installed %v; want only the fork, which uses no other skill", got)
 	}
+}
+
+// visibleSkillRows returns rows without the copies of each skill that the preview carries for merging, which its
+// JSON leaves out.
+func visibleSkillRows(rows []imports.ReplacedSkillUpdate) []imports.ReplacedSkillUpdate {
+	result := slices.Clone(rows)
+	for i := range result {
+		result[i].Base, result[i].Upstream, result[i].Library = nil, nil, false
+	}
+	return result
 }

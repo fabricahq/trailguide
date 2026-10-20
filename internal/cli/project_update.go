@@ -29,7 +29,7 @@ func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command
 	var keep, exclude, forks []string
 	cmd.Flags().StringArrayVar(&keep, "keep", nil, "Pin `SOURCE:RULE` at its current version instead of updating it (repeat); requires --reason")
 	cmd.Flags().StringArrayVar(&exclude, "exclude", nil, "Exclude the new rule `SOURCE:RULE` instead of adding it (repeat); requires --reason")
-	cmd.Flags().StringArrayVar(&forks, "update-fork", nil, "Replace your local rule that replaces `SOURCE:RULE` with a fork of the newest version, overwriting your edits, and set its basedOn to that version (repeat)")
+	cmd.Flags().StringArrayVar(&forks, "update-fork", nil, "Replace your local rule that replaces `SOURCE:RULE` with a fork of the newest version, overwriting your edits, or merge the source's changes into your fork of SOURCE:SKILL, keeping your edits, and set its basedOn to what it now has (repeat)")
 	f.add(cmd, "reason", "Reason recorded with each pin and exclusion the update writes")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// Every refusal says that the update wrote nothing, as a failed sync or update does.
@@ -159,9 +159,12 @@ func flagDecisions(keep, exclude, forks []string, reason string) ([]project.Upda
 		for _, value := range group.values {
 			source, rule, ok := strings.Cut(value, ":")
 			if !ok || source == "" {
+				if group.kind == project.DecisionUpdateFork {
+					return nil, fmt.Errorf("%s %q: expected SOURCE:RULE or SOURCE:SKILL, such as team:techs/go/errors or team:skills/build-feature", group.flag, value)
+				}
 				return nil, fmt.Errorf("%s %q: expected SOURCE:RULE, such as team:techs/go/errors", group.flag, value)
 			}
-			if err := librarytree.ValidateRuleID(rule, group.flag+" "+value); err != nil {
+			if err := librarytree.ValidateRuleID(rule, group.flag+" "+value); err != nil && (group.kind != project.DecisionUpdateFork || !forkedSkillID(rule)) {
 				return nil, err
 			}
 			if seen[group.flag+value] {
@@ -180,6 +183,16 @@ func flagDecisions(keep, exclude, forks []string, reason string) ([]project.Upda
 		}
 	}
 	return decisions, nil
+}
+
+// forkedSkillID reports whether id can name a skill a source forks: a skill ID, such as skills/build-feature, or the
+// ID of a skill the source's library curates, such as pocock:skills/to-spec.
+func forkedSkillID(id string) bool {
+	_, skill, _ := strings.Cut(id, ":")
+	if skill == "" {
+		skill = id
+	}
+	return skills.ValidateID(skill, id) == nil
 }
 
 // askUpdateDecisions shows the preview and asks about each major change, retirement, new rule, and replaced rule the
@@ -258,8 +271,30 @@ func askUpdateDecisions(f *authoringFlags, plan *project.UpdatePlan, preview pro
 			}
 			decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: kind, Reason: reason})
 		}
+		for _, row := range forkedSkillRows(source) {
+			if row.Decision != "" || row.Merge != imports.SkillMergeClean {
+				continue
+			}
+			f.introduction += fmt.Sprintf("\n%s:%s: forked as %s, with source changes up to commit %s that merge\nwithout touching your edits.\n", source.Name, row.ID, row.LocalSkill, shortCommit(row.To))
+			answer, err := askChoice(f, "Review later, or merge them into your skill?", [2]string{"later", "merge"})
+			if err != nil {
+				return nil, err
+			}
+			if answer == "merge" {
+				decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionUpdateFork})
+			}
+		}
 	}
 	return decisions, nil
+}
+
+// forkedSkillRows returns the source's rows for the skills it forks, its own and its curated sources'.
+func forkedSkillRows(source imports.SourceUpdate) []imports.ReplacedSkillUpdate {
+	rows := slices.Clone(source.ReplacedSkills)
+	for _, curated := range source.Curated {
+		rows = append(rows, curated.Replaced...)
+	}
+	return rows
 }
 
 // askChoice asks question until the answer is one of the two choices, or its first letter, ignoring case.
@@ -300,6 +335,11 @@ func answersSummary(sources []imports.SourceUpdate) string {
 				for _, line := range files {
 					fmt.Fprintf(&out, "    %s\n", line)
 				}
+			}
+		}
+		for _, row := range forkedSkillRows(source) {
+			if row.Decision == "update-fork" {
+				fmt.Fprintf(&out, "  Merge the changes to %s:%s, up to commit %s, into %s.\n", source.Name, row.ID, shortCommit(row.To), row.LocalSkill)
 			}
 		}
 	}
@@ -422,7 +462,7 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 		for _, row := range source.ReplacedSkills {
 			fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, imports.UpdateReplaced, idWidth, row.ID, commitSpan(row.From, row.To))
 			writeLevelLines(out, levels, row.ID)
-			for _, line := range replacedSkillDetails(row) {
+			for _, line := range replacedSkillDetails(source.Name, row) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
@@ -448,7 +488,7 @@ func formatCuratedRows(out *strings.Builder, library string, rows []imports.Cura
 		for _, replaced := range row.Replaced {
 			fmt.Fprintf(out, "  %-*s  %s  %s\n", updateKindWidth, imports.UpdateReplaced, replaced.ID, commitSpan(replaced.From, replaced.To))
 			writeLevelLines(out, levels, replaced.ID)
-			for _, line := range replacedSkillDetails(replaced) {
+			for _, line := range replacedSkillDetails(library, replaced) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
@@ -621,9 +661,10 @@ func curatedSpan(row imports.CuratedUpdate) string {
 	return ref + ": " + from + " -> " + to
 }
 
-// replacedSkillDetails returns the lines shown under a forked skill's row: the fork, what the row compares with,
-// and the files that changed, or that the source no longer has the skill.
-func replacedSkillDetails(row imports.ReplacedSkillUpdate) []string {
+// replacedSkillDetails returns the lines shown under a row of source for a forked skill: the fork, what the row
+// compares with, and the files that changed, or that the source no longer has the skill, then whether the changes
+// merge into the fork, and how to merge them.
+func replacedSkillDetails(source string, row imports.ReplacedSkillUpdate) []string {
 	lines := []string{}
 	switch {
 	case row.Removed:
@@ -635,6 +676,19 @@ func replacedSkillDetails(row imports.ReplacedSkillUpdate) []string {
 	}
 	for _, file := range row.Files {
 		lines = append(lines, "  "+file)
+	}
+	field := "sources." + source + ".skills.forks." + row.ID + ".basedOn"
+	switch {
+	case row.Decision == "update-fork":
+		return append(lines, "The update merges these changes into your skill, keeping your edits, and sets", field+" to commit "+shortCommit(row.To)+".")
+	case row.Merge == imports.SkillMergeClean:
+		return append(lines, "They merge into your skill without touching your edits. To merge them and set", "basedOn to commit "+shortCommit(row.To)+", pass --update-fork "+source+":"+row.ID+".")
+	case row.Merge == imports.SkillMergeConflicts:
+		lines = append(lines, "Your edits and these changes touch the same lines of:")
+		for _, file := range row.Conflicts {
+			lines = append(lines, "  "+file)
+		}
+		return append(lines, "Merge them into your skill by hand, then set "+field, fmt.Sprintf("to %q.", row.To))
 	}
 	return append(lines, "Compare them with your skill: the update doesn't change it.")
 }

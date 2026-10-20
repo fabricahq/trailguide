@@ -156,10 +156,14 @@ type SourceEdit struct {
 	SkillForks map[string]SkillFork
 	// SkillUnrename names skills whose existing skills.rename entries the edit removes.
 	SkillUnrename []string
+	// SkillForkBasedOn sets the basedOn commit of each existing skills.forks entry it names, adding or replacing the
+	// field.
+	SkillForkBasedOn map[string]GitRef
 }
 
 // EditConfigurationSource adds pins, exclusions, and skill forks to the existing source alias, removes the pins
-// edit.Unpin names and the skill renames edit.SkillUnrename names, and sets the basedOn version of the existing replacements edit.BasedOn names, keeping a replaced
+// edit.Unpin names and the skill renames edit.SkillUnrename names, and sets the basedOn version of the existing
+// replacements edit.BasedOn names and the basedOn commit of the existing skill forks edit.SkillForkBasedOn names, keeping a replaced
 // value's comment, without dropping other comments or reordering entries. Setting basedOn of a rule the source
 // doesn't replace fails. A rules.pins list or skills.rename mapping left empty is removed; a pin or rename to remove that the source lacks
 // fails. New
@@ -185,6 +189,9 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 		return nil, err
 	}
 	if err := addSkillForks(source, edit.SkillForks, "sources."+alias+".skills"); err != nil {
+		return nil, err
+	}
+	if err := setSkillForkBasedOn(source, edit.SkillForkBasedOn, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
 	where := "sources." + alias + ".rules"
@@ -250,6 +257,25 @@ func addSkillForks(source *yaml.Node, forks map[string]SkillFork, where string) 
 		}
 		node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "reason"}, textNode(fork.Reason))
 		entries.Content = append(entries.Content, textNode(id), node)
+	}
+	return nil
+}
+
+// setSkillForkBasedOn sets, to its commit in basedOn, the basedOn field of each skills.forks entry of source that
+// basedOn names, keeping a replaced value's comment. An ID the mapping lacks fails with its location under where.
+func setSkillForkBasedOn(source *yaml.Node, basedOn map[string]GitRef, where string) error {
+	for _, id := range slices.Sorted(maps.Keys(basedOn)) {
+		fork := mappingValue(mappingValue(mappingValue(source, "skills"), "forks"), id)
+		if fork == nil {
+			return invalid(where+".forks."+id, "the source doesn't fork this skill, so it has no basedOn commit to set")
+		}
+		commit := basedOn[id].Canonical()
+		if existing := mappingValue(fork, "basedOn"); existing != nil {
+			existing.Kind, existing.Tag, existing.Value, existing.Style = yaml.ScalarNode, "!!str", commit, yaml.DoubleQuotedStyle
+			continue
+		}
+		fork.Style = 0
+		fork.Content = append(fork.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "basedOn"}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: commit, Style: yaml.DoubleQuotedStyle})
 	}
 	return nil
 }

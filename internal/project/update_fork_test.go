@@ -301,8 +301,8 @@ func TestUpdate_RefusesToUpdateAForkItCant(t *testing.T) {
 			decision UpdateDecision
 			text     string
 		}{
-			{UpdateDecision{Source: "team", Rule: "techs/go/added", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/added: sources.team.rules.exclude doesn't exclude this rule with replacedBy"},
-			{UpdateDecision{Source: "team", Rule: "techs/go/licensed", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/licensed: sources.team.rules.exclude doesn't exclude this rule with replacedBy"},
+			{UpdateDecision{Source: "team", Rule: "techs/go/added", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/added: sources.team neither excludes this rule with replacedBy nor forks this skill"},
+			{UpdateDecision{Source: "team", Rule: "techs/go/licensed", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/licensed: sources.team neither excludes this rule with replacedBy nor forks this skill"},
 			{UpdateDecision{Source: "other", Rule: "techs/go/errors", Kind: DecisionUpdateFork}, "--update-fork other:techs/go/errors: no source named other"},
 			{UpdateDecision{Source: "team", Rule: "techs/go/errors", Kind: DecisionUpdateFork, Reason: "Why."}, "records no reason"},
 		} {

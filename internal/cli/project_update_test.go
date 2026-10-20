@@ -394,7 +394,7 @@ func TestUpdate_RejectsInvalidRequestsWithoutWriting(t *testing.T) {
 		{[]string{"--update-fork", "team:techs/go/loaders", "--keep", "team:techs/go/loaders", "--reason", "Why."}, 2, "--keep and --update-fork both name team:techs/go/loaders"},
 		{[]string{"--update-fork", "team:techs/go/loaders", "--exclude", "team:techs/go/loaders", "--reason", "Why."}, 2, "--exclude and --update-fork both name team:techs/go/loaders"},
 		{[]string{"--update-fork", "techs/go/loaders"}, 2, "expected SOURCE:RULE"},
-		{[]string{"--update-fork", "team:techs/go/errors", "--yes"}, 2, "Error: --update-fork team:techs/go/errors: sources.team.rules.exclude doesn't exclude this rule with replacedBy, so no local rule replaces it; to fork the rule, run trailguide project add rule techs/go/errors --from team@VERSION. No files were written.\n"},
+		{[]string{"--update-fork", "team:techs/go/errors", "--yes"}, 2, "Error: --update-fork team:techs/go/errors: sources.team neither excludes this rule with replacedBy nor forks this skill, so no local rule or skill replaces it; to fork the rule, run trailguide project add rule techs/go/errors --from team@VERSION. No files were written.\n"},
 		{[]string{"--update-fork", "other:techs/go/loaders", "--yes"}, 2, "--update-fork other:techs/go/loaders: no source named other in .trailguide/config.yaml"},
 		{[]string{"team:techs/go/naming", "--update-fork", "team:techs/go/loaders", "--yes"}, 2, "--update-fork team:techs/go/loaders: the update doesn't list this rule as replaced"},
 		{[]string{"--incorporated", "team:techs/go/loaders"}, 2, "unknown flag: --incorporated"},
