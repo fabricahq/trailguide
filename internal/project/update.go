@@ -87,11 +87,17 @@ type UpdateResult struct {
 // Moves reports whether the update has anything to apply: a source's library-wide files or the commit its ref names,
 // a skill it adds, changes, or removes, or a rule of any row except pinned rules, retirements a pin keeps, and rows
 // the project decided to keep. A replaced row counts even when its imported copy stays, since applying it can replace
-// the local rule's fork.
+// the local rule's fork, and so does a forked skill whose source's changes merge into the fork, or that the update
+// merged them into.
 func (r UpdateResult) Moves() bool {
 	for _, source := range r.Sources {
 		if source.SharedFiles != nil || source.Commit != nil || len(source.Skills) > 0 || len(source.Curated) > 0 {
 			return true
+		}
+		for _, row := range source.ReplacedSkills {
+			if row.Merge == imports.SkillMergeClean || row.Decision != "" {
+				return true
+			}
 		}
 		for _, row := range source.Rules {
 			if row.Change == imports.UpdateReplaced || row.Change != imports.UpdatePinned && row.Pin == nil && row.Decision != string(DecisionKeep) {

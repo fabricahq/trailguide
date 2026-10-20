@@ -1,8 +1,13 @@
+// Test that an update merges a source's changes into a skill fork, and refuses changes that conflict with its edits.
+
 package project
 
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -145,5 +150,66 @@ func TestUpdate_RefusesToMergeIntoASkillForkWithoutBasedOn(t *testing.T) {
 	var failure *filetxn.Error
 	if !errors.As(err, &failure) || failure.Code != "invalid-arguments" || !strings.Contains(err.Error(), "records no basedOn") {
 		t.Fatalf("got %v; want a refusal without basedOn", err)
+	}
+}
+
+// TestUpdate_OffersToMergeAForkAfterTheSourceMoved still has something to apply after an update moved the source
+// without merging its changes into the fork, so a terminal asks whether to merge them.
+func TestUpdate_OffersToMergeAForkAfterTheSourceMoved(t *testing.T) {
+	ctx := context.Background()
+	options, git, _, _ := forkedSkillProject(t, func(fork string) string { return fork })
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	again, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := again.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeClean || !preview.Moves() {
+		t.Fatalf("preview = %+v; want only a fork whose changes merge, which the update can apply", preview.Sources)
+	}
+}
+
+// TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged lists a fork's file the merge changes only the executable
+// bit of, as it lists one whose contents change.
+func TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	options, git := skillProject(t, f, skillConfig(""))
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	forkSkill(t, options, "team:skills/build-feature", "We build with make.")
+	if err := os.Chmod(filepath.Join(f.Worktree(), ".trailguide/skills/build-feature/scripts/run.sh"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Commit(ctx, f.Worktree(), "Make the script plain", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	applied, err := plan.Apply(ctx, updateSkillFork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(applied.Changed, "skills/build-feature/scripts/run.sh") {
+		t.Fatalf("changed = %v; want the script whose mode changed", applied.Changed)
+	}
+	info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/build-feature/scripts/run.sh"))
+	if err != nil || info.Mode()&0o111 != 0 {
+		t.Fatalf("fork script mode = %v, %v; want it no longer executable", info, err)
 	}
 }

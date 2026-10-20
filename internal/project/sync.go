@@ -184,6 +184,21 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 			merged[path.Join(folder, name)] = data
 		}
 		forkChanges := compareFiles(previous, merged)
+		// compareFiles compares contents alone, so a file whose executable bit alone changed is added here.
+		wasExecutable := map[string]bool{}
+		if before.skills != nil {
+			for _, name := range before.skills.Executable {
+				if relative, ok := strings.CutPrefix(name, fork.name+"/"); ok {
+					wasExecutable[relative] = true
+				}
+			}
+		}
+		for name := range fork.files.Files {
+			file := path.Join(folder, name)
+			if _, ok := previous[file]; ok && wasExecutable[name] != slices.Contains(fork.files.Executable, name) && !slices.Contains(forkChanges.Changed, file) {
+				forkChanges.Changed = append(forkChanges.Changed, file)
+			}
+		}
 		changes.Added = append(changes.Added, forkChanges.Added...)
 		changes.Changed = append(changes.Changed, forkChanges.Changed...)
 		changes.Removed = append(changes.Removed, forkChanges.Removed...)

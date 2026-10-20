@@ -1,3 +1,5 @@
+// Test that merging a source's changes into a forked skill keeps edits to other lines and lists conflicting files.
+
 package imports
 
 import (
