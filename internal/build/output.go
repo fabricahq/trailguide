@@ -118,10 +118,9 @@ func libraryReadme(source resolvedSource) string {
 		items := []string{}
 		for _, id := range source.Skills {
 			item := "- `" + id + "`"
-			switch exclusion, excluded := source.Configured.SkillExclude[id]; {
-			case excluded && exclusion.ReplacedBy != "":
-				item += ": replaced by the authored skill `" + exclusion.ReplacedBy + "`"
-			case excluded:
+			if fork, forked := source.Configured.SkillForks[id]; forked {
+				item += ": replaced by the authored skill `" + fork.As + "`"
+			} else if _, excluded := source.Configured.SkillExclude[id]; excluded {
 				item += ": excluded"
 			}
 			items = append(items, item)

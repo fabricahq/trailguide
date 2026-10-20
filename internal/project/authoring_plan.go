@@ -199,13 +199,14 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 	return result, err
 }
 
-// excludes reports whether config's source excludes its skill id, so build no longer installs it, whatever the last
-// build's record lists.
+// excludes reports whether config's source excludes or forks its skill id, so build no longer installs it, whatever
+// the last build's record lists.
 func excludes(config rules.Configuration, source, id string) bool {
 	for _, declared := range config.Sources {
 		if declared.Name == source {
 			_, excluded := declared.SkillExclude[id]
-			return excluded
+			_, forked := declared.SkillForks[id]
+			return excluded || forked
 		}
 	}
 	return false

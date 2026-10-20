@@ -621,13 +621,16 @@ func curatedSpan(row imports.CuratedUpdate) string {
 	return ref + ": " + from + " -> " + to
 }
 
-// replacedSkillDetails returns the lines shown under a replaced skill's row: the authored skill that replaces it,
-// what the row compares with, and the files that changed.
+// replacedSkillDetails returns the lines shown under a forked skill's row: the fork, what the row compares with,
+// and the files that changed, or that the source no longer has the skill.
 func replacedSkillDetails(row imports.ReplacedSkillUpdate) []string {
 	lines := []string{}
-	if row.BasedOn != "" {
+	switch {
+	case row.Removed:
+		return append(lines, "Your skill: "+row.LocalSkill+".", "The source no longer has this skill at commit "+shortCommit(row.To)+". Your skill stays installed; the update doesn't change it.")
+	case row.BasedOn != "":
 		lines = append(lines, "Your skill: "+row.LocalSkill+", based on commit "+shortCommit(row.BasedOn)+".", "Changed since commit "+shortCommit(row.BasedOn)+", the copy your skill is based on:")
-	} else {
+	default:
 		lines = append(lines, "Your skill: "+row.LocalSkill+".", "Changed since the imported commit "+shortCommit(row.From)+"; your skill may already have some of these changes:")
 	}
 	for _, file := range row.Files {

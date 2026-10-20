@@ -82,8 +82,10 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 // skill except those in a folder whose name starts with a dot, such as another tool's installed copies in
 // .claude/skills/, and each skill it names. A named skill the revision lacks fails: with skill-not-in-revision when
 // the revision is the one the source record locks, since sync never moves a source, and otherwise as invalid
-// configuration. Excluding a required skill fails too, since a project that uses the library can't diverge from it,
-// as does excluding one LibraryRequires lists. A level exclusion, recommended or "*" in skills.exclude, then leaves
+// configuration. Excluding or forking a required skill fails too, since a project that uses the library can't diverge
+// from it, as does excluding or forking one LibraryRequires lists. Each skill skills.forks names is chosen when
+// available has it, so updates can compare it with its fork, whatever skills.include selects; one available lacks,
+// such as a skill the source deleted, isn't, and its fork stays. A level exclusion, recommended or "*" in skills.exclude, then leaves
 // out the chosen skills of its levels, as rules.Source.ExcludesLevel says, but never a required one.
 // The skills the library curates, whose IDs have a colon, are curateSkills' to choose, and naming one of a repository
 // that isn't a library fails, since only a library curates skills; the skills the configuration's own library section
@@ -96,9 +98,10 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			return nil, &ValidationError{Location: "library.skills.required", Problem: fmt.Sprintf("lists %s:%s, which sources.%s doesn't have at %s; check the skill ID, or set sources.%s.ref to a revision that has it", source.Name, id, source.Name, revision, source.Name)}
 		}
 	}
-	for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+	diverging := source.SkillDivergences()
+	for _, id := range slices.Sorted(maps.Keys(diverging)) {
 		if slices.Contains(source.LibraryRequires, id) {
-			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.LibraryRequiresProblem(source.Name, id)}
+			return nil, &ValidationError{Location: diverging[id], Problem: rules.LibraryRequiresProblem(source.Name, id)}
 		}
 	}
 	chosen = append(chosen, source.LibraryRequires...)
@@ -111,10 +114,15 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			}
 		}
 		chosen = append(chosen, levels.Required...)
-		for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+		for _, id := range slices.Sorted(maps.Keys(diverging)) {
 			if slices.Contains(levels.Required, id) {
-				return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.RequiredSkillProblem(source.Name, id, plan.release)}
+				return nil, &ValidationError{Location: diverging[id], Problem: rules.RequiredSkillProblem(source.Name, id, plan.release)}
 			}
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(source.SkillForks)) {
+		if slices.Contains(available, id) {
+			chosen = append(chosen, id)
 		}
 	}
 	for _, id := range source.Skills {

@@ -40,9 +40,10 @@ type curatedSkill struct {
 // every required one, the recommended ones when skills.include names recommended, each offered one that it
 // names or includes with "*", less those a level exclusion leaves out, as rules.Source.ExcludesLevel says, which, as for a source's own skills, leaves out one in a folder whose name starts with
 // a dot, and each one that used, as curatedUses gives it for the library's skills the source installs, says one of
-// them uses. It fails when skills.include or skills.exclude names a curated skill the library
-// doesn't list, since a curated skill reaches projects only through the library's lists, when skills.exclude
-// names a required one, since a project that uses the library can't diverge from it, and when an installed skill
+// them uses, and each listed one skills.forks names, so updates can compare it with its fork. It fails when
+// skills.include or skills.exclude names a curated skill the library doesn't list, since a curated skill reaches
+// projects only through the library's lists, though a fork of one the library stopped listing stays, when
+// skills.exclude or skills.forks names a required one, since a project that uses the library can't diverge from it, and when an installed skill
 // of the library uses a curated skill the library doesn't list.
 func curatedSkills(manifest *rules.Library, source rules.Source, release int, used map[string][]string) (map[string][]curatedSkill, error) {
 	listed := rules.SkillLevels{}
@@ -60,9 +61,10 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 			}
 		}
 	}
-	for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+	diverging := source.SkillDivergences()
+	for _, id := range slices.Sorted(maps.Keys(diverging)) {
 		if slices.Contains(listed.Required, id) {
-			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.RequiredSkillProblem(source.Name, id, release)}
+			return nil, &ValidationError{Location: diverging[id], Problem: rules.RequiredSkillProblem(source.Name, id, release)}
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(used)) {
@@ -78,7 +80,8 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 			slices.Contains(source.Skills, id) ||
 			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
 			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
-		included = included && !source.ExcludesLevel(id, level)
+		_, forked := source.SkillForks[id]
+		included = included && !source.ExcludesLevel(id, level) || forked
 		if !included && len(used[id]) == 0 {
 			continue
 		}
@@ -113,7 +116,7 @@ func curateSkills(ctx context.Context, configuration rules.Configuration, source
 		imported.Snapshot.AvailableSkills[id] = library.ImportedSkill{Level: manifest.Skills.Level(id)}
 	}
 	for _, name := range slices.Sorted(maps.Keys(selected)) {
-		origin := curatedSource{library: source.Name, name: name, declared: manifest.Curated[name], exclude: curatedExclusions(source, name)}
+		origin := curatedSource{library: source.Name, name: name, declared: manifest.Curated[name], exclude: curatedExclusions(source, name), forks: curatedForks(source, name)}
 		origin.override = overridingSource(configuration, source.Name, origin.declared.Repository)
 		if origin.override != nil {
 			origin.overridden = all[origin.override.Name].Snapshot
@@ -162,9 +165,10 @@ type curatedSource struct {
 	// maintained reports that the library's own maintainer is reading the source, such as library check does, so
 	// advice names the library's configuration as theirs to fix rather than a project's.
 	maintained bool
-	// exclude holds the library source's exclusions of the skills it takes from the curated source, by their IDs in
-	// its repository; a replacement's basedOn is a commit of that repository.
+	// exclude and forks hold the library source's exclusions and forks of the skills it takes from the curated source,
+	// by their IDs in its repository; a fork's basedOn is a commit of that repository.
 	exclude map[string]rules.SkillExclusion
+	forks   map[string]rules.SkillFork
 }
 
 // curate fetches the curated source's revision and adds the files of chosen, its skills the project takes, to
@@ -193,7 +197,7 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 	if err != nil {
 		return err
 	}
-	if err := repo.requireBasedOn(ctx, replacements(l.exclude), basedOnField(l.library, l.name)); err != nil {
+	if err := repo.requireBasedOn(ctx, l.forks, basedOnField(l.library, l.name)); err != nil {
 		return err
 	}
 	retained := 0
@@ -422,7 +426,7 @@ func planCurated(ctx context.Context, configuration rules.Configuration, source 
 	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
 		was := before.CuratedFrom(name)
-		origin := curatedSource{library: source.Name, name: name, declared: parsed.Curated[name], exclude: curatedExclusions(source, name)}
+		origin := curatedSource{library: source.Name, name: name, declared: parsed.Curated[name], exclude: curatedExclusions(source, name), forks: curatedForks(source, name)}
 		origin.override = overridingSource(configuration, source.Name, origin.declared.Repository)
 		if only != nil && !only(name, origin.override) {
 			continue
@@ -491,15 +495,16 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 	if err != nil {
 		return library.CuratedSource{}, nil, err
 	}
-	// A skill the library source excludes isn't installed, so its changes aren't listed; a replaced one's are
-	// listed against the copy its replacement is based on instead.
+	// A skill the library source excludes isn't installed, so its changes aren't listed; a forked one's are listed
+	// against the copy its fork is based on instead.
 	changes := slices.DeleteFunc(skillChanges(&was, read), func(change SkillUpdate) bool {
 		_, excluded := l.exclude[change.ID]
-		return excluded
+		_, forked := l.forks[change.ID]
+		return excluded || forked
 	})
 	row := curatedMove(l.name, recordedRevision, revision, changes)
 	row.TagMoved = row.Commit != nil && row.Commit.From != "" && resolved == rules.GitRefTag && recordedRevision.Ref.Equal(revision.Ref)
-	if row.Replaced, err = repo.replacedRows(ctx, l.library, replacements(l.exclude), basedOnField(l.library, l.name), l.name+":", recordedRevision.Commit, revision.Commit); err != nil {
+	if row.Replaced, err = repo.replacedRows(ctx, l.library, l.forks, basedOnField(l.library, l.name), l.name+":", recordedRevision.Commit, revision.Commit); err != nil {
 		return library.CuratedSource{}, nil, err
 	}
 	if row.Commit == nil && len(row.Changes) == 0 && len(row.Replaced) == 0 {

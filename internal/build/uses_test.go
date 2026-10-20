@@ -145,10 +145,8 @@ func TestGenerateRedirectsAUseOfAnExcludedSkillToItsReplacement(t *testing.T) {
 	files := map[string][]byte{"skills/build": skillFile("build", "skills/tdd", "skills/how"), "skills/tdd": skillFile("tdd"), "skills/how": skillFile("how")}
 	config, libraries := fixture(t, `[]`)
 	config.SkillTargets = []string{"claude"}
-	config.Sources[0].SkillExclude = map[string]rules.SkillExclusion{
-		"skills/tdd": {Reason: "Ours.", ReplacedBy: "skills/our-tdd"},
-		"skills/how": {Reason: "Not needed."},
-	}
+	config.Sources[0].SkillExclude = map[string]rules.SkillExclusion{"skills/how": {Reason: "Not needed."}}
+	config.Sources[0].SkillForks = map[string]rules.SkillFork{"skills/tdd": {As: "skills/our-tdd", Reason: "Ours."}}
 	team := libraries["team"]
 	team.Snapshot.Skills = snapshot
 	team.Snapshot.Files = map[string][]byte{}

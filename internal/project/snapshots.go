@@ -743,12 +743,13 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 	if source.Repository != record.Repository || !source.Ref.Equal(record.Ref) || !source.Groups.Equal(record.Selection) || !slices.Equal(source.Rules, record.RuleSelection) || !slices.Equal(source.Skills, record.SkillSelection) {
 		return invalidSnapshot(where, "source identity or selection changed; run trailguide project sync")
 	}
-	for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+	diverging := source.SkillDivergences()
+	for _, id := range slices.Sorted(maps.Keys(diverging)) {
 		if record.AvailableSkills[id].Level == skills.LevelRequired {
-			return &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.RequiredSkillProblem(source.Name, id, record.Release)}
+			return &ValidationError{Location: diverging[id], Problem: rules.RequiredSkillProblem(source.Name, id, record.Release)}
 		}
 		if slices.Contains(source.LibraryRequires, id) {
-			return &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.LibraryRequiresProblem(source.Name, id)}
+			return &ValidationError{Location: diverging[id], Problem: rules.LibraryRequiresProblem(source.Name, id)}
 		}
 	}
 	included := []string{}
@@ -759,9 +760,15 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 	}
 	slices.Sort(included)
 	selected := slices.Concat(record.SelectedSkills(source.Skills, source.ExcludesLevel), source.LibraryRequires)
+	// The source imports each skill it forks that the revision has, so updates can compare it with the fork.
+	for id := range source.SkillForks {
+		if _, available := record.AvailableSkills[id]; available {
+			selected = append(selected, id)
+		}
+	}
 	slices.Sort(selected)
 	if !slices.Equal(slices.Compact(selected), included) {
-		return invalidSnapshot(where, "recorded skills differ from what sources."+source.Name+".skills.include and skills.exclude select with the library's required skills; run trailguide project sync")
+		return invalidSnapshot(where, "recorded skills differ from what sources."+source.Name+".skills.include, skills.exclude, and skills.forks select with the library's required skills; run trailguide project sync")
 	}
 	if record.NonLibrary && source.Ref.IsZero() {
 		return invalidSnapshot(where, "a source that isn't a library needs a ref; run trailguide project sync")

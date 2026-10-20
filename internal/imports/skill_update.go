@@ -108,7 +108,8 @@ func (r *repository) previewSkills(ctx context.Context, source rules.Source, rec
 		// A curated skill's rows are its curated source's, which planCurated compares at that source's revisions.
 		rows := slices.DeleteFunc(skillChanges(recorded, installed), func(row SkillUpdate) bool {
 			_, excluded := source.SkillExclude[row.ID]
-			return excluded || strings.Contains(row.ID, ":")
+			_, forked := source.SkillForks[row.ID]
+			return excluded || forked || strings.Contains(row.ID, ":")
 		})
 		previews[plan.commit] = skillPreview{rows: rows, replaced: replaced, levels: levels, manifest: manifest, used: used}
 	}

@@ -242,12 +242,14 @@ func TestChooseSkillsLeavesOutTheExcludedLevels(t *testing.T) {
 		levels *rules.SkillLevels
 		want   []string
 	}{
-		"every skill but the recommended":    {source([]string{"*"}, "recommended"), levels, []string{"skills/build", "skills/lint", "skills/ship"}},
-		"only the required":                  {source([]string{"*"}, "*"), levels, []string{"skills/ship"}},
-		"a named skill of an excluded level": {source([]string{"skills/review"}, "recommended"), levels, []string{"skills/ship"}},
-		"a library's required skills":        {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, LibraryRequires: []string{"skills/lint"}}, levels, []string{"skills/lint", "skills/ship"}},
-		"a skill also excluded by ID":        {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, SkillExclude: map[string]rules.SkillExclusion{"skills/build": {Reason: "Ours.", ReplacedBy: "skills/our-build"}}}, levels, []string{"skills/build", "skills/ship"}},
-		"none from another repository":       {source([]string{"*"}, "*"), nil, []string{}},
+		"every skill but the recommended":     {source([]string{"*"}, "recommended"), levels, []string{"skills/build", "skills/lint", "skills/ship"}},
+		"only the required":                   {source([]string{"*"}, "*"), levels, []string{"skills/ship"}},
+		"a named skill of an excluded level":  {source([]string{"skills/review"}, "recommended"), levels, []string{"skills/ship"}},
+		"a library's required skills":         {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, LibraryRequires: []string{"skills/lint"}}, levels, []string{"skills/lint", "skills/ship"}},
+		"a skill also excluded by ID":         {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, SkillExclude: map[string]rules.SkillExclusion{"skills/build": {Reason: "Ours."}}}, levels, []string{"skills/build", "skills/ship"}},
+		"a forked skill of an excluded level": {rules.Source{Name: "team", Skills: []string{"*"}, SkillExcludeLevels: map[string]string{"*": "Ours."}, SkillForks: map[string]rules.SkillFork{"skills/review": {As: "skills/our-review", Reason: "Ours."}}}, levels, []string{"skills/review", "skills/ship"}},
+		"a fork of a deleted skill":           {rules.Source{Name: "team", Skills: []string{}, SkillForks: map[string]rules.SkillFork{"skills/gone": {As: "skills/gone", Reason: "Ours."}}}, levels, []string{"skills/ship"}},
+		"none from another repository":        {source([]string{"*"}, "*"), nil, []string{}},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {

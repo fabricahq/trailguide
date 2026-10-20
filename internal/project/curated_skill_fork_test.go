@@ -23,7 +23,7 @@ func TestPlanSkillFork_ForksACuratedSkillAndUpdateListsItsSourcesChanges(t *test
 	}
 	forkSkill(t, b.options, "team:pocock:skills/ops/deploy", "We deploy with our pipeline.")
 	config := readRepositoryFile(t, b.options, ".trailguide/config.yaml")
-	for _, want := range []string{"pocock:skills/ops/deploy", "replacedBy: skills/deploy", b.pocock.FirstCommit} {
+	for _, want := range []string{"pocock:skills/ops/deploy", "as: skills/deploy", b.pocock.FirstCommit} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("config lacks %q:\n%s", want, config)
 		}

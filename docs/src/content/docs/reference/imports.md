@@ -84,7 +84,7 @@ Skills don't belong to rule groups, so including a rule group's rules never inst
 2. The skills `skills.include` adds: the recommended ones for `recommended`, every one the source offers for `"*"`, and each skill it names.
 3. Every skill those skills call, transitively, from the same repository and revision: each skill named in a skill's `trailguide-skills-used` list, plus each skill your configuration's [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls) adds. A skill reached only this way is installed because another skill uses it, and the records and `generated/SKILLS.md` say which skill. A library's own skill can also call a skill the library curates from another repository, such as `anthropic:skills/skill-creator`. That skill installs too, with its files taken from the other repository at the commit your project resolved for it.
 
-It then removes the skills your `skills.exclude` entries name, which can't include a required skill, adds the authored skills your exclusions name as `replacedBy`, applies your [renames](/reference/configuration/#rename-a-skill), and adds your authored skills in `skills/` and the skills they call. Each skill's `trailguide-skills-used` and `trailguide-rules-used` lists come from the revision the project installs. When two installed skills would have the same install name, sync fails with `skill-name-clash`.
+It also imports each skill your [`skills.forks`](/reference/configuration/#fork-a-skill) entries name, when the revision has it, so updates can compare it with your fork. It then removes the skills your `skills.exclude` and `skills.forks` entries name, which can't include a required skill, adds the authored skills your forks name as `as`, applies your [renames](/reference/configuration/#rename-a-skill), and adds your authored skills in `skills/` and the skills they call. Each skill's `trailguide-skills-used` and `trailguide-rules-used` lists come from the revision the project installs. When two installed skills would have the same install name, sync fails with `skill-name-clash`.
 
 A curated skill's files come from the curated source's repository, at the commit the project resolved for it, or at the commit of the project's own source for that repository when it declares one.
 
@@ -158,7 +158,7 @@ Validation rejects:
 - Invalid or reserved source names, repeated repositories, and duplicate rule IDs that include the same source name.
 - Selectors, exclusions, pins, renames, or `skills.uses` entries that name a rule or skill the source doesn't supply. An entry naming a rule the library retired produces a warning instead, when the source would otherwise include that rule. Offline checks accept the same exclusions, because the snapshot records those retired rules in `retiredRules`.
 - An exclusion or fork of a required skill.
-- A missing `replacedBy` rule or skill, or one authored rule or skill named as the replacement for more than one.
+- A missing `replacedBy` rule or fork, or one authored rule or skill named as the replacement for more than one.
 - Two installed skills with the same install name, and installed skills that would overwrite a folder Trail Guide doesn't own; see [Who owns the target folders](/reference/sync/#who-owns-the-target-folders).
 - Skills whose calls form a cycle, including through `skills.uses`.
 - Invalid metadata, unsafe file paths, and symbolic links.

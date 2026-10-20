@@ -79,10 +79,8 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 	forks := map[string]string{}
 	if config, err := rules.ParseConfigurationYAML(manifest); err == nil {
 		for _, source := range config.Sources {
-			for skill, exclusion := range source.SkillExclude {
-				if exclusion.ReplacedBy != "" {
-					forks[source.Name+":"+skill] = exclusion.ReplacedBy
-				}
+			for skill, fork := range source.SkillForks {
+				forks[source.Name+":"+skill] = fork.As
 			}
 		}
 	}
