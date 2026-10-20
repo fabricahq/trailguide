@@ -96,7 +96,8 @@ func ReadMetadata(data []byte, location string) (Metadata, error) {
 	if err != nil || !found {
 		return Metadata{}, err
 	}
-	_, encoded, err := decode.YAML(header, location)
+	// The frontmatter starts on the file's second line, after its opening --- line.
+	_, encoded, err := decode.YAMLAt(header, location, 2)
 	if err != nil {
 		return Metadata{}, err
 	}
