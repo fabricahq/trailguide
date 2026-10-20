@@ -3,10 +3,6 @@ title: "Set up your first project"
 description: "Write a rule for your coding agent, then reuse rules and skills written by others."
 ---
 
-:::caution[Preview]
-This walkthrough uses version 2 configuration and skills, which aren't in a released version of Trail Guide yet. The released CLI writes your own rules to `.trailguide/local/` and adds a library with `trailguide project add library`.
-:::
-
 We're going to enable your coding agent to get consistent instructions for how to write and review code in your codebase. In Trail Guide, that codebase is your **project**.
 
 We will declare guidance in a **rule,** which is a Markdown file that explains one practice you want your agent to follow, such as testing changes to your code.

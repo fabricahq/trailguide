@@ -6,7 +6,7 @@ description: "What a rule or skill version covers, library release tags, change 
 Each rule and each skill in a library has its own [semantic version](https://semver.org/). A version isn't a field in the rule file or the skill's `SKILL.md`, so frontmatter has no `version` field; each library release's tag records every rule's and skill's version. A **library release** publishes new versions of one or more rules and skills at once, from a single change to a large collection of updates.
 
 :::caution[Preview]
-Skill versions, skill levels, and the `.trailguide/` library layout aren't in a released version of Trail Guide yet. The released CLI versions rules only, with change notes in a root-level `changes/` directory.
+Skill versions and skill change notes aren't implemented yet. Trail Guide versions rules and requires change notes for rule changes after the first library release.
 :::
 
 This page is the exact specification. [Version your rules](/guides/version-rules/) explains the concepts and walks through the workflow.
