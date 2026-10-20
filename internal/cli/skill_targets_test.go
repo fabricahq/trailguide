@@ -175,6 +175,34 @@ func TestCheckNamesAnEditedInstalledSkillAndItsRepair(t *testing.T) {
 	}
 }
 
+func TestBuildReportsInvalidFrontmatterYAMLAtItsLine(t *testing.T) {
+	binary := buildCLI(t)
+	directory := t.TempDir()
+	if out, diagnostic, code := runCLI(t, binary, directory, "project", "init"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+	skill := filepath.Join(directory, ".trailguide/skills/fix-bug/SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skill), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skill, []byte("---\nname: fix-bug\ndescription: Fix a bug: reproduce it first.\n---\n# Fix\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const problem = "invalid YAML at line 3, column 23: mapping values are not allowed in this context; quote a value that contains a colon followed by a space"
+	out, diagnostic, code := runCLI(t, binary, directory, "project", "build")
+	if code != 1 || !strings.Contains(diagnostic, problem) || !strings.Contains(diagnostic, "Location: skills/fix-bug/SKILL.md") {
+		t.Fatal(code, out, diagnostic)
+	}
+	out, diagnostic, code = runCLI(t, binary, directory, "project", "build", "--json")
+	var result struct {
+		OK    bool
+		Error responseError
+	}
+	if code != 1 || diagnostic != "" || json.Unmarshal([]byte(out), &result) != nil || result.OK || result.Error.Kind != "validation" || result.Error.Location != "skills/fix-bug/SKILL.md" || !strings.Contains(result.Error.Message, problem) {
+		t.Fatal(code, out, diagnostic)
+	}
+}
+
 func TestBuildReportsAnInvalidSkillTypeAtTheSkill(t *testing.T) {
 	binary := buildCLI(t)
 	directory := t.TempDir()
