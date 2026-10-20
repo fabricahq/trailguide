@@ -444,32 +444,31 @@ func TestForkedSkillFile_NamesTheSourceInAForkedSkillsCitations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", test.library, test.uses, "SKILL.md")
-			if err != nil || string(got) != test.want {
-				t.Errorf("got %v:\n%s\nwant:\n%s", err, got, test.want)
+			got, fixes, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", test.library, test.uses, "SKILL.md")
+			if err != nil || len(fixes) > 0 || string(got) != test.want {
+				t.Errorf("got %v, fixes %q:\n%s\nwant:\n%s", err, fixes, got, test.want)
 			}
 		})
 	}
 }
 
-// TestForkedSkillFile_RefusesWhatItCannotRewrite fails, naming the source's SKILL.md, rather than fork a skill whose
-// citations would name the project's own skills, or that build would refuse.
-func TestForkedSkillFile_RefusesWhatItCannotRewrite(t *testing.T) {
+// TestForkedSkillFile_ListsWhatItCannotRewrite returns the SKILL.md with what the author must fix, rather than
+// refuse, when the skill's citations would name the project's own skills, or when build would refuse the fork.
+func TestForkedSkillFile_ListsWhatItCannotRewrite(t *testing.T) {
 	for _, test := range []struct {
-		name, original, problem string
+		name, original, fix string
 	}{
-		{"flow mapping", "---\nname: fix-bug\nmetadata: {trailguide-skills-used: \"skills/tdd\"}\n---\n", "Trail Guide can't rewrite this frontmatter for the fork"},
-		{"invalid type", "---\nname: fix-bug\nmetadata:\n  trailguide-skill-type: workflow\n---\n", "trailguide-skill-type is \"workflow\"; use playbook or review"},
+		{"flow mapping", "---\nname: fix-bug\nmetadata: {trailguide-skills-used: \"skills/tdd\"}\n---\n", "Name the skill fix-bug, and cite the source's skills and rules with the source's name, such as team:skills/tdd"},
+		{"invalid type", "---\nname: fix-bug\nmetadata:\n  trailguide-skill-type: workflow\n---\n", "Fix what build reports: trailguide-skill-type is \"workflow\"; use playbook or review"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			metadata, err := skills.ReadMetadata([]byte(test.original), "SKILL.md")
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", true, nil, "SKILL.md")
-			var invalid errs.ValidationError
-			if !errors.As(err, &invalid) || invalid.ValidationLocation() != "SKILL.md" || !strings.Contains(invalid.ValidationProblem(), test.problem) || !strings.Contains(invalid.ValidationProblem(), "copy it into .trailguide/skills/fix-bug/") {
-				t.Fatalf("got %v; want a validation error saying %q", err, test.problem)
+			got, fixes, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", true, nil, "SKILL.md")
+			if err != nil || len(fixes) != 1 || !strings.Contains(fixes[0], test.fix) || string(got) != test.original {
+				t.Fatalf("got %v, fixes %q:\n%s\nwant a fix saying %q", err, fixes, got, test.fix)
 			}
 		})
 	}
