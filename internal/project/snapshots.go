@@ -752,20 +752,18 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 			return &ValidationError{Location: diverging[id], Problem: rules.LibraryRequiresProblem(source.Name, id)}
 		}
 	}
+	// The source imports each skill it forks that its repository still has, so updates can compare it with the fork,
+	// but a library still lists a curated skill its curated repository deleted, so the record's forked skills aren't
+	// compared with the selection.
+	forked := func(id string) bool { _, ok := source.SkillForks[id]; return ok }
 	included := []string{}
 	for id, skill := range record.Skills {
-		if skill.Included {
+		if skill.Included && !forked(id) {
 			included = append(included, id)
 		}
 	}
 	slices.Sort(included)
-	selected := slices.Concat(record.SelectedSkills(source.Skills, source.ExcludesLevel), source.LibraryRequires)
-	// The source imports each skill it forks that the revision has, so updates can compare it with the fork.
-	for id := range source.SkillForks {
-		if _, available := record.AvailableSkills[id]; available {
-			selected = append(selected, id)
-		}
-	}
+	selected := slices.DeleteFunc(slices.Concat(record.SelectedSkills(source.Skills, source.ExcludesLevel), source.LibraryRequires), forked)
 	slices.Sort(selected)
 	if !slices.Equal(slices.Compact(selected), included) {
 		return invalidSnapshot(where, "recorded skills differ from what sources."+source.Name+".skills.include, skills.exclude, and skills.forks select with the library's required skills; run trailguide project sync")

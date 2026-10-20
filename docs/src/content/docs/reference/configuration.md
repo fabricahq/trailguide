@@ -217,7 +217,7 @@ sources:
 
 [Forking a skill](/reference/cli/#fork-a-skill) copies it into `skills/` and writes the entry for you, with the commit it copied as `basedOn`. To fork one by hand, copy its folder into `.trailguide/skills/<name>/`, correct its frontmatter, and add the entry.
 
-A fork needs no `skills.include` entry. The source supplies each skill it forks from its recorded revision, whatever `include` selects, so updates can compare it with your fork, and never installs it. A source can exist only for its forks. If the source deletes the skill, your fork stays installed, and the next update says the source no longer has it.
+A fork needs no `skills.include` entry. The source supplies each skill it forks from its recorded revision, whatever `include` selects, so updates can compare it with your fork, and never installs it, nor the skills only the source's copy uses: your fork's own `trailguide-skills-used` decides what it needs. A source can exist only for its forks. If the source deletes the skill, your fork stays installed, even when `include` still names the skill, and the next update says the source no longer has it.
 
 Each authored skill can be the fork of only one skill, and a rule can't replace a skill or the reverse. A skill can't be both forked and excluded, and a fork installs under its own name, so a forked skill can't be renamed either. Forking a [required skill](#skill-levels) fails validation, as excluding one does.
 

@@ -563,8 +563,70 @@ func TestUpdate_ListsAReplacedSkillOnlyAtTheRevisionTheDecisionsChoose(t *testin
 // supplies it only for comparison, and keeps the fork installed after a library release deletes the skill, listing
 // the deletion in the update preview.
 func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
+	// A project may also still include the skill it forks by ID, which mustn't stop the update either.
+	for name, include := range map[string]string{"forks only": "", "included too": "      include: [skills/build-feature]\n"} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			f, commit := skillLibrary(t)
+			options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n"+include+"      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")
+			root, err := openProject(ctx, options, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+			root.Close()
+			if _, err := Sync(ctx, options, git); err != nil {
+				t.Fatal(err)
+			}
+			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
+				t.Fatalf("installed %v; want only the fork", got)
+			}
+			if !exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+				t.Fatal("sync didn't import the forked skill to compare with the fork")
+			}
+			later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+				t.Fatal(err)
+			}
+			plan, err := PlanUpdate(ctx, options, git, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			applied, err := plan.Apply(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []imports.ReplacedSkillUpdate{{ID: "skills/build-feature", LocalSkill: "skills/build-feature", BasedOn: commit, From: commit, To: later, Files: []string{}, Removed: true}}
+			if len(applied.Sources) != 1 || !reflect.DeepEqual(applied.Sources[0].ReplacedSkills, want) {
+				t.Fatalf("update = %+v\nwant replaced skills %+v", applied.Sources, want)
+			}
+			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
+				t.Fatalf("after the update, installed %v; want the fork", got)
+			}
+			if exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+				t.Fatal("the update kept the deleted skill's vendored copy")
+			}
+			if again, err := Sync(ctx, options, git); err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {
+				t.Fatalf("sync after the update = %+v, %v; want no changes", again, err)
+			}
+		})
+	}
+}
+
+func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	ctx := context.Background()
-	f, commit := skillLibrary(t)
+	f, _ := skillLibrary(t)
+	using := "---\nname: build-feature\ndescription: Build a feature from a spec.\nmetadata:\n  trailguide-skills-used: |-\n    skills/review\n---\n# Build a feature\n"
+	commit, err := f.Commit(ctx, f.Worktree(), "Review each feature", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": []byte(using)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+		t.Fatal(err)
+	}
 	options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")
 	root, err := openProject(ctx, options, false)
 	if err != nil {
@@ -576,37 +638,6 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
-		t.Fatalf("installed %v; want only the fork", got)
-	}
-	if !exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
-		t.Fatal("sync didn't import the forked skill to compare with the fork")
-	}
-	later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
-		t.Fatal(err)
-	}
-	plan, err := PlanUpdate(ctx, options, git, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	applied, err := plan.Apply(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []imports.ReplacedSkillUpdate{{ID: "skills/build-feature", LocalSkill: "skills/build-feature", BasedOn: commit, From: commit, To: later, Files: []string{}, Removed: true}}
-	if len(applied.Sources) != 1 || !reflect.DeepEqual(applied.Sources[0].ReplacedSkills, want) {
-		t.Fatalf("update = %+v\nwant replaced skills %+v", applied.Sources, want)
-	}
-	if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
-		t.Fatalf("after the update, installed %v; want the fork", got)
-	}
-	if exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
-		t.Fatal("the update kept the deleted skill's vendored copy")
-	}
-	if again, err := Sync(ctx, options, git); err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {
-		t.Fatalf("sync after the update = %+v, %v; want no changes", again, err)
+		t.Fatalf("installed %v; want only the fork, which uses no other skill", got)
 	}
 }

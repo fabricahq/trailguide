@@ -208,6 +208,11 @@ func (l curatedSource) curate(ctx context.Context, imported *Library, chosen []c
 	if err != nil {
 		return err
 	}
+	// The curated repository deleted every skill chosen names, each one the library source forks, so the project
+	// installs nothing from it.
+	if len(read.skills) == 0 {
+		return nil
+	}
 	// The library's own skills use a curated skill by its ID in the library, which they're recorded under too.
 	ownUsers := map[string][]string{}
 	for _, skill := range chosen {
@@ -256,6 +261,10 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	for _, skill := range chosen {
 		_, id, _ := library.SplitCurated(skill.id)
 		if _, ok := folders[id]; !ok {
+			// The curated repository deleted a skill the library source forks, and the fork stays.
+			if isForked(l.forks, id) {
+				continue
+			}
 			return importedSkills{}, l.missing(skill.id, revision, kept)
 		}
 		ids, levels[id], usedOnly[id] = append(ids, id), skill.level, !skill.included
@@ -264,7 +273,7 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	plan := sourcePlan{release: revision.Release, commit: revision.Commit}
 	// A curated library's skills can use skills it curates in turn, which levels don't chain to, so they aren't
 	// followed.
-	uses, err := repo.skillUses(ctx, origin, folders, ids, !revision.NonLibrary)
+	uses, err := repo.skillUses(ctx, origin, folders, ids, !revision.NonLibrary, slices.Collect(maps.Keys(l.forks)))
 	if err != nil {
 		return importedSkills{}, err
 	}
