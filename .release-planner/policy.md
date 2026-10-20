@@ -55,7 +55,9 @@ The notes present changes in this order, leaving out any with nothing to say:
 
 ## Always and never
 
-- Always keep new features and improvements high level: say what readers can now do in a short bullet, and leave option names, flags, and edge cases to the linked docs. Give a feature its own section only when it's a major change, such as a new capability or a rename, and summarize its parts in bullets.
+- Always keep new features and improvements high level and concise: one short bullet per point, and leave option names, flags, and edge cases to the linked docs.
+- Always give each new feature its own `###` heading that names what changed for the reader, such as "Sources can follow branches", then summarize it in one or two bullets.
+- Always say what readers can now do, with "now", such as "You can now fork a skill into your library" or "`project update --help` now explains how skills update".
 - Always give migration steps for a breaking change, with the commands or before-and-after examples readers need. Until Trail Guide is publicly announced, summarize breaking changes in a sentence instead, and say that upgrade instructions are omitted because Trail Guide is in initial development.
 - Always credit external contributors by GitHub handle.
 - Never present internal refactors, CI changes, or website-only changes as new CLI features.
