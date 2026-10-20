@@ -381,6 +381,7 @@ func TestUpdate_RejectsInvalidRequestsWithoutWriting(t *testing.T) {
 		{[]string{"team:Techs/Go"}, 2, "team:Techs/Go"},
 		{[]string{"team:skills/build-feature"}, 2, "team:skills/build-feature: SOURCE:RULE names one rule, such as team:techs/go/errors, and skills/build-feature isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update team"},
 		{[]string{"team:techs/go"}, 2, "invalid rule path"},
+		{[]string{"team:Techs/Go"}, 2, "invalid rule path"},
 		{[]string{"other"}, 1, "Error: no source named other in .trailguide/config.yaml. No files were written.\n\nLocation: other\n"},
 		{[]string{"team:techs/go/missing"}, 1, "Error: source team doesn't import this rule; name a rule it imports. No files were written.\n\nLocation: team:techs/go/missing\n"},
 		{[]string{"--exclude", "team:techs/go/errors", "--reason", "Why.", "--yes"}, 2, "Error: --exclude team:techs/go/errors: the update doesn't add this rule, so there's nothing to exclude"},

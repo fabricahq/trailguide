@@ -121,7 +121,7 @@ func updateTargets(args []string) ([]imports.UpdateTarget, error) {
 		}
 		if scoped {
 			if err := librarytree.ValidateRuleID(rule, arg); err != nil {
-				if skills.ValidateID(rule, arg) == nil && !strings.HasPrefix(rule, "techs/") && !strings.HasPrefix(rule, "practices/") {
+				if group := strings.ToLower(rule); skills.ValidateID(rule, arg) == nil && !strings.HasPrefix(group, "techs/") && !strings.HasPrefix(group, "practices/") {
 					return nil, fmt.Errorf("%s: SOURCE:RULE names one rule, such as team:techs/go/errors, and %s isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update %s", arg, rule, source)
 				}
 				return nil, err
