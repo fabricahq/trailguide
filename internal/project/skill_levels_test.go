@@ -430,9 +430,9 @@ func TestSyncBuildAndList_LeaveOutTheExcludedLevels(t *testing.T) {
 	}
 }
 
-func TestSync_ReplacesASkillItAlsoExcludesByLevel(t *testing.T) {
+func TestSync_ForksASkillItAlsoExcludesByLevel(t *testing.T) {
 	f := leveledLibrary(t)
-	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"Only what the library requires."},{"id":"skills/deploy","reason":"Ours.","replacedBy":"skills/our-deploy"}]}}}}`)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"Only what the library requires."}],"forks":{"skills/deploy":{"as":"skills/our-deploy","reason":"Ours."}}}}}}`)
 	root, err := openProject(context.Background(), options, false)
 	if err != nil {
 		t.Fatal(err)

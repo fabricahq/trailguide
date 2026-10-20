@@ -59,8 +59,13 @@ type Source struct {
 	// each key is a skill the source installs, and each value a skill it has, is checked when sync reads the source.
 	SkillUses map[string][]string `json:"skillUses,omitempty"`
 	// SkillExclude maps the ID of each skill that skills.exclude leaves out to its exclusion; it is empty, never nil,
-	// when there are none. An excluded skill is still imported, so updates can compare it with its replacement.
+	// when there are none. A skill excluded by ID is still imported, so updates can show its changes.
 	SkillExclude map[string]SkillExclusion `json:"skillExclude,omitempty"`
+	// SkillForks maps the ID of each skill that skills.forks replaces with an authored skill to its fork; it is
+	// empty, never nil, when there are none, and never names an excluded or renamed skill. The source imports each
+	// forked skill its revision has, whatever skills.include selects, so updates can compare it with the fork, and
+	// installs none of them.
+	SkillForks map[string]SkillFork `json:"skillForks,omitempty"`
 	// SkillExcludeLevels maps recommended or "*", when skills.exclude lists it, to the exclusion's reason; it is
 	// empty, never nil, when it lists neither. See ExcludesLevel.
 	SkillExcludeLevels map[string]string `json:"skillExcludeLevels,omitempty"`
@@ -324,11 +329,12 @@ func parseSource(name string, input json.RawMessage, repositories map[string]str
 }
 
 // parseSkillFields reads a source's skills object into source: include, a list of skill IDs or only "*"; uses, the
-// skills each skill uses beyond what it declares; exclude, as parseSkillExclusions reads it; and rename, as
-// parseSkillRenames reads it. A missing object includes no skills, declares no uses, excludes none, and renames
-// none. include may be left out only beside rename. A skill can't be both excluded and renamed.
+// skills each skill uses beyond what it declares; exclude, as parseSkillExclusions reads it; forks, as
+// parseSkillForks reads it; and rename, as parseSkillRenames reads it. A missing object includes no skills, declares
+// no uses, excludes, forks, and renames none. include may be left out only beside rename or forks. A skill can be
+// only one of excluded, forked, and renamed.
 func parseSkillFields(input json.RawMessage, location string, source *Source) error {
-	source.Skills, source.SkillUses, source.SkillExclude, source.SkillExcludeLevels = []string{}, map[string][]string{}, map[string]SkillExclusion{}, map[string]string{}
+	source.Skills, source.SkillUses, source.SkillExclude, source.SkillExcludeLevels, source.SkillForks = []string{}, map[string][]string{}, map[string]SkillExclusion{}, map[string]string{}, map[string]SkillFork{}
 	if input == nil {
 		return nil
 	}
@@ -336,11 +342,14 @@ func parseSkillFields(input json.RawMessage, location string, source *Source) er
 	if err != nil {
 		return err
 	}
-	if err := decode.KnownFields(fields, []string{"include", "uses", "exclude", "rename"}, location); err != nil {
+	if err := decode.KnownFields(fields, []string{"include", "uses", "exclude", "forks", "rename"}, location); err != nil {
 		return err
 	}
-	// A source installs its library's required skills without include, so renaming one needs no include.
-	if _, renames := fields["rename"]; fields["include"] != nil || !renames {
+	// A source installs its library's required skills without include, so renaming one needs no include, and it
+	// imports the skills it forks without include, so a source can exist only for its forks.
+	_, renames := fields["rename"]
+	_, forks := fields["forks"]
+	if fields["include"] != nil || !renames && !forks {
 		if source.Skills, err = ParseSkillSelection(fields["include"], location+".include"); err != nil {
 			return err
 		}
@@ -351,24 +360,51 @@ func parseSkillFields(input json.RawMessage, location string, source *Source) er
 	if source.SkillExclude, source.SkillExcludeLevels, err = parseSkillExclusions(fields["exclude"], location+".exclude"); err != nil {
 		return err
 	}
+	if source.SkillForks, err = parseSkillForks(fields["forks"], location+".forks"); err != nil {
+		return err
+	}
 	if source.SkillRename, err = parseSkillRenames(fields["rename"], location+".rename"); err != nil {
 		return err
+	}
+	for _, id := range slices.Sorted(maps.Keys(source.SkillForks)) {
+		if _, excluded := source.SkillExclude[id]; excluded {
+			return invalid(location+".forks."+id, "the source also excludes this skill; a fork already leaves the source's copy uninstalled, so remove the exclusion")
+		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(source.SkillRename)) {
 		if _, excluded := source.SkillExclude[id]; excluded {
 			return invalid(location+".rename."+id, "the source excludes this skill, so it isn't installed and has no name to change; remove the rename or the exclusion")
 		}
+		if fork, forked := source.SkillForks[id]; forked {
+			return invalid(location+".rename."+id, "the source forks this skill, so it isn't installed and has no name to change; the fork installs under its own name, "+strings.TrimPrefix(fork.As, skills.Directory+"/")+". Remove the rename")
+		}
 	}
 	return nil
+}
+
+// SkillDivergences returns, by skill ID, the configuration field of each skill the source excludes by ID or forks,
+// which a skill its library requires can't be.
+func (s Source) SkillDivergences() map[string]string {
+	result := map[string]string{}
+	for id := range s.SkillExclude {
+		result[id] = "sources." + s.Name + ".skills.exclude." + id
+	}
+	for id := range s.SkillForks {
+		result[id] = "sources." + s.Name + ".skills.forks." + id
+	}
+	return result
 }
 
 // ExcludesLevel reports whether the source's skills.exclude leaves out skill id, which its library gives level, by
 // that level, other than a required one, which a project can't exclude: "*" leaves out recommended and offered skills,
 // and recommended the recommended ones. A skill from a repository that isn't a library has no level, and only "*"
-// leaves it out. A skill that skills.exclude also names by ID isn't left out by its level, so the source still imports
-// it, as it does every skill excluded by ID, and its replacedBy, if any, can replace it.
+// leaves it out. A skill that skills.exclude names by ID, or skills.forks forks, isn't left out by its level, so the
+// source still imports it, as it does every skill excluded by ID or forked, and its fork, if any, can replace it.
 func (s Source) ExcludesLevel(id, level string) bool {
 	if _, byID := s.SkillExclude[id]; byID {
+		return false
+	}
+	if _, forked := s.SkillForks[id]; forked {
 		return false
 	}
 	if _, all := s.SkillExcludeLevels[skills.Wildcard]; all {

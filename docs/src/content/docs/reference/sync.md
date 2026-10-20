@@ -117,7 +117,7 @@ Two errors protect folders Trail Guide doesn't own. Each fails before writing an
 
 | Error | Meaning and next step |
 | --- | --- |
-| `skill-folder-not-managed` | A target already has a folder with the install name of a skill the repository installs, and Trail Guide didn't install it, such as a hand-copied skill or another tool's. To let Trail Guide manage the skill, move or delete that folder and run the command again. To keep the folder, [rename](/reference/configuration/#rename-a-skill) or [exclude](/reference/configuration/#exclude-or-replace-a-skill) the skill instead. |
+| `skill-folder-not-managed` | A target already has a folder with the install name of a skill the repository installs, and Trail Guide didn't install it, such as a hand-copied skill or another tool's. To let Trail Guide manage the skill, move or delete that folder and run the command again. To keep the folder, [rename](/reference/configuration/#rename-a-skill) or [exclude](/reference/configuration/#exclude-a-skill) the skill instead. |
 | `skill-name-clash` | Two skills the repository installs have the same install name, such as `fabrica:skills/review` and `pstack:skills/review`, or a skill from a source and an authored skill. Installed folders are named by install name, so both can't be installed. [Rename](/reference/configuration/#rename-a-skill) or exclude one of them. Trail Guide never renames a skill on its own. |
 
 When `generated/installed-skills.json` is missing or was changed outside Trail Guide, Trail Guide can't tell which folders it owns, so it treats the folders it would write as not managed. Restore the record from Git, such as with `git checkout -- .trailguide/generated/installed-skills.json`, then run the command again.

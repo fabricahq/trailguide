@@ -48,19 +48,19 @@ func ReadSourceSkill(ctx context.Context, name string, declared rules.CuratedSou
 }
 
 // LibraryForks compares the skills a library forked from the source it declares under name, as declared, with the
-// source's copies at the revision ReadSourceSkill reads. forks holds the source's exclusions that name a
-// replacement, by skill ID; an exclusion without basedOn has nothing to compare with. It returns a row, sorted by ID,
+// source's copies at the revision ReadSourceSkill reads. forks holds the source's forks, by skill ID; a fork without
+// basedOn has nothing to compare with. It returns a row, sorted by ID,
 // for each skill whose copy differs, and fails when the repository has no basedOn commit, or that commit has no such
 // skill.
-func LibraryForks(ctx context.Context, name string, declared rules.CuratedSource, forks map[string]rules.SkillExclusion, options Options) (rows []library.ForkedSkill, err error) {
+func LibraryForks(ctx context.Context, name string, declared rules.CuratedSource, forks map[string]rules.SkillFork, options Options) (rows []library.ForkedSkill, err error) {
 	rows = []library.ForkedSkill{}
 	err = withSourceRevision(ctx, name, declared, options, func(repo *repository, revision string, at string, _ int, _ bool) error {
 		for _, id := range slices.Sorted(maps.Keys(forks)) {
-			exclusion := forks[id]
-			if exclusion.BasedOn.IsZero() || exclusion.BasedOn.Canonical() == revision {
+			fork := forks[id]
+			if fork.BasedOn.IsZero() || fork.BasedOn.Canonical() == revision {
 				continue
 			}
-			before, err := repo.skillEntries(ctx, basedOnField(name, "")(id), id, exclusion.BasedOn.Canonical())
+			before, err := repo.skillEntries(ctx, basedOnField(name, "")(id), id, fork.BasedOn.Canonical())
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func LibraryForks(ctx context.Context, name string, declared rules.CuratedSource
 			if err != nil {
 				return err
 			}
-			row := library.ForkedSkill{Source: name, ID: id, Skill: exclusion.ReplacedBy, BasedOn: exclusion.BasedOn.Canonical(), Commit: revision, Revision: at, Files: []string{}, Removed: !found}
+			row := library.ForkedSkill{Source: name, ID: id, Skill: fork.As, BasedOn: fork.BasedOn.Canonical(), Commit: revision, Revision: at, Files: []string{}, Removed: !found}
 			if found {
 				row.Files = differentEntries(before, after)
 			}

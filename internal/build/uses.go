@@ -25,13 +25,16 @@ import (
 // withoutCuratedCopies dropped, reaches the curated skill it maps to.
 func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases map[string]string) ([]string, error) {
 	sources := map[string]rules.Source{}
-	// excluded maps the project ID of each source's skill the project excludes to the authored skill that replaces
-	// it, or "" when none does.
+	// excluded maps the project ID of each source's skill the project excludes or forks to the fork that replaces it,
+	// or "" when none does.
 	excluded := map[string]string{}
 	for _, source := range config.Sources {
 		sources[source.Name] = source
-		for id, exclusion := range source.SkillExclude {
-			excluded[source.Name+":"+id] = exclusion.ReplacedBy
+		for id := range source.SkillExclude {
+			excluded[source.Name+":"+id] = ""
+		}
+		for id, fork := range source.SkillForks {
+			excluded[source.Name+":"+id] = fork.As
 		}
 	}
 	warnings := []string{}
@@ -47,7 +50,7 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 		case replacement != "":
 			return replacement, true
 		}
-		fix := "Add replacedBy to the exclusion, or stop excluding the skill."
+		fix := "Fork the skill instead, or stop excluding it."
 		if _, rest, _ := strings.Cut(id, ":"); strings.Contains(rest, ":") {
 			// A curated skill can't be replaced; see rules.ParseConfiguration's exclusion checks.
 			fix = "Stop excluding the skill, or remove the use from the skill that uses it, which you can fork. A curated skill can't be replaced."

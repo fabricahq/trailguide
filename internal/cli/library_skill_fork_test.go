@@ -66,10 +66,13 @@ func TestLibraryAddSkill_ForksACuratedSkillAndCheckListsTheSourcesChanges(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"replacedBy: skills/deploy", "basedOn: \"" + pocock.FirstCommit + "\"", "reason: Deploy with our pipeline.", "required: [skills/deploy]"} {
+	for _, want := range []string{"forks:\n        skills/ops/deploy:\n          as: skills/deploy", "basedOn: \"" + pocock.FirstCommit + "\"", "reason: Deploy with our pipeline.", "required: [skills/deploy]"} {
 		if !strings.Contains(string(config), want) {
 			t.Fatalf("config lacks %q:\n%s", want, config)
 		}
+	}
+	if strings.Contains(string(config), "include:") || strings.Contains(string(config), "exclude:") {
+		t.Fatalf("the fork needs no include or exclude entry:\n%s", config)
 	}
 
 	out, diagnostic, code = runCLIWithEnvironment(t, binary, directory, environment, "library", "check")
@@ -93,6 +96,18 @@ func TestLibraryAddSkill_ForksACuratedSkillAndCheckListsTheSourcesChanges(t *tes
 		if code != 0 || !strings.Contains(out, want) {
 			t.Fatalf("exit %d, want %s:\n%s%s", code, want, out, diagnostic)
 		}
+	}
+
+	deleted, err := pocock.Commit(ctx, pocock.Worktree(), "Delete deploy", map[string][]byte{"skills/ops/deploy/SKILL.md": nil, "skills/ops/deploy/scripts/deploy.sh": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pocock.Command(ctx, "tag", "--force", "stable", deleted); err != nil {
+		t.Fatal(err)
+	}
+	out, diagnostic, code = runCLIWithEnvironment(t, binary, directory, environment, "library", "check")
+	if code != 0 || !strings.Contains(out, "pocock no longer has the skill at stable") || !strings.Contains(out, "Your fork stays the library's own skill.") {
+		t.Fatalf("exit %d after the source deleted the skill:\n%s%s", code, out, diagnostic)
 	}
 }
 
