@@ -190,25 +190,24 @@ After you confirm, the update rewrites the installed copies in your target folde
 
 A library sets a **level** for each skill it offers. A `required` skill installs in every project that uses the library. A `recommended` skill installs in projects that include `recommended`. An `offered` skill installs only when you name it. See [Skill levels](/reference/configuration/#skill-levels).
 
-A library can change a skill's level in any library release, so an update can start or stop installing a skill you never named. The preview shows each move on the skill's row, with the library release that made it:
+A library can change a skill's level in any library release, so an update can start or stop installing a skill you never named. The preview shows each move under the skill's row, with what it means for your project:
 
 ```text
 fabrica
-  new       skills/ship-service                    1.0.0
-            level: offered -> required, by fabrica release 8
-  level     skills/build-feature                   1.3.0
-            level: offered -> recommended, by fabrica release 8
-            Not installed: this project doesn't include recommended.
-  dropped   skills/write-design-doc                1.1.0
-            level: recommended -> offered, by fabrica release 8
-            Was installed because this project includes recommended; add skills/write-design-doc to keep it.
+  added     skills/ship-service
+            level: offered -> required
+            Now required: it installs whatever skills.include says, and the project can't exclude or fork it.
+  removed   skills/write-design-doc
+            level: recommended -> offered
+            No longer recommended: it installs only when skills.include names it or has "*".
+  level     skills/build-feature  offered -> recommended
+            Now recommended: it installs when skills.include has recommended.
 ```
 
-- A move that installs a skill, such as `offered -> required`, or `offered -> recommended` when you include `recommended`, shows the skill as `new`.
-- A move that stops installing one, such as `recommended -> offered` when you don't name the skill, shows it as `dropped`. To keep it, add its ID to the source's `skills.include` before you confirm.
-- A move that changes nothing for your project, such as `offered -> recommended` when you don't include `recommended`, shows the skill as `level`, so you can decide whether to include it.
-
-When a skill's version changes too, its row shows the version change, with the level move on the line below.
+- A move that installs a skill, such as `offered -> required`, or `offered -> recommended` when you include `recommended`, shows the skill as `added`, with the move on the line below.
+- A move that stops installing one, such as `recommended -> offered` when you don't name the skill, shows it as `removed`. To keep it, add its ID to the source's `skills.include` before you confirm.
+- When the skill's files change too, the move appears under its `changed` row, before the files.
+- A move that installs or removes nothing, such as `offered -> recommended` when you don't include `recommended`, gets a `level` row of its own, so you can decide whether to include the skill.
 
 A skill that becomes required while your project excludes or forks it stops the update: required skills can't be excluded or forked. The error names the library and your exclusion; remove the exclusion, or stop using the source. Levels don't chain: a project sees only the levels of the libraries it names as sources.
 

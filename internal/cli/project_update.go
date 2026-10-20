@@ -365,7 +365,8 @@ func updateReport(result project.UpdateResult, cancelled, shown bool, location u
 const updateKindWidth = len(imports.UpdateReplaced)
 
 // formatUpdatePreview lists each source's rule rows with the change, rule ID, and versions in aligned columns, then
-// its skill rows with the change and skill ID, each row's details indented beneath them, and any move of its shared
+// its skill rows with the change and skill ID, each row's details indented beneath them, including a change of the
+// skill's level, the level changes of skills without a row of their own, and any move of its shared
 // files. It writes nothing when no source has
 // anything to show, so the caller's summary stands alone.
 func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
@@ -408,15 +409,16 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
-		formatSkillRows(out, source.Skills)
+		levels := levelsByID(source.SkillLevels)
+		formatSkillRows(out, source.Skills, levels)
 		for _, row := range source.ReplacedSkills {
 			fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, imports.UpdateReplaced, idWidth, row.ID, commitSpan(row.From, row.To))
 			for _, line := range replacedSkillDetails(row) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
-		formatLevelRows(out, source.SkillLevels, idWidth)
-		formatCuratedRows(out, source.Name, source.Curated)
+		formatLevelRows(out, source, idWidth)
+		formatCuratedRows(out, source.Name, source.Curated, levels)
 		if shared := source.SharedFiles; shared != nil {
 			fmt.Fprintf(out, "  Shared files: release %d -> %d\n", shared.From, shared.To)
 		}
@@ -424,16 +426,16 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 }
 
 // formatCuratedRows lists the sources library curates skills from, each on a line naming the library, the curated
-// source, and how its revision moves, with the rows of its skills, and of the curated skills the project replaces,
-// beneath it.
-func formatCuratedRows(out *strings.Builder, library string, rows []imports.CuratedUpdate) {
+// source, and how its revision moves, with the rows of its skills, each with its level change from levels, if any,
+// and of the curated skills the project replaces, beneath it.
+func formatCuratedRows(out *strings.Builder, library string, rows []imports.CuratedUpdate, levels map[string]imports.SkillLevelUpdate) {
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
 		fmt.Fprintf(out, "  %s curates %s  %s\n", library, row.Name, curatedSpan(row))
 		if row.TagMoved {
 			fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, row.Ref)
 		}
-		formatSkillRows(out, row.Changes)
+		formatSkillRows(out, row.Changes, levels)
 		for _, replaced := range row.Replaced {
 			fmt.Fprintf(out, "  %-*s  %s  %s\n", updateKindWidth, imports.UpdateReplaced, replaced.ID, commitSpan(replaced.From, replaced.To))
 			for _, line := range replacedSkillDetails(replaced) {
@@ -443,14 +445,36 @@ func formatCuratedRows(out *strings.Builder, library string, rows []imports.Cura
 	}
 }
 
-// formatLevelRows lists a source's skill level rows with the skill ID, in a column idWidth wide, and the levels it
-// moves between, each row's detail indented beneath it.
-func formatLevelRows(out *strings.Builder, rows []imports.SkillLevelUpdate, idWidth int) {
+// formatLevelRows lists the source's skill level changes that no skill row of the source or its curated sources
+// shows, since the skill's files don't change, as rows of their own with the skill ID, in a column idWidth wide,
+// and the levels it moves between, each row's detail indented beneath it.
+func formatLevelRows(out *strings.Builder, source imports.SourceUpdate, idWidth int) {
+	shown := map[string]bool{}
+	for _, row := range source.Skills {
+		shown[row.ID] = true
+	}
+	for _, curated := range source.Curated {
+		for _, row := range curated.Changes {
+			shown[row.ID] = true
+		}
+	}
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
-	for _, row := range rows {
+	for _, row := range source.SkillLevels {
+		if shown[row.ID] {
+			continue
+		}
 		fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, "level", idWidth, row.ID, levelSpan(row))
 		fmt.Fprintf(out, "%s%s\n", indent, levelDetail(row))
 	}
+}
+
+// levelsByID returns rows by skill ID.
+func levelsByID(rows []imports.SkillLevelUpdate) map[string]imports.SkillLevelUpdate {
+	levels := map[string]imports.SkillLevelUpdate{}
+	for _, row := range rows {
+		levels[row.ID] = row
+	}
+	return levels
 }
 
 // levelSpan shows the levels a skill's level row moves between, with "none" for a side where the library has no
@@ -477,11 +501,15 @@ func levelDetail(row imports.SkillLevelUpdate) string {
 	return `No longer recommended: it installs only when skills.include names it or has "*".`
 }
 
-// formatSkillRows lists a source's skill rows with the change and skill ID, each row's details indented beneath them.
-func formatSkillRows(out *strings.Builder, rows []imports.SkillUpdate) {
+// formatSkillRows lists a source's skill rows with the change and skill ID, each row's details indented beneath them:
+// first its level change from levels, if any, then the details of its files.
+func formatSkillRows(out *strings.Builder, rows []imports.SkillUpdate, levels map[string]imports.SkillLevelUpdate) {
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
 		fmt.Fprintf(out, "  %-*s  %s\n", updateKindWidth, row.Change, row.ID)
+		if level, ok := levels[row.ID]; ok {
+			fmt.Fprintf(out, "%slevel: %s\n%s%s\n", indent, levelSpan(level), indent, levelDetail(level))
+		}
 		for _, line := range skillUpdateDetails(row) {
 			fmt.Fprintf(out, "%s%s\n", indent, line)
 		}
@@ -508,13 +536,14 @@ func answeredSkills(before, after project.UpdateResult) string {
 		if len(source.Skills) == 0 && len(source.SkillLevels) == 0 && len(source.Curated) == 0 {
 			out.WriteString("  No skill changes.\n")
 		}
-		formatSkillRows(&out, source.Skills)
+		levels := levelsByID(source.SkillLevels)
+		formatSkillRows(&out, source.Skills, levels)
 		idWidth := 0
 		for _, row := range source.SkillLevels {
 			idWidth = max(idWidth, len(row.ID))
 		}
-		formatLevelRows(&out, source.SkillLevels, idWidth)
-		formatCuratedRows(&out, source.Name, source.Curated)
+		formatLevelRows(&out, source, idWidth)
+		formatCuratedRows(&out, source.Name, source.Curated, levels)
 	}
 	if warning := after.ScriptsWarning(); out.Len() > 0 && warning != "" {
 		fmt.Fprintf(&out, "\nWarning: %s\n", warning)
