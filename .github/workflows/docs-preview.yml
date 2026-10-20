@@ -1,0 +1,284 @@
+# Serve each pull request's checked documentation build on the preview host, reachable over
+# Tailscale. The host is a self-hosted runner in the code-rules-docs-previews runner group,
+# which GitHub restricts to this file on main: PR code never runs there. PR builds happen on
+# GitHub-hosted runners in docs.yml; this workflow only copies and serves their static output.
+# Setup and the security model are in docs/README.md.
+name: Documentation previews
+on:
+  workflow_run:
+    workflows: [Documentation]
+    types: [completed]
+  # Runs this default-branch file, never PR code: it only tears the preview down.
+  pull_request_target:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful PR Documentation run ID to preview'
+        required: true
+        type: string
+      commit:
+        description: 'Full PR commit SHA reviewed for previewing'
+        required: true
+        type: string
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+jobs:
+  # Decides what to do on a GitHub-hosted runner before anything reaches the preview host.
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      action: ${{ steps.resolve.outputs.action }}
+      pr: ${{ steps.resolve.outputs.pr }}
+      run_id: ${{ steps.resolve.outputs.run_id }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - id: resolve
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const repositoryID = context.payload.repository.id;
+            if (context.ref !== `refs/heads/${context.payload.repository.default_branch}`) {
+              throw new Error('Documentation previews must use the default-branch workflow.');
+            }
+            const skip = reason => {
+              core.notice(reason);
+              core.setOutput('action', 'skip');
+            };
+            if (context.eventName === 'pull_request_target') {
+              const pr = context.payload.pull_request;
+              if (context.payload.action !== 'closed' || pr.base.repo.id !== repositoryID) {
+                return skip('Only closed pull requests in this repository stop a preview.');
+              }
+              core.setOutput('action', 'stop');
+              core.setOutput('pr', String(pr.number));
+              return;
+            }
+            const manual = context.eventName === 'workflow_dispatch';
+            if (!manual && context.eventName !== 'workflow_run') {
+              throw new Error(`Unsupported event: ${context.eventName}`);
+            }
+            const canApprove = async username => {
+              const {data: access} = await github.rest.repos.getCollaboratorPermissionLevel({owner, repo, username});
+              return ['admin', 'write'].includes(access.permission);
+            };
+            let run;
+            if (manual) {
+              const {run_id, commit} = context.payload.inputs;
+              if (!/^[1-9][0-9]*$/.test(run_id) || !/^[a-f0-9]{40}$/.test(commit)) {
+                throw new Error('Provide a Documentation run ID and the full 40-character commit SHA.');
+              }
+              if (!await canApprove(context.actor)) {
+                throw new Error('Preview approval requires repository write access.');
+              }
+              ({data: run} = await github.rest.actions.getWorkflowRun({owner, repo, run_id}));
+              if (run.head_sha !== commit) {
+                throw new Error('The selected run does not match the approved commit.');
+              }
+            } else {
+              run = context.payload.workflow_run;
+            }
+            if (run.path !== '.github/workflows/docs.yml' || run.event !== 'pull_request' ||
+                run.status !== 'completed' || run.conclusion !== 'success' ||
+                run.repository.id !== repositoryID) {
+              if (manual) throw new Error('Select a successful PR Documentation run in this repository.');
+              return skip('Only successful PR Documentation runs in this repository are previewed.');
+            }
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner, repo, run_id: run.id, per_page: 100,
+            });
+            const sites = artifacts.filter(a => a.name === 'docs-site');
+            if (sites.length !== 1 || sites[0].expired || sites[0].size_in_bytes <= 0) {
+              if (manual) throw new Error('The selected run has no unexpired docs-site artifact.');
+              return skip('Missing, duplicate, or expired docs-site artifact.');
+            }
+            // Query GitHub directly: workflow_run.pull_requests can be empty for fork PRs.
+            const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              owner, repo, commit_sha: run.head_sha, per_page: 100,
+            });
+            for (const candidate of pulls) {
+              if (candidate.base.repo.id !== repositoryID) continue;
+              const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number: candidate.number});
+              // An older run must not replace the preview of a newer commit.
+              if (pr.state !== 'open' || pr.head.sha !== run.head_sha) continue;
+              // The build ran PR code, so its HTML is untrusted. Same-repository branches
+              // require write access; fork authorship alone does not establish who can push.
+              if (!manual && (pr.head.repo?.id !== repositoryID || !await canApprove(pr.user.login))) {
+                core.notice('External previews need manual approval for this commit. Use Run workflow with its run ID and full SHA.');
+                continue;
+              }
+              core.setOutput('action', 'deploy');
+              core.setOutput('pr', String(pr.number));
+              core.setOutput('run_id', String(run.id));
+              core.setOutput('sha', run.head_sha);
+              return;
+            }
+            if (manual) throw new Error('No open pull request has the approved commit at its head.');
+            skip('No open pull request qualifies for an automatic preview.');
+
+  deploy:
+    needs: resolve
+    if: needs.resolve.outputs.action == 'deploy'
+    runs-on:
+      group: code-rules-docs-previews
+    timeout-minutes: 10
+    # A newer deploy for the same PR replaces a pending one; a running deploy finishes.
+    concurrency:
+      group: docs-preview-pr-${{ needs.resolve.outputs.pr }}
+      cancel-in-progress: false
+    outputs:
+      url: ${{ steps.start.outputs.url }}
+      pid: ${{ steps.start.outputs.pid }}
+    steps:
+      - name: Require preview host configuration
+        env:
+          PREVIEW_HOST: ${{ vars.FABRICA_PREVIEW_HOST }}
+        run: |
+          if [ -z "$PREVIEW_HOST" ]; then
+            echo "::error::Set the FABRICA_PREVIEW_HOST repository variable to the preview host's Tailscale MagicDNS name. See docs/README.md."
+            exit 1
+          fi
+      # The default-branch source supplies the preview tools; PR code is never checked out.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - name: Clear the download directory
+        run: rm -rf "$RUNNER_TEMP/docs-preview-site"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docs-site
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/docs-preview-site
+      # Catches close events the host missed while it was offline.
+      - name: Reap previews for closed pull requests
+        run: bun _tools/docs-preview-stack.ts reap
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - id: start
+        name: Start preview
+        run: bun _tools/docs-preview-stack.ts start
+        env:
+          PREVIEW_PR: ${{ needs.resolve.outputs.pr }}
+          PREVIEW_SHA: ${{ needs.resolve.outputs.sha }}
+          PREVIEW_HOST: ${{ vars.FABRICA_PREVIEW_HOST }}
+          PREVIEW_SITE: ${{ runner.temp }}/docs-preview-site
+
+  # A separate job, so the check runs after the runner's end-of-job process cleanup: the link
+  # is posted only if the server this run started survived and answers at its tailnet URL.
+  publish:
+    needs: [resolve, deploy]
+    if: always() && needs.resolve.outputs.action == 'deploy' && (needs.deploy.result == 'success' || needs.deploy.result == 'failure')
+    runs-on:
+      group: code-rules-docs-previews
+    timeout-minutes: 5
+    steps:
+      - name: Confirm the preview outlived its deploy job
+        id: alive
+        if: needs.deploy.result == 'success'
+        # PRs 500 apart share a port, so any response is not enough: the server must
+        # report the pid this run started.
+        run: |
+          set -o pipefail
+          served=$(curl --fail --silent --show-error --max-time 10 --retry 3 --retry-connrefused --retry-delay 2 \
+            --output /dev/null --dump-header - "$PREVIEW_URL" \
+            | tr -d '\r' | awk -F': ' 'tolower($1) == "x-code-rules-preview-pid" { print $2 }')
+          if [ "$served" != "$PREVIEW_PID" ]; then
+            echo "::error::$PREVIEW_URL is served by pid ${served:-unknown}, not the preview server this run started (pid $PREVIEW_PID)."
+            exit 1
+          fi
+        env:
+          PREVIEW_URL: ${{ needs.deploy.outputs.url }}
+          PREVIEW_PID: ${{ needs.deploy.outputs.pid }}
+      - name: Comment preview status on the pull request
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PREVIEW_PR: ${{ needs.resolve.outputs.pr }}
+          PREVIEW_SHA: ${{ needs.resolve.outputs.sha }}
+          PREVIEW_URL: ${{ needs.deploy.outputs.url }}
+          PREVIEW_LIVE: ${{ steps.alive.outcome == 'success' }}
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const marker = '<!-- code-rules-docs-preview -->';
+            const issue_number = Number(process.env.PREVIEW_PR);
+            const sha = process.env.PREVIEW_SHA;
+            const runURL = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const commitURL = `${context.serverUrl}/${owner}/${repo}/commit/${sha}`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const previous = comments.find(c =>
+              c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker));
+            // An older run must not replace a newer run's status.
+            const stamp = previous?.body.match(/<!-- run:(\d+) attempt:(\d+) -->/);
+            if (stamp && (Number(stamp[1]) > context.runId ||
+                (Number(stamp[1]) === context.runId && Number(stamp[2]) > context.runAttempt))) return;
+            const status = process.env.PREVIEW_LIVE === 'true'
+              ? [
+                  `**[Open preview](${process.env.PREVIEW_URL})** · built from [\`${sha.slice(0, 7)}\`](${commitURL}) · rebuilt on every push`,
+                  '',
+                  'Reachable from the Fabrica tailnet. Torn down automatically when this pull request closes.',
+                ]
+              : [`⚠️ The preview for [\`${sha.slice(0, 7)}\`](${commitURL}) failed to deploy. See [the workflow run](${runURL}).`];
+            const body = [
+              marker,
+              `<!-- run:${context.runId} attempt:${context.runAttempt} -->`,
+              '### Documentation preview',
+              '',
+              ...status,
+            ].join('\n');
+            if (previous) {
+              await github.rest.issues.updateComment({owner, repo, comment_id: previous.id, body});
+            } else {
+              await github.rest.issues.createComment({owner, repo, issue_number, body});
+            }
+
+  teardown:
+    needs: resolve
+    if: needs.resolve.outputs.action == 'stop'
+    runs-on:
+      group: code-rules-docs-previews
+    timeout-minutes: 5
+    concurrency:
+      group: docs-preview-pr-${{ needs.resolve.outputs.pr }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - name: Stop preview
+        run: bun _tools/docs-preview-stack.ts stop
+        env:
+          PREVIEW_PR: ${{ needs.resolve.outputs.pr }}
+      - name: Update the preview comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PREVIEW_PR: ${{ needs.resolve.outputs.pr }}
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const marker = '<!-- code-rules-docs-preview -->';
+            const issue_number = Number(process.env.PREVIEW_PR);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const previous = comments.find(c =>
+              c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker));
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: previous.id,
+                body: `${marker}\n### Documentation preview\n\nPreview torn down (pull request closed).`,
+              });
+            }

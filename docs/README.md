@@ -41,6 +41,28 @@ The site is served at the domain root, and page links are root-relative; do not 
 GitHub Pages settings, the custom domain, and its DNS record are managed in Fabrica's infrastructure repository, not here.
 Every documentation page loads Cloudflare Web Analytics, which counts visits without cookies, only when served from trailguide.fabricahq.com, so local builds and tests report nothing. `src/analytics.mjs` builds that script, and `astro.config.mjs` holds the public site token from the Cloudflare dashboard. The footer links to Fabrica's privacy policy, which describes the analytics.
 
+### Pull request previews
+
+Each pull request's checked build is served on Fabrica's preview host, reachable only from the Fabrica tailnet at `http://<FABRICA_PREVIEW_HOST>:<26000 + PR number mod 500>/`.
+A sticky PR comment links it, each push replaces it, and closing the PR tears it down.
+
+The preview host is a self-hosted runner, and this repository is public, so the design keeps PR code off it:
+
+1. The Documentation workflow builds and checks the site on GitHub-hosted runners, then uploads `docs/dist` as the `docs-site` artifact.
+2. The Documentation previews workflow (`.github/workflows/docs-preview.yml`) runs from `main`. A GitHub-hosted job decides whether to deploy, and only then do jobs run on the preview host. Those jobs check out `main`, download the artifact, copy it, reject anything but plain files and directories, and serve it with `_tools/docs-preview-server.ts`. Nothing in the artifact is executed.
+3. The preview host's runner is the only runner in the `code-rules-docs-previews` runner group. The group admits only this repository and only `.github/workflows/docs-preview.yml` on `refs/heads/main`, so a PR's own workflow cannot reach the host.
+
+The build ran PR code, so its HTML is untrusted. Same-repository PRs from authors with write access get a preview automatically.
+Other PRs need a maintainer to review the commit, then run **Documentation previews** from the Actions tab with the successful Documentation run ID and the full commit SHA.
+
+Preview state lives in `~/.code-rules-docs-previews/pr-<N>/` on the host. Previews do not restart after the host reboots; push to the PR to bring one back.
+Each deploy also removes previews whose PRs closed while the host was offline.
+
+One-time setup:
+
+- Create the `code-rules-docs-previews` runner group as described above and register the preview host's runner in it.
+- Set the `FABRICA_PREVIEW_HOST` repository variable to the host's Tailscale MagicDNS name.
+
 ## Maintain the docs
 
 Write pages under `src/content/docs/` in folders matching the sidebar sections: `start-here/`, `concepts/`, `guides/`, `reference/`, and `for-agents/`.
