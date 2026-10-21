@@ -69,14 +69,14 @@ func TestSync_InstallsEverySkillAnIncludedSkillUsesFromTheSameSource(t *testing.
 	if exists(t, options, ".claude/skills/unused") {
 		t.Error("sync installed a skill nothing uses")
 	}
-	record := readRepositoryFile(t, options, ".trailguide/vendor/pstack/_source.json")
+	record := entryText(t, options, "pstack")
 	for _, want := range []string{
-		"\"skills/architect\": {\n      \"level\": null,\n      \"included\": false,\n      \"usedBy\": [\n        \"skills/poteto-mode\"\n      ]",
-		"\"skills/poteto-mode\": {\n      \"level\": null,\n      \"included\": true,\n      \"usedBy\": []",
-		"\"skills/tdd\": {\n      \"level\": null,\n      \"included\": false,\n      \"usedBy\": [\n        \"skills/architect\"\n      ]",
+		`"skills/architect": {"included": false, "level": null, "usedBy": ["skills/poteto-mode"]}`,
+		`"skills/poteto-mode": {"included": true, "level": null, "usedBy": []}`,
+		`"skills/tdd": {"included": false, "level": null, "usedBy": ["skills/architect"]}`,
 	} {
 		if !strings.Contains(record, want) {
-			t.Errorf("source record lacks\n%s\nin\n%s", want, record)
+			t.Errorf("lock entry lacks\n%s\nin\n%s", want, record)
 		}
 	}
 	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
@@ -97,10 +97,10 @@ func TestSync_InstallsEverySkillAnIncludedSkillUsesFromTheSameSource(t *testing.
 	setConfiguration(t, options, f, strings.Replace(withUses, `,"uses":{"skills/architect":["skills/tdd"]}`, "", 1))
 	_, err := Build(ctx, options)
 	var validation errs.ValidationError
-	if !errors.As(err, &validation) || validation.ValidationLocation() != "vendor/pstack/_source.json" || !strings.Contains(validation.ValidationProblem(), "run trailguide project sync") {
+	if !errors.As(err, &validation) || validation.ValidationLocation() != "lock.json.sources.pstack" || !strings.Contains(validation.ValidationProblem(), "run trailguide project sync") {
 		t.Fatalf("build = %v; want the record reported as out of date", err)
 	}
-	if _, err := Check(ctx, options); !errors.As(err, &validation) || validation.ValidationLocation() != "vendor/pstack/_source.json" {
+	if _, err := Check(ctx, options); !errors.As(err, &validation) || validation.ValidationLocation() != "lock.json.sources.pstack" {
 		t.Fatalf("check = %v; want the record reported as out of date", err)
 	}
 	if _, err := Sync(ctx, options, git); err != nil {

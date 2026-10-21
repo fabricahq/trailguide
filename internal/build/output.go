@@ -201,7 +201,7 @@ type provenanceLicense struct {
 
 // provenanceSource records the requested versions, the library release that supplied group metadata and terms,
 // and the requested and actual selection. Pins, ref, release, and ruleSelection are omitted when empty, as in
-// the source's _source.json.
+// the source's lock entry.
 type provenanceSource struct {
 	Name string `json:"name"`
 	// Kind is library, or non-library for a repository without a library manifest, which supplies only skills.

@@ -139,7 +139,7 @@ func (r *repository) importPlan(ctx context.Context, source rules.Source, plan s
 	for _, rule := range plan.rules {
 		commits = append(commits, rule.Commit)
 	}
-	if err := r.fetchCommits(ctx, commits, fmt.Sprintf("A commit that vendor/%s/_source.json records is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or, to keep your rule versions, set sources.%s.ref to a library release tag or commit the library still has that publishes them, then run trailguide project sync. As a last resort, delete vendor/%s and run trailguide project sync, which imports every unpinned rule's newest version.", source.Name, source.Name, source.Name)); err != nil {
+	if err := r.fetchCommits(ctx, commits, fmt.Sprintf("A commit that .trailguide/lock.json records for sources.%s is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or, to keep your rule versions, set sources.%s.ref to a library release tag or commit the library still has that publishes them, then run trailguide project sync. As a last resort, run trailguide project sync --retake %s, which imports every unpinned rule's newest version.", source.Name, source.Name, source.Name)); err != nil {
 		return Library{}, err
 	}
 	if plan.nonLibrary {

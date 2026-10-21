@@ -28,12 +28,12 @@ const backupPrefix = "old-"
 // maxJournalEntries is how many targets a journal of each format version can hold: format 2 holds the two managed
 // trees, format 3 adds a project guide, format 4 adds the configuration, format 5 adds local group metadata, format 6
 // adds local rules and their asset directories, which it can remove, format 7 adds skill folders outside the
-// Trail Guide directory, which it can remove too, format 8 adds the repository's AGENTS.md, and format 9 adds authored
-// skill folders.
-var maxJournalEntries = map[int]int{1: 2, 2: 2, 3: 3, 4: 4, 5: 4 + maxLocalGroupMetadata, 6: 4 + maxLocalGroupMetadata + 2*maxLocalRules, 7: 4 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 8: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 9: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills}
+// Trail Guide directory, which it can remove too, format 8 adds the repository's AGENTS.md, format 9 adds authored
+// skill folders, and format 10 adds the lockfile.
+var maxJournalEntries = map[int]int{1: 2, 2: 2, 3: 3, 4: 4, 5: 4 + maxLocalGroupMetadata, 6: 4 + maxLocalGroupMetadata + 2*maxLocalRules, 7: 4 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 8: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 9: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills, 10: 6 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills}
 
 // maxJournalFormat is the newest journal format; Apply writes the oldest one that can hold its targets.
-const maxJournalFormat = 9
+const maxJournalFormat = 10
 
 const lockName = ".trailguide-lock"
 const cleanupName = ".trailguide-cleanup"
@@ -263,11 +263,11 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 	}
 	places := &roots{project: w.root}
 	defer places.close()
-	order := []Target{Vendor, Generated, GuideReadme, GuideStandalone, Config, AgentsFile}
+	order := []Target{Vendor, Generated, GuideReadme, GuideStandalone, Config, Lock, AgentsFile}
 	metadata, localRules, authoredSkills, skillFolders := 0, 0, 0, 0
 	for target, files := range output {
 		if !validTarget(target) {
-			return failure("invalid-target", fmt.Sprintf("%q: only managed trees, project guides, the configuration, AGENTS.md, local group metadata, local rules and their asset directories, authored skills, and skill folders may be replaced", target), nil)
+			return failure("invalid-target", fmt.Sprintf("%q: only managed trees, project guides, the configuration, the lockfile, AGENTS.md, local group metadata, local rules and their asset directories, authored skills, and skill folders may be replaced", target), nil)
 		}
 		if files == nil && !removable(target) {
 			return failure("invalid-target", fmt.Sprintf("%q: only a local rule's asset directory or a skill folder may be removed", target), nil)
@@ -316,7 +316,7 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 		}
 	}
 	// Local targets and skill folders follow the fixed targets in path order, so journals are deterministic.
-	fixed := 6
+	fixed := 7
 	if metadata > maxLocalGroupMetadata || localRules > maxLocalRules || len(order)-fixed-metadata-localRules-authoredSkills-skillFolders > maxLocalRules || authoredSkills > maxAuthoredSkills || skillFolders > maxSkillFolders {
 		return failure("invalid-target", fmt.Sprintf("one transaction can hold at most %d local group metadata files, %d local rules with their asset directories, %d authored skills, and %d skill folders", maxLocalGroupMetadata, maxLocalRules, maxAuthoredSkills, maxSkillFolders), nil)
 	}
@@ -435,7 +435,9 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 		case entry.Name == AgentsFile:
 			formatVersion = max(formatVersion, 8)
 		case authoredSkillTarget(entry.Name):
-			formatVersion = 9
+			formatVersion = max(formatVersion, 9)
+		case entry.Name == Lock:
+			formatVersion = 10
 		}
 	}
 	if err := durableJSON(w.root, path.Join(transactionName, "journal.json"), journalRecord{formatVersion, entries}); err != nil {
@@ -657,7 +659,7 @@ func recoverWithRename(root *os.Root, rename func(string, string) error) error {
 	for _, entry := range record.Entries {
 		localRule := localRuleTarget(entry.Name) || localRuleAssetsTarget(entry.Name)
 		_, skill := skillFolderTarget(entry.Name)
-		if (!validTarget(entry.Name) || (guideTarget(entry.Name) && record.FormatVersion < 3) || (entry.Name == Config && record.FormatVersion < 4) || (localGroupMetadataTarget(entry.Name) && record.FormatVersion < 5) || (localRule && record.FormatVersion < 6) || (skill && record.FormatVersion < 7) || (entry.Name == AgentsFile && record.FormatVersion < 8) || (authoredSkillTarget(entry.Name) && record.FormatVersion < 9)) || seen[entry.Name] || !validDigest(entry.Before) || !validDigest(entry.After) || entry.Existed == (entry.Before == treeDigest(nil)) || (removes(entry) && (!removable(entry.Name) || !entry.Existed)) {
+		if (!validTarget(entry.Name) || (guideTarget(entry.Name) && record.FormatVersion < 3) || (entry.Name == Config && record.FormatVersion < 4) || (localGroupMetadataTarget(entry.Name) && record.FormatVersion < 5) || (localRule && record.FormatVersion < 6) || (skill && record.FormatVersion < 7) || (entry.Name == AgentsFile && record.FormatVersion < 8) || (authoredSkillTarget(entry.Name) && record.FormatVersion < 9) || (entry.Name == Lock && record.FormatVersion < 10)) || seen[entry.Name] || !validDigest(entry.Before) || !validDigest(entry.After) || entry.Existed == (entry.Before == treeDigest(nil)) || (removes(entry) && (!removable(entry.Name) || !entry.Existed)) {
 			return failure("recovery-required", "invalid transaction entry; preserve it for manual recovery", nil)
 		}
 		seen[entry.Name] = true

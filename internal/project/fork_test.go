@@ -542,8 +542,7 @@ func TestUpdate_KeepsTheGroupMetadataAForkOfARetiredRuleNeeds(t *testing.T) {
 }
 
 // TestFork_OfASelectedRuleNeedsASyncedRecord refuses, before reading the library, to fork a rule the source
-// selects when the project hasn't synced the source's current configuration, since whether it imports the rule
-// isn't known.
+// selects when the project hasn't taken the source's current ref, since whether it imports the rule isn't known.
 func TestFork_OfASelectedRuleNeedsASyncedRecord(t *testing.T) {
 	f := newForkFixture(t, "")
 	root, err := openProject(context.Background(), f.options, false)
@@ -555,7 +554,7 @@ func TestFork_OfASelectedRuleNeedsASyncedRecord(t *testing.T) {
 	source, _ := ParseForkSource("team@1.0.0")
 	_, err = PlanFork(context.Background(), "techs/go/errors", source, f.options, imports.Options{GitPath: "/nonexistent/git"})
 	var invalid errs.ValidationError
-	if !errors.As(err, &invalid) || invalid.ValidationLocation() != "vendor/team/_source.json" || !strings.Contains(invalid.ValidationProblem(), "run trailguide project sync") {
+	if !errors.As(err, &invalid) || invalid.ValidationLocation() != "lock.json.sources.team.ref" || !strings.Contains(invalid.ValidationProblem(), "run trailguide project update team") {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -669,7 +668,7 @@ func TestUpdate_KeepingAReplacedRuleStillListsItsChangesForTheFork(t *testing.T)
 }
 
 // TestEveryRecordReader_RefusesARecordChangedOutsideSync: sync, build, check, update, and a fork all refuse team's
-// record once its checksum is gone, and a fork of a rule the edited record left out writes nothing, even with local
+// lock entry once it no longer matches its integrity, and a fork of a rule the edited entry left out writes nothing, even with local
 // group metadata that would let it proceed without the record.
 func TestEveryRecordReader_RefusesARecordChangedOutsideSync(t *testing.T) {
 	f := newForkFixture(t, "")
@@ -680,7 +679,7 @@ func TestEveryRecordReader_RefusesARecordChangedOutsideSync(t *testing.T) {
 	}
 	writeFixture(t, root, "rules/techs/go/_group.yaml", projectMetadata)
 	root.Close()
-	editRecord(t, f.options, func(record map[string]any) { delete(record["rules"].(map[string]any), "techs/go/errors") })
+	editLockEntry(t, f.options, func(entry map[string]any) { delete(entry["rules"].(map[string]any), "techs/go/errors") })
 	before := projectTree(t, f.options)
 	_, forkErr := f.fork(t, "techs/go/errors", "team@1.0.0", "Ours.")
 	_, syncErr := Sync(ctx, f.options, f.git)

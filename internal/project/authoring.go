@@ -1,6 +1,6 @@
 // Package project owns a consuming project's Trail Guide state: initialization, local authoring,
 // library adoption, offline generation, and read-only freshness checks. Storage protocols stay private.
-// Each source's vendor/<source>/_source.json is its lockfile: sync restores the recorded rule versions and chooses
+// The lockfile, lock.json, records what each source resolved to: sync restores the recorded rule versions and chooses
 // one only where configuration asks for something the record lacks, so only update moves rules to newer versions on
 // its own. Operations that need input return a plan first; the CLI prompts before the plan's Commit or Apply, which
 // revalidates under writer ownership.
@@ -209,11 +209,11 @@ func groupAvailable(ctx context.Context, root *os.Root, config rules.Configurati
 			return err == nil, err
 		}
 	}
-	vendor, err := filetxn.ReadTree(ctx, root, "vendor")
+	stored, vendor, _, err := readStored(ctx, root, config)
 	if err != nil || vendor == nil {
 		return false, err
 	}
-	snapshots, err := decodeSnapshots(config, vendor.Files)
+	snapshots, err := decodeSnapshots(config, stored, vendor.Files)
 	if err != nil {
 		return false, err
 	}

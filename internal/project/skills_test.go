@@ -128,18 +128,8 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
 		}
 	}
-	var record struct {
-		FormatVersion int                                `json:"formatVersion"`
-		Kind          string                             `json:"kind"`
-		SkillInclude  []string                           `json:"skillInclude"`
-		Skills        map[string]struct{ Level *string } `json:"skills"`
-		Executable    []string                           `json:"executable"`
-		Files         map[string]string                  `json:"files"`
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/vendor/team/_source.json")), &record); err != nil {
-		t.Fatal(err)
-	}
-	if record.FormatVersion != 3 || record.Kind != "library" || !slices.Equal(record.SkillInclude, []string{"*"}) || len(record.Skills) != 2 || *record.Skills["skills/review"].Level != "offered" || !slices.Equal(record.Executable, []string{"skills/build-feature/scripts/run.sh"}) || record.Files["skills/build-feature/SKILL.md"] == "" {
+	record := lockedEntry(t, options, "team")
+	if record.Kind != "library" || !slices.Equal(record.Selectors.Skills, []string{"*"}) || len(record.Skills) != 2 || *record.Skills["skills/review"].Level != "offered" || !slices.Equal(record.Executable, []string{"skills/build-feature/scripts/run.sh"}) || record.Files["skills/build-feature/SKILL.md"] == "" {
 		t.Errorf("source record = %+v", record)
 	}
 	var provenance struct {
@@ -260,9 +250,8 @@ func TestSync_InstallsSkillsFromARepositoryThatIsNotALibrary(t *testing.T) {
 	if !strings.Contains(readRepositoryFile(t, options, ".agents/skills/review/SKILL.md"), "trailguide:installed skills:tools/review "+f.FirstCommit) || !exists(t, options, ".agents/skills/review/checklist.md") || exists(t, options, ".agents/skills/own") {
 		t.Fatal("sync didn't install exactly the repository's skill outside dot folders")
 	}
-	record := readRepositoryFile(t, options, ".trailguide/vendor/skills/_source.json")
-	if !strings.Contains(record, `"kind": "non-library"`) || !strings.Contains(record, `"tools/review": {`) {
-		t.Fatalf("source record:\n%s", record)
+	if record := lockedEntry(t, options, "skills"); record.Kind != "non-library" || record.Skills["tools/review"].UsedBy == nil {
+		t.Fatalf("lock entry: %+v", record)
 	}
 	installed := readRepositoryFile(t, options, ".trailguide/generated/installed-skills.json")
 	if !strings.Contains(installed, `"commit": "`+f.FirstCommit+`"`) {
@@ -316,7 +305,7 @@ func TestSync_FailsForANewlyIncludedSkillTheLockedRevisionLacks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(applied.Added, "../.claude/skills/plan/SKILL.md") || !strings.Contains(readRepositoryFile(t, options, ".trailguide/vendor/team/_source.json"), `"release": 2`) {
+	if !slices.Contains(applied.Added, "../.claude/skills/plan/SKILL.md") || lockedEntry(t, options, "team").Release != 2 {
 		t.Fatalf("update didn't move the source to release/2 and install the skill: %v", applied.Added)
 	}
 }

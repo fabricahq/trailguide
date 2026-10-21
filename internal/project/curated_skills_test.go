@@ -5,7 +5,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"maps"
 	"os"
@@ -120,14 +119,10 @@ func (b *curating) configure(t *testing.T, config string) {
 	writeFixture(t, b.root, configurationFile, config)
 }
 
-// teamRecord returns team's source record, parsed.
+// teamRecord returns team's lock entry, parsed.
 func (b *curating) teamRecord(t *testing.T) map[string]any {
 	t.Helper()
-	var record map[string]any
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, b.options, ".trailguide/vendor/team/_source.json")), &record); err != nil {
-		t.Fatal(err)
-	}
-	return record
+	return entryFields(t, b.options, "team")
 }
 
 func TestSync_InstallsCuratedSkillsFromTheRepositoryTheyComeFrom(t *testing.T) {
@@ -153,7 +148,7 @@ func TestSync_InstallsCuratedSkillsFromTheRepositoryTheyComeFrom(t *testing.T) {
 	}
 	curated, _ := b.teamRecord(t)["curated"].(map[string]any)
 	pocock, _ := curated["pocock"].(map[string]any)
-	if pocock["resolvedCommit"] != b.pocock.FirstCommit || pocock["ref"] != "stable" || pocock["kind"] != "non-library" || pocock["repository"] != "git@fixture.invalid:pocock" {
+	if pocock["commit"] != b.pocock.FirstCommit || pocock["ref"] != "stable" || pocock["kind"] != "non-library" || pocock["repository"] != "git@fixture.invalid:pocock" {
 		t.Fatalf("curated record: %v", curated)
 	}
 	// The curated source's entry records its skills and files by their IDs and paths in its repository, and the
@@ -356,7 +351,7 @@ func TestSync_KeepsTheCuratedRevisionAndUpdateResolvesTheLibrarysRefAgain(t *tes
 	if installed := readRepositoryFile(t, b.options, ".claude/skills/deploy/SKILL.md"); !strings.Contains(installed, "Deploy safely") || !strings.Contains(installed, moved) {
 		t.Fatalf("update didn't take the curated skill from the tag's new commit:\n%s", installed)
 	}
-	if curated, _ := b.teamRecord(t)["curated"].(map[string]any); curated["pocock"].(map[string]any)["resolvedCommit"] != moved {
+	if curated, _ := b.teamRecord(t)["curated"].(map[string]any); curated["pocock"].(map[string]any)["commit"] != moved {
 		t.Fatalf("curated record: %v", curated)
 	}
 }
@@ -444,7 +439,7 @@ func TestSync_AProjectSourceForTheSameRepositoryOverridesTheLibrarysRef(t *testi
 		t.Fatalf("deploy:\n%s\nwant the curated skill once, from the overriding source's revision", installed)
 	}
 	curated, _ := b.teamRecord(t)["curated"].(map[string]any)
-	if pocock := curated["pocock"].(map[string]any); pocock["resolvedCommit"] != b.pocock.LatestCommit || pocock["source"] != "mine" || pocock["ref"] != "v1.2.0" {
+	if pocock := curated["pocock"].(map[string]any); pocock["commit"] != b.pocock.LatestCommit || pocock["source"] != "mine" || pocock["ref"] != "v1.2.0" {
 		t.Fatalf("curated record: %v", curated)
 	}
 	if result, err := Check(ctx, b.options); err != nil || !result.Current() {
@@ -699,21 +694,13 @@ func TestCheck_RejectsACuratedSkillInTheLibrarysOwnRecord(t *testing.T) {
 	if _, err := Sync(ctx, b.options, b.git); err != nil {
 		t.Fatal(err)
 	}
-	var record sourceRecord
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, b.options, ".trailguide/vendor/team/_source.json")), &record); err != nil {
-		t.Fatal(err)
-	}
-	// Move deploy into the library's own skills, under its ID in the library, with a checksum that matches.
-	pocock := record.Curated["pocock"]
-	record.Skills["pocock:skills/ops/deploy"] = pocock.Skills["skills/ops/deploy"]
-	delete(pocock.Skills, "skills/ops/deploy")
-	pocock.Skills["skills/ops/other"] = recordSkill{Level: nullableLevel("offered"), Included: true, UsedBy: []string{}}
-	record.Checksum = recordChecksum(record)
-	data, err := json.Marshal(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, b.root, "vendor/team/_source.json", string(data))
+	// Move deploy into the library's own skills, under its ID in the library, with an integrity that matches.
+	rewriteEntry(t, b.root, "team", func(record *sourceRecord) {
+		pocock := record.Curated["pocock"]
+		record.Skills["pocock:skills/ops/deploy"] = pocock.Skills["skills/ops/deploy"]
+		delete(pocock.Skills, "skills/ops/deploy")
+		pocock.Skills["skills/ops/other"] = recordSkill{Level: nullableLevel("offered"), Included: true, UsedBy: []string{}}
+	})
 	if _, err := Check(ctx, b.options); err == nil || !strings.Contains(err.Error(), "a curated skill is recorded in its curated source's skills") {
 		t.Fatalf("check = %v; want the curated skill in the library's own skills refused", err)
 	}

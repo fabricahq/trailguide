@@ -20,7 +20,7 @@ func TestCommandOptionSections(t *testing.T) {
 		{"project", "", nil, []string{"help", "json"}},
 		{"project add", "", nil, []string{"help", "json"}},
 		{"project init", "Command options", []string{"skill-targets"}, []string{"help", "json", "non-interactive"}},
-		{"project sync", "", nil, []string{"help", "json"}},
+		{"project sync", "Command options", []string{"retake"}, []string{"help", "json"}},
 		{"project update", "Command options", []string{"yes", "keep", "exclude", "reason"}, []string{"help", "json"}},
 		{"project build", "", nil, []string{"help", "json"}},
 		{"project check", "", nil, []string{"help", "json"}},
