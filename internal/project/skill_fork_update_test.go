@@ -13,6 +13,8 @@ import (
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/imports"
+	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // forkedSkillProject syncs a project that includes every skill of skillLibrary, forks skills/build-feature, lets
@@ -211,5 +213,20 @@ func TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged(t *testing.T) {
 	info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/build-feature/scripts/run.sh"))
 	if err != nil || info.Mode()&0o111 != 0 {
 		t.Fatalf("fork script mode = %v, %v; want it no longer executable", info, err)
+	}
+}
+
+// TestForkedSkillCopy_MarksACopyItCannotAdaptAsADraft marks the SKILL.md of a source's copy that forking would leave
+// for the author to finish, as forking marks it, so the merge compares the copies forking writes.
+func TestForkedSkillCopy_MarksACopyItCannotAdaptAsADraft(t *testing.T) {
+	original := "---\nname: fix-bug\nmetadata:\n  trailguide-skill-type: workflow\n---\n# Fix\n"
+	source := rules.Source{Name: "team"}
+	row := imports.ReplacedSkillUpdate{ID: "skills/fix-bug", Library: true}
+	got, err := forkedSkillCopy(source, row, imports.SkillCopy{Files: map[string][]byte{"SKILL.md": []byte(original)}}, "fix-bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := string(skills.Mark([]byte(original), rules.DraftMarker)); string(got.Files["SKILL.md"]) != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got.Files["SKILL.md"], want)
 	}
 }

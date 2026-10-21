@@ -83,7 +83,7 @@ func (p *UpdatePlan) mergeSkillForks(ctx context.Context, sources []imports.Sour
 
 // mergeSkillFork merges the source's changes to row's skill, from its copy at basedOn to its copy at the commit the
 // update takes it from, into the fork, as forking either copy would have written it. A copy that can't be written as
-// a fork, such as one whose frontmatter Trail Guide can't rewrite, conflicts in its SKILL.md, for the fork's owner
+// a fork, such as one whose frontmatter Trail Guide can't read, conflicts in its SKILL.md, for the fork's owner
 // to merge by hand.
 func (p *UpdatePlan) mergeSkillFork(ctx context.Context, source rules.Source, row imports.ReplacedSkillUpdate) (skillMerge, error) {
 	name := path.Base(row.LocalSkill)
@@ -103,7 +103,8 @@ func (p *UpdatePlan) mergeSkillFork(ctx context.Context, source rules.Source, ro
 }
 
 // forkedSkillCopy returns copy, the source's copy of row's skill, as forking it into the authored skill named name
-// writes it: with its SKILL.md rewritten as PlanSkillFork rewrites it.
+// writes it: with its SKILL.md rewritten as PlanSkillFork rewrites it, and marked as a draft when the author must
+// finish what Trail Guide couldn't rewrite.
 func forkedSkillCopy(source rules.Source, row imports.ReplacedSkillUpdate, copy imports.SkillCopy, name string) (imports.SkillCopy, error) {
 	files := maps.Clone(copy.Files)
 	content, ok := files[skills.File]
@@ -125,9 +126,14 @@ func forkedSkillCopy(source rules.Source, row imports.ReplacedSkillUpdate, copy 
 			return imports.SkillCopy{}, err
 		}
 	}
-	if files[skills.File], err = forkedSkillFile(content, metadata, name, prefix, qualifyRules, uses, location); err != nil {
+	content, fixes, err := forkedSkillFile(content, metadata, name, prefix, qualifyRules, uses, location)
+	if err != nil {
 		return imports.SkillCopy{}, err
 	}
+	if len(fixes) > 0 {
+		content = skills.Mark(content, rules.DraftMarker)
+	}
+	files[skills.File] = content
 	return imports.SkillCopy{Files: files, Executable: copy.Executable}, nil
 }
 
