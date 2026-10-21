@@ -79,8 +79,8 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 // chooseSkills returns, sorted, the IDs of the skills the source installs from available, the IDs of the skills in
 // the plan's revision, given levels, the levels its library gives them, or nil for a repository that isn't a
 // library: a library's required skills, its recommended ones when skills.include has recommended, for "*" every
-// skill except those in a folder whose name starts with a dot, such as another tool's installed copies in
-// .claude/skills/, and each skill it names. A named skill the revision lacks fails: with skill-not-in-revision when
+// skill except its dependencies and those in a folder whose name starts with a dot, such as another tool's installed
+// copies in .claude/skills/, and each skill it names, which requireNoNamedDependencies has checked isn't a dependency. A named skill the revision lacks fails: with skill-not-in-revision when
 // the revision is the one the source record locks, since sync never moves a source, and otherwise as invalid
 // configuration. Excluding or forking a required skill fails too, since a project that uses the library can't diverge
 // from it, as does excluding or forking one LibraryRequires lists. Each skill skills.forks names is chosen when
@@ -128,7 +128,9 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 	for _, id := range source.Skills {
 		switch {
 		case id == skills.Wildcard:
-			chosen = append(chosen, slices.DeleteFunc(slices.Clone(available), library.HiddenSkill)...)
+			chosen = append(chosen, slices.DeleteFunc(slices.Clone(available), func(id string) bool {
+				return library.HiddenSkill(id) || levels != nil && levels.Level(id) == skills.LevelDependency
+			})...)
 		case id == skills.Recommended && levels == nil:
 			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.include", Problem: fmt.Sprintf("the repository isn't a library at %s, so it recommends no skills; name its skills by ID, or include \"*\" for every skill it has", revision)}
 		case id == skills.Recommended:
@@ -163,7 +165,7 @@ func ownSkillLevels(levels rules.SkillLevels) rules.SkillLevels {
 	own := func(ids []string) []string {
 		return slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return strings.Contains(id, ":") })
 	}
-	return rules.SkillLevels{Required: own(levels.Required), Recommended: own(levels.Recommended), Offered: own(levels.Offered)}
+	return rules.SkillLevels{Required: own(levels.Required), Recommended: own(levels.Recommended), Offered: own(levels.Offered), Dependencies: own(levels.Dependencies)}
 }
 
 // skillNotInRevision reports that field, a configuration field of source, names skill id, which the plan's revision
@@ -344,7 +346,7 @@ func (r *repository) skillLevels(ctx context.Context, commit string) (*rules.Ski
 		return nil, err
 	}
 	if _, legacy := tree[librarytree.LegacyManifest]; legacy {
-		return &rules.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}}, nil
+		return &rules.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}, Dependencies: []string{}}, nil
 	}
 	data, found, err := r.manifest(ctx, tree)
 	if err != nil || !found {
@@ -402,6 +404,9 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 	available := slices.Sorted(maps.Keys(folders))
 	for _, id := range available {
 		result.available[id] = importedSkill(id, levels)
+	}
+	if err := r.requireNoNamedDependencies(ctx, source, plan, folders, levels); err != nil {
+		return importedSkills{}, err
 	}
 	chosen, err := chooseSkills(source, plan, available, levels)
 	if err != nil {
@@ -514,4 +519,70 @@ func (r *repository) skillLevelChanges(ctx context.Context, recorded *library.Sn
 func isForked(forks map[string]rules.SkillFork, id string) bool {
 	_, forked := forks[id]
 	return forked
+}
+
+// requireNoNamedDependencies fails when the source's skills.include names a skill that levels, its library's levels,
+// or nil for a repository that isn't a library, list in library.skills.dependencies, own or curated: such a skill
+// installs only with the skills that use it, so the project can't choose it. The error names the library's skills in
+// folders, the skills of the plan's commit, that use it, by their trailguide-skills-used or the source's skills.uses,
+// so the project can include one of those instead.
+func (r *repository) requireNoNamedDependencies(ctx context.Context, source rules.Source, plan sourcePlan, folders map[string]map[string]treeEntry, levels *rules.SkillLevels) error {
+	if levels == nil {
+		return nil
+	}
+	named := slices.DeleteFunc(slices.Clone(source.Skills), func(id string) bool { return levels.Level(id) != skills.LevelDependency })
+	if len(named) == 0 {
+		return nil
+	}
+	users, err := r.skillUsers(ctx, source, folders)
+	if err != nil {
+		return err
+	}
+	id := named[0]
+	problem := fmt.Sprintf("names %s, which the library lists in library.skills.%s, so it installs only with the library's skills that use it, and a project can't choose it. ", id, skills.Dependencies)
+	if len(users[id]) == 0 {
+		problem += fmt.Sprintf("No skill of the library uses it at %s; remove it from skills.include, and ask the library's maintainer to fix library.skills, which trailguide library check catches", revisionName(plan.release, plan.commit))
+	} else {
+		problem += fmt.Sprintf("Include a skill that uses it instead, %s, or remove it from skills.include", strings.Join(users[id], " or "))
+	}
+	return &ValidationError{Location: "sources." + source.Name + ".skills.include", Problem: problem}
+}
+
+// skillUsers returns, by the ID of each skill that a skill in folders, a library's skills, uses, by its
+// trailguide-skills-used or the source's skills.uses, the IDs of the skills that use it, sorted. A curated skill
+// keeps the ID the library lists it under, such as anthropic:skills/skill-creator. It fails when a SKILL.md has
+// unreadable frontmatter.
+func (r *repository) skillUsers(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry) (map[string][]string, error) {
+	entries := map[string]treeEntry{}
+	for id, files := range folders {
+		if entry, ok := files[id+"/"+skills.File]; ok {
+			entries[entry.name] = entry
+		}
+	}
+	if err := r.prefetch(ctx, slices.Collect(maps.Values(entries))); err != nil {
+		return nil, err
+	}
+	input := newGitFiles(ctx, r, entries)
+	result := map[string][]string{}
+	for _, id := range slices.Sorted(maps.Keys(folders)) {
+		used := slices.Clone(source.SkillUses[id])
+		if _, ok := folders[id][id+"/"+skills.File]; ok {
+			file := id + "/" + skills.File
+			data, err := input.ReadFile(file)
+			if err != nil {
+				return nil, err
+			}
+			metadata, err := skills.ReadMetadata(data, "vendor/"+source.Name+"/"+file)
+			if err != nil {
+				return nil, err
+			}
+			used = append(used, metadata.SkillsUsed...)
+		}
+		for _, skill := range used {
+			if skill != id && !slices.Contains(result[skill], id) {
+				result[skill] = append(result[skill], id)
+			}
+		}
+	}
+	return result, nil
 }

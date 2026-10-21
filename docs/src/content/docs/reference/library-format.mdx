@@ -114,13 +114,26 @@ A skill can cite rules from any rule group in the library with `trailguide-rules
 | `recommended` | When it includes `recommended` or `"*"`, or names the skill. |
 | `offered` | When it includes `"*"`, or names the skill. |
 
-An authored skill that no level lists is offered, so list only the skills you have an opinion about. Each skill can appear in one level. Levels are library-wide settings: changing one needs no change note, and projects see the change, such as `recommended -> required`, in their update preview after the next library release.
+An authored skill that no level lists is offered, so list only the skills you have an opinion about. Each skill can appear in one level, or in `dependencies`. Levels are library-wide settings: changing one needs no change note, and projects see the change, such as `recommended -> required`, in their update preview after the next library release.
 
 A project sees only the levels of the libraries it names as sources. Levels don't chain: when your library curates a skill from another library, your projects see the level you set, not the other library's.
 
+### Dependencies
+
+List a skill in `library.skills.dependencies` when the library has it only because its other skills call it, and projects shouldn't install it on its own:
+
+```yaml
+library:
+  skills:
+    recommended: [skills/add-skill]
+    dependencies: [anthropic:skills/skill-creator]
+```
+
+A project installs a dependency only with a skill that calls it, in its `trailguide-skills-used` or the project's `skills.uses`. `"*"` and `recommended` never include it, and a project that names it in `include` fails with a message naming the skills that call it. A dependency can be your own skill or one you curate. `trailguide library check` fails when none of your skills calls a dependency. See [Dependencies](/reference/configuration/#dependencies).
+
 ### Curated skills
 
-A level can list a skill from another repository as `<source>:<skill-id>`, where `<source>` is an entry in the library's own `sources`, with the `ref` the library tracks, such as `main` or a tag. A library curates skills only, and must list every skill it curates: a curated source's other skills don't reach projects.
+A level, or `dependencies`, can list a skill from another repository as `<source>:<skill-id>`, where `<source>` is an entry in the library's own `sources`, with the `ref` the library tracks, such as `main` or a tag. A library curates skills only, and must list every skill it curates: a curated source's other skills don't reach projects.
 
 Projects fetch a curated skill's files from the original repository, not from the library, and record which library required, recommended, or offered it. A library release doesn't lock a curated source's ref: each project resolves it when it runs `trailguide project update`, so moving a curated skill forward needs no new library release, and two projects on the same library release can hold different commits of it. A project overrides the ref by declaring the same repository as its own source. See [Curated skills](/reference/configuration/#curated-skills).
 

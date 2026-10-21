@@ -104,7 +104,7 @@ Each rule ID in `include` must name a rule the source publishes, and each prefix
 | --- | --- |
 | *(no `include`)* | The skills the library requires. |
 | `recommended` | The skills the library requires and those it recommends. |
-| `"*"` | Every skill the source offers, at any level. |
+| `"*"` | Every skill the source offers, at any level, but not a [dependency](#dependencies). |
 | `skills/deploy-preview` | That skill, whatever its level, plus the required ones. |
 
 Skill selectors have no prefixes: `skills/*` and `recommended/*` are rejected. A library's required skills always install, whatever `include` says; see [Skill levels](#skill-levels). A skill a library curates from another repository is named as the library's manifest names it, with the curated source's name, such as `mattpocock:skills/engineering/to-spec`; see [Curated skills](#curated-skills).
@@ -130,6 +130,17 @@ A library sets one of three **levels** for each skill it publishes, in its [mani
 | Offered | `include` lists `"*"`, or names the skill. |
 
 A library's own skill that no level lists is offered. A source without a manifest, a **non-library source**, offers every skill it has and requires none.
+
+### Dependencies
+
+A library can also list a skill as a **dependency**, in `library.skills.dependencies`, when it has the skill only because its other skills call it, and projects shouldn't choose it on its own. A dependency isn't a level, and a skill is either at a level or a dependency, never both:
+
+- **It installs only with the skills that call it.** A project installs a dependency when it installs a skill that names it in [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), or in the project's [`skills.uses`](#declare-the-skills-a-skill-calls), and not otherwise.
+- **A project can't choose it.** `"*"` and `recommended` never include it, and naming it in `include` fails validation with a message that names the library's skills that call it, so the project can include one of those instead.
+- **It shows as a dependency.** `trailguide project list skills`, `SKILLS.md`, the source's `_source.json` record, and provenance give it the level `dependency`, with the skills that use it.
+- **A project diverges from it as from any skill a skill uses.** Excluding it by ID leaves it uninstalled, and sync warns that the skills that call it lose it. Forking it installs the fork in its place, for the skills that call it.
+
+A dependency can be the library's own skill or one it [curates](#curated-skills). `trailguide library check` fails when no skill of the library names a dependency in its `trailguide-skills-used`, since no project would ever install it.
 
 A project sees only the levels of the libraries it names as sources. When a library curates a skill from another library, the project sees the level the curating library sets, not the one the original library sets: levels don't chain.
 
@@ -384,8 +395,9 @@ library:
 | `library.skills.required` | Skills every project that uses the library installs. |
 | `library.skills.recommended` | Skills a project installs when it includes `recommended`. |
 | `library.skills.offered` | Skills a project installs when it names them or includes `"*"`. |
+| `library.skills.dependencies` | Skills a project installs only with the library's skills that call them; see [Dependencies](#dependencies). |
 
-An empty `library: {}` makes a repository a library with no levels and no declared license. Each level is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one level only. An authored skill that no level lists is offered.
+An empty `library: {}` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
 
 `trailguide library check` validates the manifest, and fails when two listed skills, authored or curated, have the same install name, so projects never inherit a clash from one library. See [Library format](/reference/library-format/).
 
@@ -393,18 +405,18 @@ The manifest replaces the separate `rule-library.yaml` that earlier versions use
 
 ### Curated skills
 
-A library can list skills from another repository in its levels, such as a third party's skill it wants its projects to use. The repository it takes them from is a **curated source**: an ordinary entry in the library's own `sources`, with the `ref` the library tracks. A library curates skills only; rules in its sources are for its own use, and it never publishes them.
+A library can list skills from another repository in `library.skills`, such as a third party's skill it wants its projects to use. The repository it takes them from is a **curated source**: an ordinary entry in the library's own `sources`, with the `ref` the library tracks. A library curates skills only; rules in its sources are for its own use, and it never publishes them.
 
-- **Every curated skill is listed.** A skill from a curated source reaches projects only when a level lists it.
+- **Every curated skill is listed.** A skill from a curated source reaches projects only when `library.skills` lists it, at a level or as a dependency.
 - **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and provenance records which library required, recommended, or offered it.
 - **Refs resolve per project.** A library release doesn't lock a curated source's `ref`, which can name a branch, a tag, or a commit, or be left out to follow the curated repository's library releases. Each project resolves it when it first syncs and again when it runs `trailguide project update`, and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit. `trailguide library check` resolves the ref on every run to check the skills the library lists, and fails, naming the ref, when the repository has no such branch, tag, or commit.
 - **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
-- **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as a level lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it.
+- **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as `library.skills` lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it. List a curated skill the library has only for its own skills to call as a [dependency](#dependencies), so projects get it with those skills but can't choose it alone.
 
 The library repository is a project too: it installs the required skills of the sources it curates from, as any project would, and whatever it includes from them for its own use. Listing a curated skill in `library.skills` publishes it to projects but doesn't install it in the library repository. When the library's own skills call it there, also list it in that source's `skills.include`.
 
-For example, Fabrica's library authors `add-skill`, which calls Anthropic's `skill-creator`. The library's configuration curates `skill-creator`, publishes both skills, and installs `skill-creator` for its own use:
+For example, Fabrica's library authors `add-skill`, which calls Anthropic's `skill-creator`. Fabrica wants projects to install `add-skill`, which wraps `skill-creator` in Fabrica's workflow, not `skill-creator` alone. The library's configuration curates `skill-creator` as a dependency of its skills, publishes `add-skill`, and installs `skill-creator` for its own use:
 
 ```yaml
 # fabricahq/.trailguide: .trailguide/config.yaml
@@ -419,7 +431,7 @@ sources:
 library:
   skills:
     recommended: [skills/add-skill]
-    offered: [anthropic:skills/skill-creator] # publishes it to projects
+    dependencies: [anthropic:skills/skill-creator] # installs only with add-skill
 ```
 
 `add-skill` names the curated skill by the ID `library.skills` lists it under:

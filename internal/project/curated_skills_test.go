@@ -277,7 +277,7 @@ func TestSync_RefusesACuratedSkillALibrarysSkillUsesButTheLibraryDoesNotList(t *
 	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/engineering/interview")}
 	b := newCuratingWith(t, teamSkills, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["skills/add-skill"]}}}}`)
 	_, err := Sync(ctx, b.options, b.git)
-	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses pocock:skills/engineering/interview, which the library doesn't list at any level") {
+	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses pocock:skills/engineering/interview, which the library doesn't list at any level or as a dependency") {
 		t.Fatalf("got %v; want the unlisted curated skill refused", err)
 	}
 }
@@ -287,7 +287,7 @@ func TestSync_RefusesACuratedSkillTheLibraryDoesNotList(t *testing.T) {
 	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["pocock:skills/ops/unlisted"]}}}}`)
 	_, err := Sync(ctx, b.options, b.git)
 	var validation errs.ValidationError
-	if !errors.As(err, &validation) || validation.ValidationLocation() != "sources.team.skills.include" || !strings.Contains(validation.ValidationProblem(), "the library doesn't list pocock:skills/ops/unlisted at any level") {
+	if !errors.As(err, &validation) || validation.ValidationLocation() != "sources.team.skills.include" || !strings.Contains(validation.ValidationProblem(), "the library doesn't list pocock:skills/ops/unlisted at any level or as a dependency") {
 		t.Fatalf("got %v; want the unlisted curated skill refused", err)
 	}
 }

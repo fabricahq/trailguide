@@ -221,7 +221,7 @@ func TestCuratedSkillsAddsTheCuratedSkillsTheLibrarysSkillsUse(t *testing.T) {
 		t.Errorf("curatedSkills = %+v; want %+v", got, want)
 	}
 	_, err = curatedSkills(manifest, rules.Source{Name: "team"}, 1, map[string][]string{"anthropic:skills/unlisted": {"skills/add-skill"}})
-	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses anthropic:skills/unlisted, which the library doesn't list at any level") {
+	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses anthropic:skills/unlisted, which the library doesn't list at any level or as a dependency") {
 		t.Errorf("got %v; want the unlisted curated skill refused", err)
 	}
 }

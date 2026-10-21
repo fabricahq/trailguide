@@ -119,6 +119,8 @@ A library sets a **level** for each skill it publishes, saying how strongly it a
 
 A library's own skill that no level lists is offered, so a library lists only the skills it has an opinion about. An organization can make some skills the floor for every project by requiring them in its org library: a project that takes anything from that library installs them. A project sees only the levels of the libraries it names; levels don't chain through a library's own sources.
 
+A library can also list a skill as a **dependency**, which projects install only with the library's skills that call it and can't choose on their own, such as a third party's skill that the library's own skill wraps in its workflow. See [Dependencies](/reference/configuration/#dependencies).
+
 A library can also list skills from another repository at a level, such as a third party's skill its teams should use. Projects fetch those **curated skills** from the original repository, at a commit each project resolves when it updates, and record which library required, recommended, or offered them. See [Curated skills](/reference/configuration/#curated-skills).
 
 ## Names, renames, and clashes

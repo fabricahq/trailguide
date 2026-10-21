@@ -291,7 +291,7 @@ func forkCitations(ids []string, source rules.Source, curated []string, location
 		if fork := source.SkillForks[id].As; fork != "" {
 			citation = fork
 		} else if !slices.Contains(curated, citation) {
-			return nil, nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill uses %s, which the library neither forked nor lists, so projects couldn't install it with the fork. List %s in library.skills, at any level, or fork it first, so this fork uses your fork", citation, citation)}
+			return nil, nil, &ValidationError{Location: location, Problem: fmt.Sprintf("the skill uses %s, which the library neither forked nor lists, so projects couldn't install it with the fork. List %s in library.skills, at a level or as a dependency, or fork it first, so this fork uses your fork", citation, citation)}
 		}
 		if !slices.Contains(used, citation) {
 			used = append(used, citation)

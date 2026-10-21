@@ -95,6 +95,38 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 	return problems
 }
 
+// uncalledDependencies returns a problem, in ID order, for each of dependencies, the skills library.skills.dependencies
+// lists, that no skill in tree, the library's skills/ folder, other than itself, names in its trailguide-skills-used:
+// a dependency installs only with the skills that use it, so projects could never install one nothing uses. A nil
+// tree has no skills, so every dependency is uncalled. A SKILL.md that skillProblems rejects names none.
+func uncalledDependencies(tree *filetxn.Tree, dependencies []string) []string {
+	called := map[string]bool{}
+	if tree != nil {
+		for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
+			folder, file, _ := strings.Cut(name, "/")
+			if file != skills.File {
+				continue
+			}
+			metadata, err := skills.ReadMetadata(tree.Files[name], skills.AuthoredID(folder)+"/"+skills.File)
+			if err != nil {
+				continue
+			}
+			for _, id := range metadata.SkillsUsed {
+				if id != skills.AuthoredID(folder) {
+					called[id] = true
+				}
+			}
+		}
+	}
+	problems := []string{}
+	for _, id := range dependencies {
+		if !called[id] {
+			problems = append(problems, fmt.Sprintf("library.skills.%s lists %s, but no skill of the library names it in %s, and a dependency installs only with the skills that use it, so no project would install it. Name it in the %s of the skills that call it, or move it to a level", skills.Dependencies, id, skills.SkillsUsedKey, skills.SkillsUsedKey))
+		}
+	}
+	return problems
+}
+
 // interfaceFileWarnings returns a warning, in path order, for each skill in tree, the library's skills/ folder, that
 // ships its own agents/openai.yaml holding only the interface text Trail Guide can generate from the skill's metadata,
 // suggesting the metadata keys instead. A file with other settings, such as icons or a policy, is a supported
@@ -124,7 +156,7 @@ func uncuratedProblem(citation skills.Citation, curated []string) string {
 	}
 	switch {
 	case slices.Contains(sources, citation.Source):
-		return "which isn't a skill the library curates; list it in library.skills, at any level, so projects that install the skill can install it too"
+		return "which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too"
 	case len(sources) == 0:
 		return "but library.skills lists no curated skills; name a skill of this library as skills/<name>, or list the curated skill in library.skills"
 	}

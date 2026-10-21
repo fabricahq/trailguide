@@ -59,7 +59,7 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 	for _, id := range listed {
 		source, skill, _ := SplitCurated(id)
 		if _, ok := installed[source][skill]; !ok {
-			field := "library.skills." + declaration.Skills.Level(id)
+			field := declaration.Skills.Field(id)
 			return &ValidationError{Location: manifestPath + ": " + field, Problem: field + " names " + id + ", which " + source + " doesn't have at " + revisions[source] + "; check the skill ID, or set sources." + source + ".ref to a revision that has it"}
 		}
 	}
@@ -88,7 +88,7 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 		source, skill, _ := SplitCurated(id)
 		for _, used := range usedSkills(installed[source], skill) {
 			usedID := source + ":" + used
-			field := "library.skills." + declaration.Skills.Level(id)
+			field := declaration.Skills.Field(id)
 			if _, found := installed[source][used]; !found {
 				return &ValidationError{Location: manifestPath + ": " + field, Problem: id + " uses " + usedID + ", which " + source + " doesn't have at " + revisions[source] + ", so projects can't install " + id + "; stop listing it, or set sources." + source + ".ref to a revision that has both"}
 			}

@@ -57,6 +57,8 @@ What a library's skills install depends on the **level** the library sets for ea
 - **Recommended** skills install because you included `recommended`.
 - **Offered** skills install only when you name them, or include `"*"` for everything the library offers.
 
+A library can also list a skill as a **dependency**: it installs with the library's skills that call it, and you can't include it on its own. `trailguide project list skills` shows it with the level `dependency`.
+
 To add an offered skill, name its ID beside `recommended`:
 
 ```yaml

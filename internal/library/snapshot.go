@@ -106,8 +106,8 @@ func SkillFolder(id string) string {
 
 // ImportedSkill records one installed skill from a source.
 type ImportedSkill struct {
-	// Level is the skill's level in its library, one of skills.Levels, or empty for a skill from a repository that
-	// isn't a library.
+	// Level is the skill's level in its library, one of skills.Levels, skills.LevelDependency for one of the library's
+	// dependencies, or empty for a skill from a repository that isn't a library.
 	Level string `json:"level,omitempty"`
 	// Included reports that the source's skills.include selects the skill; a skill it doesn't select is installed
 	// because other installed skills of the source use it.
@@ -119,13 +119,13 @@ type ImportedSkill struct {
 
 // SelectedSkills returns, sorted, the IDs of the available skills that a source with skills.include selectors
 // include installs: the required ones, the recommended ones for skills.Recommended, every one HiddenSkill doesn't
-// hide for skills.Wildcard, and each one an ID names, less the ones excludes reports the source's level exclusions
+// hide for skills.Wildcard, other than the library's dependencies, and each one an ID names, less the ones excludes reports the source's level exclusions
 // leave out, given each one's ID and level, which is never a required one.
 func (s Snapshot) SelectedSkills(include []string, excludes func(id, level string) bool) []string {
 	selected := []string{}
 	for _, id := range slices.Sorted(maps.Keys(s.AvailableSkills)) {
 		level := s.AvailableSkills[id].Level
-		if level == skills.LevelRequired || (slices.Contains(include, skills.Wildcard) && !HiddenSkill(id) || slices.Contains(include, id) || level == skills.LevelRecommended && slices.Contains(include, skills.Recommended)) && !excludes(id, level) {
+		if level == skills.LevelRequired || (slices.Contains(include, skills.Wildcard) && !HiddenSkill(id) && level != skills.LevelDependency || slices.Contains(include, id) || level == skills.LevelRecommended && slices.Contains(include, skills.Recommended)) && !excludes(id, level) {
 			selected = append(selected, id)
 		}
 	}

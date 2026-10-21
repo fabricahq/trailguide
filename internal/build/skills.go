@@ -401,7 +401,7 @@ func folderDigest(folder SkillFiles) string {
 // replaces, and where agents find it, then the skills the project excludes, each with its reason.
 func skillsIndex(resolved []resolvedSkill, excluded []excludedSkill) string {
 	sections := []string{"# Skills", "This project installs the agent skills below. Agents that load skills from a skill target folder find each one there. Any other agent can read a skill's `SKILL.md` at the path given and follow it when its description matches the task. These files are generated; edit the configuration or the authored skills in `.trailguide/skills/` and rebuild."}
-	if slices.ContainsFunc(resolved, func(skill resolvedSkill) bool { return skill.Level != "" }) {
+	if slices.ContainsFunc(resolved, func(skill resolvedSkill) bool { return skill.Level != "" && skill.Level != skills.LevelDependency }) {
 		sections = append(sections, "A skill's level says how strongly the library that supplies it asks projects to use it: every project that uses the library installs its required skills, and the team chose to install its recommended and offered ones.")
 	}
 	for _, skill := range resolved {
@@ -429,7 +429,11 @@ func skillsIndex(resolved []resolvedSkill, excluded []excludedSkill) string {
 			if skill.LevelRelease != 0 {
 				setBy += fmt.Sprintf(", release %d", skill.LevelRelease)
 			}
-			facts = append(facts, "- **Level:** "+skill.Level+" by "+setBy)
+			if skill.Level == skills.LevelDependency {
+				facts = append(facts, "- **Level:** dependency by "+setBy+", which installs it only with the skills that use it")
+			} else {
+				facts = append(facts, "- **Level:** "+skill.Level+" by "+setBy)
+			}
 		}
 		if skill.Type != "" {
 			facts = append(facts, "- **Type:** "+escapeText(skill.Type))
