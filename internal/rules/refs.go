@@ -71,12 +71,13 @@ func (r GitRef) Equal(other GitRef) bool {
 	return r.kind == other.kind && r.canonical == other.canonical
 }
 
-// LatestRef is the ref of a library source that follows the library's newest library release.
-const LatestRef = "latest"
+// LatestReleaseRef is the ref of a library source that takes the library's newest library release, at its first
+// sync and at each update.
+const LatestReleaseRef = "latest-release"
 
-// Latest reports whether the ref is the word latest, which names a library's newest library release rather than a
-// branch or tag; refs/heads/latest and refs/tags/latest name those.
-func (r GitRef) Latest() bool { return r.text == LatestRef }
+// LatestRelease reports whether the ref is the word latest-release, which names a library's newest library release
+// rather than a branch or tag; refs/heads/latest-release and refs/tags/latest-release name those.
+func (r GitRef) LatestRelease() bool { return r.text == LatestReleaseRef }
 
 // Release returns the number of the library release the ref names, such as 5 for release/5 or
 // refs/tags/release/5, or 0 when it names no library release.
@@ -91,9 +92,9 @@ func (r GitRef) Release() int {
 	return number
 }
 
-// FollowsReleases reports whether the ref chooses a library release, one by number or latest, so a library source
+// FollowsReleases reports whether the ref chooses a library release, one by number or latest-release, so a library source
 // with it imports rule versions and can pin rules.
-func (r GitRef) FollowsReleases() bool { return r.Latest() || r.Release() > 0 }
+func (r GitRef) FollowsReleases() bool { return r.LatestRelease() || r.Release() > 0 }
 
 // WithRelease returns a ref naming library release number, spelled as r is, with or without refs/tags/.
 func (r GitRef) WithRelease(number int) GitRef {
@@ -205,5 +206,5 @@ func RefRequiredProblem(source string, release int, recorded bool) string {
 	if recorded {
 		which = "the release this project records"
 	}
-	return fmt.Sprintf("sources.%s has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/%d to sources.%s, %s, or ref: latest to follow each new library release, then run the command again", source, release, source, which)
+	return fmt.Sprintf("sources.%s has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/%d to sources.%s, %s, or ref: latest-release to take the newest release at each update, then run the command again", source, release, source, which)
 }

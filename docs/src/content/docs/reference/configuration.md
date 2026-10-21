@@ -55,7 +55,7 @@ Replace them with libraries, rules, and skills your project can access.
 | `manageAgentsFile` | Optional. `true`, the default, has init, build, sync, and update keep a Trail Guide section in the repository's `AGENTS.md`, and check verify it. `false` leaves `AGENTS.md` alone. See [AGENTS.md section](#agentsmd-section). |
 | `sources` | Map of stable source names to sources. Use an empty object for a repository that uses only its authored rules and skills. |
 | `sources.<name>.repository` | Required. Explicit HTTPS or SSH Git address, including scp-style SSH. See [Repository addresses](#repository-addresses). |
-| `sources.<name>.ref` | Required. The library release to take the source from, such as `release/4`, or `latest`, or a branch, tag, or commit. See [Refs](#refs). |
+| `sources.<name>.ref` | Required. The library release to take the source from, such as `release/4`, or `latest-release`, or a branch, tag, or commit. See [Refs](#refs). |
 | `sources.<name>.rules.include` | Optional [rule selectors](#rule-selectors): rule IDs, prefixes ending in `/*`, or `"*"`. |
 | `sources.<name>.rules.exclude` | Optional list of rules to leave out, each with an `id` selector and a `reason`, and optionally a [replacement](#exclude-or-replace-a-rule). |
 | `sources.<name>.rules.pins` | Optional list of rules to hold at one version, each with an `id`, a `version`, and a `reason`. See [Pin a rule](#pin-a-rule). |
@@ -67,7 +67,7 @@ Replace them with libraries, rules, and skills your project can access.
 | `library` | Optional. The [manifest](#library-manifest): what this repository publishes as a library, and the level of each skill it offers. |
 
 Unknown fields are rejected, at every level.
-Every part of a source except `repository` is optional. A source with no `include` still installs the skills its library [requires](#skill-levels), and still supplies the skills it [forks](#fork-a-skill).
+Every part of a source except `repository` and `ref` is optional. A source with no `include` still installs the skills its library [requires](#skill-levels), and still supplies the skills it [forks](#fork-a-skill).
 Authored rules, rule groups, and skills are discovered from `rules/` and `skills/` in the Trail Guide directory; they need no configuration entry. See [Project files](/reference/files/).
 
 ## Selectors
@@ -286,19 +286,31 @@ Every source has a `ref`, which says which revision of its repository the projec
 | `ref` | Sync takes | Update moves to |
 | --- | --- | --- |
 | A library release, such as `release/4` or `refs/tags/release/4` | That library release. | The newest library release, and writes it to `ref`, such as `ref: release/5`. |
-| `latest` | The newest library release, at every sync. | Nowhere; sync already took it. |
+| `latest-release` | The recorded library release, or the newest for a new source. | The newest library release, and leaves `ref` as it is. |
 | A branch, such as `main` or `refs/heads/main` | The recorded commit. | The branch's newest commit. |
 | Another tag, such as `v1.2` or `refs/tags/v1.2` | The recorded commit. | For a non-library source, the commit the tag names now, warning when the tag moved since the last update. A library source stays. |
 | A full 40-character commit SHA | That commit. | Nowhere; it never moves. |
 
-Sync resolves a branch, tag, or commit to a commit when it first reads the source, or after you change `ref`, records that commit in the source's vendor snapshot, and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the snapshot records the release and each rule's version; changing `ref` to another release and running `trailguide project sync` moves every rule you haven't [pinned](#pin-a-rule) to that release, up or down.
+Sync resolves a branch, tag, or commit to a commit when it first reads the source, records that commit in the source's vendor snapshot, and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the snapshot records the release and each rule's version, and sync keeps them too. Sync never moves a source: only `trailguide project update` does, after a preview.
 
-`latest` suits a project that wants each library release as soon as it's published, such as a library's own example project. Sync warns about such a source every time, because it skips the update preview: nobody reviews a release's change notes or decides about its major changes before the project takes it. Set `ref` to a release, such as `release/4`, to review each release with `trailguide project update` instead.
+`latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move only in `vendor/` and `generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.
+
+### Change a ref
+
+When you edit a library source's `ref` to name another release than the one the project records, sync refuses, writes nothing, and names the command that takes it:
+
+```text
+Error: sources.fabrica.ref names release/7, but the project records library release 4, and sync doesn't move a source to another release. Run trailguide project update fabrica to review the move to release 7 and take it, or set sources.fabrica.ref back to release/4. No files were written.
+```
+
+`trailguide project update fabrica` then previews and takes release 7, and no further, even when the library has published a newer one. The preview says so, such as `Release 9 is available; run trailguide project update fabrica again to move to it.`, and the next update, with `ref` unchanged, moves the source to the newest release.
+
+Update moves a source only forward. To go back to an older release, restore `.trailguide/config.yaml` and `vendor/<source-name>/` from the commit that recorded it, such as with `git revert`, then run `trailguide project sync`.
 
 A source without a `ref` fails `trailguide project sync`, `update`, `build`, and `check` with `ref-required`, and nothing is written. For a library, the error names the release to write: the one the project records, or for a new source, the library's newest:
 
 ```text
-Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest to follow each new library release, then run the command again. No files were written.
+Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest-release to take the newest release at each update, then run the command again. No files were written.
 ```
 
 Adding the release the project records changes nothing else: sync, build, and check accept the existing vendor snapshot as it is.
@@ -320,7 +332,7 @@ All of a source's skills come from its one recorded revision, so skills that cal
 
 Taking a library at a revision other than a library release, such as a tag or commit with unreleased changes, opts that source out of versions for what changed: rules and skills whose files match a published version record that version, and the rest record `null`, have no version to cite, and update previews list the files that changed but no summaries of the changes. `trailguide project sync` and `trailguide project update` warn about such a source, naming its unreleased rules and skills, and the generated library summary in `generated/libraries/<source-name>/README.md` says so. `trailguide project check` still passes. Update doesn't move a library source whose `ref` is a tag other than a library release, or a commit; change `ref` and run `trailguide project sync` to take another revision. A library source whose `ref` names a branch moves to the branch's newest commit, as [Refs](#refs) describes.
 
-Pins need a `ref` that names a library release, or `latest`. A branch, another tag, or a commit imports one revision, so `rules.pins` with one of those fails; set `ref` to a library release to pin individual rules.
+Pins need a `ref` that names a library release, or `latest-release`. A branch, another tag, or a commit imports one revision, so `rules.pins` with one of those fails; set `ref` to a library release to pin individual rules.
 
 ## Pin a rule
 
@@ -426,7 +438,7 @@ A library can list skills from another repository in `library.skills`, such as a
 
 - **Every curated skill is listed.** A skill from a curated source reaches projects only when `library.skills` lists it, at a level or as a dependency.
 - **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and provenance records which library required, recommended, or offered it.
-- **Refs resolve per project.** A library release doesn't lock a curated source's `ref`, which can name a branch, a tag, a commit, a library release of the curated repository, or `latest` for its newest library release. Each project resolves it when it first syncs and again when it runs `trailguide project update`, and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit. `trailguide library check` resolves the ref on every run to check the skills the library lists, and fails, naming the ref, when the repository has no such branch, tag, or commit.
+- **Refs resolve per project.** A library release doesn't lock a curated source's `ref`, which can name a branch, a tag, a commit, a library release of the curated repository, or `latest-release` for its newest library release. Each project resolves it when it first syncs and again when it runs `trailguide project update`, and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit. `trailguide library check` resolves the ref on every run to check the skills the library lists, and fails, naming the ref, when the repository has no such branch, tag, or commit.
 - **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
 - **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as `library.skills` lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it. List a curated skill the library has only for its own skills to call as a [dependency](#dependencies), so projects get it with those skills but can't choose it alone.
@@ -554,7 +566,7 @@ Each rule and skill in a library has its own [version](/reference/rule-versions/
 - `vendor/<source-name>/_source.json` records the library release or commit, and the exact version of every included rule and skill. [`trailguide project sync`](/reference/cli/#project-sync) restores exactly that, so every checkout has the same content.
 - [`trailguide project update`](/reference/cli/#project-update) previews newer versions, new rules and skills, level changes, and retirements, and applies them after you confirm, writing the new release to `ref`.
 
-`trailguide project sync` moves a source only when you change its `ref`, or when it's `latest` and the library published a new release. A rule or skill you newly include comes from the release `ref` names, or from the recorded commit. When it isn't there, such as a skill the library published after your last update, sync fails and names the command that moves the source, `trailguide project update SOURCE`.
+`trailguide project sync` never moves a source; when you change its `ref`, sync fails and names `trailguide project update SOURCE`, which takes it. A rule or skill you newly include comes from the release `ref` names, or from the recorded commit. When it isn't there, such as a skill the library published after your last update, sync fails and names the command that moves the source, `trailguide project update SOURCE`.
 
 A project chooses rule versions one by one, with pins, but not skill versions. All of a source's skills come from its one recorded revision, and move together when it moves. A skill's version still says what changed, in release notes, `generated/SKILLS.md`, the installed copy's marker line, provenance, and the update preview.
 

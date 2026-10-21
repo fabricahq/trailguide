@@ -974,9 +974,9 @@
     }
   },
   {
-    "id": "configuration-pins-with-latest",
+    "id": "configuration-pins-with-latest-release",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {\"team\": {\"repository\": \"https://github.com/fixture/team.git\", \"ref\": \"latest\", \"rules\": {\"include\": [\"techs/go/*\"], \"pins\": [{\"id\": \"techs/go/a\", \"version\": \"1.3.0\", \"reason\": \"Waiting\"}]}}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {\"team\": {\"repository\": \"https://github.com/fixture/team.git\", \"ref\": \"latest-release\", \"rules\": {\"include\": [\"techs/go/*\"], \"pins\": [{\"id\": \"techs/go/a\", \"version\": \"1.3.0\", \"reason\": \"Waiting\"}]}}}}",
     "location": "configuration",
     "expected": {
       "ok": true,
@@ -985,7 +985,7 @@
           {
             "name": "team",
             "repository": "https://github.com/fixture/team.git",
-            "ref": "latest",
+            "ref": "latest-release",
             "groups": [
               "techs/go"
             ],
@@ -1000,7 +1000,7 @@
             "skills": [],
             "parsedRef": {
               "kind": "tag",
-              "name": "refs/tags/latest"
+              "name": "refs/tags/latest-release"
             }
           }
         ]
@@ -1016,7 +1016,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team: rules.pins needs a ref that names a library release, such as release/4, or latest; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins",
+        "message": "sources.team: rules.pins needs a ref that names a library release, such as release/4, or latest-release; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins",
         "location": "sources.team"
       }
     }
@@ -1030,7 +1030,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "sources.team: rules.pins needs a ref that names a library release, such as release/4, or latest; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins",
+        "message": "sources.team: rules.pins needs a ref that names a library release, such as release/4, or latest-release; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins",
         "location": "sources.team"
       }
     }

@@ -150,7 +150,7 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 }
 
 // requestedRef returns the source's ref as generated output shows it: empty for a ref that chooses a library
-// release, release/<number> or latest, which the output names as the library release its snapshot records instead.
+// release, release/<number> or latest-release, which the output names as the library release its snapshot records instead.
 func requestedRef(source rules.Source, snapshot library.Snapshot) string {
 	if source.Ref.FollowsReleases() && snapshot.Release != 0 {
 		return ""

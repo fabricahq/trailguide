@@ -115,7 +115,7 @@ func projectInitializedReport(result project.AuthoringResult, workdir string) co
 func sourceAddedReport(result project.AuthoringResult, scope authoringScope, name, chosen string) commandReport {
 	var out strings.Builder
 	if chosen != "" {
-		fmt.Fprintf(&out, "Set sources.%s.ref to %s, the library's newest release. To follow each new release instead, set it to latest.\n", name, chosen)
+		fmt.Fprintf(&out, "Set sources.%s.ref to %s, the library's newest release.\n", name, chosen)
 	}
 	formatAuthored(&out, result.Added, result.Changed, result.Warnings, scope.workdir)
 	return authoredReport(&out, result.Added, result.Changed, result.Warnings, []nextStep{{Instruction: "Next: Fetch the source, build guidance, and install its skills:", Commands: []string{"trailguide project sync"}}})

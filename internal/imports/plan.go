@@ -37,7 +37,7 @@ type sourcePlan struct {
 	// nonLibrary reports that commit holds no library manifest, so the source imports only skills.
 	nonLibrary bool
 	// followsReleases reports that the plan imports rule versions from library releases: the source has no ref, or its
-	// ref chose a library release, release/<number> or latest, which the record then keeps no ref for.
+	// ref chose a library release, release/<number> or latest-release, which the record then keeps no ref for.
 	followsReleases bool
 	// locked is the commit the source's record holds, which sync keeps, or empty for a source without one.
 	locked string
@@ -61,6 +61,9 @@ type planner struct {
 	// again resolves a source's ref again, as an update of a source that follows its ref does, instead of keeping the
 	// commit recorded holds.
 	again bool
+	// updating plans an update, which takes the library release a ref such as release/7 names when it differs from
+	// the one recorded holds; sync refuses that ref.
+	updating bool
 }
 
 // planSource chooses what source imports, as project sync does: recorded versions stay, and versions are chosen
@@ -208,14 +211,17 @@ func (p *planner) releases() (releaseHistory, error) {
 }
 
 // planReleases plans a source whose ref chooses a library release: release/<number> takes that library release,
-// and latest the newest one, at every sync. A record of that library release keeps its rule versions, as
+// and latest-release the newest one when no library release is recorded, and otherwise keeps the recorded one, as a
+// branch keeps its recorded commit until an update. A ref edited to name another library release than the record's
+// fails, as editedRelease decides, or plans the recorded release for the update to move from. A record of that
+// library release keeps its rule versions, as
 // planVersions keeps them; otherwise each selected rule takes its pinned version, or else its version in that
 // release. Releases after the one the ref names stay out of view. A ref shaped like a library release that the
 // library doesn't have, such as a branch named release/5, or the tag of a repository that isn't a library, imports
 // that revision, as planRevision does.
 func (p *planner) planReleases() (sourcePlan, error) {
 	ref, recorded := p.source.Ref, p.recorded
-	if !ref.Latest() && recorded != nil && (recorded.NonLibrary || recorded.Release == 0) && ref.Equal(recorded.Ref) {
+	if !ref.LatestRelease() && recorded != nil && (recorded.NonLibrary || recorded.Release == 0) && ref.Equal(recorded.Ref) {
 		return p.planRevision()
 	}
 	// A record of the library release the ref names keeps it without reading the history, even after its tag moved
@@ -224,8 +230,12 @@ func (p *planner) planReleases() (sourcePlan, error) {
 		p.ceiling = number
 		return p.planVersions()
 	}
+	if ref.LatestRelease() && recorded != nil && !recorded.NonLibrary && recorded.Release > 0 {
+		p.ceiling = recorded.Release
+		return p.planVersions()
+	}
 	// A bare name such as release/5 names a branch of that name when the repository has one, as resolveRef reads it.
-	if ref.Bare() && !ref.Latest() {
+	if ref.Bare() && !ref.LatestRelease() {
 		name, err := p.repo.bareRef(p.ctx, p.source)
 		var failure *Error
 		switch {
@@ -235,15 +245,24 @@ func (p *planner) planReleases() (sourcePlan, error) {
 			return sourcePlan{}, err
 		}
 	}
+	// A ref edited to name another library release than the record's is reviewed with an update, which plans from the
+	// recorded versions, choosing that release's versions only for newly selected rules, as sync chooses them.
+	if number := ref.Release(); number != 0 && recorded != nil && !recorded.NonLibrary && recorded.Release != 0 {
+		if err := p.editedRelease(number); err != nil {
+			return sourcePlan{}, err
+		}
+		p.ceiling = number
+		return p.planVersions()
+	}
 	history, err := p.releases()
 	if err != nil {
 		return sourcePlan{}, err
 	}
 	target := ref.Release()
-	if ref.Latest() {
+	if ref.LatestRelease() {
 		newest := history.newest()
 		if newest == nil {
-			return sourcePlan{}, fail("ref-required", fmt.Sprintf("sources.%s.ref is latest, the newest library release, but the repository has no release/<number> tags: it isn't a library, or hasn't published its first library release. Set sources.%s.ref to the branch, tag, or full commit SHA to take it from.", p.source.Name, p.source.Name), nil)
+			return sourcePlan{}, fail("ref-required", fmt.Sprintf("sources.%s.ref is latest-release, the newest library release, but the repository has no release/<number> tags: it isn't a library, or hasn't published its first library release. Set sources.%s.ref to the branch, tag, or full commit SHA to take it from.", p.source.Name, p.source.Name), nil)
 		}
 		target = newest.number
 	} else if history.release(target) == nil {
@@ -256,14 +275,21 @@ func (p *planner) planReleases() (sourcePlan, error) {
 		p.recorded = pinnedOnly(recorded, p.source.Pins)
 		defer func() { p.recorded = recorded }()
 	}
-	plan, err := p.planVersions()
-	if err != nil {
-		return sourcePlan{}, err
+	return p.planVersions()
+}
+
+// editedRelease fails with code ref-changed for a ref that names library release number, other than the one the
+// source's record holds, unless an update plans it and number is later: sync doesn't move a source, and an update
+// moves one only forward.
+func (p *planner) editedRelease(number int) error {
+	name, recorded := p.source.Name, p.recorded.Release
+	switch {
+	case number < recorded:
+		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, older than library release %d, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward. To go back, restore .trailguide/config.yaml and vendor/%s/ from the commit that recorded release %d, such as with git revert, then run trailguide project sync; or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
+	case !p.updating:
+		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, but the project records library release %d, and sync doesn't move a source to another release. Run trailguide project update %s to review the move to release %d and take it, or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
 	}
-	if ref.Latest() {
-		plan.warnings = append(plan.warnings, fmt.Sprintf("Source %s follows the newest library release, ref: latest, so sync takes each new release as soon as the library publishes it, without the update preview or its change notes. Set sources.%s.ref to release/%d to review each release with trailguide project update instead.", p.source.Name, p.source.Name, target))
-	}
-	return plan, nil
+	return nil
 }
 
 // pinnedOnly returns a copy of recorded that holds only the rules pins names, with no library release, groups, or

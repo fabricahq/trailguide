@@ -331,7 +331,7 @@ func (l curatedSource) declares(revision library.CuratedSource) bool {
 	return revision.Commit != "" && revision.Repository == l.declared.Repository && revision.Ref.Equal(l.declared.Ref)
 }
 
-// resolve resolves the ref the library declares for the curated source, or, for latest, and for no ref in a library
+// resolve resolves the ref the library declares for the curated source, or, for latest-release, and for no ref in a library
 // release published before refs were required, the repository's newest library release, and fetches the revision. A
 // maintainer's own library without a ref fails with ref-required. It reports what a ref named: a commit, a tag, or a
 // branch, or "" for the newest library release.
@@ -339,11 +339,11 @@ func (l curatedSource) resolve(ctx context.Context, repo *repository) (_ library
 	p := &planner{ctx: ctx, repo: repo, source: rules.Source{Name: l.name, Repository: l.declared.Repository, Ref: l.declared.Ref}}
 	revision := library.CuratedSource{Repository: l.declared.Repository, Ref: l.declared.Ref}
 	if l.declared.Ref.IsZero() && l.maintained {
-		return library.CuratedSource{}, "", fail("ref-required", fmt.Sprintf("The library curates skills from its source %s, which has no ref. Set sources.%s.ref in .trailguide/config.yaml to a library release, such as release/4, or latest, or to a branch, tag, or full commit SHA.", l.name, l.name), nil)
+		return library.CuratedSource{}, "", fail("ref-required", fmt.Sprintf("The library curates skills from its source %s, which has no ref. Set sources.%s.ref in .trailguide/config.yaml to a library release, such as release/4, or latest-release, or to a branch, tag, or full commit SHA.", l.name, l.name), nil)
 	}
 	// A library release published before Trail Guide required a ref can leave it out, which follows the newest
-	// library release, as latest does.
-	if l.declared.Ref.IsZero() || l.declared.Ref.Latest() {
+	// library release, as latest-release does.
+	if l.declared.Ref.IsZero() || l.declared.Ref.LatestRelease() {
 		history, err := p.releases()
 		if err != nil {
 			return library.CuratedSource{}, "", err
@@ -562,7 +562,7 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 		return nil, "", err
 	}
 	at := revisionName(revision.Release, revision.Commit)
-	if !declared.Ref.IsZero() && !declared.Ref.Latest() {
+	if !declared.Ref.IsZero() && !declared.Ref.LatestRelease() {
 		at = declared.Ref.String()
 	}
 	folders := skillFolders(tree, !revision.NonLibrary)

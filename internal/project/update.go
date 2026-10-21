@@ -372,7 +372,7 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 		kept := slices.Collect(maps.Keys(edits[sources[i].Name].Pins))
 		sources[i].SharedFiles = p.update.SharedFiles(sources[i].Name, kept)
 		// A ref that names a library release moves with the shared files, so config.yaml names what's installed.
-		if source := sourceNamed(p.planned.config, sources[i].Name); sources[i].SharedFiles != nil && source.Ref.Release() > 0 {
+		if source := sourceNamed(p.planned.config, sources[i].Name); sources[i].SharedFiles != nil && source.Ref.Release() > 0 && source.Ref.Release() != sources[i].SharedFiles.To {
 			edit := edits[sources[i].Name]
 			edit.Ref = source.Ref.WithRelease(sources[i].SharedFiles.To)
 			edits[sources[i].Name] = edit

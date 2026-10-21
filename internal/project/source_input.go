@@ -13,7 +13,7 @@ import (
 // rule selectors for rules.include: rule IDs, group prefixes such as techs/go/*, and the wildcards *, techs/*, and
 // practices/*. Skills holds skill selectors for skills.include: skill IDs, such as skills/build-feature, and
 // recommended, or only *. With neither, the source installs only its library's required skills. Ref is required:
-// a library release, such as release/4, latest, or a branch, tag, or full commit SHA. Pins and exclusions are
+// a library release, such as release/4, latest-release, or a branch, tag, or full commit SHA. Pins and exclusions are
 // configured separately.
 type SourceInput struct {
 	Repository string
@@ -22,7 +22,7 @@ type SourceInput struct {
 	Skills     []string
 }
 
-// ParseSourceRef returns the library release, latest, branch, tag, or full commit SHA, without surrounding
+// ParseSourceRef returns the library release, latest-release, branch, tag, or full commit SHA, without surrounding
 // whitespace, as a validated ref.
 // Abbreviated commits and version ranges are rejected.
 func ParseSourceRef(input string) (rules.GitRef, error) {

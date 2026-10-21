@@ -360,7 +360,13 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err := configure("move ref to release/2 and pin techs/go/errors to 1.0.0", "release/2", "      pins:\n        - id: techs/go/errors\n          version: \"1.0.0\"\n          reason: Keep the original wording.\n"); err != nil {
 			return report, err
 		}
-		if err := invoke("Sync release/2 with the pin", consumer, online, 0, "project", "sync"); err != nil {
+		if err := invoke("Sync the edited ref", consumer, online, 1, "project", "sync"); err != nil {
+			return report, err
+		}
+		if !strings.Contains(report.Steps[len(report.Steps)-1].Stderr, "sources.team.ref names release/2, but the project records library release 1, and sync doesn't move a source to another release. Run trailguide project update team") {
+			return report, fmt.Errorf("sync didn't refuse the edited ref:\n%s", report.Steps[len(report.Steps)-1].Stderr)
+		}
+		if err := invoke("Update to release/2 with the pin", consumer, online, 0, "project", "update", "--yes"); err != nil {
 			return report, err
 		}
 		after, err = readTree(ctx, consumer)
@@ -368,7 +374,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 			return report, err
 		}
 		if !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) || !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/naming.md"], libraryTree.Files[".trailguide/rules/techs/go/naming.md"]) {
-			return report, fmt.Errorf("sync did not keep the pinned rule at 1.0.0 beside the release's other rule")
+			return report, fmt.Errorf("update did not keep the pinned rule at 1.0.0 beside the release's other rule")
 		}
 		if !strings.Contains(string(after.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") || !strings.Contains(string(after.Files[".trailguide/vendor/team/_source.json"]), `"release": 2,`) {
 			return report, fmt.Errorf("the pinned version or the new release is missing")
@@ -376,7 +382,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err := invoke("Check the pinned version offline", consumer, offline, 0, "project", "check"); err != nil {
 			return report, err
 		}
-		report.Verified = append(report.Verified, "A ref moved to a newer library release takes it, while a pin holds one rule at its version, and checks offline")
+		report.Verified = append(report.Verified, "Sync refuses a ref edited to name a newer library release, and update takes it, while a pin holds one rule at its version, and checks offline")
 		if err := configure("remove the pin", "release/2", ""); err != nil {
 			return report, err
 		}

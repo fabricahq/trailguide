@@ -108,7 +108,7 @@ func TestSync_RestoresRecordedVersionsAndMovesOnlyPinnedRules(t *testing.T) {
 	_, err = Sync(ctx, options, git)
 	requireFailure(t, err, "version-not-found", "comes from library release 2, after release/1")
 	configure(t, options, f, `"rules":{"include":["techs/go/*","techs/go/extra"],"pins":[{"id":"techs/go/errors","version":"1.0.0","reason":"Not ready."}]}`)
-	if _, err := Sync(ctx, options, git); err != nil {
+	if _, err := updateProject(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
 	record, got := recordedVersions(t, options)
@@ -186,7 +186,7 @@ func TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked(t *testing
 				t.Fatal(err)
 			}
 			configure(t, options, f, `"rules":{"include":`+test.include+`}`)
-			if _, err := Sync(ctx, options, git); err != nil {
+			if _, err := updateProject(ctx, options, git); err != nil {
 				t.Fatal(err)
 			}
 			record, got := recordedVersions(t, options)
@@ -299,7 +299,7 @@ func TestSync_RecordsTheRetirementOfANewlyPinnedRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/extra","version":"1.0.0","reason":"Keep it."}]}`)
-	changes, err := Sync(ctx, options, git)
+	changes, err := updateProject(ctx, options, git)
 	if err != nil || len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "techs/go/extra") {
 		t.Fatalf("sync: %+v, %v", changes, err)
 	}
@@ -334,7 +334,7 @@ func TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.1.0","reason":"Keep it."}]}`)
-	if _, err := Sync(ctx, options, git); err != nil {
+	if _, err := updateProject(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
 	if record, versions := recordedVersions(t, options); versions["techs/go/errors"] != "1.1.0@2" || record.Release != 3 {
@@ -419,7 +419,7 @@ func TestSync_RecordsTheRetirementOfANewlyExcludedRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"exclude":[{"id":"techs/go/extra","reason":"Retired upstream."}]}`)
-	changes, err := Sync(ctx, options, git)
+	changes, err := updateProject(ctx, options, git)
 	if err != nil || len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "techs/go/extra") {
 		t.Fatalf("sync: %+v, %v", changes, err)
 	}

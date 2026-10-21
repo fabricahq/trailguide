@@ -268,7 +268,12 @@ func TestUpdate_YesAppliesWithKeepAndExclude(t *testing.T) {
 
 // basedOnConfig is the fixture's configuration with the loaders replacement based on version.
 func (u updateFixture) basedOnConfig(version string) string {
-	return "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: " + u.fixture.Repository + "\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n          basedOn: \"" + version + "\" # forked\n"
+	return u.basedOnConfigAt("release/1", version)
+}
+
+// basedOnConfigAt is basedOnConfig with ref.
+func (u updateFixture) basedOnConfigAt(ref, version string) string {
+	return "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: " + u.fixture.Repository + "\n    ref: " + ref + "\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n          basedOn: \"" + version + "\" # forked\n"
 }
 
 // TestUpdate_ComparesAReplacementWithItsBasedOnVersion lists the library's changes after basedOn, in human and
@@ -324,7 +329,7 @@ func TestUpdate_ComparesAReplacementWithItsBasedOnVersion(t *testing.T) {
 	if out, _, code := u.run(t, "project", "update"); code != 0 || strings.Contains(out, "techs/go/loaders") {
 		t.Fatalf("exit %d, the next update still lists the replacement:\n%s", code, out)
 	}
-	u.write(t, "config.yaml", u.basedOnConfig("9.0.0"))
+	u.write(t, "config.yaml", u.basedOnConfigAt("release/2", "9.0.0"))
 	failure := struct {
 		OK    bool
 		Error responseError

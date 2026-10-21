@@ -888,8 +888,8 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 }
 
 // recordsRef reports whether record holds the ref source asks for. A library source whose ref chooses a library
-// release, release/<number> or latest, is recorded without a ref, or, as sync recorded it before Trail Guide required
-// a ref, with the same ref; matchRevision checks the release. Any other ref is recorded as configured.
+// release, release/<number> or latest-release, is recorded without a ref, or, as sync recorded it before Trail Guide
+// required a ref, with the same ref; matchRevision checks the release. Any other ref is recorded as configured.
 func recordsRef(source rules.Source, record parsedRecord) bool {
 	if source.Ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
 		return record.Ref.IsZero() || record.Ref.Equal(source.Ref)
@@ -903,7 +903,7 @@ func matchRevision(source rules.Source, record parsedRecord) error {
 	ref := source.Ref
 	if ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
 		if number := ref.Release(); number != 0 && record.Release != number {
-			return invalidSnapshot(where+".release", fmt.Sprintf("records library release %d, not release/%d, which sources.%s.ref names; run trailguide project sync", record.Release, number, source.Name))
+			return invalidSnapshot(where+".release", fmt.Sprintf("records library release %d, not release/%d, which sources.%s.ref names; run trailguide project update %s to review the move and take it, or set sources.%s.ref back to release/%d", record.Release, number, source.Name, source.Name, source.Name, record.Release))
 		}
 		return nil
 	}

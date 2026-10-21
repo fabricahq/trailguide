@@ -409,6 +409,17 @@ func withNewestRef(t *testing.T, config, placeholder, repository string, git imp
 	return config[:at+len(inYAML)] + indent + "ref: " + ref + "\n" + config[at+len(inYAML):]
 }
 
+// updateProject applies an update of every source with no decisions, as a project whose ref was edited to name a
+// newer library release takes it.
+func updateProject(ctx context.Context, options Options, git imports.Options) (FileChanges, error) {
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		return FileChanges{}, err
+	}
+	result, err := plan.Apply(ctx, nil)
+	return result.FileChanges, err
+}
+
 // sourceObject returns the rest of the JSON object in config that contains key, from key to the brace that closes
 // the object.
 func sourceObject(config, key string) string {

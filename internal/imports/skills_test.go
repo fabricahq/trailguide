@@ -79,6 +79,9 @@ func TestChooseSkillsTakesEverySkillFromThePlannedRevision(t *testing.T) {
 	pinned := func(t *testing.T, include ...string) rules.Source {
 		return rules.Source{Name: "team", Skills: include, Ref: gitRef(t, "v1.0.0")}
 	}
+	latest := func(t *testing.T, include ...string) rules.Source {
+		return rules.Source{Name: "team", Skills: include, Ref: gitRef(t, "latest-release")}
+	}
 	tests := map[string]struct {
 		source  func(*testing.T, ...string) rules.Source
 		include []string
@@ -91,6 +94,7 @@ func TestChooseSkillsTakesEverySkillFromThePlannedRevision(t *testing.T) {
 		"named skills":                         {release, []string{"skills/review"}, sourcePlan{commit: locked, locked: locked}, []string{"skills/review"}, "", ""},
 		"a dot folder can be named":            {release, []string{".claude/skills/local"}, sourcePlan{commit: locked}, []string{".claude/skills/local"}, "", ""},
 		"missing from the locked release":      {release, []string{"skills/new"}, sourcePlan{release: 1, commit: locked, locked: locked}, nil, "skill-not-in-revision", "Run trailguide project update team"},
+		"missing from the newest release":      {latest, []string{"skills/new"}, sourcePlan{release: 1, commit: locked, locked: locked}, nil, "skill-not-in-revision", "Run trailguide project update team, which moves the source to its newest library release, and takes the skill"},
 		"missing from the locked ref":          {pinned, []string{"skills/new"}, sourcePlan{commit: locked, locked: locked}, nil, "skill-not-in-revision", "set sources.team.ref to a tag or commit that has it"},
 		"missing from a newly chosen revision": {release, []string{"skills/new"}, sourcePlan{release: 2, commit: newer, locked: locked}, nil, "", "the source has no skill skills/new at release/2"},
 		"missing without a record":             {release, []string{"skills/new"}, sourcePlan{commit: newer}, nil, "", "the source has no skill skills/new at commit " + newer},

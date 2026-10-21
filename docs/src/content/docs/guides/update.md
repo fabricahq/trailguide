@@ -33,7 +33,7 @@ Sync does take something new in two cases. A source that's new to the project is
 Every source needs a `ref`. A project synced with an earlier Trail Guide may have library sources without one, and then sync, update, build, and check all fail, naming the release your project records:
 
 ```text
-Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest to follow each new library release, then run the command again. No files were written.
+Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest-release to take the newest release at each update, then run the command again. No files were written.
 ```
 
 Add the line the error names to the source:
@@ -305,7 +305,7 @@ trailguide project update team
 
 The update works like a full one, with the same preview and questions, for `team` only. Your other sources stay where they are until your next full update.
 
-When the update moves a library source to a newer release, it writes that release to the source's `ref`, and the preview says so, such as `Sets sources.team.ref to release/5 in .trailguide/config.yaml.` A library source whose `ref` is `latest` has nothing to update, because sync takes each new release. One whose `ref` is a tag other than a library release, or a commit, doesn't move this way; see [Take one library release](#take-one-library-release).
+When the update moves a library source to a newer release, it writes that release to the source's `ref`, and the preview says so, such as `Sets sources.team.ref to release/5 in .trailguide/config.yaml.` A library source whose `ref` is `latest-release` moves to the newest release too, and its `ref` stays `latest-release`. One whose `ref` is a tag other than a library release, or a commit, doesn't move this way; see [Take one library release](#take-one-library-release).
 
 ### Update one rule to its newest version
 
@@ -371,7 +371,7 @@ Each update moves a library source to the newest release and writes it to `ref`.
 trailguide project update other-source
 ```
 
-Other times you need a particular release, older or newer than the one you have. Set `ref` to its tag:
+Other times you need a particular release, not the newest. Set `ref` to its tag:
 
 ```yaml
 sources:
@@ -382,15 +382,15 @@ sources:
       include: ["*"]
 ```
 
-Then sync:
+Sync refuses the changed `ref`, because sync never moves a source. Update the source instead:
 
 ```sh
-trailguide project sync
+trailguide project update vendor-rules
 ```
 
-Sync takes exactly what release 5 published, up or down, and leaves the rules you pinned where they are. It doesn't show a preview, because you chose the release; to read what changed first, run `trailguide project update` instead.
+The update previews and takes exactly what release 5 published, and leaves the rules you pinned where they are. When the library has published a newer release, the preview says so, and running the update again moves the source to it. Update moves a source only forward; to go back to an older release, revert the commit that moved it.
 
-A project that wants each new release as soon as the library publishes it, without reviewing it, can set `ref: latest`. Sync then takes the newest release every time it runs, and warns that the source skips the update preview and its change notes, so nobody decides about a major change before the project takes it.
+A project that wants each update to take the newest release, without naming it in `config.yaml`, can set `ref: latest-release`. Sync keeps the release the project records, and each `trailguide project update` moves the source to the newest release, leaving `ref` as it is. `latest-release` means the newest library release, not the newest commit on `main`.
 
 `ref` also accepts other revisions:
 

@@ -187,7 +187,7 @@ func TestFork_OfAPinnedRuleRemovesThePin(t *testing.T) {
 	}
 	defer root.Close()
 	writeFixture(t, root, configurationFile, withNewestRef(t, "# Team rules.\nschemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/errors\n          version: \"1.0.0\"\n          reason: Not ready.\n", f.fixture.Repository, f.fixture.Repository, f.git))
-	if _, err := Sync(ctx, f.options, f.git); err != nil {
+	if _, err := updateProject(ctx, f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
 	result, err := f.fork(t, "techs/go/errors", "team@1.0.0", "Ours.")
@@ -474,7 +474,7 @@ func TestFork_KeepsTheLibrarysGroupDescription(t *testing.T) {
 	}
 	defer root.Close()
 	writeFixture(t, root, configurationFile, withNewestRef(t, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - practices/testing/verify\n", f.fixture.Repository, f.fixture.Repository, f.git))
-	if _, err := Sync(context.Background(), f.options, f.git); err != nil {
+	if _, err := updateProject(context.Background(), f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.fork(t, "practices/testing/verify", "team@1.0.0", "Ours."); err != nil {
@@ -504,7 +504,7 @@ func TestUpdate_KeepsTheGroupMetadataAForkOfARetiredRuleNeeds(t *testing.T) {
 	}
 	defer root.Close()
 	writeFixture(t, root, configurationFile, withNewestRef(t, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/errors\n", f.fixture.Repository, f.fixture.Repository, f.git))
-	if _, err := Sync(ctx, f.options, f.git); err != nil {
+	if _, err := updateProject(ctx, f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.fork(t, "techs/go/errors", "team@1.1.0", "Ours."); err != nil {

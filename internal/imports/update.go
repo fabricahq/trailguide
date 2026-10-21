@@ -43,14 +43,14 @@ var updateChangeOrder = []UpdateChange{UpdateMajor, UpdateMinor, UpdatePatch, Up
 type SourceUpdate struct {
 	Name string `json:"name"`
 	// Ref is the source's ref, so Rules is empty; it is empty for other sources, including those whose ref names a
-	// library release, such as release/4, or latest, which the update moves as it moves rule versions.
+	// library release, such as release/4, or latest-release, which the update moves as it moves rule versions.
 	Ref string `json:"ref,omitempty"`
-	// FollowsLatest reports that Ref is latest, so sync already takes the newest library release, and the update
-	// moves only rules and changes that sync doesn't, such as pins it lists.
-	FollowsLatest bool `json:"followsLatest,omitempty"`
 	// SetsRef is the ref the update writes to the source's ref in config.yaml, release/<number> for the library
 	// release SharedFiles moves to, when the source's ref names a library release; it is empty otherwise.
 	SetsRef string `json:"setsRef,omitempty"`
+	// Available is the library's newest release when the update takes an older one, the release a ref edited away
+	// from the record's names, so a second update moves the source to it; it is 0 otherwise.
+	Available int `json:"available,omitempty"`
 	// FollowsRef reports that the update resolves Ref again, which it does for a branch, and for a tag of a
 	// repository that isn't a library. Any other source that uses ref stays at the commit sync keeps.
 	FollowsRef bool `json:"followsRef,omitempty"`
@@ -763,13 +763,28 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 		}
 	}()
 	p := newPlanner(ctx, repo, source, recorded)
-	p.again = followsRef(source, p.recorded)
+	p.again, p.updating = followsRef(source, p.recorded), true
 	before, err := p.choose()
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
 	}
-	// Sync sees only the library release a ref such as release/4 names; the update looks past it.
+	// Sync sees only the library release a ref such as release/4 names; the update looks past it, unless the ref
+	// was edited to name another release than the record's, which the update takes.
 	p.ceiling = 0
+	available := 0
+	if number := source.Ref.Release(); before.followsReleases && number != 0 && number != before.release {
+		history, err := p.releases()
+		if err != nil {
+			return plannedSource{}, SourceUpdate{}, nil, err
+		}
+		if history.release(number) == nil {
+			return plannedSource{}, SourceUpdate{}, nil, fail("version-not-found", fmt.Sprintf("sources.%s.ref names release/%d, which the library doesn't have. Set sources.%s.ref to a library release it has, such as release/%d, its newest.", source.Name, number, source.Name, history.newest().number), nil)
+		}
+		p.ceiling = number
+		if newest := p.history.newest().number; newest > number {
+			available = newest
+		}
+	}
 	// A library's bare name that names a tag, not a branch, holds one revision, like any library tag.
 	if p.again && !before.nonLibrary && before.resolved == rules.GitRefTag {
 		p.again = false
@@ -777,7 +792,7 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 	}
-	preview := SourceUpdate{Name: source.Name, FollowsRef: p.again, FollowsLatest: before.followsReleases && source.Ref.Latest(), Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
+	preview := SourceUpdate{Name: source.Name, FollowsRef: p.again, Available: available, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
 	if p.again && before.commit != p.recorded.Commit {
 		preview.Commit = &CommitMove{From: p.recorded.Commit, To: before.commit}
 		preview.TagMoved = before.resolved == rules.GitRefTag && p.recorded.Ref.Equal(source.Ref)
@@ -806,7 +821,7 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
 	}
-	planned := plannedSource{before: before, moved: moved, scoped: scope != nil, recorded: p.recorded, history: *p.history}
+	planned := plannedSource{before: before, moved: moved, scoped: scope != nil, recorded: p.recorded, history: p.history.upTo(p.ceiling)}
 	if release, _ := planned.sharedFiles(moved); release != before.release {
 		preview.SharedFiles = &SharedFilesUpdate{From: before.release, To: release}
 	}

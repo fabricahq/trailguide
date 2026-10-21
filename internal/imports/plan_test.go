@@ -537,7 +537,7 @@ func TestImport_SourceWithoutRulesGetsTheNewestLibraryRelease(t *testing.T) {
 }
 
 // TestImport_RefSelectsIndividualRulesAtItsRevision warns about entries naming rules the revision retired,
-// including an exclusion when a changed ref retires its rule.
+// including an exclusion when an update to a changed ref retires its rule.
 func TestImport_RefSelectsIndividualRulesAtItsRevision(t *testing.T) {
 	h := newHistory(t)
 	earlier, err := h.sync(t, h.source(t, `"rules":{"include":["practices/testing/*","techs/go/b"],"exclude":[{"id":"techs/go/b","reason":"Replaced."}]},"ref":"release/2"`), nil)
@@ -547,10 +547,12 @@ func TestImport_RefSelectsIndividualRulesAtItsRevision(t *testing.T) {
 	if want := map[string]string{"techs/go/b": "1.0.0@1", "practices/testing/c": "1.0.0@1"}; !reflect.DeepEqual(versions(earlier.Snapshot), want) || len(earlier.Warnings) != 0 {
 		t.Fatalf("versions %v, want %v; warnings %v", versions(earlier.Snapshot), want, earlier.Warnings)
 	}
-	later, err := h.sync(t, h.source(t, `"rules":{"include":["practices/testing/*","techs/go/b"],"exclude":[{"id":"techs/go/b","reason":"Replaced."}]},"ref":"release/3"`), &earlier.Snapshot)
+	config := h.source(t, `"rules":{"include":["practices/testing/*","techs/go/b"],"exclude":[{"id":"techs/go/b","reason":"Replaced."}]},"ref":"release/3"`)
+	update, err := h.plan(t, config, &earlier.Snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
+	later := h.install(t, update, config)
 	if want := map[string]string{"practices/testing/c": "1.0.0@1"}; !reflect.DeepEqual(versions(later.Snapshot), want) {
 		t.Fatalf("versions %v, want %v", versions(later.Snapshot), want)
 	}

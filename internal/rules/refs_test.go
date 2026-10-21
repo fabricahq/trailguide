@@ -198,13 +198,13 @@ func TestGitRefErrorLocation(t *testing.T) {
 	}
 }
 
-// TestGitRef_ReleaseAndLatestNameLibraryReleases reads the library release a ref names, in either tag spelling, and
-// latest, and names none for a branch, another tag, refs/heads/latest, or a commit.
-func TestGitRef_ReleaseAndLatestNameLibraryReleases(t *testing.T) {
-	for text, want := range map[string]int{"release/4": 4, "refs/tags/release/12": 12, "latest": 0, "refs/heads/release/4": 0, "release/04": 0, "v1.0.0": 0, "main": 0, "refs/heads/latest": 0, strings.Repeat("a", 40): 0} {
+// TestGitRef_ReleaseAndLatestReleaseNameLibraryReleases reads the library release a ref names, in either tag spelling, and
+// latest-release, and names none for a branch, another tag, latest, refs/heads/latest-release, or a commit.
+func TestGitRef_ReleaseAndLatestReleaseNameLibraryReleases(t *testing.T) {
+	for text, want := range map[string]int{"release/4": 4, "refs/tags/release/12": 12, "latest-release": 0, "latest": 0, "refs/heads/release/4": 0, "release/04": 0, "v1.0.0": 0, "main": 0, "refs/heads/latest-release": 0, strings.Repeat("a", 40): 0} {
 		got := ref(t, text)
-		if got.Release() != want || got.Latest() != (text == "latest") || got.FollowsReleases() != (want > 0 || text == "latest") {
-			t.Errorf("%s: release %d, latest %t, follows releases %t", text, got.Release(), got.Latest(), got.FollowsReleases())
+		if got.Release() != want || got.LatestRelease() != (text == "latest-release") || got.FollowsReleases() != (want > 0 || text == "latest-release") {
+			t.Errorf("%s: release %d, latest %t, follows releases %t", text, got.Release(), got.LatestRelease(), got.FollowsReleases())
 		}
 	}
 	if (rules.GitRef{}).FollowsReleases() {

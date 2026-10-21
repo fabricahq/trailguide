@@ -173,7 +173,6 @@ func TestSnapshotChangedSelectionOrRefRequiresSync(t *testing.T) {
 		"added group":            `"rules":{"include":["techs/go/*","techs/rust/*"]}`,
 		"wildcard":               `"rules":{"include":["*"]}`,
 		"individual rule":        `"rules":{"include":["techs/go/*","practices/testing/limits"]}`,
-		"another release":        `"rules":{"include":["techs/go/*"]},"ref":"release/1"`,
 		"branch":                 `"rules":{"include":["techs/go/*"]},"ref":"main"`,
 		"pin to another version": `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.0.0","reason":"Not ready."}]}`,
 		"pin of a rule it lacks": `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/other","version":"1.0.0","reason":"Keep."}]}`,
@@ -187,6 +186,21 @@ func TestSnapshotChangedSelectionOrRefRequiresSync(t *testing.T) {
 			got, err := decodeSnapshots(snapshotConfig(t, fields), vendor)
 			requireSync(t, got, err)
 		})
+	}
+}
+
+// TestSnapshotAnotherReleaseRequiresUpdate rejects a ref edited to name another library release than the record's,
+// which only an update takes.
+func TestSnapshotAnotherReleaseRequiresUpdate(t *testing.T) {
+	config, snapshots := snapshotFixture(t)
+	vendor, err := encodeSnapshots(config, snapshots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := decodeSnapshots(snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`), vendor)
+	var validation errs.ValidationError
+	if got != nil || !errors.As(err, &validation) || validation.ValidationLocation() != "vendor/team/_source.json.release" || !strings.Contains(validation.ValidationProblem(), "not release/1, which sources.team.ref names; run trailguide project update team") {
+		t.Fatalf("got %v, %v; want a failure that asks for an update", got, err)
 	}
 }
 

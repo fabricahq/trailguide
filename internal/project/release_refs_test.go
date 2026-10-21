@@ -1,4 +1,4 @@
-// Exercise refs that name a library release: a missing ref, a project migrating to one, latest, and update.
+// Exercise refs that name a library release: a missing ref, a project migrating to one, latest-release, and update.
 
 package project
 
@@ -27,7 +27,7 @@ func TestProject_ASourceWithoutARefFailsNamingTheReleaseToWrite(t *testing.T) {
 	f, options, git := syncProject(t)
 	writeTeamConfig(t, options, f.Repository, "")
 	_, err := Sync(ctx, options, git)
-	requireRefRequired(t, err, "Add ref: release/1 to sources.team, the library's newest release, or ref: latest to follow each new library release")
+	requireRefRequired(t, err, "Add ref: release/1 to sources.team, the library's newest release, or ref: latest-release to take the newest release at each update")
 	writeTeamConfig(t, options, f.Repository, "    ref: release/1\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestProject_ASourceWithoutARefFailsNamingTheReleaseToWrite(t *testing.T) {
 	secondRelease(t, f)
 	writeTeamConfig(t, options, f.Repository, "")
 	before := projectTree(t, options)
-	recorded := "Add ref: release/1 to sources.team, the release this project records, or ref: latest"
+	recorded := "Add ref: release/1 to sources.team, the release this project records, or ref: latest-release"
 	_, err = Sync(ctx, options, git)
 	requireRefRequired(t, err, recorded)
 	_, err = PlanUpdate(ctx, options, git, nil, nil)
@@ -109,23 +109,27 @@ func TestUpdate_KeepsTheRefsSpellingWhenItWritesTheNewRelease(t *testing.T) {
 	requireCurrent(t, options)
 }
 
-// TestSync_LatestTakesEachNewReleaseAndUpdateHasNothingToMove: with ref: latest, sync warns that the source skips
-// the update preview, takes a new library release as soon as it exists, and checks offline; update has nothing to
-// move and leaves the ref as it is.
-func TestSync_LatestTakesEachNewReleaseAndUpdateHasNothingToMove(t *testing.T) {
+// TestSync_LatestReleaseKeepsTheRecordedReleaseUntilUpdate: with ref: latest-release, the first sync takes the
+// newest library release, later syncs keep it after the library publishes another, and check passes offline; update
+// moves the source to the new release and leaves the ref as it is.
+func TestSync_LatestReleaseKeepsTheRecordedReleaseUntilUpdate(t *testing.T) {
 	ctx := context.Background()
 	f, options, git := syncProject(t)
-	writeTeamConfig(t, options, f.Repository, "    ref: latest\n")
+	writeTeamConfig(t, options, f.Repository, "    ref: latest-release\n")
 	first, err := Sync(ctx, options, git)
-	if err != nil || len(first.Warnings) != 1 || !strings.Contains(first.Warnings[0], "Source team follows the newest library release, ref: latest") {
+	if err != nil || len(first.Warnings) != 0 {
 		t.Fatalf("sync: %+v, %v", first, err)
 	}
 	secondRelease(t, f)
+	before := projectTree(t, options)
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	if record, versions := recordedVersions(t, options); record.Release != 2 || versions["techs/go/errors"] != "1.1.0@2" || versions["techs/go/extra"] != "1.0.0@2" {
-		t.Fatalf("release %d, versions %v", record.Release, versions)
+	if projectTree(t, options).Digest() != before.Digest() {
+		t.Fatal("sync moved a source whose ref is latest-release")
+	}
+	if record, _ := recordedVersions(t, options); record.Release != 1 {
+		t.Fatalf("release %d; want 1", record.Release)
 	}
 	requireCurrent(t, options)
 	plan, err := PlanUpdate(ctx, options, git, nil, nil)
@@ -136,7 +140,17 @@ func TestSync_LatestTakesEachNewReleaseAndUpdateHasNothingToMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; !source.FollowsLatest || source.SetsRef != "" || len(source.Rules) != 0 || preview.Moves() {
+	if source := preview.Sources[0]; source.SetsRef != "" || source.SharedFiles == nil || source.SharedFiles.To != 2 || !preview.Moves() {
 		t.Fatalf("preview %+v", source)
 	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if record, versions := recordedVersions(t, options); record.Release != 2 || versions["techs/go/errors"] != "1.1.0@2" || versions["techs/go/extra"] != "1.0.0@2" {
+		t.Fatalf("release %d, versions %v", record.Release, versions)
+	}
+	if config := readRepositoryFile(t, options, ".trailguide/config.yaml"); !strings.Contains(config, "    ref: latest-release\n") {
+		t.Fatalf("config.yaml:\n%s", config)
+	}
+	requireCurrent(t, options)
 }

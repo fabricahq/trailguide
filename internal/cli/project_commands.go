@@ -121,7 +121,7 @@ func parseSkillTargetFlags(values []string, passed bool) ([]string, error) {
 
 func projectSourceCommand(options Options, output *commandOutput) *cobra.Command {
 	source, sf := newAuthoringCommand("source NAME", "Configure a source of rules and skills (without fetching)", requiredArgument("source name", "team", "The name identifies this source in your project configuration."), options.Directory)
-	for name, description := range map[string]string{"repository": "Git repository URL", "ref": "Library release (release/N), latest, branch, tag, or full commit SHA to take the source from; defaults to the newest library release"} {
+	for name, description := range map[string]string{"repository": "Git repository URL", "ref": "Library release (release/N), latest-release, branch, tag, or full commit SHA to take the source from; defaults to the newest library release"} {
 		sf.add(source, name, description)
 	}
 	source.Long = sourceSelectionHelp + documentationHelp

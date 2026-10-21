@@ -35,7 +35,7 @@ type Configuration struct {
 type Source struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
-	// Ref is the library release, such as release/4, or latest, or the branch, tag, or full commit SHA the source
+	// Ref is the library release, such as release/4, or latest-release, or the branch, tag, or full commit SHA the source
 	// imports, keeping its authored text. Every source needs one; the zero GitRef, which configuration from before
 	// Trail Guide required it can leave, fails sync, check, and build with code ref-required.
 	Ref GitRef `json:"ref,omitzero"`
@@ -518,7 +518,7 @@ func parseRuleFields(input json.RawMessage, where string, source *Source) error 
 		return invalid(location+".include", "select at least one group, wildcard, or rule, such as techs/go/*")
 	}
 	if _, pinned := fields["pins"]; pinned && !source.Ref.IsZero() && !source.Ref.FollowsReleases() {
-		return invalid(where, "rules.pins needs a ref that names a library release, such as release/4, or latest; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins")
+		return invalid(where, "rules.pins needs a ref that names a library release, such as release/4, or latest-release; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins")
 	}
 	if source.Pins, err = parsePins(fields["pins"], location+".pins"); err != nil {
 		return err

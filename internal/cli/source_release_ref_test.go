@@ -33,7 +33,7 @@ func TestAddSource_WritesTheNewestLibraryReleaseAsTheRef(t *testing.T) {
 			}
 			continue
 		}
-		if code != 0 || !strings.Contains(out, "Set sources.team.ref to release/1, the library's newest release. To follow each new release instead, set it to latest.") || !strings.Contains(string(config), "    ref: release/1\n") {
+		if code != 0 || !strings.Contains(out, "Set sources.team.ref to release/1, the library's newest release.") || !strings.Contains(string(config), "    ref: release/1\n") {
 			t.Fatalf("exit %d, stdout:\n%s\nstderr: %s\nconfig.yaml:\n%s", code, out, diagnostic, config)
 		}
 		if out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, f.Environment, "project", "sync"); code != 0 {

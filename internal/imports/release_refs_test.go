@@ -7,8 +7,8 @@ import (
 )
 
 // TestImport_ReleaseRefTakesThatReleaseAndAllowsPins: release/2 takes release 2's versions though release 3 exists,
-// records no ref, holds a pinned rule at the pinned version, refuses a pin only a later release published, and moves
-// every unpinned rule when the ref names another release.
+// records no ref, holds a pinned rule at the pinned version, refuses a pin only a later release published, and refuses
+// a ref edited to name another release, which only an update moves to.
 func TestImport_ReleaseRefTakesThatReleaseAndAllowsPins(t *testing.T) {
 	h := newHistory(t)
 	two, err := h.sync(t, h.source(t, `"ref":"release/2","rules":{"include":["techs/go/*"]}`), nil)
@@ -33,19 +33,15 @@ func TestImport_ReleaseRefTakesThatReleaseAndAllowsPins(t *testing.T) {
 	if !strings.Contains(err.Error(), "version 2.0.0 comes from library release 3, after release/2, which sources.team.ref names") {
 		t.Fatalf("got %v", err)
 	}
-	three, err := h.sync(t, h.source(t, `"ref":"release/3","rules":{"include":["techs/go/*"]}`), &two.Snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := map[string]string{"techs/go/a": "2.0.0@3", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(three.Snapshot), want) || three.Snapshot.Release != 3 {
-		t.Fatalf("release/3: versions %v, release %d", versions(three.Snapshot), three.Snapshot.Release)
-	}
-	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), &three.Snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := map[string]string{"techs/go/a": "1.0.0@1", "techs/go/b": "1.0.0@1"}; !reflect.DeepEqual(versions(one.Snapshot), want) || one.Snapshot.Release != 1 {
-		t.Fatalf("release/1: versions %v, release %d", versions(one.Snapshot), one.Snapshot.Release)
+	for ref, want := range map[string]string{
+		"release/3": "sources.team.ref names release/3, but the project records library release 2, and sync doesn't move a source to another release. Run trailguide project update team to review the move to release 3 and take it, or set sources.team.ref back to release/2.",
+		"release/1": "sources.team.ref names release/1, older than library release 2, which the project records; sync doesn't move a source",
+	} {
+		_, err := h.sync(t, h.source(t, `"ref":"`+ref+`","rules":{"include":["techs/go/*"]}`), &two.Snapshot)
+		requireCode(t, err, "ref-changed")
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("%s: got %v", ref, err)
+		}
 	}
 }
 
@@ -65,32 +61,24 @@ func TestImport_ReleaseRefKeepsARecordWithoutARef(t *testing.T) {
 	}
 }
 
-// TestImport_LatestFollowsTheNewestReleaseAtEverySync takes the newest library release whenever sync runs, warning
-// that the source skips the update preview, and keeps a pinned rule where it is.
-func TestImport_LatestFollowsTheNewestReleaseAtEverySync(t *testing.T) {
+// TestImport_LatestReleaseKeepsTheRecordedRelease: a new source takes the newest library release, and sync keeps that release after the library publishes another, without a warning.
+func TestImport_LatestReleaseKeepsTheRecordedRelease(t *testing.T) {
 	h := newHistory(t)
-	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), nil)
+	config := h.source(t, `"ref":"latest-release","rules":{"include":["techs/go/*"]}`)
+	three, err := h.sync(t, config, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := h.source(t, `"ref":"latest","rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/b","version":"1.0.0","reason":"Still ours."}]}`)
-	latest, err := h.sync(t, config, &one.Snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := map[string]string{"techs/go/a": "2.0.0@3", "techs/go/b": "1.0.0@1", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(latest.Snapshot), want) || latest.Snapshot.Release != 3 || !latest.Snapshot.Ref.IsZero() {
-		t.Fatalf("versions %v, snapshot %+v", versions(latest.Snapshot), latest.Snapshot)
-	}
-	if !strings.Contains(strings.Join(latest.Warnings, "\n"), "Source team follows the newest library release, ref: latest, so sync takes each new release as soon as the library publishes it") {
-		t.Fatalf("warnings %v", latest.Warnings)
+	if want := map[string]string{"techs/go/a": "2.0.0@3", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(three.Snapshot), want) || three.Snapshot.Release != 3 || !three.Snapshot.Ref.IsZero() || len(three.Warnings) != 0 {
+		t.Fatalf("versions %v, snapshot %+v, warnings %v", versions(three.Snapshot), three.Snapshot, three.Warnings)
 	}
 	h.release(t, 4, map[string][]byte{"techs/go/a.md": versionedRule("a 2.1.0")}, "formatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.1.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: minor, from: 2.0.0, summaries: [Add a case.]}\n")
-	four, err := h.sync(t, config, &latest.Snapshot)
+	kept, err := h.sync(t, config, &three.Snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := map[string]string{"techs/go/a": "2.1.0@4", "techs/go/b": "1.0.0@1", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(four.Snapshot), want) || four.Snapshot.Release != 4 {
-		t.Fatalf("after release/4: versions %v, release %d", versions(four.Snapshot), four.Snapshot.Release)
+	if !reflect.DeepEqual(versions(kept.Snapshot), versions(three.Snapshot)) || kept.Snapshot.Release != 3 || len(kept.Warnings) != 0 {
+		t.Fatalf("after release/4: versions %v, release %d, warnings %v", versions(kept.Snapshot), kept.Snapshot.Release, kept.Warnings)
 	}
 }
 
@@ -120,20 +108,59 @@ func TestPlanUpdate_ReleaseRefMovesToTheNewestRelease(t *testing.T) {
 	}
 }
 
-// TestPlanUpdate_LatestHasNothingToMove: sync already took the newest release, so the preview has no rows and says
-// the source follows the newest release.
-func TestPlanUpdate_LatestHasNothingToMove(t *testing.T) {
+// TestPlanUpdate_LatestReleaseMovesToTheNewestRelease previews the move from the recorded release to the newest,
+// with no ref to set, since latest-release already names it.
+func TestPlanUpdate_LatestReleaseMovesToTheNewestRelease(t *testing.T) {
 	h := newHistory(t)
-	config := h.source(t, `"ref":"latest","rules":{"include":["techs/go/*"]}`)
-	synced, err := h.sync(t, config, nil)
+	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	update, err := h.plan(t, config, &synced.Snapshot)
+	config := h.source(t, `"ref":"latest-release","rules":{"include":["techs/go/*"]}`)
+	kept, err := h.sync(t, config, &one.Snapshot)
+	if err != nil || kept.Snapshot.Release != 1 {
+		t.Fatalf("sync: %+v, %v", kept.Snapshot, err)
+	}
+	update, err := h.plan(t, config, &kept.Snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if preview := update.Sources[0]; !preview.FollowsLatest || len(preview.Rules) != 0 || preview.SharedFiles != nil {
+	if preview := update.Sources[0]; preview.SharedFiles == nil || *preview.SharedFiles != (SharedFilesUpdate{From: 1, To: 3}) || preview.Available != 0 {
 		t.Fatalf("preview %+v", preview)
+	}
+	installed := h.install(t, update, config)
+	if want := map[string]string{"techs/go/a": "2.0.0@3", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(installed.Snapshot), want) || installed.Snapshot.Release != 3 {
+		t.Fatalf("installed %v, release %d", versions(installed.Snapshot), installed.Snapshot.Release)
+	}
+}
+
+// TestPlanUpdate_EditedReleaseRefTakesExactlyThatRelease: with release/2 recorded at release 1, the update previews
+// and installs release 2, not the newest, and says release 3 is available; a ref edited to an older release than
+// the record's fails.
+func TestPlanUpdate_EditedReleaseRefTakesExactlyThatRelease(t *testing.T) {
+	h := newHistory(t)
+	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := h.source(t, `"ref":"release/2","rules":{"include":["techs/go/*"]}`)
+	update, err := h.plan(t, config, &one.Snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview := update.Sources[0]; preview.SharedFiles == nil || *preview.SharedFiles != (SharedFilesUpdate{From: 1, To: 2}) || preview.Available != 3 {
+		t.Fatalf("preview %+v", preview)
+	}
+	if want := []string{"minor techs/go/a from 1.0.0 to 1.1.0: Add an example.", "new techs/go/d to 1.0.0: Add the rule."}; !reflect.DeepEqual(rows(update), want) {
+		t.Fatalf("rows %q, want %q", rows(update), want)
+	}
+	installed := h.install(t, update, config)
+	if want := map[string]string{"techs/go/a": "1.1.0@2", "techs/go/b": "1.0.0@1", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(installed.Snapshot), want) || installed.Snapshot.Release != 2 {
+		t.Fatalf("installed %v, release %d", versions(installed.Snapshot), installed.Snapshot.Release)
+	}
+	_, err = h.plan(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), &installed.Snapshot)
+	requireCode(t, err, "ref-changed")
+	if !strings.Contains(err.Error(), "older than library release 2, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward") {
+		t.Fatalf("got %v", err)
 	}
 }

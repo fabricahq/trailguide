@@ -55,6 +55,19 @@ func TestFormatUpdatePreview_ShowsSkillLevelChanges(t *testing.T) {
 	}
 }
 
+// TestFormatUpdatePreview_SaysANewerReleaseIsAvailable: an update that takes the release an edited ref names says
+// which newer release a second update moves to.
+func TestFormatUpdatePreview_SaysANewerReleaseIsAvailable(t *testing.T) {
+	var out strings.Builder
+	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{}, SharedFiles: &imports.SharedFilesUpdate{From: 4, To: 7}, Available: 9, Skills: []imports.SkillUpdate{}}})
+	if want := "  Shared files: release 4 -> 7\n  Release 9 is available; run trailguide project update team again to move to it.\n"; !strings.Contains(out.String(), want) {
+		t.Errorf("preview lacks %q:\n%s", want, out.String())
+	}
+	if strings.Contains(out.String(), "Sets sources.team.ref") {
+		t.Errorf("preview sets a ref:\n%s", out.String())
+	}
+}
+
 func TestFormatUpdatePreview_ShowsCuratedSourcesAndTheirSkillChanges(t *testing.T) {
 	var out strings.Builder
 	formatUpdatePreview(&out, []imports.SourceUpdate{{Name: "team", Rules: []imports.RuleUpdate{}, Curated: []imports.CuratedUpdate{{
