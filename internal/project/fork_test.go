@@ -72,8 +72,8 @@ func newForkFixture(t *testing.T, repository string) forkFixture {
 	if _, err := Initialize(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, configurationFile, "# Team rules.\nschemaVersion: 2\nsources:\n  team:\n    repository: "+repository+"\n    rules:\n      include:\n        - techs/go/*\n")
 	git := imports.Options{GitPath: f.GitPath, Environment: f.Environment}
+	writeFixture(t, root, configurationFile, withNewestRef(t, "# Team rules.\nschemaVersion: 2\nsources:\n  team:\n    repository: "+repository+"\n    rules:\n      include:\n        - techs/go/*\n", repository, f.Repository, git))
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestFork_OfAPinnedRuleRemovesThePin(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, "# Team rules.\nschemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/errors\n          version: \"1.0.0\"\n          reason: Not ready.\n")
+	writeFixture(t, root, configurationFile, withNewestRef(t, "# Team rules.\nschemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/errors\n          version: \"1.0.0\"\n          reason: Not ready.\n", f.fixture.Repository, f.fixture.Repository, f.git))
 	if _, err := Sync(ctx, f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
@@ -473,7 +473,7 @@ func TestFork_KeepsTheLibrarysGroupDescription(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - practices/testing/verify\n")
+	writeFixture(t, root, configurationFile, withNewestRef(t, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - practices/testing/verify\n", f.fixture.Repository, f.fixture.Repository, f.git))
 	if _, err := Sync(context.Background(), f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
@@ -503,7 +503,7 @@ func TestUpdate_KeepsTheGroupMetadataAForkOfARetiredRuleNeeds(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/errors\n")
+	writeFixture(t, root, configurationFile, withNewestRef(t, "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/errors\n", f.fixture.Repository, f.fixture.Repository, f.git))
 	if _, err := Sync(ctx, f.options, f.git); err != nil {
 		t.Fatal(err)
 	}
@@ -551,7 +551,7 @@ func TestFork_OfASelectedRuleNeedsASyncedRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, string(f.files(t)["config.yaml"])+"    ref: release/1\n")
+	writeFixture(t, root, configurationFile, strings.Replace(string(f.files(t)["config.yaml"]), "ref: release/1", "ref: main", 1))
 	source, _ := ParseForkSource("team@1.0.0")
 	_, err = PlanFork(context.Background(), "techs/go/errors", source, f.options, imports.Options{GitPath: "/nonexistent/git"})
 	var invalid errs.ValidationError

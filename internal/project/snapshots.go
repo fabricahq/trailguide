@@ -746,7 +746,14 @@ func recordedLevel(level string) bool {
 // "What offline checks can verify": the recorded identity and selections, pinned versions, and ref.
 func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 	where := "vendor/" + source.Name + "/_source.json"
-	if source.Repository != record.Repository || !source.Ref.Equal(record.Ref) || !source.Groups.Equal(record.Selection) || !slices.Equal(source.Rules, record.RuleSelection) || !slices.Equal(source.Skills, record.SkillSelection) {
+	if source.Ref.IsZero() {
+		release := record.Release
+		if record.NonLibrary {
+			release = 0
+		}
+		return failure("ref-required", rules.RefRequiredProblem(source.Name, release, true), nil)
+	}
+	if source.Repository != record.Repository || !recordsRef(source, record) || !source.Groups.Equal(record.Selection) || !slices.Equal(source.Rules, record.RuleSelection) || !slices.Equal(source.Skills, record.SkillSelection) {
 		return invalidSnapshot(where, "source identity or selection changed; run trailguide project sync")
 	}
 	diverging := source.SkillDivergences()
@@ -773,9 +780,6 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 	slices.Sort(selected)
 	if !slices.Equal(slices.Compact(selected), included) {
 		return invalidSnapshot(where, "recorded skills differ from what sources."+source.Name+".skills.include, skills.exclude, and skills.forks select with the library's required skills; run trailguide project sync")
-	}
-	if record.NonLibrary && source.Ref.IsZero() {
-		return invalidSnapshot(where, "a source that isn't a library needs a ref; run trailguide project sync")
 	}
 	for _, id := range slices.Sorted(maps.Keys(source.Pins)) {
 		pin := source.Pins[id]
@@ -825,7 +829,7 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 		commits[rule.Release] = rule.Commit
 		newest = max(newest, rule.Release)
 	}
-	if source.Ref.IsZero() && record.Release < newest {
+	if source.Ref.FollowsReleases() && record.Release != 0 && record.Release < newest {
 		return invalidSnapshot(where+".release", "expected the library release that supplies the shared files to be at least as new as every imported rule version's library release")
 	}
 	return nil
@@ -883,13 +887,23 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 	return nil
 }
 
+// recordsRef reports whether record holds the ref source asks for. A library source whose ref chooses a library
+// release, release/<number> or latest, is recorded without a ref, or, as sync recorded it before Trail Guide required
+// a ref, with the same ref; matchRevision checks the release. Any other ref is recorded as configured.
+func recordsRef(source rules.Source, record parsedRecord) bool {
+	if source.Ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
+		return record.Ref.IsZero() || record.Ref.Equal(source.Ref)
+	}
+	return source.Ref.Equal(record.Ref)
+}
+
 // matchRevision checks the record's library release and commit against how the source chooses versions.
 func matchRevision(source rules.Source, record parsedRecord) error {
 	where := "vendor/" + source.Name + "/_source.json"
 	ref := source.Ref
-	if ref.IsZero() {
-		if record.Release == 0 {
-			return invalidSnapshot(where+".release", "a source without ref records the library release that supplied its files")
+	if ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
+		if number := ref.Release(); number != 0 && record.Release != number {
+			return invalidSnapshot(where+".release", fmt.Sprintf("records library release %d, not release/%d, which sources.%s.ref names; run trailguide project sync", record.Release, number, source.Name))
 		}
 		return nil
 	}

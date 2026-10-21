@@ -35,15 +35,17 @@ type Configuration struct {
 type Source struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
-	// Ref is the branch, tag, or full commit SHA the source imports, keeping its authored text, or the zero GitRef
-	// when the source follows rule versions.
+	// Ref is the library release, such as release/4, or latest, or the branch, tag, or full commit SHA the source
+	// imports, keeping its authored text. Every source needs one; the zero GitRef, which configuration from before
+	// Trail Guide required it can leave, fails sync, check, and build with code ref-required.
 	Ref GitRef `json:"ref,omitzero"`
 	// Groups holds the wildcard and group selectors of rules.include, such as techs/go/*; it is empty when the
 	// source selects only individual rules.
 	Groups GroupSelection `json:"groups"`
 	// Rules lists the rule IDs rules.include selects individually, sorted; it is empty, never nil, when there are none.
 	Rules []string `json:"rules"`
-	// Pins maps rule IDs to pins; it is empty, never nil, when no rule is pinned, and always empty when Ref is set.
+	// Pins maps rule IDs to pins; it is empty, never nil, when no rule is pinned, and always empty when Ref names
+	// a revision other than a library release or latest.
 	Pins map[string]Pin `json:"pins"`
 	// Exclude maps each excluded selector, a rule ID or a selector ending in *, to its exclusion; it is empty, never
 	// nil, when the source has no exceptions. Only an exclusion of a rule ID can have a replacement. Look a rule up
@@ -154,6 +156,7 @@ schemaVersion: 2
 sources:
   team:
     repository: https://github.com/example/rules.git
+    ref: release/3
     rules:
       include: [techs/go/*, practices/testing/verify-retry-limits]
       exclude:
@@ -495,7 +498,7 @@ func ParseSkillSelection(input json.RawMessage, location string) ([]string, erro
 }
 
 // parseRuleFields reads a source's rules object into source: include, which must select something, then pins,
-// which can't be combined with a ref, then exclude.
+// which need a ref that follows library releases, then exclude.
 func parseRuleFields(input json.RawMessage, where string, source *Source) error {
 	location := where + ".rules"
 	fields, err := decode.Object(input, location)
@@ -514,8 +517,8 @@ func parseRuleFields(input json.RawMessage, where string, source *Source) error 
 	if source.Groups.IsEmpty() && len(source.Rules) == 0 {
 		return invalid(location+".include", "select at least one group, wildcard, or rule, such as techs/go/*")
 	}
-	if _, pinned := fields["pins"]; pinned && !source.Ref.IsZero() {
-		return invalid(where, "rules.pins and ref can't be combined; remove ref to pin individual rules, or remove rules.pins to import one revision")
+	if _, pinned := fields["pins"]; pinned && !source.Ref.IsZero() && !source.Ref.FollowsReleases() {
+		return invalid(where, "rules.pins needs a ref that names a library release, such as release/4, or latest; a branch, tag, or commit imports one revision, so set ref to a library release to pin individual rules, or remove rules.pins")
 	}
 	if source.Pins, err = parsePins(fields["pins"], location+".pins"); err != nil {
 		return err

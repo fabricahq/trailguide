@@ -23,7 +23,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	binary := buildCLI(t)
 	ctx := context.Background()
 	upstream := versionedLibrary(t, true)
-	config := "schemaVersion: 2\nsources:\n  upstream:\n    repository: git@fixture.invalid:upstream\n    rules:\n      include:\n        - techs/go/*\nlibrary: {}\n"
+	config := "schemaVersion: 2\nsources:\n  upstream:\n    repository: git@fixture.invalid:upstream\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\nlibrary: {}\n"
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
 		"config.yaml":                   []byte(config),
 		"practices/testing/_group.yaml": []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
@@ -107,7 +107,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	if out, diagnostic, code := runCLI(t, binary, consumer, "project", "init"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	if err := os.WriteFile(filepath.Join(consumer, ".trailguide", "config.yaml"), []byte("schemaVersion: 2\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    rules:\n      include: [practices/testing/*]\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(consumer, ".trailguide", "config.yaml"), []byte("schemaVersion: 2\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    ref: release/1\n    rules:\n      include: [practices/testing/*]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if out, diagnostic, code := runCLIWithEnvironment(t, binary, consumer, environment, "project", "sync"); code != 0 {

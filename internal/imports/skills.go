@@ -181,7 +181,9 @@ func skillNotInRevision(source rules.Source, plan sourcePlan, field, id string) 
 			next = fmt.Sprintf("Run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it, or check the skill ID.", source.Name)
 		case plan.nonLibrary && source.Ref.Bare():
 			next = fmt.Sprintf("If sources.%s.ref names a branch, run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it. Otherwise, %s", source.Name, source.Name, retag)
-		case !source.Ref.IsZero():
+		case source.Ref.Release() > 0:
+			next = fmt.Sprintf("Run trailguide project update %s, which moves the source to its newest library release and sets sources.%s.ref to it, and takes the skill from it if it has it, or check the skill ID.", source.Name, source.Name)
+		case !source.Ref.IsZero() && !source.Ref.Latest():
 			next = "To take the skill, " + retag
 		}
 		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision vendor/%s/_source.json records for the source. Sync never moves a source, so it takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)

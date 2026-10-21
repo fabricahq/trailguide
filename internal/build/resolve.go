@@ -199,7 +199,7 @@ func resolve(config rules.Configuration, libraries map[string]Library, localFile
 			if !recorded || !validCommit(version.Commit) {
 				return resolution{}, invalid(parsed.ID, "the source snapshot records no version or commit for this rule; run trailguide project sync")
 			}
-			origin := ruleOrigin{Source: source.Name, File: parsed.Path, Repository: source.Repository, Ref: source.Ref.String(), Commit: version.Commit, Version: version.Version, Release: version.Release, legacyLayout: version.LegacyLayout}
+			origin := ruleOrigin{Source: source.Name, File: parsed.Path, Repository: source.Repository, Ref: requestedRef(source, snapshot), Commit: version.Commit, Version: version.Version, Release: version.Release, legacyLayout: version.LegacyLayout}
 			active := resolvedRule{Rule: parsed, Origin: origin, License: supplied.Catalog.License}
 			if excluded {
 				file := exclusion.ReplacedBy + ".md"
@@ -220,7 +220,7 @@ func resolve(config rules.Configuration, libraries map[string]Library, localFile
 			group := ensureGroup(groups, parsed.Group)
 			group.Rules = append(group.Rules, active)
 		}
-		result.Sources = append(result.Sources, resolvedSource{Name: source.Name, Repository: source.Repository, Ref: source.Ref.String(), Pins: source.Pins, Release: snapshot.Release, Commit: ref.Canonical(), Selection: source.Groups, Rules: source.Rules, Groups: ids, Versions: snapshot.Rules, Configured: source, Retired: snapshot.RetiredRules, License: supplied.Catalog.License, Paths: supplied.Catalog.Paths(), Files: retained, NonLibrary: snapshot.NonLibrary, SkillSelection: source.Skills, Skills: slices.Sorted(maps.Keys(snapshot.Skills)), Curated: snapshot.Curated})
+		result.Sources = append(result.Sources, resolvedSource{Name: source.Name, Repository: source.Repository, Ref: requestedRef(source, snapshot), Pins: source.Pins, Release: snapshot.Release, Commit: ref.Canonical(), Selection: source.Groups, Rules: source.Rules, Groups: ids, Versions: snapshot.Rules, Configured: source, Retired: snapshot.RetiredRules, License: supplied.Catalog.License, Paths: supplied.Catalog.Paths(), Files: retained, NonLibrary: snapshot.NonLibrary, SkillSelection: source.Skills, Skills: slices.Sorted(maps.Keys(snapshot.Skills)), Curated: snapshot.Curated})
 	}
 	for _, file := range slices.Sorted(maps.Keys(localRules)) {
 		if used[file] {

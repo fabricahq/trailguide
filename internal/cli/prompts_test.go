@@ -87,7 +87,7 @@ const (
 )
 
 // TestInteractiveSource prompts for the repository and, unless --rules or --skills selects something, rules and skills;
-// never for the optional ref.
+// never for the ref, which defaults to the library's newest release.
 func TestInteractiveSource(t *testing.T) {
 	binary := buildCLI(t)
 	repository := terminalfixture.Step{Prompt: "Git repository URL:", Answer: "https://github.com/acme/rules"}
@@ -97,12 +97,12 @@ func TestInteractiveSource(t *testing.T) {
 		steps []terminalfixture.Step
 		want  map[string]any
 	}{
-		{"rules", nil, []terminalfixture.Step{repository, {Prompt: rulesPrompt, Answer: "techs/go/*, techs/rust/*"}, {Prompt: skillsPrompt, Answer: ""}},
-			map[string]any{"repository": "https://github.com/acme/rules", "rules": map[string]any{"include": []any{"techs/go/*", "techs/rust/*"}}}},
-		{"skills", nil, []terminalfixture.Step{repository, {Prompt: rulesPrompt, Answer: ""}, {Prompt: skillsPrompt, Answer: "skills/review, skills/build-feature"}},
-			map[string]any{"repository": "https://github.com/acme/rules", "skills": map[string]any{"include": []any{"skills/build-feature", "skills/review"}}}},
-		{"rule flag", []string{"--rules", "techs/go/wrap-errors"}, []terminalfixture.Step{repository},
-			map[string]any{"repository": "https://github.com/acme/rules", "rules": map[string]any{"include": []any{"techs/go/wrap-errors"}}}},
+		{"rules", []string{"--ref", "release/3"}, []terminalfixture.Step{repository, {Prompt: rulesPrompt, Answer: "techs/go/*, techs/rust/*"}, {Prompt: skillsPrompt, Answer: ""}},
+			map[string]any{"repository": "https://github.com/acme/rules", "ref": "release/3", "rules": map[string]any{"include": []any{"techs/go/*", "techs/rust/*"}}}},
+		{"skills", []string{"--ref", "release/3"}, []terminalfixture.Step{repository, {Prompt: rulesPrompt, Answer: ""}, {Prompt: skillsPrompt, Answer: "skills/review, skills/build-feature"}},
+			map[string]any{"repository": "https://github.com/acme/rules", "ref": "release/3", "skills": map[string]any{"include": []any{"skills/build-feature", "skills/review"}}}},
+		{"rule flag", []string{"--rules", "techs/go/wrap-errors", "--ref", "release/3"}, []terminalfixture.Step{repository},
+			map[string]any{"repository": "https://github.com/acme/rules", "ref": "release/3", "rules": map[string]any{"include": []any{"techs/go/wrap-errors"}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := t.TempDir()

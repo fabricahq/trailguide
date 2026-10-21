@@ -180,6 +180,9 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 	if err != nil {
 		return nil, unchanged(err, recovered)
 	}
+	if err := requireRefs(ctx, state.config, recorded, git); err != nil {
+		return nil, unchanged(err, recovered)
+	}
 	// imports.PlanUpdate names the source or argument that failed, which is all the context the command needs.
 	update, err := imports.PlanUpdate(ctx, state.config, withSkillFiles(recorded, treeFiles(state.vendor)), targets, git)
 	if err != nil {
@@ -368,6 +371,13 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 	for i := range sources {
 		kept := slices.Collect(maps.Keys(edits[sources[i].Name].Pins))
 		sources[i].SharedFiles = p.update.SharedFiles(sources[i].Name, kept)
+		// A ref that names a library release moves with the shared files, so config.yaml names what's installed.
+		if source := sourceNamed(p.planned.config, sources[i].Name); sources[i].SharedFiles != nil && source.Ref.Release() > 0 {
+			edit := edits[sources[i].Name]
+			edit.Ref = source.Ref.WithRelease(sources[i].SharedFiles.To)
+			edits[sources[i].Name] = edit
+			sources[i].SetsRef = edit.Ref.String()
+		}
 		skills, err := p.update.Skills(sources[i].Name, kept)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -522,6 +532,14 @@ func (f *forkUpdate) read(ctx context.Context, update imports.Update, configurat
 		return fmt.Errorf("fork %s@%s: %w", f.id, f.version, err)
 	}
 	return nil
+}
+
+// sourceNamed returns the source of configuration named name, or the zero Source when it has none.
+func sourceNamed(configuration rules.Configuration, name string) rules.Source {
+	if i := slices.IndexFunc(configuration.Sources, func(source rules.Source) bool { return source.Name == name }); i >= 0 {
+		return configuration.Sources[i]
+	}
+	return rules.Source{}
 }
 
 // previewRow returns the preview row of rule in source, or nil when the preview doesn't list it.

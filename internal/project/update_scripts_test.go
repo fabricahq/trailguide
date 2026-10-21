@@ -103,7 +103,7 @@ func scriptProject(t *testing.T, include string) (Options, imports.Options) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"rules":{"include":["techs/go/*"]},"skills":{"include":`+include+`}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"release/1","rules":{"include":["techs/go/*"]},"skills":{"include":`+include+`}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
 	return options, git
 }
 

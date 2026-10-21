@@ -111,9 +111,11 @@ func newCurated(t *testing.T, ref, listed string, authored map[string][]byte, co
 	return b
 }
 
-// configure writes the project's configuration, config, as newCurating takes it.
+// configure writes the project's configuration, config, as newCurating takes it, giving team the newest library
+// release's ref when it has none.
 func (b *curating) configure(t *testing.T, config string) {
 	t.Helper()
+	config = withNewestRef(t, config, "TEAM", "git@fixture.invalid:team", b.git)
 	config = strings.ReplaceAll(strings.ReplaceAll(config, "TEAM", quoteJSON("git@fixture.invalid:team")), "POCOCK", quoteJSON("git@fixture.invalid:pocock"))
 	writeFixture(t, b.root, configurationFile, config)
 }
@@ -641,8 +643,8 @@ func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 	if _, err := Initialize(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	teamSource := `"team":{"repository":"git@fixture.invalid:team","rules":{"include":["techs/go/*"]}}`
-	mine := `"mine":{"repository":"git@fixture.invalid:kit","rules":{"include":["techs/go/*"]}}`
+	teamSource := `"team":{"repository":"git@fixture.invalid:team","ref":"release/1","rules":{"include":["techs/go/*"]}}`
+	mine := `"mine":{"repository":"git@fixture.invalid:kit","ref":"release/1","rules":{"include":["techs/go/*"]}}`
 	if declaredLater {
 		writeFixture(t, root, configurationFile, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{`+teamSource+`}}`)
 	} else {

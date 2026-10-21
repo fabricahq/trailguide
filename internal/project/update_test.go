@@ -59,7 +59,8 @@ func projectTree(t *testing.T, options Options) *filetxn.Tree {
 	return tree
 }
 
-// TestUpdate_PreviewWritesNothingAndApplyInstallsIt previews a minor change and a new rule, then applies both.
+// TestUpdate_PreviewWritesNothingAndApplyInstallsIt previews a minor change and a new rule, then applies both and
+// moves the source's ref to the release it installs.
 func TestUpdate_PreviewWritesNothingAndApplyInstallsIt(t *testing.T) {
 	options, git, _ := syncedProject(t)
 	before := projectTree(t, options)
@@ -82,11 +83,14 @@ func TestUpdate_PreviewWritesNothingAndApplyInstallsIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !applied.Applied || slices.Contains(applied.Changed, "config.yaml") || !slices.Contains(applied.Changed, "vendor/team/rules/techs/go/errors.md") || !slices.Contains(applied.Added, "vendor/team/rules/techs/go/extra.md") {
+	if !applied.Applied || !slices.Contains(applied.Changed, "config.yaml") || !slices.Contains(applied.Changed, "vendor/team/rules/techs/go/errors.md") || !slices.Contains(applied.Added, "vendor/team/rules/techs/go/extra.md") {
 		t.Fatalf("applied %+v", applied.FileChanges)
 	}
 	if _, got := recordedVersions(t, options); !reflect.DeepEqual(got, map[string]string{"techs/go/errors": "1.1.0@2", "techs/go/extra": "1.0.0@2"}) {
 		t.Fatalf("versions %v", got)
+	}
+	if config := readRepositoryFile(t, options, ".trailguide/config.yaml"); !strings.Contains(config, `"ref": "release/2"`) || strings.Contains(config, "release/1") {
+		t.Fatalf("config.yaml after update:\n%s\nwant ref release/2", config)
 	}
 	requireCurrent(t, options)
 }
@@ -353,7 +357,7 @@ func twoLibraryProject(t *testing.T) (Options, imports.Options) {
 	if _, err := Initialize(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources:\n  alpha:\n    repository: git@fixture.invalid:alpha\n    rules: {include: [techs/go/*]}\n  beta:\n    repository: git@fixture.invalid:beta\n    rules: {include: [techs/go/*]}\n")
+	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources:\n  alpha:\n    repository: git@fixture.invalid:alpha\n    ref: release/1\n    rules: {include: [techs/go/*]}\n  beta:\n    repository: git@fixture.invalid:beta\n    ref: release/1\n    rules: {include: [techs/go/*]}\n")
 	git := imports.Options{GitPath: fixtures["alpha"].GitPath, Environment: environment}
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)

@@ -42,8 +42,15 @@ var updateChangeOrder = []UpdateChange{UpdateMajor, UpdateMinor, UpdatePatch, Up
 // SourceUpdate is one source's part of the update preview.
 type SourceUpdate struct {
 	Name string `json:"name"`
-	// Ref is the source's ref, so Rules is empty; it is empty for other sources.
+	// Ref is the source's ref, so Rules is empty; it is empty for other sources, including those whose ref names a
+	// library release, such as release/4, or latest, which the update moves as it moves rule versions.
 	Ref string `json:"ref,omitempty"`
+	// FollowsLatest reports that Ref is latest, so sync already takes the newest library release, and the update
+	// moves only rules and changes that sync doesn't, such as pins it lists.
+	FollowsLatest bool `json:"followsLatest,omitempty"`
+	// SetsRef is the ref the update writes to the source's ref in config.yaml, release/<number> for the library
+	// release SharedFiles moves to, when the source's ref names a library release; it is empty otherwise.
+	SetsRef string `json:"setsRef,omitempty"`
 	// FollowsRef reports that the update resolves Ref again, which it does for a branch, and for a tag of a
 	// repository that isn't a library. Any other source that uses ref stays at the commit sync keeps.
 	FollowsRef bool `json:"followsRef,omitempty"`
@@ -363,7 +370,7 @@ func (s plannedSource) skillRevisions(after sourcePlan) []sourcePlan {
 // and exclusions the project decided on: the moved rules, except that a rule source pins keeps its version from
 // before the update. A source that uses ref imports what sync would.
 func (s plannedSource) decided(source rules.Source) (sourcePlan, error) {
-	if !source.Ref.IsZero() {
+	if s.moved == nil {
 		return s.before, nil
 	}
 	plan := sourcePlan{rules: maps.Clone(s.moved), individual: []string{}, warnings: []string{}}
@@ -520,7 +527,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 			if at.manifest == nil || at.err != nil {
 				continue
 			}
-			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero() && !planned.follows, overridden, nil, options)
+			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || planned.moved == nil && !planned.follows, overridden, nil, options)
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return Update{}, gitexec.ContextFailure(ctxErr)
 			}
@@ -700,7 +707,7 @@ func updateScopes(configuration rules.Configuration, recorded map[string]library
 		source := configuration.Sources[index]
 		snapshot := recordedSnapshot(recorded, source.Name)
 		unrecorded := snapshot == nil && source.Ref.Kind() != rules.GitRefCommit
-		if !source.Ref.IsZero() && (target.Rule != "" || !unrecorded && !followsRef(source, snapshot)) {
+		if !source.Ref.IsZero() && !source.Ref.FollowsReleases() && (target.Rule != "" || !unrecorded && !followsRef(source, snapshot)) {
 			return nil, &ValidationError{Location: where, Problem: "the source imports one revision with ref, so update doesn't move it; change sources." + target.Source + ".ref and run trailguide project sync"}
 		}
 		if target.Rule == "" {
@@ -761,6 +768,8 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
 	}
+	// Sync sees only the library release a ref such as release/4 names; the update looks past it.
+	p.ceiling = 0
 	// A library's bare name that names a tag, not a branch, holds one revision, like any library tag.
 	if p.again && !before.nonLibrary && before.resolved == rules.GitRefTag {
 		p.again = false
@@ -768,12 +777,13 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 	}
-	preview := SourceUpdate{Name: source.Name, Ref: source.Ref.String(), FollowsRef: p.again, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
+	preview := SourceUpdate{Name: source.Name, FollowsRef: p.again, FollowsLatest: before.followsReleases && source.Ref.Latest(), Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
 	if p.again && before.commit != p.recorded.Commit {
 		preview.Commit = &CommitMove{From: p.recorded.Commit, To: before.commit}
 		preview.TagMoved = before.resolved == rules.GitRefTag && p.recorded.Ref.Equal(source.Ref)
 	}
-	if !source.Ref.IsZero() {
+	if !before.followsReleases {
+		preview.Ref = source.Ref.String()
 		planned := plannedSource{before: before, follows: p.again}
 		if planned.skills, err = repo.previewSkills(ctx, source, recorded, []sourcePlan{before}); err != nil {
 			return plannedSource{}, SourceUpdate{}, nil, err

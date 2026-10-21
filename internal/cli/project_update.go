@@ -434,7 +434,7 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 		for _, row := range source.SkillLevels {
 			idWidth = max(idWidth, len(row.ID))
 		}
-		listed = listed || len(source.Rules) > 0 || len(source.Skills) > 0 || len(source.ReplacedSkills) > 0 || len(source.SkillLevels) > 0 || len(source.Curated) > 0 || source.Ref != "" || source.SharedFiles != nil
+		listed = listed || len(source.Rules) > 0 || len(source.Skills) > 0 || len(source.ReplacedSkills) > 0 || len(source.SkillLevels) > 0 || len(source.Curated) > 0 || source.Ref != "" || source.FollowsLatest || source.SharedFiles != nil
 	}
 	if !listed {
 		return
@@ -452,6 +452,8 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 			fmt.Fprintf(out, "  %s: no new commit.\n", source.Ref)
 		case source.Ref != "":
 			fmt.Fprintf(out, "  Imports %s with ref, so update doesn't move it.\n", source.Ref)
+		case source.FollowsLatest && len(source.Rules) == 0 && len(source.Skills) == 0 && source.SharedFiles == nil && len(source.Curated) == 0:
+			out.WriteString("  Follows the newest library release with ref: latest, which sync already takes.\n")
 		case len(source.Rules) == 0 && len(source.Skills) == 0 && source.SharedFiles == nil && len(source.Curated) == 0:
 			out.WriteString("  No rule updates.\n")
 		}
@@ -474,6 +476,9 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 		formatCuratedRows(out, source.Name, source.Curated, levels)
 		if shared := source.SharedFiles; shared != nil {
 			fmt.Fprintf(out, "  Shared files: release %d -> %d\n", shared.From, shared.To)
+			if source.SetsRef != "" {
+				fmt.Fprintf(out, "  Sets sources.%s.ref to %s in .trailguide/config.yaml.\n", source.Name, source.SetsRef)
+			}
 		}
 	}
 }

@@ -47,7 +47,7 @@ func syncProject(t *testing.T) (*gitfixture.Fixture, Options, imports.Options) {
 	if _, err := Initialize(context.Background(), Options{Directory: filepath.Dir(root.Name())}); err != nil {
 		t.Fatal(err)
 	}
-	raw, _ := json.Marshal(map[string]any{"schemaVersion": 2, "sources": map[string]any{"team": map[string]any{"repository": f.Repository, "rules": map[string]any{"include": []string{"techs/go/*"}}}}})
+	raw, _ := json.Marshal(map[string]any{"schemaVersion": 2, "sources": map[string]any{"team": map[string]any{"repository": f.Repository, "ref": "release/1", "rules": map[string]any{"include": []string{"techs/go/*"}}}}})
 	writeFixture(t, root, "config.yaml", string(raw))
 	return f, Options{Directory: filepath.Dir(root.Name()), ToolVersion: "1.2.3"}, imports.Options{GitPath: f.GitPath, Environment: f.Environment}
 }

@@ -61,7 +61,7 @@ func TestProject_KeepsWorkingInTheLegacyDirectory(t *testing.T) {
 	if err := os.Rename(filepath.Join(dir, librarytree.Directory), filepath.Join(dir, librarytree.LegacyDirectory)); err != nil {
 		t.Fatal(err)
 	}
-	config := "schemaVersion: 2\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    rules:\n      include: [practices/testing/*]\n"
+	config := "schemaVersion: 2\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    ref: release/1\n    rules:\n      include: [practices/testing/*]\n"
 	if err := os.WriteFile(filepath.Join(dir, librarytree.LegacyDirectory, "config.yaml"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}

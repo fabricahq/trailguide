@@ -78,7 +78,7 @@ func TestSourceAnswerRetry(t *testing.T) {
 		{Prompt: skillsPrompt, Answer: "recommended/*"},
 		{Prompt: skillsPrompt, Answer: "*"},
 	}
-	result, err := terminalfixture.Run(context.Background(), binary, dir, []string{"project", "add", "source", "team"}, steps)
+	result, err := terminalfixture.Run(context.Background(), binary, dir, []string{"project", "add", "source", "team", "--ref", "release/3"}, steps)
 	if err != nil || result.ExitCode != 0 || strings.Count(result.Transcript, "Error:") != 4 {
 		t.Fatal(err, result)
 	}
@@ -91,7 +91,7 @@ func TestSourceAnswerRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := config.Sources["team"]
-	if source["repository"] != "https://github.com/acme/rules" || source["ref"] != nil || source["rules"] != nil || !reflect.DeepEqual(source["skills"], map[string]any{"include": []any{"*"}}) {
+	if source["repository"] != "https://github.com/acme/rules" || source["ref"] != "release/3" || source["rules"] != nil || !reflect.DeepEqual(source["skills"], map[string]any{"include": []any{"*"}}) {
 		t.Fatal(string(data))
 	}
 }

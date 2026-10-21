@@ -36,8 +36,10 @@ type Library struct {
 
 // ImportLibraries imports every configured source or returns no partial result. recorded holds each source's
 // snapshot from the last sync, without files, keyed by source name; its versions are kept, and versions are
-// chosen only where configuration asks for something a snapshot doesn't have. It never installs files in a
-// consuming project. Source temporary state is closed on every path.
+// chosen only where configuration asks for something a snapshot doesn't have. A source without a ref follows library
+// releases, keeping the recorded one, as configuration did before Trail Guide required a ref; project commands refuse
+// such a source before importing it. It never installs files in a consuming project. Source temporary state is closed
+// on every path.
 func ImportLibraries(ctx context.Context, configuration rules.Configuration, recorded map[string]library.Snapshot, options Options) (map[string]Library, error) {
 	return importSources(ctx, configuration, options, curating{recorded: recorded}, func(ctx context.Context, repo *repository, source rules.Source) (sourcePlan, error) {
 		return planSource(ctx, repo, source, recordedSnapshot(recorded, source.Name))
@@ -158,9 +160,13 @@ func (r *repository) importPlan(ctx context.Context, source rules.Source, plan s
 	if loaded := catalogRules(catalog); !slices.Equal(loaded, slices.Sorted(maps.Keys(plan.rules))) {
 		return Library{}, fail("unsupported-content", "The library's files don't match the rules its release records list. Don't create or move release tags by hand.", nil)
 	}
-	// A plan that update decided on keeps no ref, which the source's own stands in for.
+	// A plan that update decided on keeps no ref, which the source's own stands in for. A source whose ref chooses a
+	// library release records that release instead.
 	ref := source.Ref
-	if plan.ref.Equal(source.Ref) {
+	switch {
+	case plan.release != 0 && source.Ref.FollowsReleases():
+		ref = rules.GitRef{}
+	case plan.ref.Equal(source.Ref):
 		ref = plan.ref
 	}
 	snapshot := library.Snapshot{

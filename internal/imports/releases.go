@@ -38,6 +38,18 @@ func (h releaseHistory) newest() *libraryRelease {
 	return &h.releases[len(h.releases)-1]
 }
 
+// upTo returns the history's library releases numbered up to number, or the whole history when number is 0.
+func (h releaseHistory) upTo(number int) releaseHistory {
+	if number == 0 {
+		return h
+	}
+	end := len(h.releases)
+	for end > 0 && h.releases[end-1].number > number {
+		end--
+	}
+	return releaseHistory{releases: h.releases[:end]}
+}
+
 // release returns the library release numbered number, or nil when there is none.
 func (h releaseHistory) release(number int) *libraryRelease {
 	for i := range h.releases {
@@ -243,4 +255,28 @@ func (r *repository) fetchedReleases(ctx context.Context, advertised []libraryRe
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+// NewestRelease returns the number of the newest release/<number> tag that repository advertises, or 0 when it has
+// none, such as a repository that isn't a library, without fetching the tags or reading their release records.
+func NewestRelease(ctx context.Context, repository string, options Options) (_ int, err error) {
+	ctx, cancel, err := withTimeout(ctx, options)
+	if err != nil {
+		return 0, err
+	}
+	defer cancel()
+	repo, err := openRepository(ctx, rules.Source{Name: "source", Repository: repository}, options)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		if closeErr := repo.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
+	advertised, err := repo.listReleases(ctx)
+	if err != nil || len(advertised) == 0 {
+		return 0, err
+	}
+	return advertised[len(advertised)-1].number, nil
 }

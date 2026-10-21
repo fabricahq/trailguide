@@ -80,7 +80,8 @@ func TestSyncJSON_ReportsRuleVersionCodes(t *testing.T) {
 		released           bool
 	}{
 		{"no library release", `"rules":{"include":["techs/go/*"]}`, "ref-required", false},
-		{"pin to an unpublished version", `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"2.0.0","reason":"Typo."}]}`, "version-not-found", true},
+		{"released library without a ref", `"rules":{"include":["techs/go/*"]}`, "ref-required", true},
+		{"pin to an unpublished version", `"ref":"release/1","rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"2.0.0","reason":"Typo."}]}`, "version-not-found", true},
 		{"missing ref", `"rules":{"include":["techs/go/*"]},"ref":"release/7"`, "version-not-found", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

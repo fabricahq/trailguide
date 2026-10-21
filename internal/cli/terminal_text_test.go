@@ -47,7 +47,7 @@ func TestUpdate_KeepsControlCharactersOffTheTerminal(t *testing.T) {
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.Repository+"\n    rules:\n      include:\n        - techs/go/*\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}

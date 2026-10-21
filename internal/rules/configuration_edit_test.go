@@ -77,7 +77,7 @@ func TestEditConfigurationSource_RemovesPinsAndAnEmptiedPinsList(t *testing.T) {
 // TestEditConfigurationSource_RefusesEditsItCantApply leaves existing entries alone and rejects results that
 // wouldn't validate, returning no bytes.
 func TestEditConfigurationSource_RefusesEditsItCantApply(t *testing.T) {
-	input := []byte("schemaVersion: 2\nsources:\n  team:\n    repository: https://example.invalid/team.git\n    rules:\n      include: ['*']\n      exclude:\n        - id: practices/*\n          reason: Not ours.\n      pins:\n        - id: techs/go/a\n          version: \"1.0.0\"\n          reason: Kept.\n  by-ref:\n    repository: https://example.invalid/ref.git\n    ref: release/2\n    rules: {include: ['*']}\n")
+	input := []byte("schemaVersion: 2\nsources:\n  team:\n    repository: https://example.invalid/team.git\n    rules:\n      include: ['*']\n      exclude:\n        - id: practices/*\n          reason: Not ours.\n      pins:\n        - id: techs/go/a\n          version: \"1.0.0\"\n          reason: Kept.\n  by-ref:\n    repository: https://example.invalid/ref.git\n    ref: main\n    rules: {include: ['*']}\n")
 	version, err := trailguide.ParseRuleVersion("2.0.0", "version")
 	if err != nil {
 		t.Fatal(err)

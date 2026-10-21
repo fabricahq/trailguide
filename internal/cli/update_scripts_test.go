@@ -46,7 +46,7 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init", "--skill-targets", "claude"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    rules:\n      include: [techs/go/*]\n    skills:\n      include: [skills/build-feature]\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    rules:\n      include: [techs/go/*]\n    skills:\n      include: [skills/build-feature]\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
@@ -87,6 +87,7 @@ const scriptUpdatePreview = "team\n" +
 	"            script changed: scripts/run.sh\n" +
 	"            script added: scripts/setup.sh\n" +
 	"  Shared files: release 1 -> 2\n" +
+	"  Sets sources.team.ref to release/2 in .trailguide/config.yaml.\n" +
 	"\n" +
 	"Warning: some skills in this update add or change scripts. Trail Guide never runs them, but your agents may; read them before you confirm.\n"
 
@@ -184,7 +185,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init", "--skill-targets", "claude"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    rules:\n      include: [techs/go/*]\n    skills:\n      include: [skills/build-feature]\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    rules:\n      include: [techs/go/*]\n    skills:\n      include: [skills/build-feature]\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
