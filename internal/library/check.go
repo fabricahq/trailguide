@@ -142,6 +142,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		result.Warnings = append(result.Warnings, "The license has no SPDX expression. Declare the library terms explicitly.")
 	}
 	result.Warnings = append(result.Warnings, warnings...)
+	result.Warnings = append(result.Warnings, interfaceFileWarnings(input.skills)...)
 	if err = ctx.Err(); err != nil {
 		return checkedLibrary{}, err
 	}

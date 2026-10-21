@@ -95,6 +95,22 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 	return problems
 }
 
+// interfaceFileWarnings returns a warning, in path order, for each skill in tree, the library's skills/ folder, that
+// ships its own agents/openai.yaml, suggesting the metadata keys Trail Guide generates that file from instead. A
+// nil tree has none.
+func interfaceFileWarnings(tree *filetxn.Tree) []string {
+	warnings := []string{}
+	if tree == nil {
+		return warnings
+	}
+	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
+		if folder, file, _ := strings.Cut(name, "/"); file == skills.OpenAIFile {
+			warnings = append(warnings, fmt.Sprintf("%s/%s: projects install a skill's own %s unchanged. To have Trail Guide generate it from the skill's metadata instead, set metadata.%s, %s, and %s in SKILL.md, then delete this file.", skills.AuthoredID(folder), skills.OpenAIFile, skills.OpenAIFile, skills.DisplayNameKey, skills.ShortDescriptionKey, skills.DefaultPromptKey))
+		}
+	}
+	return warnings
+}
+
 // uncuratedProblem explains why citation, a line of trailguide-skills-used that names a source, isn't one of curated,
 // the curated skills the library's levels list: no listed skill comes from its source, which is then misspelled or
 // curates nothing, or the library hasn't listed the skill.

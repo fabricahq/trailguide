@@ -123,6 +123,19 @@ The cited rules are for the skill. They don't join the project's `RULES.md`, so 
 
 A library's skill can't cite a rule or call a skill from another library. If your skill depends on another library's practice, write or adapt the rule in your library first. A skill in a repository that isn't a library can cite its sources' rules with project IDs, such as `fabrica:practices/testing/verify-retries`; `trailguide project check` fails when one of those rules is retired, so your skill never points at a rule that's gone.
 
+## Set the text agents show
+
+Some agents, such as Codex, show skills in their interface with a display name, a short description, and a prompt that starts the skill. Set that text in `metadata`, not in an agent's own file:
+
+```yaml
+metadata:
+  display-name: "Fix Bug"
+  short-description: "Reproduce, fix, and test a bug"
+  default-prompt: "Use $fix-bug to reproduce and fix this bug."
+```
+
+All three are optional. When a project installs the skill, Trail Guide writes the file each agent reads, such as `agents/openai.yaml` in the `.agents/skills/` copy for Codex, so don't ship that file in the skill folder: library check warns when a skill does, and projects then install your file as it is instead. In `default-prompt`, Codex recognizes the skill when the prompt names it with `$`, as in `$fix-bug`. Keep `short-description` to one line; agents still decide when to use the skill from its `description`. See [Text agents show](/reference/skill-format/#text-agents-show).
+
 ## Example: a playbook
 
 This original example is a complete playbook in a library, `.trailguide/skills/fix-bug/SKILL.md`:

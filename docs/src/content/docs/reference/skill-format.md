@@ -5,7 +5,7 @@ description: "What Trail Guide accepts in a skill folder and its SKILL.md: IDs, 
 
 This page defines what Trail Guide accepts in a [skill](/concepts/skill/): its folder, its `SKILL.md` file, and the Trail Guide keys in its metadata. The same format applies to every skill a repository authors, whether it's a library, a project, or both. For how to write a skill well, see [Write a skill](/guides/write-skills/).
 
-A skill uses the [Agent Skills](https://agentskills.io) format. Trail Guide adds three optional `metadata` keys and checks the rest of the format as the Agent Skills specification defines it, so a skill that passes `trailguide library check` also works in tools that read Agent Skills directly.
+A skill uses the [Agent Skills](https://agentskills.io) format. Trail Guide adds optional `metadata` keys and checks the rest of the format as the Agent Skills specification defines it, so a skill that passes `trailguide library check` also works in tools that read Agent Skills directly.
 
 ## Skill folders
 
@@ -89,7 +89,7 @@ These are the Agent Skills fields. Unknown top-level fields are rejected, becaus
 | `license` | Optional string naming the skill's license, such as an SPDX expression. Informational in a library; see [Licenses](#licenses). |
 | `compatibility` | Optional non-blank string of at most 500 characters describing what the skill needs to run, such as tools, network access, or a product. |
 | `allowed-tools` | Optional string listing tools the skill is approved to use, separated by spaces, as the Agent Skills format defines it. Trail Guide preserves it and doesn't interpret it. |
-| `metadata` | Optional map of string keys to string values. Trail Guide reads the [three keys below](#metadata) and preserves every other key unchanged. |
+| `metadata` | Optional map of string keys to string values. Trail Guide reads the [keys below](#metadata) and preserves every other key unchanged. |
 
 The frontmatter uses one YAML document. Duplicate keys, anchors, aliases, and explicit tags are rejected. A value that YAML reads as something other than a string, such as `true` or `2026-10-14`, must be quoted where a string is required.
 
@@ -105,7 +105,7 @@ Trail Guide adds three optional keys under `metadata`. Each value is a string, a
 | `trailguide-rules-used` | The IDs of the rules the skill applies, one per line | Each must be a current rule in this repository, or, outside a library, in a source the project names. |
 | `trailguide-skills-used` | The IDs of the skills this skill calls, one per line | Each must be a current skill in the same repository, other than this one, or, in a library, a skill the library curates, and the skills called can't form a cycle. |
 
-Other `metadata` keys, such as `author`, are preserved and ignored. Keys that start with `trailguide-` are reserved for Trail Guide, so any other `trailguide-` key fails `trailguide library check`.
+Other `metadata` keys, such as `author`, are preserved and ignored, apart from the [interface keys](#text-agents-show) below. Keys that start with `trailguide-` are reserved for Trail Guide, so any other `trailguide-` key fails `trailguide library check`.
 
 ### Skill type
 
@@ -151,6 +151,35 @@ metadata:
 ```
 
 The library must list the curated skill in `library.skills`, at any level. When a project installs the calling skill, Trail Guide also installs the curated skill, from the repository the library curates it from, at the commit the project resolves for that repository, as it installs any curated skill, whatever level the library gives it. A curated skill brings the skills it calls in its own repository, but not skills that repository curates in turn.
+
+### Text agents show
+
+Some agents show a skill in their interface with its own display name, a short description, and a prompt that starts it. Three optional `metadata` keys hold that text, without naming an agent:
+
+```yaml
+metadata:
+  display-name: "Add Skill"
+  short-description: "Create and place Fabrica agent skills"
+  default-prompt: "Use $add-skill to create or update a Fabrica agent skill."
+```
+
+| Key | Value |
+| --- | --- |
+| `display-name` | The name the interface shows for the skill, such as `Add Skill`. |
+| `short-description` | A short line about the skill, for lists. Agents still choose the skill by its `description`. |
+| `default-prompt` | A prompt that starts the skill, such as `Use $add-skill to create or update a Fabrica agent skill.` |
+
+Each value is a string; a value that isn't one fails like any other unreadable frontmatter. Trail Guide maps the keys into the file each agent reads. Today that's Codex, which reads `agents/openai.yaml` in the skill folder: when a project installs the skill, Trail Guide writes that file into the copy in `.agents/skills/` only, with `interface.display_name`, `short_description`, and `default_prompt`. The display name falls back to the skill's install name, a key the skill leaves out stays out of the file, and a skill that sets none of the keys gets no file:
+
+```yaml
+# Generated by Trail Guide from the display-name, short-description, and default-prompt metadata in SKILL.md. Do not edit.
+interface:
+  display_name: "Add Skill"
+  short_description: "Create and place Fabrica agent skills"
+  default_prompt: "Use $add-skill to create or update a Fabrica agent skill."
+```
+
+Set these keys instead of shipping `agents/openai.yaml` in your skill folder. A skill that ships its own file, such as a third party's skill you install or curate, keeps it unchanged in every copy, whatever its metadata says, and `trailguide library check` warns about one in your library's skills.
 
 ## Links
 
@@ -224,6 +253,7 @@ Check warns, without failing, when:
 - A skill's `license` differs from the library's declared SPDX expression: `skills/build-feature/SKILL.md: license is Apache-2.0, but the library declares MIT. The library's license applies to its skills; make them match.`
 - A skill declares a `license` and the library declares none: `skills/build-feature/SKILL.md: license is MIT, but the library declares no license. Declare the library's terms in library.license.`
 - A file in a skill folder is neither tracked nor ignored by Git: `skills/build-feature/scripts/new-check.sh isn't tracked by Git, so it isn't part of the skill. Add it with git add, or ignore it.`
+- A skill ships its own `agents/openai.yaml`: `skills/add-skill/agents/openai.yaml: projects install a skill's own agents/openai.yaml unchanged. To have Trail Guide generate it from the skill's metadata instead, set metadata.display-name, short-description, and default-prompt in SKILL.md, then delete this file.` See [Text agents show](#text-agents-show).
 
 To find curated skills' names, check reads each curated source at its `ref`, so it needs access to those repositories.
 
@@ -240,6 +270,8 @@ When a project installs a skill, Trail Guide writes a copy of its folder into ea
   ```
 
 - When the skill cites rules, a generated **Rules this skill applies** section is appended at the end. It links to the project's version of each rule the skill cites, including an authored rule that replaces one, and marks a rule the project excluded. A **Skills this skill uses** line follows when the skill calls others.
+
+The copy in `.agents/skills/` also gets a generated `agents/openai.yaml` when the skill sets [interface text](#text-agents-show) and doesn't ship that file itself.
 
 Don't edit installed copies: sync rewrites them, and `trailguide project check` fails when one differs from what sync would write. [Installed skills](/reference/files/#installed-skills) shows the complete generated section and how Trail Guide records the folders it owns.
 

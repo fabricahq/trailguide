@@ -122,3 +122,32 @@ func TestUncuratedProblemWithoutCuratedSkills(t *testing.T) {
 		t.Fatalf("uncuratedProblem = %q; want %q", got, want)
 	}
 }
+
+func TestCheck_WarnsAboutASkillThatShipsItsOwnCodexInterfaceFile(t *testing.T) {
+	ctx := context.Background()
+	_, options := authorClone(t, libraryFiles(), releaseOne)
+	edit(t, options.Directory, map[string]string{
+		".trailguide/skills/fix/SKILL.md":               "---\nname: fix\n---\n# Fix\n",
+		".trailguide/skills/fix/agents/openai.yaml":     "interface:\n  display_name: Fix\n",
+		".trailguide/skills/fix/references/openai.yaml": "not the interface file\n",
+		".trailguide/skills/review/SKILL.md":            "---\nname: review\nmetadata:\n  display-name: Review\n---\n# Review\n",
+		".trailguide/skills/review/references/notes.md": "# Notes\n",
+	})
+	result, err := Check(ctx, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "skills/fix/agents/openai.yaml: projects install a skill's own agents/openai.yaml unchanged. To have Trail Guide generate it from the skill's metadata instead, set metadata.display-name, short-description, and default-prompt in SKILL.md, then delete this file."
+	found := 0
+	for _, warning := range result.Warnings {
+		if strings.Contains(warning, "openai.yaml") {
+			found++
+			if warning != want {
+				t.Errorf("warning = %q, want %q", warning, want)
+			}
+		}
+	}
+	if found != 1 {
+		t.Fatalf("warnings = %q; want one about skills/fix/agents/openai.yaml", result.Warnings)
+	}
+}

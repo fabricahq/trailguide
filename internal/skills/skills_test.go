@@ -52,6 +52,7 @@ func TestReadMetadataReadsTheFieldsGuidanceShows(t *testing.T) {
 		"closing at end of file": {"---\nname: x\n---", skills.Metadata{Name: "x", Frontmatter: true}},
 		"cited rules and skills": {"---\nname: x\nmetadata:\n  trailguide-rules-used: |\n    techs/go/errors\n\n      fabrica:practices/testing/verify  \n  trailguide-skills-used: skills/tdd\n  trailguide-groups: x\n  trailguide-skill-type: review\n---\n", skills.Metadata{Name: "x", Type: "review", RulesUsed: []string{"techs/go/errors", "fabrica:practices/testing/verify"}, SkillsUsed: []string{"skills/tdd"}, ReservedKeys: []string{"trailguide-groups"}, Frontmatter: true}},
 		"empty cited rules":      {"---\nname: x\nmetadata:\n  trailguide-rules-used: \"\"\n---\n", skills.Metadata{Name: "x", RulesUsed: []string{}, Frontmatter: true}},
+		"interface text":         {"---\nname: x\nmetadata:\n  display-name: \"Add Skill\"\n  short-description: Create skills\n  default-prompt: \"Use $x.\"\n---\n", skills.Metadata{Name: "x", Interface: skills.Interface{DisplayName: "Add Skill", ShortDescription: "Create skills", DefaultPrompt: "Use $x."}, Frontmatter: true}},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -77,6 +78,9 @@ func TestReadMetadataRejectsUnreadableFrontmatter(t *testing.T) {
 		"null skills used": "---\nname: x\nmetadata:\n  trailguide-skills-used: null\n---\n",
 		"null type":        "---\nname: x\nmetadata:\n  trailguide-skill-type: ~\n---\n",
 		"duplicate key":    "---\nname: x\nname: y\n---\n",
+		"boolean display":  "---\nname: x\nmetadata:\n  display-name: true\n---\n",
+		"list prompt":      "---\nname: x\nmetadata:\n  default-prompt: [a]\n---\n",
+		"null short":       "---\nname: x\nmetadata:\n  short-description:\n---\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := skills.ReadMetadata([]byte(input), "skills/x/SKILL.md"); err == nil {

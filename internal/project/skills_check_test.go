@@ -85,6 +85,44 @@ func TestCheck_ReportsEachInstalledSkillFolderThatDiffersFromItsSource(t *testin
 	requireCurrent(t, options)
 }
 
+func TestCheck_ReportsAGeneratedCodexInterfaceFileThatDrifted(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude","agents"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"]}}}}`)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, "skills/add-skill/SKILL.md", "---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  display-name: Add Skill\n---\n# Add\n")
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	requireCurrent(t, options)
+	generated := filepath.Join(options.Directory, ".agents/skills/add-skill/agents/openai.yaml")
+	if data, err := os.ReadFile(generated); err != nil || !strings.Contains(string(data), "display_name: \"Add Skill\"") {
+		t.Fatalf("generated file = %q, %v", data, err)
+	}
+	if _, err := os.Stat(filepath.Join(options.Directory, ".claude/skills/add-skill/agents")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf(".claude/skills/add-skill has an agents folder: %v", err)
+	}
+	if err := os.WriteFile(generated, []byte("interface:\n  display_name: Edited\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	checked, err := Check(ctx, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Problem{{Kind: ModifiedSkill, Path: "../.agents/skills/add-skill", Repair: Rebuild, Skill: "skills/add-skill"}}
+	if got := skillProblems(checked); !reflect.DeepEqual(got, want) {
+		t.Fatalf("skill problems:\n%+v\nwant\n%+v", got, want)
+	}
+	if _, err := Build(ctx, options); err != nil {
+		t.Fatal(err)
+	}
+	requireCurrent(t, options)
+}
+
 func TestBuild_LinksAnAuthoredSkillToTheAuthoredRuleItCites(t *testing.T) {
 	ctx := context.Background()
 	root, options := localProject(t)

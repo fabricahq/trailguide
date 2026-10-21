@@ -44,8 +44,9 @@ type resolvedSkill struct {
 	// Source is the source's name, or empty for an authored skill; Folder is the skill's ID in its source or in the
 	// repository's skills/ folder.
 	Source, Folder string
-	// Name is the install name; Description and Type are as SKILL.md declares them.
+	// Name is the install name; Description, Type, and Interface are as SKILL.md declares them.
 	Name, Description, Type string
+	Interface               skills.Interface
 	// RenamedFrom is the name SKILL.md declares when the project's skills.rename installs the skill under Name
 	// instead, or empty.
 	RenamedFrom string
@@ -219,7 +220,7 @@ func describeSkill(skill *resolvedSkill, rename, location string) error {
 	default:
 		skill.Name = name
 	}
-	skill.Description, skill.Type, skill.RulesUsed, skill.SkillsUsed = metadata.Description, metadata.Type, metadata.RulesUsed, metadata.SkillsUsed
+	skill.Description, skill.Type, skill.Interface, skill.RulesUsed, skill.SkillsUsed = metadata.Description, metadata.Type, metadata.Interface, metadata.RulesUsed, metadata.SkillsUsed
 	return nil
 }
 
@@ -249,6 +250,25 @@ func (skill resolvedSkill) installed() SkillFiles {
 	return SkillFiles{Files: files, Executable: slices.Clone(skill.Files.Executable)}
 }
 
+// installedAt returns the files of skill's installed copy in target, given installed, its copy for every target.
+// The copy in the agents target, which Codex reads, also gets skills.OpenAIFile, generated from the skill's interface
+// metadata, unless the skill declares none of it or ships its own file, which it keeps unchanged.
+func (skill resolvedSkill) installedAt(target string, installed SkillFiles) SkillFiles {
+	if path.Dir(target) != rules.SkillTargetFolders["agents"] {
+		return installed
+	}
+	if _, ships := installed.Files[skills.OpenAIFile]; ships {
+		return installed
+	}
+	generated := skills.OpenAIInterface(skill.Interface, skill.Name)
+	if generated == nil {
+		return installed
+	}
+	files := maps.Clone(installed.Files)
+	files[skills.OpenAIFile] = generated
+	return SkillFiles{Files: files, Executable: installed.Executable}
+}
+
 // renderSkills returns the installed skill folders by path from the repository root, and, when the project installs
 // any skill or excludes one of its sources' skills, SKILLS.md and installed-skills.json by path in generated/.
 // excluded lists the skills the project excludes without a replacement.
@@ -270,8 +290,9 @@ func renderSkills(resolved []resolvedSkill, excluded []excludedSkill) (map[strin
 	for _, skill := range resolved {
 		installed := skill.installed()
 		for _, target := range skill.Targets {
-			folders[target] = installed
+			folders[target] = skill.installedAt(target, installed)
 		}
+		// The digest covers the copy every target gets, without an interface file generated for one target.
 		entry := record{Name: skill.Name, ID: skill.ID, Targets: skill.Targets, Digest: folderDigest(installed)}
 		if skill.NonLibrary || skill.Curated != "" {
 			entry.Commit = &skill.Commit

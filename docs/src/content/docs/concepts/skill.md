@@ -50,7 +50,9 @@ metadata:
 - `trailguide-rules-used` lists the rules the skill applies. Trail Guide takes those rules with the skill, and the installed copy links to your project's version of each one. See [Where cited rules live](#where-cited-rules-live).
 - `trailguide-skills-used` lists other skills the skill calls. Trail Guide installs them alongside it.
 
-All three keys are optional. The standard sets `metadata` aside for properties it doesn't define, so a skill with these keys is still a standard skill, and agents that don't read them use it as usual. For every field and check, see [Skill format](/reference/skill-format/). To write one, follow [Write a skill](/guides/write-skills/).
+A skill can also set the text an agent's interface shows for it, with the `display-name`, `short-description`, and `default-prompt` keys. They name no agent, and Trail Guide maps them into the file each agent reads, such as `agents/openai.yaml` for Codex, when it installs the skill. See [Text agents show](/reference/skill-format/#text-agents-show).
+
+All these keys are optional. The standard sets `metadata` aside for properties it doesn't define, so a skill with these keys is still a standard skill, and agents that don't read them use it as usual. For every field and check, see [Skill format](/reference/skill-format/). To write one, follow [Write a skill](/guides/write-skills/).
 
 ## Skill types
 
@@ -146,6 +148,8 @@ See [Rule and skill versions](/reference/rule-versions/) for the details.
 ## How agents use installed skills
 
 When you sync, Trail Guide writes a copy of each installed skill into the folders your agents read: `.claude/skills/` for Claude Code and `.agents/skills/` for Codex, Cursor, and other agents that follow the shared convention. You commit these copies, so every checkout and every fresh cloud session has the same skills.
+
+The copy in `.agents/skills/` also gets `agents/openai.yaml`, the file Codex reads a skill's display name, short description, and default prompt from, generated from the skill's metadata when it sets any of them. A skill that ships its own file keeps it unchanged.
 
 When a skill cites rules, its installed `SKILL.md` ends with a generated section, **Rules this skill applies**, that points at your project's version of every rule the skill cites, including any authored rule that replaces one. Agents read those rules in full before the step that uses them.
 
