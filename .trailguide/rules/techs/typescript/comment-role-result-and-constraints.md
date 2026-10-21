@@ -7,7 +7,7 @@ tags: "typescript, comments, tsdoc, documentation"
 attribution:
   - url: https://github.com/mkosir/typescript-style-guide/blob/86bebd58a987e23277dba02028c0ee2d6ffb5073/website/src/pages/index.mdx
     description: "Adapted from mkosir TypeScript Style Guide guidance (comment-role-result-and-constraints; MIT, notice retained in NOTICE.md): restructured to the rule template; the guidance and examples are otherwise preserved."
-  - url: https://github.com/fabricahq/public-rules/blob/568e32f46cc3bf557ab90e82b8df6d661b839112/techs/typescript/comment-role-result-and-constraints.md
+  - url: https://github.com/fabricahq/public-library/blob/568e32f46cc3bf557ab90e82b8df6d661b839112/techs/typescript/comment-role-result-and-constraints.md
     description: Forked from version 1.0.0 of techs/typescript/comment-role-result-and-constraints, published in library release 1 at commit 568e32f46cc3bf557ab90e82b8df6d661b839112.
 ---
 
