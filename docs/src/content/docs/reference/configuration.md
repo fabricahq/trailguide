@@ -140,7 +140,7 @@ A library can also list a skill as a **dependency**, in `library.skills.dependen
 - **It shows as a dependency.** `trailguide project list skills`, `SKILLS.md`, the source's `_source.json` record, and provenance give it the level `dependency`, with the skills that use it.
 - **A project diverges from it as from any skill a skill uses.** Excluding it by ID leaves it uninstalled, and sync warns that the skills that call it lose it. Forking it installs the fork in its place, for the skills that call it.
 
-A dependency can be the library's own skill or one it [curates](#curated-skills). `trailguide library check` fails when nothing calls a dependency, since no project would ever install it: no skill of the library names it in its `trailguide-skills-used`, and, for a curated dependency, no curated skill the library lists uses it in its own repository.
+A dependency can be the library's own skill or one it [curates](#curated-skills). `trailguide library check` fails when nothing calls a dependency, since no project would ever install it: no skill of the library names it in its `trailguide-skills-used`, and, for a curated dependency, no curated skill the library lists uses it in its own repository. It also fails when only other dependencies that nothing installs use it, such as two dependencies that use only each other.
 
 A project sees only the levels of the libraries it names as sources. When a library curates a skill from another library, the project sees the level the curating library sets, not the one the original library sets: levels don't chain.
 

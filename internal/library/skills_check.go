@@ -96,30 +96,53 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 }
 
 // uncalledDependencies returns a problem, in ID order, for each of dependencies, the skills library.skills.dependencies
-// lists, that no skill in tree, the library's skills/ folder, other than itself, names in its trailguide-skills-used,
-// and that curatedCalls, the curated skills that listed curated skills use, lacks: a dependency installs only with
-// the skills that use it, so projects could never install one nothing uses. A nil curatedCalls, when the curated
-// sources weren't read, leaves curated dependencies unchecked. A nil tree has no skills. A SKILL.md that skillProblems
-// rejects names none.
+// lists, that no project could install: a dependency installs only with the skills that use it, so each must be
+// reachable through trailguide-skills-used from a skill in tree, the library's skills/ folder, that dependencies
+// doesn't list, or be in curatedCalls, the curated skills that listed curated skills use. A dependency that only
+// other unreachable dependencies use, such as two that use only each other, is reported too. A nil curatedCalls, when
+// the curated sources weren't read, leaves curated dependencies unchecked. A nil tree has no skills. A SKILL.md that
+// skillProblems rejects names none.
 func uncalledDependencies(tree *filetxn.Tree, dependencies []string, curatedCalls map[string]bool) []string {
-	called := maps.Clone(curatedCalls)
-	if called == nil {
-		called = map[string]bool{}
+	listed := map[string]bool{}
+	for _, id := range dependencies {
+		listed[id] = true
 	}
+	uses := map[string][]string{}
+	called := map[string]bool{}
+	reached := maps.Clone(curatedCalls)
+	if reached == nil {
+		reached = map[string]bool{}
+	}
+	pending := []string{}
 	if tree != nil {
 		for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
 			folder, file, _ := strings.Cut(name, "/")
 			if file != skills.File {
 				continue
 			}
-			metadata, err := skills.ReadMetadata(tree.Files[name], skills.AuthoredID(folder)+"/"+skills.File)
+			id := skills.AuthoredID(folder)
+			metadata, err := skills.ReadMetadata(tree.Files[name], id+"/"+skills.File)
 			if err != nil {
 				continue
 			}
-			for _, id := range metadata.SkillsUsed {
-				if id != skills.AuthoredID(folder) {
-					called[id] = true
+			for _, used := range metadata.SkillsUsed {
+				if used != id {
+					uses[id] = append(uses[id], used)
+					called[used] = true
 				}
+			}
+			if !listed[id] {
+				pending = append(pending, id)
+			}
+		}
+	}
+	for len(pending) > 0 {
+		id := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		for _, used := range uses[id] {
+			if !reached[used] {
+				reached[used] = true
+				pending = append(pending, used)
 			}
 		}
 	}
@@ -128,7 +151,11 @@ func uncalledDependencies(tree *filetxn.Tree, dependencies []string, curatedCall
 		if _, _, curated := SplitCurated(id); curated && curatedCalls == nil {
 			continue
 		}
-		if !called[id] {
+		switch {
+		case reached[id]:
+		case called[id]:
+			problems = append(problems, fmt.Sprintf("library.skills.%s lists %s, but only other dependencies that no project would install name it in %s, and a dependency installs only with the skills that use it, so no project would install it. Name it in the %s of a skill a project can choose, or move it or a dependency that uses it to a level", skills.Dependencies, id, skills.SkillsUsedKey, skills.SkillsUsedKey))
+		default:
 			problems = append(problems, fmt.Sprintf("library.skills.%s lists %s, but no skill of the library names it in %s, and a dependency installs only with the skills that use it, so no project would install it. Name it in the %s of the skills that call it, or move it to a level", skills.Dependencies, id, skills.SkillsUsedKey, skills.SkillsUsedKey))
 		}
 	}

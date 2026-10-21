@@ -69,4 +69,17 @@ func TestLibraryCheck_RequiresEveryDependencyToBeUsed(t *testing.T) {
 	if _, err := Check(context.Background(), options); err != nil {
 		t.Fatalf("check with the dependency used: %v", err)
 	}
+	write("skills/lint/SKILL.md", "---\nname: lint\ndescription: Lint.\nmetadata:\n  trailguide-skills-used: |\n    skills/fix\n---\n# Lint\n")
+	write("skills/fix/SKILL.md", "---\nname: fix\ndescription: Fix.\nmetadata:\n  trailguide-skills-used: |\n    skills/lint\n---\n# Fix\n")
+	write("config.yaml", "schemaVersion: 2\nsources: {}\nlibrary:\n  skills:\n    recommended: [skills/add-skill]\n    dependencies: [skills/fix, skills/format-skill, skills/lint]\n")
+	_, err = Check(context.Background(), options)
+	for _, id := range []string{"skills/fix", "skills/lint"} {
+		want := "library.skills.dependencies lists " + id + ", but only other dependencies that no project would install name it in trailguide-skills-used"
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("got %v; want %s, used only by another unreachable dependency, reported", err, id)
+		}
+	}
+	if strings.Contains(err.Error(), "lists skills/format-skill") {
+		t.Fatalf("got %v; want format-skill, which add-skill uses, accepted", err)
+	}
 }
