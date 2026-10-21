@@ -525,7 +525,9 @@ func isForked(forks map[string]rules.SkillFork, id string) bool {
 // or nil for a repository that isn't a library, list in library.skills.dependencies, own or curated: such a skill
 // installs only with the skills that use it, so the project can't choose it. The error names the library's skills in
 // folders, the skills of the plan's commit, that use it, by their trailguide-skills-used or the source's skills.uses,
-// so the project can include one of those instead.
+// so the project can include one of those instead; for a curated dependency only the library's skills that use it
+// are known here, so when none does, it points to the curated skills of its source, which may use it in their own
+// repository.
 func (r *repository) requireNoNamedDependencies(ctx context.Context, source rules.Source, plan sourcePlan, folders map[string]map[string]treeEntry, levels *rules.SkillLevels) error {
 	if levels == nil {
 		return nil
@@ -540,9 +542,14 @@ func (r *repository) requireNoNamedDependencies(ctx context.Context, source rule
 	}
 	id := named[0]
 	problem := fmt.Sprintf("names %s, which the library lists in library.skills.%s, so it installs only with the library's skills that use it, and a project can't choose it. ", id, skills.Dependencies)
-	if len(users[id]) == 0 {
+	curatedFrom, _, curated := library.SplitCurated(id)
+	switch {
+	case len(users[id]) == 0 && curated:
+		// The curated skills that use it in their own repository are in that repository, which import doesn't read here.
+		problem += fmt.Sprintf("It installs with the skills the library curates from %s that use it; include one of those instead, or remove it from skills.include", curatedFrom)
+	case len(users[id]) == 0:
 		problem += fmt.Sprintf("No skill of the library uses it at %s; remove it from skills.include, and ask the library's maintainer to fix library.skills, which trailguide library check catches", revisionName(plan.release, plan.commit))
-	} else {
+	default:
 		problem += fmt.Sprintf("Include a skill that uses it instead, %s, or remove it from skills.include", strings.Join(users[id], " or "))
 	}
 	return &ValidationError{Location: "sources." + source.Name + ".skills.include", Problem: problem}

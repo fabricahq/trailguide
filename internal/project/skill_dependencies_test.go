@@ -132,3 +132,13 @@ func TestSync_RefusesACuratedDependencyTheProjectNames(t *testing.T) {
 		t.Fatalf("got %v; want the named curated dependency refused", err)
 	}
 }
+
+func TestSync_PointsANamedCuratedDependencyToTheCuratedSkillsThatUseIt(t *testing.T) {
+	listed := "    offered: [pocock:skills/engineering/to-spec]\n    dependencies: [pocock:skills/engineering/interview]\n"
+	b := newCuratingFrom(t, listed, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["pocock:skills/engineering/interview"]}}}}`)
+	_, err := Sync(context.Background(), b.options, b.git)
+	want := "It installs with the skills the library curates from pocock that use it; include one of those instead"
+	if err == nil || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "maintainer") {
+		t.Fatalf("got %v; want the curated callers suggested", err)
+	}
+}
