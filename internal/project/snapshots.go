@@ -710,16 +710,16 @@ func readRecordSkillLevels(records map[string]*string, location string, nonLibra
 				return nil, err
 			}
 			_, recorded := curated[source]
-			if installed && !recorded || level == nil || !slices.Contains(skills.Levels, *level) {
-				return nil, invalidSnapshot(where, "expected a curated skill, of a recorded curated source when installed, with level required, recommended, or offered")
+			if installed && !recorded || level == nil || !recordedLevel(*level) {
+				return nil, invalidSnapshot(where, "expected a curated skill, of a recorded curated source when installed, with level required, recommended, offered, or dependency")
 			}
 		} else {
 			if err := skills.ValidateID(id, where); err != nil {
 				return nil, err
 			}
 			name, authored := strings.CutPrefix(id, skills.Directory+"/")
-			if nonLibrary && level != nil || !nonLibrary && (level == nil || !slices.Contains(skills.Levels, *level) || !authored || !skills.ValidName(name)) {
-				return nil, invalidSnapshot(where, "expected a library's skill, skills/<name>, with level required, recommended, or offered, or a skill from another repository with a null level")
+			if nonLibrary && level != nil || !nonLibrary && (level == nil || !recordedLevel(*level) || !authored || !skills.ValidName(name)) {
+				return nil, invalidSnapshot(where, "expected a library's skill, skills/<name>, with level required, recommended, offered, or dependency, or a skill from another repository with a null level")
 			}
 		}
 		for other := range records {
@@ -734,6 +734,12 @@ func readRecordSkillLevels(records map[string]*string, location string, nonLibra
 		result[id] = imported
 	}
 	return result, nil
+}
+
+// recordedLevel reports whether level is one a source record gives a library's skill: one of skills.Levels, or
+// skills.LevelDependency.
+func recordedLevel(level string) bool {
+	return slices.Contains(skills.Levels, level) || level == skills.LevelDependency
 }
 
 // matchSnapshotSource checks a record against its source's configuration without fetching Git, as documented in

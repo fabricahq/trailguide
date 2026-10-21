@@ -464,7 +464,7 @@ func normalizeFoldedScalars(node *yaml.Node) {
 }
 
 // ReplaceLibrarySkill returns input, a library's configuration, with the entry of its library.skills levels that
-// names the skill from replaced by to, at the same level and position, keeping comments and formatting elsewhere. It
+// names the skill from replaced by to, at the same level and position, or in the dependencies list, keeping comments and formatting elsewhere. It
 // fails when no level lists from. The complete resulting configuration is validated before any bytes are returned.
 func ReplaceLibrarySkill(input []byte, from, to string) ([]byte, error) {
 	document, data, err := decode.YAML(input, "configuration")
@@ -476,7 +476,7 @@ func ReplaceLibrarySkill(input []byte, from, to string) ([]byte, error) {
 	}
 	levels := mappingValue(mappingValue(document.Content[0], "library"), "skills")
 	replaced := false
-	for _, level := range skills.Levels {
+	for _, level := range skills.Lists {
 		list := mappingValue(levels, level)
 		if list == nil || list.Kind != yaml.SequenceNode {
 			continue

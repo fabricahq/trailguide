@@ -24,6 +24,7 @@ library:
   skills:
     required: [skills/ship, anthropic:skills/skill-creator]
     offered: [skills/build-feature]
+    dependencies: [skills/shared-setup]
 `
 	library, err := trailguide.ParseLibraryManifest([]byte(config), "acme/rules/.trailguide/config.yaml")
 	if err != nil {
@@ -32,13 +33,16 @@ library:
 	expression := "MIT OR Apache-2.0"
 	want := &trailguide.Library{
 		License: &trailguide.LicenseDeclaration{SPDXExpression: &expression, Files: []string{"LICENSE.md"}, AttributionFiles: []string{"assets/NOTICE.md"}},
-		Skills:  trailguide.SkillLevels{Required: []string{"anthropic:skills/skill-creator", "skills/ship"}, Recommended: []string{}, Offered: []string{"skills/build-feature"}},
+		Skills:  trailguide.SkillLevels{Required: []string{"anthropic:skills/skill-creator", "skills/ship"}, Recommended: []string{}, Offered: []string{"skills/build-feature"}, Dependencies: []string{"skills/shared-setup"}},
 	}
 	if !reflect.DeepEqual(library, want) {
 		t.Fatalf("got %+v; want %+v", library, want)
 	}
 	if got := library.Skills.Curated(); !reflect.DeepEqual(got, []string{"anthropic:skills/skill-creator"}) {
 		t.Fatalf("curated %v", got)
+	}
+	if got := library.Skills.Level("skills/shared-setup"); got != "dependency" {
+		t.Fatalf("level %q; want dependency", got)
 	}
 }
 
@@ -74,21 +78,22 @@ func TestParseLibraryManifest_ReturnsNilWithoutALibrarySection(t *testing.T) {
 func TestParseLibraryManifest_RefusesAnInvalidManifest(t *testing.T) {
 	const at = "acme/rules/.trailguide/config.yaml"
 	for name, test := range map[string]struct{ config, location string }{
-		"not UTF-8":                  {"schemaVersion: 2\nsources: {}\n#\xff", at},
-		"not a mapping":              {"[]", at},
-		"a duplicate key":            {"schemaVersion: 2\nsources: {}\nlibrary: {}\nlibrary: {}\n", at + ".library"},
-		"an alias":                   {"schemaVersion: 2\nsources: &s {}\nlibrary: *s\n", at + ".sources"},
-		"version 1":                  {"schemaVersion: 1\nsources: {}\nlibrary: {}\n", at + ": schemaVersion"},
-		"no schema version":          {"sources: {}\nlibrary: {}\n", at + ": schemaVersion"},
-		"no sources":                 {"schemaVersion: 2\nlibrary: {}\n", at + ": sources"},
-		"sources that aren't a map":  {"schemaVersion: 2\nsources: []\nlibrary: {}\n", at + ": sources"},
-		"a library that isn't a map": {"schemaVersion: 2\nsources: {}\nlibrary: false\n", at + ": library"},
-		"an unknown library field":   {"schemaVersion: 2\nsources: {}\nlibrary: {rules: []}\n", at + ": library"},
-		"a license in a rule":        {"schemaVersion: 2\nsources: {}\nlibrary:\n  license: {file: .trailguide/rules/techs/go/x.md, notices: []}\n", at + ": library.license.file"},
-		"an unknown SPDX ID":         {"schemaVersion: 2\nsources: {}\nlibrary:\n  license: {spdxExpression: Nope, file: LICENSE.md, notices: []}\n", at + ": library.license.spdxExpression"},
-		"a skill listed twice":       {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {required: [skills/a], offered: [skills/a]}\n", at + ": library.skills.offered[0]"},
-		"an invalid skill ID":        {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {offered: [tools/a]}\n", at + ": library.skills.offered[0]"},
-		"an undeclared source":       {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {required: [anthropic:skills/skill-creator]}\n", at + ": library.skills.required[0]"},
+		"not UTF-8":                        {"schemaVersion: 2\nsources: {}\n#\xff", at},
+		"not a mapping":                    {"[]", at},
+		"a duplicate key":                  {"schemaVersion: 2\nsources: {}\nlibrary: {}\nlibrary: {}\n", at + ".library"},
+		"an alias":                         {"schemaVersion: 2\nsources: &s {}\nlibrary: *s\n", at + ".sources"},
+		"version 1":                        {"schemaVersion: 1\nsources: {}\nlibrary: {}\n", at + ": schemaVersion"},
+		"no schema version":                {"sources: {}\nlibrary: {}\n", at + ": schemaVersion"},
+		"no sources":                       {"schemaVersion: 2\nlibrary: {}\n", at + ": sources"},
+		"sources that aren't a map":        {"schemaVersion: 2\nsources: []\nlibrary: {}\n", at + ": sources"},
+		"a library that isn't a map":       {"schemaVersion: 2\nsources: {}\nlibrary: false\n", at + ": library"},
+		"an unknown library field":         {"schemaVersion: 2\nsources: {}\nlibrary: {rules: []}\n", at + ": library"},
+		"a license in a rule":              {"schemaVersion: 2\nsources: {}\nlibrary:\n  license: {file: .trailguide/rules/techs/go/x.md, notices: []}\n", at + ": library.license.file"},
+		"an unknown SPDX ID":               {"schemaVersion: 2\nsources: {}\nlibrary:\n  license: {spdxExpression: Nope, file: LICENSE.md, notices: []}\n", at + ": library.license.spdxExpression"},
+		"a skill listed twice":             {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {required: [skills/a], offered: [skills/a]}\n", at + ": library.skills.offered[0]"},
+		"a dependency projects can choose": {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {offered: [skills/a], dependencies: [skills/a]}\n", at + ": library.skills.dependencies[0]"},
+		"an invalid skill ID":              {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {offered: [tools/a]}\n", at + ": library.skills.offered[0]"},
+		"an undeclared source":             {"schemaVersion: 2\nsources: {}\nlibrary:\n  skills: {required: [anthropic:skills/skill-creator]}\n", at + ": library.skills.required[0]"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			library, err := trailguide.ParseLibraryManifest([]byte(test.config), at)

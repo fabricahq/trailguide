@@ -48,7 +48,7 @@ func TestLibraryCheck_ExplainsAUseOfASkillTheLibraryDoesNotCurate(t *testing.T) 
 // of a skill from a source the library curates from, which library.skills doesn't list.
 func TestLibraryCheck_ExplainsAUseOfACuratedSkillTheLibraryDoesNotList(t *testing.T) {
 	skills := map[string]string{"add-skill/SKILL.md": usingCurated("add-skill", "pocock:skills/team/review")}
-	want := "which isn't a skill the library curates; list it in library.skills, at any level, so projects that install the skill can install it too"
+	want := "which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too"
 	out, diagnostic, code := checkCuratingLibraryWith(t, curatingLibraryConfig, skills)
 	if code == 0 || !strings.Contains(out+diagnostic, want) {
 		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)

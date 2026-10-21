@@ -1825,7 +1825,8 @@
           "skills": {
             "required": [],
             "recommended": [],
-            "offered": []
+            "offered": [],
+            "dependencies": []
           }
         }
       }
@@ -1853,7 +1854,8 @@
           "skills": {
             "required": [],
             "recommended": [],
-            "offered": []
+            "offered": [],
+            "dependencies": []
           }
         }
       }
@@ -1892,7 +1894,8 @@
               "skills/build",
               "skills/review"
             ],
-            "offered": []
+            "offered": [],
+            "dependencies": []
           }
         }
       }
@@ -1965,6 +1968,46 @@
         "name": "ValidationError",
         "message": "library.skills.offered[0]: skills/ship is already required; give each skill one level",
         "location": "library.skills.offered[0]"
+      }
+    }
+  },
+  {
+    "id": "configuration-library-skills-dependencies",
+    "operation": "configuration",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"skills\": {\"recommended\": [\"skills/add-skill\"], \"dependencies\": [\"skills/lint-skill\", \"skills/format-skill\"]}}}",
+    "location": "configuration",
+    "expected": {
+      "ok": true,
+      "value": {
+        "sources": [],
+        "library": {
+          "license": null,
+          "skills": {
+            "required": [],
+            "recommended": [
+              "skills/add-skill"
+            ],
+            "offered": [],
+            "dependencies": [
+              "skills/format-skill",
+              "skills/lint-skill"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "configuration-library-skills-dependency-at-a-level",
+    "operation": "configuration",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"skills\": {\"offered\": [\"skills/format-skill\"], \"dependencies\": [\"skills/format-skill\"]}}}",
+    "location": "configuration",
+    "expected": {
+      "ok": false,
+      "error": {
+        "name": "ValidationError",
+        "message": "library.skills.dependencies[0]: skills/format-skill is already offered, so projects can choose it; a dependency installs only with the skills that use it, so list it in one place",
+        "location": "library.skills.dependencies[0]"
       }
     }
   },

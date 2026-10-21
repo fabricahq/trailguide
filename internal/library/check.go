@@ -92,7 +92,8 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = requireLeveledSkills(root, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
-	if err = requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated); err != nil {
+	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
+	if err != nil {
 		return checkedLibrary{}, err
 	}
 	catalog, err := LoadSource(ctx, capturedLibrary{input.tree}, "library", rules.GroupSelection{Pattern: "*"}, nil)
@@ -122,11 +123,12 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err != nil {
 		return checkedLibrary{}, err
 	}
-	curatedSkills := []string{}
+	curatedSkills, dependencies := []string{}, []string{}
 	if declaration != nil {
-		curatedSkills = declaration.Skills.Curated()
+		curatedSkills, dependencies = declaration.Skills.Curated(), declaration.Skills.Dependencies
 	}
-	if problems := skillProblems(input.skills, current, curatedSkills, changes); len(problems) > 0 {
+	problems := skillProblems(input.skills, current, curatedSkills, changes)
+	if problems = append(problems, uncalledDependencies(input.skills, dependencies, curatedCalls)...); len(problems) > 0 {
 		return checkedLibrary{}, failure("invalid-skill", "skills don't pass library check:\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
 	plan, err := changes.plan()
@@ -380,7 +382,7 @@ func requireLeveledSkills(root *os.Root, manifest []byte) error {
 			return fmt.Errorf("inspect %s: %v", file, err)
 		}
 		if err != nil || !info.Mode().IsRegular() {
-			return &ValidationError{Location: manifestPath + ": library.skills." + declaration.Skills.Level(id), Problem: id + " names no skill of the library, because " + file + " doesn't exist; add the skill, or remove it from the list"}
+			return &ValidationError{Location: manifestPath + ": " + declaration.Skills.Field(id), Problem: id + " names no skill of the library, because " + file + " doesn't exist; add the skill, or remove it from the list"}
 		}
 	}
 	return nil

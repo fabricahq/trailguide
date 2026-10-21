@@ -352,11 +352,11 @@ skills/review-change                            -            this project       
 Each row shows:
 
 - **SKILL:** the skill's project ID. A curated skill's ID names the library and the curated source, such as `fabrica:mattpocock:skills/engineering/to-spec`; an authored skill's ID is `skills/<name>`.
-- **LEVEL:** `required`, `recommended`, or `offered`, or `-` for a skill from a repository that isn't a library, or an authored skill.
+- **LEVEL:** the level the library sets, `required`, `recommended`, or `offered`; `dependency` for a skill the library installs only with the skills that call it; or `-` for an authored skill or a skill from a repository that isn't a library.
 - **SET BY:** the library and the library release, or the commit, whose manifest set the level; `not a library` for a source without a manifest; or `this project` for an authored skill.
 - **STATUS:** `installed` for a skill the project installs, whether included, required, or used by another installed skill; `excluded` for one `skills.exclude` leaves out, by ID or by level; `replaced by` and the fork that `skills.forks` installs in its place; and `available` for one a source offers that the project doesn't install.
 
-Source skills are sorted by project ID, and authored skills follow them. To install an available skill, add it to that source's `skills.include` and run `trailguide project sync`.
+Source skills are sorted by project ID, and authored skills follow them. To install an available skill, add it to that source's `skills.include` and run `trailguide project sync`. A `dependency` can't be included on its own: include a skill that calls it instead.
 
 JSON output lists the skills in `value.skills`, each with its `id`, `status`, and, where they apply, `source`, `level`, `setBy` (the `source`, `release`, and `commit` that set the level), and `replacedBy`.
 
@@ -461,7 +461,7 @@ Copy a skill from a source the library declares into `.trailguide/skills/`, so t
 The command:
 
 1. Copies the skill's folder from the source's repository, with every file's executable bit, to `.trailguide/skills/<name>/`, where `<name>` is the skill's name, or the name the source's `skills.rename` gives it. It reads the source as library check does, so it needs access to the repository.
-2. Rewrites the fork's `trailguide-skills-used` so each skill it uses, including those the source's `skills.uses` adds for it, names the library's fork of it, such as `skills/tdd`, when the library has forked it, and otherwise names it as a skill the library [curates](/reference/configuration/#curated-skills), with the source's name, such as `pstack:skills/tdd`. Projects install a curated skill only when `library.skills` lists it, so a skill that uses one the library neither forked nor lists is refused: list that skill in `library.skills`, at any level, or fork it first. A skill that cites rules of a library source is forked as a draft for you to remove them from, because a library's skills cite only its own rules.
+2. Rewrites the fork's `trailguide-skills-used` so each skill it uses, including those the source's `skills.uses` adds for it, names the library's fork of it, such as `skills/tdd`, when the library has forked it, and otherwise names it as a skill the library [curates](/reference/configuration/#curated-skills), with the source's name, such as `pstack:skills/tdd`. Projects install a curated skill only when `library.skills` lists it, so a skill that uses one the library neither forked nor lists is refused: list that skill in `library.skills`, at a level or as a dependency, or fork it first. A skill that cites rules of a library source is forked as a draft for you to remove them from, because a library's skills cite only its own rules.
 3. Adds a [`skills.forks`](/reference/configuration/#fork-a-skill) entry for the skill to the source, with `skills/<name>` as `as`, the full commit SHA it copied as `basedOn`, and your reason. The library repository is a project too, so the entry records where the fork came from the way a [project's fork](#fork-a-skill) does, and the library's own agents use the fork in place of the source's skill. The source needs no `skills.include` entry for the skill.
 4. When `library.skills` lists the skill as one the library curates, such as `pstack:pstack/skills/show-me-your-work`, lists `skills/<name>` in its place, at the same level. Otherwise the fork is offered.
 

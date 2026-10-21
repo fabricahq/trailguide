@@ -109,3 +109,47 @@ func TestLibraryCheck_RejectsACuratedSkillThatInstallsWithTheNameOfItsOwn(t *tes
 		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
 	}
 }
+
+func TestLibraryCheck_RequiresEveryCuratedDependencyToBeUsed(t *testing.T) {
+	ctx := context.Background()
+	pocock, err := gitfixture.New(ctx, map[string][]byte{
+		"skills/spec/SKILL.md":      []byte("---\nname: spec\ndescription: Write a spec.\nmetadata:\n  trailguide-skills-used: |\n    skills/interview\n---\n# Spec\n"),
+		"skills/interview/SKILL.md": []byte("---\nname: interview\ndescription: Interview the user.\n---\n# Interview\n"),
+		"skills/grill/SKILL.md":     []byte("---\nname: grill\ndescription: Grill a plan.\n---\n# Grill\n"),
+		"skills/unused/SKILL.md":    []byte("---\nname: unused\ndescription: Do nothing.\n---\n# Unused\n"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = pocock.Close() })
+	environment, err := pocock.Route(map[string]*gitfixture.Fixture{"pocock": pocock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(dependencies string) (string, string, int) {
+		t.Helper()
+		directory := t.TempDir()
+		files := map[string]string{
+			".trailguide/config.yaml":               "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: main\nlibrary:\n  skills:\n    offered: [skills/add-skill, pocock:skills/spec]\n    dependencies: [" + dependencies + "]\n",
+			".trailguide/skills/add-skill/SKILL.md": "---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  trailguide-skills-used: |\n    pocock:skills/grill\n---\n# Add a skill\n",
+		}
+		for name, text := range files {
+			file := filepath.Join(directory, name)
+			if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(file, []byte(text), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "check")
+	}
+	// add-skill uses grill, and the curated spec uses interview in its own repository.
+	if out, diagnostic, code := check("pocock:skills/grill, pocock:skills/interview"); code != 0 || !strings.Contains(out, "Library is valid") {
+		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
+	}
+	out, diagnostic, code := check("pocock:skills/grill, pocock:skills/unused")
+	if want := "library.skills.dependencies lists pocock:skills/unused, but no skill of the library names it"; code == 0 || !strings.Contains(out+diagnostic, want) {
+		t.Fatalf("exit %d; want %q:\n%s%s", code, want, out, diagnostic)
+	}
+}
