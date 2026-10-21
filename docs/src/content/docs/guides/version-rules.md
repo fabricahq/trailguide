@@ -4,7 +4,7 @@ description: "How rules and skills change, how their versions describe those cha
 ---
 
 :::caution[Preview]
-Skill versions and skill change notes aren't implemented yet. Trail Guide versions rules and requires change notes for rule changes after the first library release.
+Projects don't read skill versions yet. `trailguide library change`, `library check`, and `library release` version skills as this page describes, but `trailguide project sync` and `project update` don't yet show a skill's version or change summaries, or warn about a library release without a `skills` field.
 :::
 
 Rules change over time. Some changes are small: an author fixes a typo, rewords a confusing sentence, or adds an example. Others are large: a rule becomes stricter, starts requiring something it previously only recommended, or is retired entirely.
@@ -259,7 +259,9 @@ A skill can only be replaced by a skill, and a rule only by a rule. Remove the r
 
 ### Change a shared file, rule group description, or skill level
 
-Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-format/#skill-levels), are library-wide files. They aren't part of any rule version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed.
+Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-format/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
+
+The release notes still name a skill whose level changes, such as offered to recommended, and a skill that becomes a fork or whose fork moves to another `basedOn` commit, so projects can see what the change means for them, even when the skill's files didn't change.
 
 A project receives library-wide files from one library release at a time. `trailguide project update` moves them to the newest library release, even when no rule moves, so a library release that changes only shared files reaches projects with their next update. A project that adds your library as a source gets them from the newest library release; one that only includes more of it keeps the library release it recorded.
 
@@ -293,14 +295,15 @@ Pending library release 3
   practices/testing/verify-retry-limits  minor  1.2.0 -> 1.3.0
 ```
 
-When you changed library-wide files, such as a rule group description, the preview lists them under `Library-wide files changed since release/2:`, so you know the next library release publishes them even if no rule changed. Pending skill changes appear in the same list, by their skill IDs:
+When you changed library-wide files, such as a rule group description, the preview lists them under `Library-wide files changed since release/2:`, so you know the next library release publishes them even if no rule changed. Pending skill changes appear in the same list, by their skill IDs, after the rules, with each skill's level. A skill whose level changed, or that became a fork or whose fork moved to another `basedOn` commit, appears too, with `-` for its change when its files didn't change:
 
 ```text
 Library is valid: 3 group(s), 6 rule(s), 3 skill(s).
 
 Pending library release 5
-  skills/build-feature  major    1.3.0 -> 2.0.0
-  skills/fix-bug        new      1.0.0
+  skills/build-feature  major    1.3.0 -> 2.0.0, required
+  skills/fix-bug        new      1.0.0, recommended
+  skills/review-tests   -        1.1.0, now recommended, was offered
   skills/triage-bug     retired  1.2.0, replaced by skills/fix-bug
 ```
 
@@ -378,7 +381,7 @@ This library release also updates shared files, such as group descriptions or sh
 
 Trail Guide generates all of it from the change notes and the library's changes: the counts, the sections, which appear only when they have entries, the versions, a sentence saying the library release also updates shared files when it does, except in the first library release, which adds them all, and the table. The notes never list shared files by name; the tag's release record does. A library release that changes no rules opens by saying it updates shared files instead. Each summary is copied from its note, as an item under its rule. Every paragraph and list item is one line, because GitHub shows each line break in a GitHub Release page as a new line. The only judgment in it is yours, recorded in the notes before publishing: each change level, summary, and replacement.
 
-A library release that changes skills lists them in a **Skills** section of their own, after the rule sections, and adds a table of every skill's version. For a library release that changes only skills, the page looks like this:
+A library release that changes skills lists them in a **Skills** section of their own, after the rule sections, and adds a table of every skill's version. For a library release that changes only skills, and raises one skill's level, the page looks like this:
 
 ```md wrap
 Library release 5 changes 3 skills: 1 new, 1 major, and 1 retired.
@@ -387,12 +390,15 @@ Library release 5 changes 3 skills: 1 new, 1 major, and 1 retired.
 
 A major skill change can change what the skill produces or requires, so review these before updating.
 
-- **skills/fix-bug** `1.0.0`, new
+- **skills/fix-bug** `1.0.0`, new, recommended
   - Add a playbook for fixing a reported bug with a regression test.
-- **skills/build-feature** `1.3.0` → `2.0.0`, major
+- **skills/build-feature** `1.3.0` → `2.0.0`, major, required
   - Require an agreed design before the first slice.
 - **skills/triage-bug**, last version `1.2.0`, retired, replaced by **skills/fix-bug**
   - Covered by the fix-bug playbook, which also writes the regression test.
+- **skills/review-tests** `1.1.0`, now recommended, was offered
+
+This library release also updates shared files, such as group descriptions or shared assets.
 
 <details>
 <summary>All rule versions in this library release</summary>
@@ -420,7 +426,7 @@ A major skill change can change what the skill produces or requires, so review t
 </details>
 ```
 
-Skills are listed in the order new, major, minor, patch, and retired, each labeled with its change. When a library release changes both rules and skills, its opening line counts the rule changes as before and adds a sentence for the skills, such as `It also changes 2 skills: 1 new and 1 minor.`
+Each skill is labeled with its change and its level, such as `recommended`, or `now recommended, was offered` when the level changed. A skill that forks a source's skill, when it's new or newly a fork, adds the source skill and the commit it's based on, such as forked from **dzhng:skills/engineering/ratchet-files** at `8105a34`, and one whose fork moved to another `basedOn` commit names both commits. Skills are listed in the order new, major, minor, patch, and retired, followed by skills whose only change is their level or fork. When a library release changes both rules and skills, its opening line counts the rule changes as before and adds a sentence for the skills, such as `It also changes 2 skills: 1 new and 1 minor.` The first library release counts its skills beside its rules, such as `Library release 1 publishes 6 rules and 3 skills.`
 
 To add a general message, such as an introduction to what this library release is about, edit the GitHub Release page on GitHub. The page is only the announcement. The tag message keeps the generated text, and it's what projects read when they update.
 

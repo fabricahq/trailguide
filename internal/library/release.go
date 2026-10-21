@@ -40,10 +40,12 @@ type ReleaseResult struct {
 	Tag string `json:"tag,omitempty"`
 	// Published reports that the remote already had the tag, on this commit, before this run.
 	Published bool `json:"published"`
-	// Rules lists each rule the library release changes, adds, or retires, sorted by ID.
-	Rules        []PendingRule `json:"rules"`
-	LibraryFiles []string      `json:"libraryFiles"`
-	Notes        string        `json:"notes,omitempty"`
+	// Rules lists each rule the library release changes, adds, or retires, sorted by ID, and Skills each skill, as
+	// PendingRelease does; Skills names levels and forks only for a library release this run plans.
+	Rules        []PendingRule  `json:"rules"`
+	Skills       []PendingSkill `json:"skills"`
+	LibraryFiles []string       `json:"libraryFiles"`
+	Notes        string         `json:"notes,omitempty"`
 	// TagCreated reports that this run pushed the tag to the remote, creating it first unless an interrupted
 	// run left it in the clone.
 	TagCreated bool `json:"tagCreated"`
@@ -96,7 +98,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	if err != nil {
 		return ReleaseResult{}, err
 	}
-	result := ReleaseResult{Repository: displayRepository(branch.pushURL), Remote: branch.remote, Branch: branch.branch, GitHubRepository: gitHubRepository(branch.pushURL), DryRun: request.DryRun, Rules: []PendingRule{}, LibraryFiles: []string{}, ForkedSkills: []ForkedSkill{}}
+	result := ReleaseResult{Repository: displayRepository(branch.pushURL), Remote: branch.remote, Branch: branch.branch, GitHubRepository: gitHubRepository(branch.pushURL), DryRun: request.DryRun, Rules: []PendingRule{}, Skills: []PendingSkill{}, LibraryFiles: []string{}, ForkedSkills: []ForkedSkill{}}
 	remote, err := git.readRemote(ctx, branch)
 	if err != nil {
 		return ReleaseResult{}, err
@@ -141,7 +143,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	switch latest := checked.changes.history.latest; {
 	case unpushed == 0 && latest != nil && latest.commit == result.Commit:
 		// The remote already has this commit's library release; finish only what's missing.
-		describe(&result, latest.record, latest.notes)
+		describe(&result, latest.record, latest.notes, skillContext{})
 		result.Published = true
 		object = latest.object
 		if err = requireGitHubCLI(); err != nil {
@@ -159,7 +161,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 			if err = git.requireUnpublishedTag(ctx, unpushedTag, planned); err != nil {
 				return ReleaseResult{}, err
 			}
-			describe(&result, planned.record, planned.notes)
+			describe(&result, planned.record, planned.notes, checked.skills)
 			object = unpushedTag.Object
 			if err = requireGitHubCLI(); err != nil {
 				return ReleaseResult{}, err
@@ -169,7 +171,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 		if planned.empty {
 			return result, nil
 		}
-		describe(&result, planned.record, planned.notes)
+		describe(&result, planned.record, planned.notes, checked.skills)
 		// tagger stays empty on a dry run, which slightly underestimates the tag's size.
 		var tagger string
 		if !request.DryRun {
@@ -222,7 +224,8 @@ type plannedRelease struct {
 	record  trailguide.ReleaseRecord
 	notes   string
 	message []byte
-	// empty reports that the commit changes no rules and no library-wide files, so there's nothing to publish.
+	// empty reports that the commit changes no rules, no skills, and no library-wide files, so there's nothing to
+	// publish.
 	empty bool
 }
 
@@ -234,7 +237,7 @@ func planRelease(ctx context.Context, git *libraryGit, checked checkedLibrary, h
 		return plannedRelease{}, err
 	}
 	planned := plannedRelease{record: checked.plan.record(libraryFiles), empty: checked.plan.empty() && len(libraryFiles) == 0}
-	planned.notes = renderReleaseNotes(planned.record)
+	planned.notes = renderReleaseNotes(planned.record, checked.skills)
 	if planned.message, err = releaseMessage(planned.notes, planned.record); err != nil {
 		return plannedRelease{}, err
 	}
@@ -265,11 +268,12 @@ func (g *libraryGit) requireUnpublishedTag(ctx context.Context, tag releasetag.T
 	return failure("release-tag-mismatch", name+" exists only in this clone, and it isn't the library release this commit publishes: its release notes or record differ from what trailguide library release computes from the change notes since the remote's latest library release. Only trailguide library release creates release tags; delete this one with git tag --delete "+name+", then run trailguide library release again.", nil)
 }
 
-// describe fills in what a library release publishes.
-func describe(result *ReleaseResult, record trailguide.ReleaseRecord, notes string) {
+// describe fills in what a library release publishes, with the skill levels and forks of skills.
+func describe(result *ReleaseResult, record trailguide.ReleaseRecord, notes string, skills skillContext) {
 	result.Release = record.Release
 	result.Tag = "release/" + strconv.Itoa(record.Release)
 	result.Rules = releaseRules(record)
+	result.Skills = releaseSkills(record, skills)
 	result.LibraryFiles = record.LibraryFiles
 	result.Notes = notes
 }

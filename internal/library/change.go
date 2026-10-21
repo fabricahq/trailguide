@@ -1,4 +1,4 @@
-// Record rule changes as new change notes in .trailguide/changes/, and read the notes library check compares.
+// Record rule and skill changes as new change notes in .trailguide/changes/, and read the notes library check compares.
 
 package library
 
@@ -23,6 +23,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -33,17 +34,19 @@ const changesDirectory = "changes"
 // maxNoteNameAttempts bounds the random suffixes tried for a note name that isn't taken.
 const maxNoteNameAttempts = 100
 
-// ChangeRequest describes a new change note for one or more rules.
+// ChangeRequest describes a new change note for one or more rules and skills.
 type ChangeRequest struct {
-	// IDs are library rule IDs, such as practices/testing/verify-retry-limits, in the order given.
+	// IDs are library rule IDs, such as practices/testing/verify-retry-limits, and skill IDs, such as
+	// skills/build-feature, in the order given.
 	IDs []string
 	// Bump is major, minor, or patch for rules that have a version, and empty for new or retired rules.
 	Bump trailguide.Change
 	// Summary is one line for project maintainers; for a retirement, it explains why.
 	Summary string
-	// Retire records that the rules were retired; their Markdown files must already be gone.
+	// Retire records that the rules and skills were retired; their Markdown files and folders must already be gone.
 	Retire bool
-	// ReplacedBy names the replacement of a single retired rule, and is empty when nothing replaces it.
+	// ReplacedBy names the replacement of a single retired rule or skill, of the same kind, and is empty when nothing
+	// replaces it.
 	ReplacedBy string
 }
 
@@ -52,13 +55,13 @@ type ChangeRequest struct {
 type ChangePlan struct {
 	request ChangeRequest
 	options Options
-	// Versioned reports that the rules have versions, so the note needs a major, minor, or patch change.
+	// Versioned reports that the rules and skills have versions, so the note needs a major, minor, or patch change.
 	Versioned bool
 }
 
 // PlanChange checks a request before prompts supply a missing Bump or Summary. It fails before the first
-// library release, when rules need no notes; for an ID that isn't a rule, unless it's a published rule being
-// retired; and when Bump is given for new or retired rules.
+// library release, when rules and skills need no notes; for an ID that isn't a rule or skill, unless it's a published
+// one being retired; and when Bump is given for new or retired ones.
 func PlanChange(ctx context.Context, request ChangeRequest, options Options) (*ChangePlan, error) {
 	directory, err := filepath.Abs(options.Directory)
 	if err != nil {
@@ -78,7 +81,7 @@ func PlanChange(ctx context.Context, request ChangeRequest, options Options) (*C
 }
 
 // Commit writes a new, uniquely named note, such as .trailguide/changes/2026-09-29-verify-retry-limits-7f3a9c.yaml, named
-// by date's calendar day, the first rule, and a random suffix, so notes written on different branches don't
+// by date's calendar day, the first rule or skill, and a random suffix, so notes written on different branches don't
 // collide. It never edits or deletes an existing note, and revalidates the complete request under writer ownership.
 // A retirement whose replacement isn't a rule yet succeeds with a warning.
 func (p *ChangePlan) Commit(ctx context.Context, bump trailguide.Change, summary string, date time.Time) (AuthoringResult, error) {
@@ -124,19 +127,67 @@ func (p *ChangePlan) Commit(ctx context.Context, bump trailguide.Change, summary
 	})
 	result, err := authoringResult(changes, err)
 	if err == nil && missingReplacement {
-		result.Warnings = append(result.Warnings, request.ReplacedBy+" isn't a rule in the library yet. Add it before the next library release.")
+		result.Warnings = append(result.Warnings, request.ReplacedBy+" isn't a "+changeKindOf(request.ReplacedBy).noun+" in the library yet. Add it before the next library release.")
 	}
 	return result, err
 }
 
-// replacementMissing reports whether a retirement names a replacement that isn't a rule in the library yet. The
-// note is still valid: the replacement only has to exist by the time a library release publishes the retirement.
+// replacementMissing reports whether a retirement names a replacement that isn't a rule, or skill, in the library
+// yet. The note is still valid: the replacement only has to exist by the time a library release publishes the
+// retirement.
 func replacementMissing(root *os.Root, replacement string) (bool, error) {
 	if replacement == "" {
 		return false, nil
 	}
-	exists, err := ruleExists(root, replacement)
+	exists, err := changeKindOf(replacement).exists(root, replacement)
 	return !exists, err
+}
+
+// changeKind is how library change treats the IDs of one kind of versioned item, rules or skills.
+type changeKind struct {
+	noun string
+	// exists reports whether the item is in the working tree, and leftover whether files of a deleted one remain,
+	// which removal names.
+	exists, leftover func(root *os.Root, id string) (bool, error)
+	removal          func(id string) string
+}
+
+var (
+	ruleChange = changeKind{noun: "rule", exists: ruleExists, leftover: assetDirectoryExists, removal: func(id string) string {
+		return id + "'s asset directory, " + rules.RuleAssetDirectory(id+".md") + ", still exists. Delete it before recording the retirement."
+	}}
+	skillChange = changeKind{noun: "skill", exists: skillExists, leftover: skillFolderExists, removal: func(id string) string {
+		return id + "'s folder, " + skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/") + "/, still exists. Delete it before recording the retirement."
+	}}
+)
+
+// changeKindOf returns how library change treats id: a skill ID starts with skills/, and every other ID is a rule's.
+func changeKindOf(id string) changeKind {
+	if strings.HasPrefix(id, skills.Directory+"/") {
+		return skillChange
+	}
+	return ruleChange
+}
+
+// skillExists reports whether skill id's SKILL.md is an ordinary file in the library.
+func skillExists(root *os.Root, id string) (bool, error) {
+	info, err := root.Lstat(skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/") + "/" + skills.File)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.Mode().IsRegular(), nil
+}
+
+// skillFolderExists reports whether skill id's folder exists, with or without a SKILL.md.
+func skillFolderExists(root *os.Root, id string) (bool, error) {
+	_, err := root.Lstat(skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/"))
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // checkChange validates a request against the working tree and the latest library release reachable from HEAD.
@@ -161,30 +212,47 @@ func checkChange(ctx context.Context, root *os.Root, options Options, request Ch
 	}
 	var versioned, unversioned []string
 	for _, id := range request.IDs {
-		exists, err := ruleExists(root, id)
+		kind := changeKindOf(id)
+		exists, err := kind.exists(root, id)
 		if err != nil {
 			return false, nil, err
 		}
-		assets, err := assetDirectoryExists(root, id)
+		leftover, err := kind.leftover(root, id)
 		if err != nil {
 			return false, nil, err
 		}
-		_, published := history.latest.record.Rules[id]
-		release, retired := history.retired[id]
+		var published bool
+		var release int
+		var retired bool
+		if kind.noun == "skill" {
+			if base := history.skills; base != nil {
+				_, published = base.record.Versions[id]
+			}
+			release, retired = history.retiredSkills[id]
+		} else {
+			_, published = history.latest.record.Rules[id]
+			release, retired = history.retired[id]
+		}
 		switch {
+		case request.Retire && exists && kind.noun == "skill":
+			return false, nil, failure("invalid-change", id+" still exists. Delete its folder before recording its retirement.", nil)
 		case request.Retire && exists:
 			return false, nil, failure("invalid-change", id+" still exists. Delete its Markdown file and asset directory before recording its retirement.", nil)
-		case request.Retire && assets:
-			return false, nil, failure("invalid-change", id+"'s asset directory, "+rules.RuleAssetDirectory(id+".md")+", still exists. Delete it before recording the retirement.", nil)
+		case request.Retire && leftover:
+			return false, nil, failure("invalid-change", kind.removal(id), nil)
 		case request.Retire && retired:
 			return false, nil, failure("invalid-change", id+" was already retired by release/"+strconv.Itoa(release)+".", nil)
+		case request.Retire && !published && kind.noun == "skill":
+			return false, nil, failure("invalid-change", id+" was never published, so it can't be retired. Delete its folder, and remove it from any pending note.", nil)
 		case request.Retire && !published:
 			return false, nil, failure("invalid-change", id+" was never published, so it can't be retired. Delete its Markdown file, and remove it from any pending note.", nil)
 		case request.Retire:
+		case !exists && kind.noun == "skill":
+			return false, nil, failure("unknown-skill", unknownSkill(id, published), nil)
 		case !exists:
 			return false, nil, failure("unknown-rule", unknownRule(id, published), nil)
 		case retired:
-			return false, nil, failure("invalid-change", id+" reuses the ID of a rule that release/"+strconv.Itoa(release)+" retired. Retired IDs can't be reused; give the rule a new ID.", nil)
+			return false, nil, failure("invalid-change", id+" reuses the ID of a "+kind.noun+" that release/"+strconv.Itoa(release)+" retired. Retired IDs can't be reused; give the "+kind.noun+" a new ID.", nil)
 		case published:
 			versioned = append(versioned, id)
 		default:
@@ -193,37 +261,80 @@ func checkChange(ctx context.Context, root *os.Root, options Options, request Ch
 	}
 	switch {
 	case len(versioned) > 0 && len(unversioned) > 0:
-		return false, nil, failure("invalid-arguments", "--bump is required for rules that have a version ("+strings.Join(versioned, ", ")+") and not accepted for new rules ("+strings.Join(unversioned, ", ")+"). Record them in separate notes.", nil)
+		return false, nil, failure("invalid-arguments", "--bump is required for "+nouns(versioned)+" that have a version ("+strings.Join(versioned, ", ")+") and not accepted for new "+nouns(unversioned)+" ("+strings.Join(unversioned, ", ")+"). Record them in separate notes.", nil)
 	case request.Bump != "" && request.Retire:
-		return false, nil, failure("invalid-arguments", "--bump isn't accepted for retired rules.", nil)
+		return false, nil, failure("invalid-arguments", "--bump isn't accepted for retired "+nouns(request.IDs)+".", nil)
 	case request.Bump != "" && len(unversioned) > 0:
-		return false, nil, failure("invalid-arguments", "--bump isn't accepted for new rules, which start at version 1.0.0: "+strings.Join(unversioned, ", ")+".", nil)
+		return false, nil, failure("invalid-arguments", "--bump isn't accepted for new "+nouns(unversioned)+", which start at version 1.0.0: "+strings.Join(unversioned, ", ")+".", nil)
 	}
-	if err := requireChanged(ctx, root, git, history.latest, versioned); err != nil {
+	if err := requireChanged(ctx, root, git, history, versioned); err != nil {
 		return false, nil, err
 	}
 	return len(versioned) > 0, history.latest.files, nil
 }
 
-// requireChanged refuses a note for a published rule whose versioned content is unchanged since the latest library
-// release, which library check would reject as stale. It compares the same files, the same way, as check does.
-func requireChanged(ctx context.Context, root *os.Root, git *libraryGit, latest *publishedRelease, ids []string) error {
-	working := map[string][]string{}
+// nouns names what ids are, in the plural: rules, skills, or rules and skills.
+func nouns(ids []string) string {
+	hasRules, hasSkills := false, false
 	for _, id := range ids {
+		if changeKindOf(id).noun == "skill" {
+			hasSkills = true
+		} else {
+			hasRules = true
+		}
+	}
+	switch {
+	case hasRules && hasSkills:
+		return "rules and skills"
+	case hasSkills:
+		return "skills"
+	}
+	return "rules"
+}
+
+// requireChanged refuses a note for a published rule or skill whose versioned content is unchanged since the library
+// release its version comes from, which library check would reject as stale. It compares the same files, the same
+// way, as check does.
+func requireChanged(ctx context.Context, root *os.Root, git *libraryGit, history releaseHistory, ids []string) error {
+	working := map[string][]string{}
+	var folders []string
+	for _, id := range ids {
+		if changeKindOf(id).noun == "skill" {
+			folders = append(folders, strings.TrimPrefix(id, skills.Directory+"/"))
+			continue
+		}
 		files, err := ruleWorkingFiles(root, id)
 		if err != nil {
 			return err
 		}
 		working[id] = files
 	}
-	changed, err := git.changedRules(ctx, latest, working)
+	changed, err := git.changedRules(ctx, history.latest, working)
 	if err != nil {
 		return err
 	}
-	for _, id := range ids {
-		if !changed[id] {
-			return failure("unchanged-rule", id+" hasn't changed since "+latest.tagName()+". Edit the rule first, then record the change.", nil)
+	if len(folders) > 0 {
+		tree, err := filetxn.ReadTree(ctx, root, skillsDirectory)
+		if err != nil {
+			return err
 		}
+		changedSkills, err := git.changedSkills(ctx, history.skills.files, tree, folders)
+		if err != nil {
+			return err
+		}
+		for _, folder := range folders {
+			changed[skills.AuthoredID(folder)] = changedSkills[folder]
+		}
+	}
+	for _, id := range ids {
+		if changed[id] {
+			continue
+		}
+		since := history.latest.tagName()
+		if changeKindOf(id).noun == "skill" {
+			since = history.skills.tagName()
+		}
+		return failure("unchanged-"+changeKindOf(id).noun, id+" hasn't changed since "+since+". Edit the "+changeKindOf(id).noun+" first, then record the change.", nil)
 	}
 	return nil
 }
@@ -253,10 +364,10 @@ func ruleWorkingFiles(root *os.Root, id string) ([]string, error) {
 // validateRequest checks the request's own consistency, independently of the library.
 func validateRequest(request ChangeRequest) error {
 	if len(request.IDs) == 0 {
-		return failure("invalid-arguments", "name at least one rule", nil)
+		return failure("invalid-arguments", "name at least one rule or skill", nil)
 	}
 	for i, id := range request.IDs {
-		if err := librarytree.ValidateRuleID(id, "ID"); err != nil {
+		if err := validateChangeID(id, "ID"); err != nil {
 			return err
 		}
 		if slices.Contains(request.IDs[:i], id) {
@@ -270,25 +381,37 @@ func validateRequest(request ChangeRequest) error {
 	}
 	if request.ReplacedBy != "" {
 		if !request.Retire || len(request.IDs) != 1 {
-			return failure("invalid-arguments", "--replaced-by requires --retire and a single rule", nil)
+			return failure("invalid-arguments", "--replaced-by requires --retire and a single rule or skill", nil)
 		}
-		if err := librarytree.ValidateRuleID(request.ReplacedBy, "--replaced-by"); err != nil {
+		if err := validateChangeID(request.ReplacedBy, "--replaced-by"); err != nil {
 			return err
 		}
+		retired, replacement := changeKindOf(request.IDs[0]).noun, changeKindOf(request.ReplacedBy).noun
+		if retired != replacement {
+			return failure("invalid-arguments", "a "+replacement+" can't replace a "+retired+"; --replaced-by names a "+retired, nil)
+		}
 		if request.ReplacedBy == request.IDs[0] {
-			return failure("invalid-arguments", "a rule can't replace itself", nil)
+			return failure("invalid-arguments", "a "+retired+" can't replace itself", nil)
 		}
 	}
 	return nil
 }
 
-// requireComplete requires a summary, and a bump exactly when the rules have versions.
+// validateChangeID checks the syntax of a skill ID, which starts with skills/, or of a rule ID.
+func validateChangeID(id, location string) error {
+	if changeKindOf(id).noun == "skill" {
+		return rules.ValidateSkillID(id, location)
+	}
+	return librarytree.ValidateRuleID(id, location)
+}
+
+// requireComplete requires a summary, and a bump exactly when the rules and skills have versions.
 func requireComplete(request ChangeRequest, versioned bool) error {
 	if strings.TrimSpace(request.Summary) == "" {
 		return failure("invalid-arguments", "--summary is required", nil)
 	}
 	if versioned && request.Bump == "" {
-		return failure("invalid-arguments", "--bump is required for rules that have a version: major, minor, or patch", nil)
+		return failure("invalid-arguments", "--bump is required for "+nouns(request.IDs)+" that have a version: major, minor, or patch", nil)
 	}
 	return nil
 }
@@ -325,6 +448,17 @@ func unknownRule(id string, published bool) string {
 	return message
 }
 
+// unknownSkill explains a missing skill, suggesting a retirement for a published skill.
+func unknownSkill(id string, published bool) string {
+	message := id + " isn't a skill in the library."
+	if published {
+		message += " To record its retirement, add --retire."
+	} else {
+		message += " Add its folder, with a SKILL.md, in " + skillsDirectory + "/."
+	}
+	return message
+}
+
 // noteName returns the library path changes/<date>-<rule name>-<suffix>.yaml, drawing another suffix when that name
 // exists in the working tree or was published by the latest library release.
 func noteName(root *os.Root, id string, date time.Time, published map[string]string, suffix func() (string, error)) (string, error) {
@@ -357,10 +491,11 @@ func randomNoteSuffix() (string, error) {
 	return hex.EncodeToString(random[:]), nil
 }
 
-// renderNote writes the note's YAML and parses it back, so the command never writes a note check rejects.
+// renderNote writes the note's YAML, with rules before skills, and parses it back, so the command never writes a
+// note check rejects.
 func renderNote(request ChangeRequest, versioned bool, name string) ([]byte, error) {
 	text := func(value string) *yaml.Node { return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value} }
-	entries := &yaml.Node{Kind: yaml.MappingNode}
+	ruleEntries, skillEntries := &yaml.Node{Kind: yaml.MappingNode}, &yaml.Node{Kind: yaml.MappingNode}
 	for _, id := range slices.Sorted(slices.Values(request.IDs)) {
 		var change *yaml.Node
 		switch {
@@ -373,9 +508,19 @@ func renderNote(request ChangeRequest, versioned bool, name string) ([]byte, err
 		default:
 			change = text(string(trailguide.ChangeNew))
 		}
+		entries := ruleEntries
+		if changeKindOf(id).noun == "skill" {
+			entries = skillEntries
+		}
 		entries.Content = append(entries.Content, text(id), change)
 	}
-	document := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{text("summary"), text(strings.TrimSpace(request.Summary)), text("rules"), entries}}
+	document := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{text("summary"), text(strings.TrimSpace(request.Summary))}}
+	if len(ruleEntries.Content) > 0 {
+		document.Content = append(document.Content, text("rules"), ruleEntries)
+	}
+	if len(skillEntries.Content) > 0 {
+		document.Content = append(document.Content, text("skills"), skillEntries)
+	}
 	// A width of -1 keeps a long summary on one line.
 	out, err := yaml.Dump(document, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithLineWidth(-1))
 	if err != nil {

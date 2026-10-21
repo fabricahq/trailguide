@@ -86,7 +86,7 @@ func TestSkillProblemsReportsEachInvalidSkill(t *testing.T) {
 func TestCheck_RejectsASkillThatCitesARuleTheLibraryRetired(t *testing.T) {
 	ctx := context.Background()
 	fixture, options := authorClone(t, libraryFiles(), releaseOne)
-	edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\nmetadata:\n  trailguide-skill-type: playbook\n  trailguide-rules-used: |\n    practices/testing/a\n    practices/testing/b\n---\n# Fix\n"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\nmetadata:\n  trailguide-skill-type: playbook\n  trailguide-rules-used: |\n    practices/testing/a\n    practices/testing/b\n---\n# Fix\n", "changes/skills.yaml": "summary: Add fix.\nskills:\n  skills/fix: new\n"})
 	if _, err := Check(ctx, options); err != nil {
 		t.Fatalf("check rejected a valid skill: %v", err)
 	}
@@ -105,12 +105,13 @@ func TestCheck_RejectsASkillThatUsesASkillTheLibraryDoesntHave(t *testing.T) {
 	edit(t, options.Directory, map[string]string{
 		".trailguide/skills/fix/SKILL.md":    "---\nname: fix\nmetadata:\n  trailguide-skills-used: |\n    skills/review\n    skills/tdd\n---\n# Fix\n",
 		".trailguide/skills/review/SKILL.md": "---\nname: review\n---\n# Review\n",
+		"changes/skills.yaml":                "summary: Add fix and review.\nskills:\n  skills/fix: new\n  skills/review: new\n",
 	})
 	_, err := Check(ctx, options)
 	if errorCode(err) != "invalid-skill" || !strings.HasSuffix(err.Error(), "skills don't pass library check:\n  - skills/fix/SKILL.md: trailguide-skills-used names skills/tdd, which isn't a skill in this library") {
 		t.Fatalf("got %v; want invalid-skill naming the skill and the skill it uses", err)
 	}
-	edit(t, options.Directory, map[string]string{".trailguide/skills/tdd/SKILL.md": "---\nname: tdd\n---\n# TDD\n"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/tdd/SKILL.md": "---\nname: tdd\n---\n# TDD\n", "changes/tdd.yaml": "summary: Add tdd.\nskills:\n  skills/tdd: new\n"})
 	if _, err := Check(ctx, options); err != nil {
 		t.Fatalf("check rejected a skill that uses skills the library has: %v", err)
 	}
@@ -134,6 +135,7 @@ func TestCheck_WarnsOnlyAboutACodexInterfaceFileTheMetadataCanReplace(t *testing
 		".trailguide/skills/quiet/agents/openai.yaml":   "interface:\n  display_name: Quiet\npolicy:\n  allow_implicit_invocation: false\n",
 		".trailguide/skills/brand/SKILL.md":             "---\nname: brand\n---\n# Brand\n",
 		".trailguide/skills/brand/agents/openai.yaml":   "interface:\n  display_name: Brand\n  icon_small: ./assets/icon.svg\n",
+		"changes/skills.yaml":                           "summary: Add skills.\nskills:\n  skills/brand: new\n  skills/fix: new\n  skills/quiet: new\n",
 	})
 	result, err := Check(ctx, options)
 	if err != nil {

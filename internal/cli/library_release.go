@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -69,10 +70,17 @@ func libraryReleaseReport(result library.ReleaseResult, noGitHubRelease bool, sc
 		return commandReport{value: result, human: out.String()}
 	}
 	out.WriteString("\nRules:\n")
-	if len(result.Rules) == 0 {
+	switch {
+	case len(result.Rules) == 0 && len(result.Skills) == 0:
 		out.WriteString("  No rule changes, only library-wide files.\n")
+	case len(result.Rules) == 0:
+		out.WriteString("  No rule changes.\n")
 	}
 	formatPendingRules(&out, result.Rules)
+	if len(result.Skills) > 0 {
+		out.WriteString("Skills:\n")
+		formatPendingRows(&out, nil, result.Skills)
+	}
 	if len(result.LibraryFiles) > 0 {
 		out.WriteString("Library-wide files:\n")
 		for _, name := range result.LibraryFiles {
@@ -131,11 +139,51 @@ func pageStatus(result library.ReleaseResult, noGitHubRelease bool) string {
 
 // formatPendingRules aligns each rule's ID, change, and versions in columns.
 func formatPendingRules(out *strings.Builder, rules []library.PendingRule) {
+	formatPendingRows(out, rules, nil)
+}
+
+// formatPendingRows lists rules, then skills, in aligned columns: each ID, its change, and its versions, with a
+// skill's level and fork. A skill whose only change is its level or fork shows - for its change.
+func formatPendingRows(out *strings.Builder, rules []library.PendingRule, skills []library.PendingSkill) {
+	type row struct{ id, change, detail string }
+	rows := make([]row, 0, len(rules)+len(skills))
+	for _, rule := range rules {
+		rows = append(rows, row{rule.ID, string(rule.Change), pendingVersions(rule)})
+	}
+	for _, skill := range skills {
+		rows = append(rows, row{skill.ID, cmp.Or(string(skill.Change), "-"), pendingSkillDetail(skill)})
+	}
 	idWidth, changeWidth := 0, 0
-	for _, rule := range rules {
-		idWidth, changeWidth = max(idWidth, len(rule.ID)), max(changeWidth, len(rule.Change))
+	for _, row := range rows {
+		idWidth, changeWidth = max(idWidth, len(row.id)), max(changeWidth, len(row.change))
 	}
-	for _, rule := range rules {
-		fmt.Fprintf(out, "  %-*s  %-*s  %s\n", idWidth, rule.ID, changeWidth, rule.Change, pendingVersions(rule))
+	for _, row := range rows {
+		fmt.Fprintf(out, "  %-*s  %-*s  %s\n", idWidth, row.id, changeWidth, row.change, row.detail)
 	}
+}
+
+// pendingSkillDetail shows a pending skill's versions, as pendingVersions shows a rule's, then its level, or its
+// level change, and the source skill it newly forks or whose fork moved.
+func pendingSkillDetail(skill library.PendingSkill) string {
+	detail := pendingVersions(library.PendingRule{From: skill.From, To: skill.To, LastVersion: skill.LastVersion, ReplacedBy: skill.ReplacedBy})
+	switch {
+	case skill.PreviousLevel != "":
+		detail += ", now " + skill.Level + ", was " + skill.PreviousLevel
+	case skill.Level != "":
+		detail += ", " + skill.Level
+	}
+	if fork := skill.Fork; fork != nil {
+		source := fork.Source + ":" + fork.ID
+		switch {
+		case fork.Added && fork.BasedOn != "":
+			detail += ", forked from " + source + " at " + shortCommit(fork.BasedOn)
+		case fork.Added:
+			detail += ", forked from " + source
+		case fork.BasedOn != "":
+			detail += ", fork of " + source + " now based on " + shortCommit(fork.BasedOn)
+		default:
+			detail += ", fork of " + source + " no longer based on a commit"
+		}
+	}
+	return detail
 }

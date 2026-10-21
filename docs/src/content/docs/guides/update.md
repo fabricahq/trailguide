@@ -10,7 +10,7 @@ This guide starts with a full update and what it does to your [skills](#update-s
 You need a project that already takes rules or skills from at least one source; if yours doesn't yet, start with [Select rules](/guides/select-rules/) or [Install skills](/guides/install-skills/). If you're publishing new rule versions from a library you maintain, see [Version your rules](/guides/version-rules/). If you're looking for exactly which files each command writes, see [Sync and recovery](/reference/sync/).
 
 :::note[Preview]
-Skill versions and skill change notes aren't implemented yet: an update lists a library skill as changed or added, with its changed files, but without a version or summary.
+Projects don't read skill versions yet: libraries publish them, but an update lists a library skill as changed or added, with its changed files, without a version or summary.
 :::
 
 ## Sync and update

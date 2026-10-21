@@ -27,8 +27,10 @@ import (
 
 // CheckResult reports complete adoption counts, explicit licensing and change note caveats, and the next library release.
 type CheckResult struct {
-	GroupCount     int            `json:"groupCount"`
-	RuleCount      int            `json:"ruleCount"`
+	GroupCount int `json:"groupCount"`
+	RuleCount  int `json:"ruleCount"`
+	// SkillCount counts the library's own skills: the folders in .trailguide/skills/ with a SKILL.md.
+	SkillCount     int            `json:"skillCount"`
 	Warnings       []string       `json:"warnings"`
 	PendingRelease PendingRelease `json:"pendingRelease"`
 	// ForkedSkills lists, by source and then ID, the skills the library forked from its sources whose copies at the
@@ -68,13 +70,15 @@ func Check(ctx context.Context, options Options) (CheckResult, error) {
 	return checked.result, nil
 }
 
-// checkedLibrary is a library that passed library check: what check read, how its rules changed since the
-// latest library release, and what the next library release would publish.
+// checkedLibrary is a library that passed library check: what check read, how its rules and skills changed since
+// the latest library release, what the next library release would publish, and what its notes say about skill
+// levels and forks.
 type checkedLibrary struct {
 	result  CheckResult
 	input   checkInput
 	changes libraryChanges
 	plan    releasePlan
+	skills  skillContext
 }
 
 // checkLibrary validates the library under root and its change notes against git's library releases; a nil
@@ -112,12 +116,18 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		}
 	}
 	slices.Sort(current)
-	changes, warnings, err := git.compare(ctx, input.tree.Files, current, input.notes)
+	currentSkills := versionedSkills(input.skills)
+	result.SkillCount = len(currentSkills)
+	changes, warnings, err := git.compare(ctx, input.tree.Files, current, input.notes, input.skills, currentSkills)
 	if err != nil {
 		return checkedLibrary{}, err
 	}
 	if problems := changes.review(); len(problems) > 0 {
-		return checkedLibrary{}, failure("change-notes", "change notes don't match the rule changes since "+changes.history.latest.tagName()+":\n  - "+strings.Join(problems, "\n  - "), nil)
+		changed := "rule changes"
+		if len(currentSkills) > 0 || changes.history.skills != nil {
+			changed = "rule and skill changes"
+		}
+		return checkedLibrary{}, failure("change-notes", "change notes don't match the "+changed+" since "+changes.history.latest.tagName()+":\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
 	declaration, err := rules.ParseLibraryManifest(input.tree.Files[librarytree.Manifest], manifestPath)
 	if err != nil {
@@ -135,7 +145,11 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err != nil {
 		return checkedLibrary{}, err
 	}
-	result.PendingRelease = plan.preview()
+	skillNotes, err := git.releaseSkillContext(ctx, changes.history.latest, input.tree.Files[librarytree.Manifest], currentSkills)
+	if err != nil {
+		return checkedLibrary{}, err
+	}
+	result.PendingRelease = plan.preview(skillNotes)
 	if result.PendingRelease.LibraryFiles, err = git.pendingLibraryFiles(ctx, changes.history.latest, input.tree.Files, rules.LicensePaths(input.license)); err != nil {
 		return checkedLibrary{}, err
 	}
@@ -149,7 +163,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = ctx.Err(); err != nil {
 		return checkedLibrary{}, err
 	}
-	return checkedLibrary{result: result, input: input, changes: changes, plan: plan}, nil
+	return checkedLibrary{result: result, input: input, changes: changes, plan: plan, skills: skillNotes}, nil
 }
 
 // parseChangeNote validates one note's format.
@@ -158,16 +172,18 @@ func parseChangeNote(name string, data []byte) (pendingNote, error) {
 	return pendingNote{path: name, note: note}, err
 }
 
-// compare finds the notes added since the latest library release and the rules whose versioned content
-// differs from it, with a warning for each published note that was edited or deleted. It validates the format
-// of pending notes only: a published note's edits have no effect, so an invalid edit only warns. Before the first
-// library release every note is pending. A nil receiver has no history.
-func (g *libraryGit) compare(ctx context.Context, files map[string][]byte, current []string, notes map[string][]byte) (libraryChanges, []string, error) {
+// compare finds the notes added since the latest library release, the rules whose versioned content differs from
+// it, and the skills, currentSkills, whose folders in skillTree, the working tree's skills/ folder, differ from the newest
+// library release that records skills, with a warning for each published note that was edited or deleted and when
+// the latest library release has no skills field but an earlier one has. It validates the format of pending notes
+// only: a published note's edits have no effect, so an invalid edit only warns. Before the first library release
+// every note is pending. A nil receiver has no history.
+func (g *libraryGit) compare(ctx context.Context, files map[string][]byte, current []string, notes map[string][]byte, skillTree *filetxn.Tree, currentSkills []string) (libraryChanges, []string, error) {
 	history, err := g.history(ctx)
 	if err != nil {
 		return libraryChanges{}, nil, err
 	}
-	changes := libraryChanges{history: history, current: current, changed: map[string]bool{}}
+	changes := libraryChanges{history: history, current: current, changed: map[string]bool{}, currentSkills: currentSkills, changedSkills: map[string]bool{}}
 	latest := history.latest
 	published := map[string]string{}
 	if latest != nil {
@@ -199,6 +215,20 @@ func (g *libraryGit) compare(ctx context.Context, files map[string][]byte, curre
 	}
 	if changes.changed, err = g.changedRules(ctx, latest, working); err != nil {
 		return libraryChanges{}, nil, err
+	}
+	if base := history.skills; base != nil {
+		versioned := slices.DeleteFunc(slices.Clone(currentSkills), func(id string) bool { _, ok := base.record.Versions[id]; return !ok })
+		folders := skillFolders(versioned)
+		changed, err := g.changedSkills(ctx, base.files, skillTree, folders)
+		if err != nil {
+			return libraryChanges{}, nil, err
+		}
+		for i, id := range versioned {
+			changes.changedSkills[id] = changed[folders[i]]
+		}
+		if base.number != latest.number {
+			warnings = append(warnings, latest.tagName()+" has no skills field, because a Trail Guide without skill support published it. Skill versions come from "+base.tagName()+". Raise the Trail Guide version this library's CI uses before publishing skills.")
+		}
 	}
 	hashes, err := g.hashFiles(ctx, releasedNotes)
 	if err != nil {

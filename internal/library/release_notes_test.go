@@ -44,7 +44,7 @@ const guideNotes = "Library release 4 changes 4 rules: 1 new, 1 major, 1 minor, 
 
 // TestRenderReleaseNotes_MatchesTheGuideExample keeps the generated page and the guide's example identical.
 func TestRenderReleaseNotes_MatchesTheGuideExample(t *testing.T) {
-	if notes := renderReleaseNotes(guideRecord()); notes != guideNotes {
+	if notes := renderReleaseNotes(guideRecord(), skillContext{}); notes != guideNotes {
 		t.Fatalf("notes:\n%s\nwant:\n%s", notes, guideNotes)
 	}
 	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
@@ -53,6 +53,75 @@ func TestRenderReleaseNotes_MatchesTheGuideExample(t *testing.T) {
 	}
 	if !strings.Contains(string(guide), "```md wrap\n"+guideNotes+"\n```") {
 		t.Fatal("the version rules guide's example GitHub Release page differs from the rendered notes; update both together")
+	}
+}
+
+// guideSkillsRecord is the library release that changes only skills, which the version rules guide shows as a GitHub
+// Release page, and guideSkillsContext the levels its manifest gives them.
+func guideSkillsRecord() (trailguide.ReleaseRecord, skillContext) {
+	record := guideRecord()
+	record.Release, record.Changes, record.Retired, record.LibraryFiles = 5, nil, nil, []string{"config.yaml"}
+	record.Skills = &trailguide.SkillRecord{
+		Versions: map[string]trailguide.RuleVersion{"skills/build-feature": *version(2, 0, 0), "skills/fix-bug": *version(1, 0, 0), "skills/review-tests": *version(1, 1, 0)},
+		Changes: map[string]trailguide.RecordedChange{
+			"skills/build-feature": {Change: trailguide.ChangeMajor, From: version(1, 3, 0), Summaries: []string{"Require an agreed design before the first slice."}},
+			"skills/fix-bug":       {Change: trailguide.ChangeNew, Summaries: []string{"Add a playbook for fixing a reported bug with a regression test."}},
+		},
+		Retired: map[string]trailguide.RetiredRule{"skills/triage-bug": {LastVersion: *version(1, 2, 0), ReplacedBy: "skills/fix-bug", Summaries: []string{"Covered by the fix-bug playbook, which also writes the regression test."}}},
+	}
+	context := skillContext{
+		levels:         map[string]string{"skills/build-feature": "required", "skills/fix-bug": "recommended", "skills/review-tests": "recommended"},
+		previousLevels: map[string]string{"skills/build-feature": "required", "skills/fix-bug": "offered", "skills/review-tests": "offered"},
+	}
+	return record, context
+}
+
+// guideSkillsNotes is the example GitHub Release page of a library release that changes only skills in the version
+// rules guide.
+const guideSkillsNotes = "Library release 5 changes 3 skills: 1 new, 1 major, and 1 retired.\n\n## Skills\n\nA major skill change can change what the skill produces or requires, so review these before updating.\n\n- **skills/fix-bug** `1.0.0`, new, recommended\n  - Add a playbook for fixing a reported bug with a regression test.\n- **skills/build-feature** `1.3.0` → `2.0.0`, major, required\n  - Require an agreed design before the first slice.\n- **skills/triage-bug**, last version `1.2.0`, retired, replaced by **skills/fix-bug**\n  - Covered by the fix-bug playbook, which also writes the regression test.\n- **skills/review-tests** `1.1.0`, now recommended, was offered\n\nThis library release also updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/code-design/organize-code-by-feature | 1.1.0 |\n| practices/testing/verify-backoff | 1.3.0 |\n| practices/testing/verify-retries | 1.0.0 |\n| practices/testing/verify-retry-limits | 2.0.0 |\n| techs/react/prefer-server-components | 1.4.0 |\n| techs/react/test-hooks-in-isolation | 2.2.0 |\n\n</details>\n\n<details>\n<summary>All skill versions in this library release</summary>\n\n| Skill | Version |\n| --- | --- |\n| skills/build-feature | 2.0.0 |\n| skills/fix-bug | 1.0.0 |\n| skills/review-tests | 1.1.0 |\n\n</details>"
+
+// TestRenderReleaseNotes_MatchesTheGuideSkillsExample keeps the generated page of a library release that changes
+// only skills and the guide's example identical, and the record it publishes valid.
+func TestRenderReleaseNotes_MatchesTheGuideSkillsExample(t *testing.T) {
+	record, context := guideSkillsRecord()
+	if notes := renderReleaseNotes(record, context); notes != guideSkillsNotes {
+		t.Fatalf("notes:\n%s\nwant:\n%s", notes, guideSkillsNotes)
+	}
+	if _, err := releaseMessage(guideSkillsNotes, record); err != nil {
+		t.Fatal(err)
+	}
+	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(guide), "```md wrap\n"+guideSkillsNotes+"\n```") {
+		t.Fatal("the version rules guide's example GitHub Release page for skills differs from the rendered notes; update both together")
+	}
+}
+
+// TestRenderReleaseNotes_CountsSkillChangesBesideRuleChanges adds a sentence counting skill changes after the rule
+// count, counts the skills the first library release publishes, and says a release with no rule or skill changes
+// updates shared files.
+func TestRenderReleaseNotes_CountsSkillChangesBesideRuleChanges(t *testing.T) {
+	both := guideRecord()
+	both.Skills = &trailguide.SkillRecord{Versions: map[string]trailguide.RuleVersion{"skills/fix-bug": *version(1, 1, 0), "skills/new": *version(1, 0, 0)}, Changes: map[string]trailguide.RecordedChange{
+		"skills/fix-bug": {Change: trailguide.ChangeMinor, From: version(1, 0, 0), Summaries: []string{"Add a step."}},
+		"skills/new":     {Change: trailguide.ChangeNew, Summaries: []string{"Add it."}},
+	}}
+	first := trailguide.ReleaseRecord{Release: 1, Rules: map[string]trailguide.RuleVersion{}, Skills: &trailguide.SkillRecord{Versions: map[string]trailguide.RuleVersion{"skills/fix-bug": trailguide.FirstRuleVersion}, Changes: map[string]trailguide.RecordedChange{"skills/fix-bug": {Change: trailguide.ChangeNew, Summaries: []string{"Add the skill."}}}}}
+	unchanged := trailguide.ReleaseRecord{Release: 6, Rules: map[string]trailguide.RuleVersion{}, LibraryFiles: []string{"assets/a.svg"}, Skills: &trailguide.SkillRecord{Versions: map[string]trailguide.RuleVersion{"skills/fix-bug": trailguide.FirstRuleVersion}}}
+	for _, test := range []struct {
+		record trailguide.ReleaseRecord
+		want   string
+	}{
+		{both, "Library release 4 changes 4 rules: 1 new, 1 major, 1 minor, and 1 retired. It also changes 2 skills: 1 new and 1 minor.\n\n"},
+		{first, "Library release 1 publishes 1 skill.\n\n## Skills\n\n- **skills/fix-bug** `1.0.0`, new, offered\n\n<details>"},
+		{unchanged, "Library release 6 changes no rules or skills. It updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All skill versions"},
+	} {
+		context := skillContext{levels: map[string]string{"skills/fix-bug": "offered", "skills/new": "offered"}}
+		if notes := renderReleaseNotes(test.record, context); !strings.HasPrefix(notes, test.want) {
+			t.Fatalf("notes:\n%s\nwant them to start with:\n%s", notes, test.want)
+		}
 	}
 }
 
@@ -124,7 +193,7 @@ func TestRenderReleaseNotes_CountsAndSectionsFollowTheChanges(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if notes := renderReleaseNotes(test.record); notes != test.want {
+			if notes := renderReleaseNotes(test.record, skillContext{}); notes != test.want {
 				t.Fatalf("notes:\n%s\nwant:\n%s", notes, test.want)
 			}
 		})
