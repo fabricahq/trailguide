@@ -336,7 +336,7 @@ A record changed outside Trail Guide 0.5 is refused as an edited lock entry is, 
 
 ### When the lockfile is missing
 
-When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`.
+When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. When configuration names no source, delete `.trailguide/vendor/` instead.
 
 ### What offline checks can verify
 

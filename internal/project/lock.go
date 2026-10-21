@@ -73,6 +73,10 @@ func readRecords(config rules.Configuration, data []byte, vendor map[string][]by
 	if len(vendor) == 0 {
 		return result, nil
 	}
+	// Without a lock, vendor/ can't be checked or discarded safely, even when configuration names no source.
+	if len(config.Sources) == 0 {
+		return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though .trailguide/vendor/ has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", and run trailguide project sync; or, since configuration names no source, delete .trailguide/vendor/", nil)
+	}
 	for _, source := range config.Sources {
 		if !slices.Contains(retake, source.Name) {
 			return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though .trailguide/vendor/ has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", or, for a project Trail Guide 0.5 last synced, restore each source's .trailguide/vendor/<source>/"+legacyRecord+", then run trailguide project sync. Sync never resolves a source again on its own, which could move it; to resolve every source again at its ref, run trailguide project sync with --retake for each source, such as trailguide project sync --retake "+config.Sources[0].Name, nil)

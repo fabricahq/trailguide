@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"slices"
@@ -369,6 +370,17 @@ func TestProject_RefusesAMissingLockfile(t *testing.T) {
 	if projectTree(t, options).Digest() != before.Digest() {
 		t.Fatal("a refusal changed the project")
 	}
+	// With no source configured, sync can't tell what the vendor folder holds either, so it refuses rather than
+	// discarding it.
+	config := readRepositoryFile(t, options, ".trailguide/config.yaml")
+	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources: {}\n")
+	if _, err := Sync(ctx, options, git); !strings.Contains(fmt.Sprint(err), "delete .trailguide/vendor/") {
+		t.Fatalf("sync with no source: %v", err)
+	}
+	if _, err := root.Stat("vendor/team"); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, configurationFile, config)
 	if _, err := Sync(ctx, options, git, "team"); err != nil {
 		t.Fatal(err)
 	}
