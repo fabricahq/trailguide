@@ -39,6 +39,7 @@ skillTargets: [claude, agents]
 sources:
   fabrica:
     repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
     rules:
       include:
         - techs/typescript/*

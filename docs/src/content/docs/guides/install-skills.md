@@ -41,6 +41,7 @@ This records the source in `.trailguide/config.yaml`:
 sources:
   fabrica:
     repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
     skills:
       include: [recommended]
 ```
@@ -173,6 +174,7 @@ A library chooses the `ref` it tracks for each repository it curates skills from
 sources:
   fabrica:
     repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
     skills:
       include: [recommended]
   mattpocock:
@@ -196,6 +198,7 @@ Rename one of them:
 sources:
   fabrica:
     repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
     skills:
       include: [recommended, skills/review-change]
       rename:
@@ -228,7 +231,7 @@ These are partial snippets, not complete source definitions. An excluded skill i
 
 You can't exclude or fork a [required skill](/reference/configuration/#skill-levels): sync fails and names the library that requires it. Required skills are your organization's floor; to diverge from one, stop using the source.
 
-You can't pin a skill to a version either: all of a source's skills come from one revision and move together when the source updates. To keep a skill as it is, [fork it](#fork-a-skill), or set the source's `ref` to a library release tag or commit, which holds every rule and skill from that source. See [Update skills](/guides/update/#update-skills).
+You can't pin a skill to a version either: all of a source's skills come from one revision and move together when the source updates. To keep a skill as it is, [fork it](#fork-a-skill), or leave the source at the library release its `ref` names, which holds every rule and skill from that source. See [Update skills](/guides/update/#update-skills).
 
 ## Fork a skill
 

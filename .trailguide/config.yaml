@@ -2,6 +2,7 @@ schemaVersion: 2
 sources:
   fabrica:
     repository: https://github.com/fabricahq/public-library.git
+    ref: release/3
     rules:
       include:
         - practices/code-design/*

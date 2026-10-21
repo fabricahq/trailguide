@@ -24,7 +24,28 @@ Two commands work with the lock, and they have opposite jobs:
 
 The split exists so that changes arrive only when someone chooses them. A teammate who syncs, or a CI job that builds, gets exactly what the project recorded. A change in a library reaches your project only when someone runs update, reads the preview, and commits the result. Neither command runs during ordinary coding, review, or `trailguide project check`, so rules and skills never change underneath your agents.
 
+For a library, `.trailguide/config.yaml` also says which library release the project takes, as the source's `ref`, such as `ref: release/4`. A reviewer sees an update as a one-line change from `release/4` to `release/5`, next to the new lock.
+
 Sync does take something new in two cases. A source that's new to the project is taken as an update would take it, and a source whose `ref` you changed is taken at the new `ref`. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+
+### A source without a ref
+
+Every source needs a `ref`. A project synced with an earlier Trail Guide may have library sources without one, and then sync, update, build, and check all fail, naming the release your project records:
+
+```text
+Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest to follow each new library release, then run the command again. No files were written.
+```
+
+Add the line the error names to the source:
+
+```yaml
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
+```
+
+Nothing else changes: the release is the one your lock already records, so check passes and sync writes nothing.
 
 ## Run an update and read the preview
 
@@ -40,7 +61,7 @@ One update covers both the rules and the skills your project takes from a source
 | --- | --- | --- |
 | What gets updated | Each rule updates to its own newest version. | All of a source's skills update together, to the source's newest release or commit. |
 | Update one at a time | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible. You must update all of a source's skills at the same time. |
-| Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
+| Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or keep the source's [`ref`](#take-one-library-release) at its release. |
 | What a change level tells you | Whether code that followed the old version still complies. | Whether whatever relied on the old version, such as your workflow or another skill that uses it, still works the same way. |
 
 Skills update together because they often call one another, and skills from one revision always match. The rest of this section explains the preview using rule rows; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
@@ -284,7 +305,7 @@ trailguide project update team
 
 The update works like a full one, with the same preview and questions, for `team` only. Your other sources stay where they are until your next full update.
 
-A library source whose `ref` is a tag or commit doesn't move this way; see [Take one library release](#take-one-library-release).
+When the update moves a library source to a newer release, it writes that release to the source's `ref`, and the preview says so, such as `Sets sources.team.ref to release/5 in .trailguide/config.yaml.` A library source whose `ref` is `latest` has nothing to update, because sync takes each new release. One whose `ref` is a tag other than a library release, or a commit, doesn't move this way; see [Take one library release](#take-one-library-release).
 
 ### Update one rule to its newest version
 
@@ -308,6 +329,7 @@ An update can bring a change you're not ready for, such as a major version that 
 sources:
   team:
     repository: https://github.com/acme/.trailguide.git
+    ref: release/4
     rules:
       include: [techs/react/*, practices/testing/*]
       pins:
@@ -339,11 +361,17 @@ When you're ready for the newer version, delete the pin and [update that rule](#
 trailguide project update team:practices/testing/verify-retry-limits
 ```
 
-A pin can also move a rule to a specific version. Set `version`, and `trailguide project sync` moves the rule to exactly that version, up or down, when your recorded library release or an earlier one published it. For a later version, run `trailguide project update SOURCE`. To change what a rule says instead, [fork it](/reference/cli/#fork-a-library-rule) into your project's `.trailguide/rules/`. See [Pin a rule](/reference/configuration/#pin-a-rule) for the details.
+A pin can also move a rule to a specific version. Set `version`, and `trailguide project sync` moves the rule to exactly that version, up or down, when the library release your `ref` names or an earlier one published it. For a later version, run `trailguide project update SOURCE`, or set `ref` to the release that published it. To change what a rule says instead, [fork it](/reference/cli/#fork-a-library-rule) into your project's `.trailguide/rules/`. See [Pin a rule](/reference/configuration/#pin-a-rule) for the details.
 
 ### Take one library release
 
-By default, a library source follows the library's releases, and each update moves it to the newest one. Sometimes you want to stay on one release, such as while you adapt your code to the next one. To take exactly what one library release published, set the source's `ref` to its tag:
+Each update moves a library source to the newest release and writes it to `ref`. Sometimes you want to stay on one release, such as while you adapt your code to the next one. The source stays where it is as long as you don't update it; update your other sources by name:
+
+```sh
+trailguide project update other-source
+```
+
+Other times you need a particular release, older or newer than the one you have. Set `ref` to its tag:
 
 ```yaml
 sources:
@@ -354,11 +382,19 @@ sources:
       include: ["*"]
 ```
 
-`trailguide project update` doesn't move this source past release 5. To take another library release, change the tag and run `trailguide project sync`, which takes the source at the new `ref`. To go back to following library releases, remove `ref` and update the source.
+Then sync:
+
+```sh
+trailguide project sync
+```
+
+Sync takes exactly what release 5 published, up or down, and leaves the rules you pinned where they are. It doesn't show a preview, because you chose the release; to read what changed first, run `trailguide project update` instead.
+
+A project that wants each new release as soon as the library publishes it, without reviewing it, can set `ref: latest`. Sync then takes the newest release every time it runs, and warns that the source skips the update preview and its change notes, so nobody decides about a major change before the project takes it.
 
 `ref` also accepts other revisions:
 
-- **Another tag or a full commit SHA.** Library authors use these to test unreleased changes. Like a release tag, they hold the source in place.
+- **Another tag or a full commit SHA.** Library authors use these to test unreleased changes. Update doesn't move them; change `ref` and sync to take another revision.
 - **A branch, such as `main`.** The source takes the library's newest commit each time you update, so the library never has to publish a library release.
 
 The catch with anything other than a release is change notes. A library writes them only when it publishes a release, so rules and skills changed since its last release come without them. The update preview shows the commit move and skill changes instead. Trail Guide warns about such a source when you sync or update. See [Take one revision](/reference/configuration/#take-one-revision).
@@ -367,7 +403,7 @@ The catch with anything other than a release is change notes. A library writes t
 
 Including a new rule or skill, or excluding one, isn't an update: you're changing the selection, not moving the source. Edit the source's `rules.include` or `skills.include`, or its `exclude` lists, and run `trailguide project sync`.
 
-Sync takes newly included rules and skills from the library release or commit your project already recorded for the source, and leaves the rest of your rules and skills unchanged. Each new rule gets the newest version that library release or an earlier one published. When something you include isn't in the recorded revision, such as a skill the library published after your last update, sync fails and names `trailguide project update SOURCE`, which moves the whole source.
+Sync takes newly included rules and skills from the library release the source's `ref` names, or the commit your project recorded, and leaves the rest of your rules and skills unchanged. Each new rule gets the newest version that library release or an earlier one published. When something you include isn't in the recorded revision, such as a skill the library published after your last update, sync fails and names `trailguide project update SOURCE`, which moves the whole source.
 
 When you stop including, or remove, the last source that supplies an authored rule's rule group, sync writes the rule group's metadata to `.trailguide/rules/<group-id>/_group.yaml` and warns that it did. Review the file afterward; it's now yours to edit. If the file already exists, sync leaves it unchanged. See [Keep the rule group of an authored rule](/reference/sync/#keep-the-rule-group-of-an-authored-rule).
 
