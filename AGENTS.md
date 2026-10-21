@@ -116,8 +116,8 @@ Rule and skill input validation and generated-file consistency checks are in sco
 
 ## Working in this repository
 
-This repository uses Trail Guide to adopt Fabrica's [public rules](https://github.com/fabricahq/public-library) and to keep its own conventions as local rules; [its guide](.code-rules/README.md) explains how to manage them.
-Before planning, implementing, reviewing, testing, or debugging a change, read [`.code-rules/generated/RULES.md`](.code-rules/generated/RULES.md) and follow its instructions to select relevant rule groups and read their rules in full.
+This repository uses Trail Guide to adopt Fabrica's [public rules](https://github.com/fabricahq/public-library) and to keep its own conventions as local rules; [its guide](.trailguide/README.md) explains how to manage them.
+Before planning, implementing, reviewing, testing, or debugging a change, read [`.trailguide/generated/RULES.md`](.trailguide/generated/RULES.md) and follow its instructions to select relevant rule groups and read their rules in full.
 Follow the applicable rules and their exceptions, and check your work against them before finishing.
 If required rule files are unavailable or give conflicting instructions, report the issue rather than silently skipping a rule or choosing a policy.
 
