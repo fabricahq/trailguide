@@ -345,7 +345,7 @@ type provenanceRule struct {
 
 // termProvenance maps declared source terms to retained workspace and generated paths. The original paths are
 // library paths, or, with a snapshot directory such as vendor/team/, where the snapshot stores the files.
-func termProvenance(source, snapshot string, license *rules.LicenseDeclaration) *provenanceLicense {
+func termProvenance(source, snapshot string, license *trailguide.LicenseDeclaration) *provenanceLicense {
 	if license == nil {
 		return nil
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
+	"github.com/fabricahq/trailguide/trailguide"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -327,7 +328,7 @@ type checkInput struct {
 	tree *filetxn.Tree
 	// skills is the library's skills/ folder, by path in it, or nil when the library has none.
 	skills  *filetxn.Tree
-	license *rules.LicenseDeclaration
+	license *trailguide.LicenseDeclaration
 	// notes maps each change note, by its library path under changes/, to its bytes; notes stay out of catalogs and snapshots.
 	notes map[string][]byte
 }

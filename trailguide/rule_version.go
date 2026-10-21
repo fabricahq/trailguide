@@ -102,3 +102,26 @@ func (v *RuleVersion) UnmarshalText(text []byte) error {
 	*v = parsed
 	return nil
 }
+
+// changeRank orders version changes so several notes on one rule resolve to the largest; other changes rank zero.
+func changeRank(change Change) int {
+	switch change {
+	case ChangePatch:
+		return 1
+	case ChangeMinor:
+		return 2
+	case ChangeMajor:
+		return 3
+	}
+	return 0
+}
+
+// LargerChange returns whichever of two version changes moves a rule further, major, minor, or patch, such as
+// to combine several changes to one rule into the one its version takes; ties, and changes that aren't one of
+// those, return a.
+func LargerChange(a, b Change) Change {
+	if changeRank(b) > changeRank(a) {
+		return b
+	}
+	return a
+}

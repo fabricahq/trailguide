@@ -530,7 +530,7 @@ func LegacyTerms(manifest []byte) []string {
 	if json.Unmarshal(data, &parsed) != nil || parsed.License.File == "" {
 		return nil
 	}
-	declaration := &rules.LicenseDeclaration{Files: []string{parsed.License.File}, AttributionFiles: parsed.License.Notices}
+	declaration := &trailguide.LicenseDeclaration{Files: []string{parsed.License.File}, AttributionFiles: parsed.License.Notices}
 	return rules.LicensePaths(declaration)
 }
 

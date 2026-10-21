@@ -15,7 +15,7 @@ Treat its exported API as a public contract: export only what other tools need, 
 ### Implementation
 
 - **Parse only:** every exported function takes bytes or text the caller already read. Its dependencies, such as `internal/decode`, `internal/librarytree`, and `internal/errs`, must stay free of effects too.
-- **One parser per format:** library release tags, release records, rule files, group metadata, and the canonical group list are read only through `coderules`, as `internal/library` calls `coderules.ParseGroupMetadata` and `coderules.ParseRule`. Keep helpers that internal parsers share in an internal package, such as `internal/decode`, rather than exporting them.
+- **One parser per format:** library release tags, release records, the library section of a configuration, rule files, group metadata, and the canonical group list are read only through `coderules`, as `internal/library` calls `coderules.ParseGroupMetadata` and `coderules.ParseRule`. Keep helpers that internal parsers share in an internal package, such as `internal/decode`, rather than exporting them.
 - **Error identity:** callers can inspect exactly `ErrNotReleaseTag` with `errors.Is`, `*UnsupportedReleaseRecordError` with `errors.As`, and `*coderules.ValidationError` with `errors.As` for any other invalid input. Add another only for a decision callers make.
 - **Translate at the boundary:** every exported function passes its error through `translate` in `validation_error.go`, which turns an internal package's validation error into a `*coderules.ValidationError` with the same location, problem, and text. Never wrap an internal error with `%w`, which would expose a type callers can't import.
 - **Public contract:** the exported API is part of the public contract in `.release-planner/policy.md`, so changing or removing an export is a breaking change that the release notes must document.
@@ -87,4 +87,4 @@ For each exported function a change adds or edits, check that every error path p
 For each new export, check that a tool outside Code Rules needs it.
 Search Code Rules for decoding of release tags, release records, rule files, group metadata, or the canonical group list outside `coderules`; there should be none.
 
-Not a violation: formats `coderules` doesn't parse, such as project configuration, change notes, and the library manifest's license declaration, parsed in internal packages such as `internal/rules`.
+Not a violation: formats `coderules` doesn't parse, such as project configuration outside its library section, and change notes, parsed in internal packages such as `internal/rules`.
