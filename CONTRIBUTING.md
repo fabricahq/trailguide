@@ -28,7 +28,7 @@ go build ./cmd/trailguide ./cmd/package-binaries
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck= -pyflakes=
 ```
 
-Tests exercise parsers, filesystem safety, Git imports, real CLI processes, generated agent instructions, and installation/upgrade/rollback. Parser regression fixtures live beside their Go tests. This repository's Go conventions, such as output and error ownership, Git safety, and comments, are local rules in the Go group of the [generated rules](.code-rules/generated/RULES.md).
+Tests exercise parsers, filesystem safety, Git imports, real CLI processes, generated agent instructions, and installation/upgrade/rollback. Parser regression fixtures live beside their Go tests. This repository's Go conventions, such as output and error ownership, Git safety, and comments, are local rules in the Go group of the [generated rules](.trailguide/generated/RULES.md).
 
 [Security practices](_engineering/security-practices.md) define dependency pins, Renovate updates, vulnerability scans, and review requirements.
 
