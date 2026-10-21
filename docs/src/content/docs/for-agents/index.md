@@ -96,7 +96,7 @@ If a relevant rule group is missing, report the missing coverage.
 If resolved rules conflict, identify both IDs and ask the project owner to resolve the intended policy.
 Use [Resolve conflicting rules](/guides/conflicting-guidance/) for the review criteria and explicit resolution options.
 Keep the recorded rules and skills during ordinary work. Taking changes from the project's sources is a separate step, `trailguide project update`, and major changes need the project owner's consent; don't run it as part of another task.
-When asked to keep a rule from a source at its current version, read the rule's version from `.trailguide/vendor/<source-name>/_source.json` and add a pin under that source's `rules.pins`, with the version and the reason you were given, such as `{id: practices/testing/verify-retry-limits, version: "1.3.0", reason: "…"}`. Then run `trailguide project sync`.
+When asked to keep a rule from a source at its current version, read the rule's version from the source's entry in `.trailguide/lock.json` and add a pin under that source's `rules.pins`, with the version and the reason you were given, such as `{id: practices/testing/verify-retry-limits, version: "1.3.0", reason: "…"}`. Then run `trailguide project sync`.
 Skills can't be pinned. When asked to keep a skill from a source as it is, ask whether to fork it, exclude it, or hold its whole source with `ref`; see [Install skills](/guides/install-skills/#exclude-a-skill).
 
 ## Write or review rules and skills themselves

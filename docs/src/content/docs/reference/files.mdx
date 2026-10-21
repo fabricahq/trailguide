@@ -41,9 +41,9 @@ The tree below shows the **repository root**, the top-level directory of your co
   - skills/
     - release-checklist/
       - SKILL.md
+  - lock.json
   - vendor/
     - fabrica/
-      - _source.json
       - config.yaml
       - rules/
         - practices/testing/
@@ -58,7 +58,6 @@ The tree below shows the **repository root**, the top-level directory of your co
           - skills/engineering/to-spec/
             - ...
     - pstack/
-      - _source.json
       - skills/architect/
         - ...
       - skills/build-feature/
@@ -86,7 +85,7 @@ Initialize from the repository root. In Git repositories, other commands find th
 The Trail Guide directory holds three kinds of content:
 
 - **Authored content: `rules/`, `skills/`, and `assets/`.** The rules, rule group metadata, skills, and shared assets written in this repository. Add your own rules and skills here, including replacements and forks of rules and skills you include from sources. You maintain these files; sync preserves them. A library publishes exactly this content.
-- **Vendor snapshots: `vendor/<source-name>/`.** A copy of what the repository takes from each source, at its recorded library release or commit, with `_source.json`, the record of that revision and of every rule's and skill's version. A library's snapshot mirrors its Trail Guide directory, with its `config.yaml` for the manifest, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
+- **Vendor snapshots: `vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with its `config.yaml` for the manifest, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
 - **Generated guidance: `generated/`.** The resolved rules your agents read. Trail Guide combines the included and authored rules according to `config.yaml`, applies exclusions and replacements, and writes the reading indexes, including `SKILLS.md`. Do not edit this directory; rebuild it after changing your inputs.
 
 Installed skills are output too: Trail Guide writes a copy of each installed skill into every target folder, such as `.claude/skills/build-feature/`, from its vendored or authored source. See [Installed skills](#installed-skills).
@@ -328,5 +327,5 @@ The authored version stays in `.trailguide/rules/practices/testing/test-changed-
 - [Configuration](/reference/configuration/#complete-example): the sources, selectors, exclusions, and replacements declared in `config.yaml`.
 - [Rule group metadata](/reference/rule-format/#rule-group-metadata): the name and reading cues in `_group.yaml`.
 - [Authored rule](/reference/rule-authoring/#markdown-template): the Markdown and metadata you write before building.
-- [Vendor snapshot record](/reference/provenance/#inspect-the-vendor-snapshot): the rule and skill versions stored in `vendor/<source>/_source.json`.
+- [Lockfile](/reference/provenance/#inspect-the-lockfile): the revision, rule versions, and skills `lock.json` records for each source.
 - [Provenance](/reference/provenance/#trace-a-rule-to-its-source): how `generated/provenance.json` records a rule's origin.
