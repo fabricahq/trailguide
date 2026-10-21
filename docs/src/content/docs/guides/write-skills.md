@@ -249,6 +249,8 @@ library:
 - **Recommended** skills install in projects that include `recommended`.
 - **Offered** skills install only when a project names them or includes `"*"`. A skill you don't list is offered, so list only the skills you have an opinion about.
 
+When the library has a skill only because your other skills call it, list it in `library.skills.dependencies` instead of at a level. Projects install it with the skills that call it, and can't choose it alone; see [Dependencies](/reference/configuration/#dependencies).
+
 Levels are library-wide settings, like rule group metadata: changing one needs no change note, and the next library release publishes it. Projects see a level change, such as recommended to required, in their update preview. `trailguide library check` fails when two skills you list, including skills you [curate](/reference/configuration/#curated-skills) from other repositories, have the same name, so your projects never inherit a clash.
 
 ## Record a change note
@@ -284,7 +286,7 @@ Skills in a repository that isn't a library have no versions and need no notes.
 
 ## Retire or replace a skill
 
-To stop publishing a library skill, delete its folder, remove it from any level in the manifest, and record the retirement. Name the skill that replaces it, when there is one:
+To stop publishing a library skill, delete its folder, remove it from `library.skills` in the manifest, and record the retirement. Name the skill that replaces it, when there is one:
 
 ```sh
 trailguide library change skills/triage-bug \

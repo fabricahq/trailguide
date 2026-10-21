@@ -38,7 +38,7 @@ type curatedSkill struct {
 
 // curatedSkills returns, by curated source name, the curated skills source takes from manifest, its library's:
 // every required one, the recommended ones when skills.include names recommended, each offered one that it
-// names or includes with "*", less those a level exclusion leaves out, as rules.Source.ExcludesLevel says, which, as for a source's own skills, leaves out one in a folder whose name starts with
+// names or includes with "*", but no dependency, which only the library's skills that use it bring, less those a level exclusion leaves out, as rules.Source.ExcludesLevel says, which, as for a source's own skills, leaves out one in a folder whose name starts with
 // a dot, and each one that used, as curatedUses gives it for the library's skills the source installs, says one of
 // them uses, and each listed one skills.forks names, so updates can compare it with its fork. It fails when
 // skills.include or skills.exclude names a curated skill the library doesn't list, since a curated skill reaches
@@ -57,7 +57,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 	}{{"include", source.Skills}, {"exclude", slices.Sorted(maps.Keys(source.SkillExclude))}} {
 		for _, id := range field.ids {
 			if _, _, isCurated := library.SplitCurated(id); isCurated && !slices.Contains(curated, id) {
-				return nil, &ValidationError{Location: "sources." + source.Name + ".skills." + field.name, Problem: fmt.Sprintf("the library doesn't list %s at any level, and a library's curated skills reach projects only through its lists; check the skill ID, or ask the library's maintainer to list it", id)}
+				return nil, &ValidationError{Location: "sources." + source.Name + ".skills." + field.name, Problem: fmt.Sprintf("the library doesn't list %s at any level or as a dependency, and a library's curated skills reach projects only through its lists; check the skill ID, or ask the library's maintainer to list it", id)}
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 	}
 	for _, id := range slices.Sorted(maps.Keys(used)) {
 		if !slices.Contains(curated, id) {
-			return nil, fail("unsupported-content", fmt.Sprintf("sources.%s: the library's skill %s uses %s, which the library doesn't list at any level, so Trail Guide can't install it. Ask the library's maintainer to list it in library.skills; trailguide library check catches this.", source.Name, used[id][0], id), nil)
+			return nil, fail("unsupported-content", fmt.Sprintf("sources.%s: the library's skill %s uses %s, which the library doesn't list at any level or as a dependency, so Trail Guide can't install it. Ask the library's maintainer to list it in library.skills; trailguide library check catches this.", source.Name, used[id][0], id), nil)
 		}
 	}
 	result := map[string][]curatedSkill{}
@@ -78,7 +78,7 @@ func curatedSkills(manifest *rules.Library, source rules.Source, release int, us
 		_, folder, _ := library.SplitCurated(id)
 		included := level == skills.LevelRequired ||
 			slices.Contains(source.Skills, id) ||
-			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) ||
+			slices.Contains(source.Skills, skills.Wildcard) && !library.HiddenSkill(folder) && level != skills.LevelDependency ||
 			level == skills.LevelRecommended && slices.Contains(source.Skills, skills.Recommended)
 		_, forked := source.SkillForks[id]
 		included = included && !source.ExcludesLevel(id, level) || forked

@@ -51,7 +51,7 @@ func TestSkillProblemsReportsEachInvalidSkill(t *testing.T) {
 		}},
 		"skills it uses": {map[string]string{"fix/SKILL.md": skill("  trailguide-skills-used: |\n    skills/fix\n    anthropic:skills/tdd\n    mattpocock:skills/tdd\n    anthropic:skills/skill-creator\n    skills/skill-creator\n")}, nil, []string{
 			"skills/fix/SKILL.md: trailguide-skills-used names the skill itself",
-			"skills/fix/SKILL.md: trailguide-skills-used names anthropic:skills/tdd, which isn't a skill the library curates; list it in library.skills, at any level, so projects that install the skill can install it too",
+			"skills/fix/SKILL.md: trailguide-skills-used names anthropic:skills/tdd, which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too",
 			"skills/fix/SKILL.md: trailguide-skills-used names mattpocock:skills/tdd, but library.skills lists no skill from a source named mattpocock; the library curates skills from anthropic. Correct the source name, or name a skill of this library as skills/<name>",
 			"skills/fix/SKILL.md: trailguide-skills-used names skills/skill-creator, which isn't a skill in this library; the library curates anthropic:skills/skill-creator, so name it that way",
 		}},

@@ -1,4 +1,5 @@
-// Parse a library's skill levels: which of its skills projects that use it must, should, or may install.
+// Parse a library's skill levels: which of its skills projects that use it must, should, or may install, and which
+// install only with the skills that use them.
 
 package rules
 
@@ -14,39 +15,56 @@ import (
 
 // SkillLevels lists, sorted, the IDs of the skills at each level the manifest names: the library's own skills,
 // skills/<name>, and the skills it curates, the name of a source in its sources, a colon, and the skill's ID in that
-// source's repository, such as mattpocock:skills/to-spec. Each list is empty, never nil, when the manifest names
-// none, and a skill is in at most one list. Whether each own skill exists is checked against the library's skills/
+// source's repository, such as mattpocock:skills/to-spec. Dependencies lists the skills the library has only because
+// its other skills use them, which projects install only with those skills. Each list is empty, never nil, when the
+// manifest names none, and a skill is in at most one list. Whether each own skill exists is checked against the library's skills/
 // folder, and whether each curated one exists when a project imports it.
 type SkillLevels struct {
-	Required    []string `json:"required"`
-	Recommended []string `json:"recommended"`
-	Offered     []string `json:"offered"`
+	Required     []string `json:"required"`
+	Recommended  []string `json:"recommended"`
+	Offered      []string `json:"offered"`
+	Dependencies []string `json:"dependencies"`
 }
 
-// Level returns the level of the library's skill id: the level whose list names it, or offered, the level of every
-// own skill no list names. A curated skill no list names doesn't reach projects; see Curated.
+// SkillLists names the lists of library.skills, the levels from the strongest to the weakest, then the dependencies.
+var SkillLists = append(slices.Clone(skills.Levels), skills.Dependencies)
+
+// Level returns the level of the library's skill id: the level whose list names it, skills.LevelDependency for one
+// Dependencies names, or offered, the level of every own skill no list names. A curated skill no list names doesn't
+// reach projects; see Curated.
 func (l SkillLevels) Level(id string) string {
 	switch {
 	case slices.Contains(l.Required, id):
 		return skills.LevelRequired
 	case slices.Contains(l.Recommended, id):
 		return skills.LevelRecommended
+	case slices.Contains(l.Dependencies, id):
+		return skills.LevelDependency
 	}
 	return skills.LevelOffered
 }
 
+// Field returns the field of the manifest that gives skill id its level, such as library.skills.required, or
+// library.skills.dependencies for a dependency.
+func (l SkillLevels) Field(id string) string {
+	if l.Level(id) == skills.LevelDependency {
+		return "library.skills." + skills.Dependencies
+	}
+	return "library.skills." + l.Level(id)
+}
+
 // Listed returns, sorted, the IDs of every skill a list names.
 func (l SkillLevels) Listed() []string {
-	listed := slices.Concat(l.Required, l.Recommended, l.Offered)
+	listed := slices.Concat(l.Required, l.Recommended, l.Offered, l.Dependencies)
 	slices.Sort(listed)
 	return listed
 }
 
-// parseSkillLevels validates library.skills at location: an object of required, recommended, and offered lists of
-// skill IDs, each listed once, each curated one from one of sources, the names the configuration's sources declare.
-// A missing object lists none.
+// parseSkillLevels validates library.skills at location: an object of required, recommended, offered, and dependencies
+// lists of skill IDs, each listed once, each curated one from one of sources, the names the configuration's sources
+// declare. A missing object lists none.
 func parseSkillLevels(input json.RawMessage, location string, sources []string) (SkillLevels, error) {
-	result := SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}}
+	result := SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}, Dependencies: []string{}}
 	if input == nil {
 		return result, nil
 	}
@@ -54,11 +72,11 @@ func parseSkillLevels(input json.RawMessage, location string, sources []string) 
 	if err != nil {
 		return SkillLevels{}, err
 	}
-	if err := decode.KnownFields(fields, skills.Levels, location); err != nil {
+	if err := decode.KnownFields(fields, SkillLists, location); err != nil {
 		return SkillLevels{}, err
 	}
 	seen := map[string]string{}
-	for _, level := range skills.Levels {
+	for _, level := range SkillLists {
 		raw, ok := fields[level]
 		if !ok {
 			continue
@@ -83,8 +101,11 @@ func parseSkillLevels(input json.RawMessage, location string, sources []string) 
 				return SkillLevels{}, invalid(at, "expected the ID of one of the library's skills, skills/<name>, the folder's path in .trailguide/, such as skills/build-feature, got "+decode.Quote(id))
 			}
 			if other, listed := seen[id]; listed {
-				if other == level {
+				switch {
+				case other == level:
 					return SkillLevels{}, invalid(at, id+" is listed more than once; list each skill once")
+				case level == skills.Dependencies:
+					return SkillLevels{}, invalid(at, id+" is already "+other+", so projects can choose it; a dependency installs only with the skills that use it, so list it in one place")
 				}
 				return SkillLevels{}, invalid(at, id+" is already "+other+"; give each skill one level")
 			}
@@ -97,6 +118,8 @@ func parseSkillLevels(input json.RawMessage, location string, sources []string) 
 			result.Required = ids
 		case skills.LevelRecommended:
 			result.Recommended = ids
+		case skills.Dependencies:
+			result.Dependencies = ids
 		default:
 			result.Offered = ids
 		}

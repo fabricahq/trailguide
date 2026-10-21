@@ -150,7 +150,7 @@ metadata:
     anthropic:skills/skill-creator
 ```
 
-The library must list the curated skill in `library.skills`, at any level. When a project installs the calling skill, Trail Guide also installs the curated skill, from the repository the library curates it from, at the commit the project resolves for that repository, as it installs any curated skill, whatever level the library gives it. A curated skill brings the skills it calls in its own repository, but not skills that repository curates in turn.
+The library must list the curated skill in `library.skills`, at a level or as a [dependency](/reference/configuration/#dependencies). When a project installs the calling skill, Trail Guide also installs the curated skill, from the repository the library curates it from, at the commit the project resolves for that repository, as it installs any curated skill, whatever level the library gives it. A curated skill brings the skills it calls in its own repository, but not skills that repository curates in turn.
 
 ### Text agents show
 
@@ -212,6 +212,9 @@ Check fails with these problems:
 | A file directly in `skills/` | `skills/README.md: skills/ holds only skill folders` |
 | Two skills the manifest lists, authored or curated, with the same name | `library.skills lists skills/review and mattpocock:skills/review, which both install as review; list one of them, or rename the folder of your own skill` |
 | A skill listed in more than one level | `library.skills lists skills/fix-bug as both required and recommended; list it once` |
+| A skill listed both at a level and as a dependency | `library.skills.dependencies[0]: skills/format-skill is already offered, so projects can choose it; a dependency installs only with the skills that use it, so list it in one place` |
+| A dependency that no skill of the library uses | `library.skills.dependencies lists skills/format-skill, but no skill of the library names it in trailguide-skills-used, and a dependency installs only with the skills that use it, so no project would install it. Name it in the trailguide-skills-used of the skills that call it, or move it to a level` |
+| A dependency that only unreachable dependencies use | `library.skills.dependencies lists skills/lint, but only other dependencies that no project would install name it in trailguide-skills-used, and a dependency installs only with the skills that use it, so no project would install it. Name it in the trailguide-skills-used of a skill a project can choose, or move it or a dependency that uses it to a level` |
 | A listed skill that doesn't exist | `library.skills.recommended names skills/fix-bugs, which isn't a skill in this library` |
 | A curated skill whose source isn't in `sources`, or that the source doesn't have at its `ref` | `library.skills.offered names mattpocock:skills/productivity/grill, which mattpocock doesn't have at main` |
 | A folder name that breaks the [name grammar](#skill-ids) | `skills/Build_Feature: a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen` |
@@ -238,7 +241,7 @@ Check fails with these problems:
 | A cited rule that was retired without a replacement | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/code-design/comment-intent, which is retired; remove it` |
 | An ID listed twice | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/verify-retries twice` |
 | A used skill that doesn't exist | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library` |
-| A used curated skill that `library.skills` doesn't list | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropic:skills/skill-creator, which isn't a skill the library curates; list it in library.skills, at any level, so projects that install the skill can install it too` |
+| A used curated skill that `library.skills` doesn't list | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropic:skills/skill-creator, which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too` |
 | A used curated skill whose source name `library.skills` doesn't use | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropik:skills/skill-creator, but library.skills lists no skill from a source named anthropik; the library curates skills from anthropic. Correct the source name, or name a skill of this library as skills/<name>` |
 | A curated skill named without its source name | `skills/add-skill/SKILL.md: trailguide-skills-used names skills/skill-creator, which isn't a skill in this library; the library curates anthropic:skills/skill-creator, so name it that way` |
 | A used skill that is retired | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/triage-bug, which is retired and replaced by skills/fix-bug; use the replacement`, or `which is retired; remove it` when nothing replaces it |

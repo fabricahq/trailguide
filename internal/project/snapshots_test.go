@@ -609,11 +609,11 @@ func TestSnapshotRecordsRejectInvalidSkills(t *testing.T) {
 		edit   func(*sourceRecord)
 		want   string
 	}{
-		"library skill without a level": {"team", func(r *sourceRecord) { r.Skills["skills/build"] = recordSkill{} }, "with level required, recommended, or offered"},
+		"library skill without a level": {"team", func(r *sourceRecord) { r.Skills["skills/build"] = recordSkill{} }, "with level required, recommended, offered, or dependency"},
 		"unknown level": {"team", func(r *sourceRecord) {
 			mandatory := "mandatory"
 			r.AvailableSkills["skills/deploy"] = availableSkill{Level: &mandatory}
-		}, "with level required, recommended, or offered"},
+		}, "with level required, recommended, offered, or dependency"},
 		"skill that isn't available": {"team", func(r *sourceRecord) { delete(r.AvailableSkills, "skills/build") }, "expected one of availableSkills"},
 		"level that differs from the available skill's": {"team", func(r *sourceRecord) {
 			required := "required"
@@ -622,7 +622,7 @@ func TestSnapshotRecordsRejectInvalidSkills(t *testing.T) {
 		"library skill outside skills/": {"team", func(r *sourceRecord) {
 			r.Skills["tools/build"] = r.Skills["skills/build"]
 			r.Files["tools/build/SKILL.md"] = r.Files["skills/build/SKILL.md"]
-		}, "with level required, recommended, or offered"},
+		}, "with level required, recommended, offered, or dependency"},
 		"other repository's skill with a level": {"tools", func(r *sourceRecord) { offered := "offered"; r.Skills["tools/review"] = recordSkill{Level: &offered} }, "with a null level"},
 		"nested skill": {"tools", func(r *sourceRecord) {
 			r.Skills["tools/review/inner"] = recordSkill{}

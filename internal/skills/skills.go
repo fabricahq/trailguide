@@ -37,6 +37,13 @@ const (
 // Levels lists the levels from the strongest to the weakest.
 var Levels = []string{LevelRequired, LevelRecommended, LevelOffered}
 
+// LevelDependency is what a library's skill records in place of a level when the library lists it in
+// library.skills.dependencies: a project installs it only with the skills that use it, never by choosing it.
+const LevelDependency = "dependency"
+
+// Dependencies is the list of library.skills that names a library's dependencies, beside its Levels.
+const Dependencies = "dependencies"
+
 // Directory is the folder, in a repository's Trail Guide directory, that holds the repository's authored skills,
 // and, in a library's vendor snapshot, the skills the library publishes.
 const Directory = "skills"
