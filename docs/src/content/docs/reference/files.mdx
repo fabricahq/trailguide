@@ -102,13 +102,14 @@ For example, when you replace a library rule, its vendored copy stays in `vendor
 | `.trailguide/config.yaml` | You | Choose sources, the rules and skills to include, versions, skill targets, exceptions, and, for a library, its manifest. |
 | `.trailguide/rules/`, `skills/`, and `assets/` | You | Add authored rules, rule group metadata, replacements, skills, and shared assets. |
 | `.trailguide/README.md` | `trailguide project init`, `trailguide project build`, and `trailguide project sync` | Explain the repository's rule setup and commands. |
-| `.trailguide/vendor/` | `trailguide project sync` and `trailguide project update` | Store vendor snapshots and their records of each rule's and skill's version. |
+| `.trailguide/lock.json` | `trailguide project sync` and `trailguide project update` | Record each source's revision, each rule's version, each installed skill, and every vendored file's digest. |
+| `.trailguide/vendor/` | `trailguide project sync` and `trailguide project update` | Store vendor snapshots of the files `lock.json` records. |
 | `.trailguide/generated/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide resolved rules, indexes, and the record of installed skills. |
 | Skill folders that Trail Guide installed in `.claude/skills/` and `.agents/skills/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide installed copies of skills where agents look for them. |
 | Other folders in `.claude/skills/` and `.agents/skills/` | You, or the tool that installed them | Trail Guide never changes or removes them. |
 
 Keep your changes in configuration and authored content. Edits in `vendor/`, `generated/`, or an installed skill folder will be replaced or removed. To change a skill you include from a source, [fork it](/reference/cli/#fork-a-skill) into `skills/`.
-Commit configuration, authored content, both managed directories, and the installed skill folders, so your team, CI, and every fresh checkout use the same rules and skills offline.
+Commit configuration, authored content, `lock.json`, both managed directories, and the installed skill folders, so your team, CI, and every fresh checkout use the same rules and skills offline.
 Commit the project instructions and README as well.
 If your `.gitignore` excludes a target folder, such as with `/.claude/`, change the line to `/.claude/*` and add the exception `!/.claude/skills/`, or `trailguide project check` reports the missing folders. Git can't re-include a folder inside an excluded folder, so `!/.claude/skills/` alone doesn't work after `/.claude/`.
 

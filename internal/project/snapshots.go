@@ -763,7 +763,9 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 		}
 		return failure("ref-required", rules.RefRequiredProblem(source.Name, release, true), nil)
 	}
-	if source.Repository == record.Repository && !record.lockedRef.IsZero() && !source.Ref.Equal(record.lockedRef) {
+	// Only a ref edited to name another library release than the locked one waits for update; sync takes any other
+	// edited ref.
+	if number := source.Ref.Release(); source.Repository == record.Repository && !record.lockedRef.IsZero() && !source.Ref.Equal(record.lockedRef) && number != 0 && !record.NonLibrary && record.Release != 0 && number != record.Release {
 		return invalidSnapshot(where+".ref", fmt.Sprintf("records ref %s, not %s, which sources.%s.ref names, and sync doesn't move a source; run trailguide project update %s to review the move and take it, or set sources.%s.ref back to %s", record.lockedRef, source.Ref, source.Name, source.Name, source.Name, record.lockedRef))
 	}
 	if source.Repository != record.Repository || !recordsRef(source, record) || !source.Groups.Equal(record.Selection) || !slices.Equal(source.Rules, record.RuleSelection) || !slices.Equal(source.Skills, record.SkillSelection) {

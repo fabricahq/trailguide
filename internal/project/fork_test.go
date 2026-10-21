@@ -554,7 +554,7 @@ func TestFork_OfASelectedRuleNeedsASyncedRecord(t *testing.T) {
 	source, _ := ParseForkSource("team@1.0.0")
 	_, err = PlanFork(context.Background(), "techs/go/errors", source, f.options, imports.Options{GitPath: "/nonexistent/git"})
 	var invalid errs.ValidationError
-	if !errors.As(err, &invalid) || invalid.ValidationLocation() != "lock.json.sources.team.ref" || !strings.Contains(invalid.ValidationProblem(), "run trailguide project update team") {
+	if !errors.As(err, &invalid) || invalid.ValidationLocation() != "lock.json.sources.team" || !strings.Contains(invalid.ValidationProblem(), "run trailguide project sync") {
 		t.Fatalf("got %v", err)
 	}
 }

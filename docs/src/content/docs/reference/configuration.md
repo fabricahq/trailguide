@@ -305,7 +305,7 @@ Error: sources.fabrica.ref names release/7, but the project records library rele
 
 `trailguide project update fabrica` then previews and takes release 7, and no further, even when the library has published a newer one. The preview says so, such as `Release 9 is available; run trailguide project update fabrica again to move to it.`, and the next update, with `ref` unchanged, moves the source to the newest release.
 
-Update moves a source only forward. To go back to an older release, restore `.trailguide/config.yaml` and `vendor/<source-name>/` from the commit that recorded it, such as with `git revert`, then run `trailguide project sync`.
+Update moves a source only forward. To go back to an older release, restore `.trailguide/config.yaml`, `.trailguide/lock.json`, and `vendor/<source-name>/` from the commit that recorded it, such as with `git revert`, then run `trailguide project sync`.
 
 A source without a `ref` fails `trailguide project sync`, `update`, `build`, and `check` with `ref-required`, and nothing is written. For a library, the error names the release to write: the one the project records, or for a new source, the library's newest:
 

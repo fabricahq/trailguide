@@ -211,10 +211,17 @@ func requireUpdate(t *testing.T, got map[string]snapshot, err error) {
 	}
 }
 
-// TestSnapshotAnotherRefRequiresUpdate rejects a ref edited to name another library release, or a branch, than the
-// lock entry's, which only an update takes.
-func TestSnapshotAnotherRefRequiresUpdate(t *testing.T) {
-	for _, ref := range []string{"release/1", "latest-release", "main"} {
+// TestSnapshotAnEditedRefNeedsUpdateOnlyForAnotherRelease rejects a ref edited to name another library release than the lock entry's,
+// which only an update takes, and asks for a sync for any other edited ref, which sync takes.
+func TestSnapshotAnEditedRefNeedsUpdateOnlyForAnotherRelease(t *testing.T) {
+	config, snapshots := snapshotFixture(t)
+	vendor, err := encodeStored(config, snapshots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := decodeStored(snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`), vendor)
+	requireUpdate(t, got, err)
+	for _, ref := range []string{"latest-release", "main"} {
 		t.Run(ref, func(t *testing.T) {
 			config, snapshots := snapshotFixture(t)
 			vendor, err := encodeStored(config, snapshots)
@@ -222,7 +229,7 @@ func TestSnapshotAnotherRefRequiresUpdate(t *testing.T) {
 				t.Fatal(err)
 			}
 			got, err := decodeStored(snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"`+ref+`"`), vendor)
-			requireUpdate(t, got, err)
+			requireSync(t, got, err)
 		})
 	}
 }

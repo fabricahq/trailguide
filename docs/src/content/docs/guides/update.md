@@ -26,7 +26,7 @@ The split exists so that changes arrive only when someone chooses them. A teamma
 
 For a library, `.trailguide/config.yaml` also says which library release the project takes, as the source's `ref`, such as `ref: release/4`. A reviewer sees an update as a one-line change from `release/4` to `release/5`, next to the new lock.
 
-Sync does take something new in two cases. A source that's new to the project, or whose repository you changed, is taken as an update would take it. A source whose `ref` you changed isn't: sync fails and names `trailguide project update SOURCE`, which takes it. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+Sync does take something new in two cases. A source that's new to the project, or whose repository you changed, is taken as an update would take it. So is a source whose `ref` you changed to a branch, tag, or commit. A source whose `ref` you changed to another library release isn't: sync fails and names `trailguide project update SOURCE`, which takes it. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
 
 ### A source without a ref
 
