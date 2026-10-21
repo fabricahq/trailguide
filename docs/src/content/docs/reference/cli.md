@@ -352,7 +352,7 @@ skills/review-change                            -            this project       
 Each row shows:
 
 - **SKILL:** the skill's project ID. A curated skill's ID names the library and the curated source, such as `fabrica:mattpocock:skills/engineering/to-spec`; an authored skill's ID is `skills/<name>`.
-- **LEVEL:** `required`, `recommended`, or `offered`, `dependency` for a skill the library installs only with the skills that call it, or `-` for a skill from a repository that isn't a library, or an authored skill.
+- **LEVEL:** the level the library sets, `required`, `recommended`, or `offered`; `dependency` for a skill the library installs only with the skills that call it; or `-` for an authored skill or a skill from a repository that isn't a library.
 - **SET BY:** the library and the library release, or the commit, whose manifest set the level; `not a library` for a source without a manifest; or `this project` for an authored skill.
 - **STATUS:** `installed` for a skill the project installs, whether included, required, or used by another installed skill; `excluded` for one `skills.exclude` leaves out, by ID or by level; `replaced by` and the fork that `skills.forks` installs in its place; and `available` for one a source offers that the project doesn't install.
 
