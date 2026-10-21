@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // curating says which revision of each source a library curates from an import takes skills from.
@@ -46,7 +47,7 @@ type curatedSkill struct {
 // skills.exclude or skills.forks names a required one, since a project that uses the library can't diverge from it, and when an installed skill
 // of the library uses a curated skill the library doesn't list.
 func curatedSkills(manifest *rules.Library, source rules.Source, release int, used map[string][]string) (map[string][]curatedSkill, error) {
-	listed := rules.SkillLevels{}
+	listed := trailguide.SkillLevels{}
 	if manifest != nil {
 		listed = manifest.Skills
 	}

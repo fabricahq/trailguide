@@ -11,10 +11,12 @@ import (
 
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
-// TestLicenseFixtures checks the license declarations of complete configurations against independent expectations.
-// A configuration without a library section isn't a library, which notLibrary expects.
+// TestLicenseFixtures checks the license declarations of complete configurations against independent expectations,
+// and that the public parser agrees on each valid one. A configuration without a library section isn't a library,
+// which notLibrary expects.
 func TestLicenseFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/licenses/cases.json")
 	if err != nil {
@@ -51,11 +53,17 @@ func TestLicenseFixtures(t *testing.T) {
 			if (library == nil) != test.Expected.NotLibrary {
 				t.Fatalf("got library %+v; want a library: %v", library, !test.Expected.NotLibrary)
 			}
-			var got *rules.LicenseDeclaration
+			// The public parser, which reads only what a library publishes, reads the same section from every
+			// configuration Trail Guide accepts.
+			published, err := trailguide.ParseLibraryManifest([]byte(test.Input.Manifest), test.Location)
+			if err != nil || (published == nil) != (library == nil) || (library != nil && !reflect.DeepEqual(*published, library.Library)) {
+				t.Fatalf("trailguide.ParseLibraryManifest got %+v, %v; want %+v", published, err, library)
+			}
+			var got *trailguide.LicenseDeclaration
 			if library != nil {
 				got = library.License
 			}
-			var expected *rules.LicenseDeclaration
+			var expected *trailguide.LicenseDeclaration
 			if err := json.Unmarshal(test.Expected.Value, &expected); err != nil {
 				t.Fatal(err)
 			}
@@ -68,7 +76,7 @@ func TestLicenseFixtures(t *testing.T) {
 
 // TestLicensePaths checks unique paths and Unicode sorting without modifying the declaration.
 func TestLicensePaths(t *testing.T) {
-	declaration := &rules.LicenseDeclaration{Files: []string{"\ue000", "😀", "😀"}, AttributionFiles: []string{"a"}}
+	declaration := &trailguide.LicenseDeclaration{Files: []string{"\ue000", "😀", "😀"}, AttributionFiles: []string{"a"}}
 	paths := rules.LicensePaths(declaration)
 	if !reflect.DeepEqual(paths, []string{"a", "😀", "\ue000"}) {
 		t.Fatal(paths)

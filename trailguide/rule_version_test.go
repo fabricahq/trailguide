@@ -68,3 +68,17 @@ func TestRuleVersionNext_RefusesToPassTheLargestNumber(t *testing.T) {
 		}
 	}
 }
+
+// TestLargerChange_PicksTheLargestVersionChange resolves several pending notes on one rule.
+func TestLargerChange_PicksTheLargestVersionChange(t *testing.T) {
+	for _, test := range []struct{ a, b, want trailguide.Change }{
+		{trailguide.ChangePatch, trailguide.ChangeMajor, trailguide.ChangeMajor},
+		{trailguide.ChangeMajor, trailguide.ChangeMinor, trailguide.ChangeMajor},
+		{trailguide.ChangeMinor, trailguide.ChangePatch, trailguide.ChangeMinor},
+		{trailguide.ChangePatch, trailguide.ChangePatch, trailguide.ChangePatch},
+	} {
+		if got := trailguide.LargerChange(test.a, test.b); got != test.want {
+			t.Errorf("larger of %s and %s: got %s, want %s", test.a, test.b, got, test.want)
+		}
+	}
+}

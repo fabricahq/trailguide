@@ -39,8 +39,8 @@ type resolvedRule struct {
 	Upstream *ruleOrigin     `json:"upstream"`
 	Reason   string          `json:"replacementReason,omitempty"`
 	// BasedOn is the library version a replacement incorporates, as its exclusion records it, or nil.
-	BasedOn *trailguide.RuleVersion   `json:"basedOn,omitempty"`
-	License *rules.LicenseDeclaration `json:"license"`
+	BasedOn *trailguide.RuleVersion        `json:"basedOn,omitempty"`
+	License *trailguide.LicenseDeclaration `json:"license"`
 }
 
 // groupGuidance identifies the source of one complete group metadata definition.
@@ -81,7 +81,7 @@ type resolvedSource struct {
 	Skills         []string `json:"-"`
 	// Curated is the snapshot's record of the revisions its curated skills come from.
 	Curated map[string]library.CuratedSource `json:"-"`
-	License *rules.LicenseDeclaration        `json:"license"`
+	License *trailguide.LicenseDeclaration   `json:"license"`
 	Paths   []string                         `json:"paths"`
 	Files   map[string][]byte                `json:"retainedFiles"`
 }

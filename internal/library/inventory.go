@@ -4,8 +4,6 @@ package library
 
 import (
 	"context"
-	"github.com/fabricahq/trailguide/internal/librarytree"
-	"github.com/fabricahq/trailguide/internal/rules"
 	"io/fs"
 	"maps"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/fabricahq/trailguide/internal/librarytree"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // validateInventoryLimits checks all captured files and directories, including unreferenced assets.
@@ -42,7 +43,7 @@ func validateInventoryLimits(ctx context.Context, files map[string][]byte, direc
 type inventorySnapshot struct {
 	Files       map[string][]byte
 	Directories []string
-	License     *rules.LicenseDeclaration
+	License     *trailguide.LicenseDeclaration
 }
 
 // readLocalInventory captures complete library content, by library path, through the catalog's bounded local reader

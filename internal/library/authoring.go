@@ -8,13 +8,14 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"go.yaml.in/yaml/v4"
 	"io/fs"
 	"os"
 	"path"
 	"slices"
 	"strconv"
 	"strings"
+
+	"go.yaml.in/yaml/v4"
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/gitexec"
@@ -128,7 +129,7 @@ var manifestPath = librarytree.RepositoryPath(librarytree.Manifest)
 // declaredTerms validates the configuration in manifest, which must have a library section, before reading the
 // contained term files it declares, using planned bytes, by library path, during initialization. The returned
 // inventory holds the manifest and terms by library path.
-func declaredTerms(ctx context.Context, root *os.Root, manifest []byte, planned map[string][]byte) (map[string][]byte, *rules.LicenseDeclaration, error) {
+func declaredTerms(ctx context.Context, root *os.Root, manifest []byte, planned map[string][]byte) (map[string][]byte, *trailguide.LicenseDeclaration, error) {
 	declaration, err := rules.ParseLibraryManifest(manifest, manifestPath)
 	if err != nil {
 		return nil, nil, err
@@ -174,7 +175,7 @@ func checkParents(root *os.Root, name string) error {
 }
 
 // libraryManifest requires an initialized manifest and valid declared terms.
-func libraryManifest(ctx context.Context, root *os.Root) (map[string][]byte, *rules.LicenseDeclaration, error) {
+func libraryManifest(ctx context.Context, root *os.Root) (map[string][]byte, *trailguide.LicenseDeclaration, error) {
 	data, err := readOptionalBelow(ctx, root, manifestPath)
 	if err != nil {
 		return nil, nil, err
@@ -205,7 +206,7 @@ func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVe
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	var license *rules.LicenseDeclaration
+	var license *trailguide.LicenseDeclaration
 	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
 		var files []filetxn.File
 		existing, err := filetxn.ReadOptional(ctx, root, manifestPath)

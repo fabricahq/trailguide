@@ -87,7 +87,7 @@ func TestPrepareRetainsTermsWithoutActiveRules(t *testing.T) {
 	config, libraries := fixture(t, `[{"id":"techs/go/errors","reason":"Use local policy"}]`)
 	supplied := libraries["team"]
 	terms := []byte{'x', '\r', '\n', 0, 255}
-	supplied.Catalog.License = &rules.LicenseDeclaration{Files: []string{"LICENSE"}, AttributionFiles: []string{"NOTICE"}}
+	supplied.Catalog.License = &trailguide.LicenseDeclaration{Files: []string{"LICENSE"}, AttributionFiles: []string{"NOTICE"}}
 	supplied.Catalog.SupportingFiles["LICENSE"] = terms
 	supplied.Catalog.SupportingFiles["NOTICE"] = []byte("Notice\r\n")
 	libraries["team"] = supplied
@@ -178,7 +178,7 @@ func TestPrepareNoPartialOutput(t *testing.T) {
 			t.Fatal("accepted invalid options or returned partial output")
 		}
 	}
-	resolved.Sources[0].License = &rules.LicenseDeclaration{Files: []string{"missing"}}
+	resolved.Sources[0].License = &trailguide.LicenseDeclaration{Files: []string{"missing"}}
 	output, err := prepare(resolved, Options{ToolVersion: "test", IndexMaxLines: defaultIndexMaxLines})
 	if err == nil || output.Files != nil {
 		t.Fatal("accepted missing terms")
@@ -189,7 +189,7 @@ func TestPrepareNoPartialOutput(t *testing.T) {
 func TestProvenanceCompatibility(t *testing.T) {
 	config, libraries := fixture(t, `[]`)
 	lib := libraries["team"]
-	lib.Catalog.License = &rules.LicenseDeclaration{Files: []string{"LICENSE"}, AttributionFiles: []string{"NOTICE"}}
+	lib.Catalog.License = &trailguide.LicenseDeclaration{Files: []string{"LICENSE"}, AttributionFiles: []string{"NOTICE"}}
 	lib.Catalog.SupportingFiles["LICENSE"] = []byte("Terms")
 	lib.Catalog.SupportingFiles["NOTICE"] = []byte("Notice")
 	libraries["team"] = lib

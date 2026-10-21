@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -145,8 +144,6 @@ func (e Exclusion) ReplacementFile() string {
 	return "rules/" + e.ReplacedBy + ".md"
 }
 
-var sourceNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-
 // versionOneProblem explains how to rewrite a version 1 configuration, which Trail Guide no longer reads, as version 2.
 const versionOneProblem = `version 1 configuration is no longer supported, and Trail Guide doesn't convert it. Rewrite .trailguide/config.yaml as version 2, as in the example below: in each source, move groups and rules into rules.include, writing each group as its selector, such as techs/go/*, and keeping wildcards such as "*"; then move exclude and pins under rules as lists of entries with an id, writing each replacedBy as the ID of the authored rule it names, such as techs/go/our-errors for local/techs/go/our-errors.md. Move authored rules and groups from .trailguide/local/ to .trailguide/rules/, and shared assets from .trailguide/local/assets/ to .trailguide/assets/.
 
@@ -274,7 +271,7 @@ var movedSourceFields = map[string]string{
 // parseSource validates identity, then revision, then selection, then pins and exclusions.
 func parseSource(name string, input json.RawMessage, repositories map[string]string) (Source, error) {
 	where := "sources." + name
-	if !sourceNamePattern.MatchString(name) || name == "local" {
+	if !skills.ValidSourceName(name) || name == "local" {
 		return Source{}, invalid(where, "invalid or reserved source name")
 	}
 	fields, err := decode.Object(input, where)

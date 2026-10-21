@@ -100,24 +100,3 @@ func noteChange(input json.RawMessage, id, location string) (NoteChange, error) 
 	}
 	return result, nil
 }
-
-// changeRank orders version changes so several notes on one rule resolve to the largest; other changes rank zero.
-func changeRank(change trailguide.Change) int {
-	switch change {
-	case trailguide.ChangePatch:
-		return 1
-	case trailguide.ChangeMinor:
-		return 2
-	case trailguide.ChangeMajor:
-		return 3
-	}
-	return 0
-}
-
-// LargerChange returns whichever of two version changes moves a rule further; ties return a.
-func LargerChange(a, b trailguide.Change) trailguide.Change {
-	if changeRank(b) > changeRank(a) {
-		return b
-	}
-	return a
-}

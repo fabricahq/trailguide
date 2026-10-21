@@ -195,7 +195,7 @@ func (c libraryChanges) plan() (releasePlan, error) {
 			if change.Change == trailguide.ChangeRetired {
 				plan.retired[id] = trailguide.RetiredRule{LastVersion: latest.record.Rules[id], ReplacedBy: change.ReplacedBy}
 			} else if previous, ok := changes[id]; ok {
-				changes[id] = rules.LargerChange(previous, change.Change)
+				changes[id] = trailguide.LargerChange(previous, change.Change)
 			} else {
 				changes[id] = change.Change
 			}
