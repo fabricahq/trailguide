@@ -203,6 +203,8 @@ Skills this skill uses: `tdd`
 
 Links are relative to the installed `SKILL.md`, so they work from either target. A skill that cites no rules and calls no skills gets no generated section.
 
+The copy in `.agents/skills/`, which Codex reads, can also get a generated `agents/openai.yaml` with the text Codex shows for the skill, from the [interface metadata](/reference/skill-format/#text-agents-show) in its `SKILL.md`. A skill that declares none of it gets no file, and a skill that ships its own `agents/openai.yaml` keeps it unchanged, in every target.
+
 Trail Guide records what it installed in `generated/installed-skills.json`:
 
 ```json
@@ -233,7 +235,7 @@ Trail Guide records what it installed in `generated/installed-skills.json`:
 | `version` | The installed version, or `null` for an authored skill, a skill from a non-library source, or one with unreleased changes. |
 | `commit` | For a skill from a non-library source, including a curated one, the full commit SHA it came from; otherwise `null`. |
 | `targets` | Each folder Trail Guide installed the skill in, relative to the repository root, sorted. When one target folder links to the other, both paths are listed, though the files are written once. Empty when the repository has no skill targets. |
-| `digest` | The SHA-256 checksum of the installed folder: every file's path, executable bit, and contents, as sync wrote them. |
+| `digest` | The SHA-256 checksum of the installed folder: every file's path, executable bit, and contents, as sync wrote them. It leaves out a generated `agents/openai.yaml`, which only the `.agents/skills/` copy has. |
 
 This record is how Trail Guide knows which folders it owns: it replaces and removes only the folders listed here, and refuses to write over any other. See [Who owns the target folders](/reference/sync/#who-owns-the-target-folders).
 

@@ -1,5 +1,6 @@
 // Package skills reads what installing an Agent Skills folder needs: skill IDs, install names, the SKILL.md fields
-// that generated guidance shows, and the marker line every installed copy of SKILL.md carries. It does no file, Git,
+// that generated guidance shows, the marker line every installed copy of SKILL.md carries, and the interface file
+// Codex reads. It does no file, Git,
 // or network access, and reports invalid input as its own *ValidationError at the location the caller names.
 package skills
 
@@ -83,6 +84,8 @@ type Metadata struct {
 	// ReservedKeys lists, sorted, the metadata keys that start with trailguide- but aren't one of the three Trail Guide
 	// defines, which only Check rejects; nil when there are none.
 	ReservedKeys []string
+	// Interface is the text the skill's metadata gives agents' interfaces to show; zero when it declares none.
+	Interface Interface
 	// Frontmatter reports whether the file starts with a frontmatter block.
 	Frontmatter bool
 }
@@ -140,6 +143,14 @@ func ReadMetadata(data []byte, location string) (Metadata, error) {
 				return Metadata{}, invalid(location+".metadata."+field.key, "expected a string with one ID per line; write it as a YAML block string, starting with |")
 			}
 			*field.lines = idLines(text)
+		}
+		for _, field := range []struct {
+			key   string
+			value *string
+		}{{DisplayNameKey, &result.Interface.DisplayName}, {ShortDescriptionKey, &result.Interface.ShortDescription}, {DefaultPromptKey, &result.Interface.DefaultPrompt}} {
+			if raw, ok := metadata[field.key]; ok && !readString(raw, field.value) {
+				return Metadata{}, invalid(location+".metadata."+field.key, "expected a string; quote the value")
+			}
 		}
 		for _, key := range slices.Sorted(maps.Keys(metadata)) {
 			if strings.HasPrefix(key, "trailguide-") && !slices.Contains([]string{TypeKey, RulesUsedKey, SkillsUsedKey}, key) {
