@@ -3,10 +3,6 @@ title: "Configuration"
 description: "Fields in .trailguide/config.yaml, the one configuration file of every project and library."
 ---
 
-:::caution[Preview]
-This page describes version 2 configuration and branch refs, which aren't in a released version of Trail Guide yet. The released CLI reads version 1 configuration, and its `ref` takes only a tag or a full commit SHA.
-:::
-
 Every repository that uses Trail Guide has one configuration file, `.trailguide/config.yaml`. It records the repository's sources, the rules and skills it includes from each, its exceptions, and where to install skills. A repository whose configuration also has a [`library` section](#library-manifest) is a **library**, and publishes its authored rules and skills for other repositories. A repository can be a project, a library, or both, with the same file and the same [layout](/reference/files/).
 
 Initialize from the repository root. In Git repositories, other commands find the nearest Git root and use its `.trailguide/config.yaml`. Outside Git, run commands from the repository root. See [Working directories](/reference/cli/#working-directories).
@@ -63,13 +59,14 @@ Replace them with libraries, rules, and skills your project can access.
 | `sources.<name>.rules.exclude` | Optional list of rules to leave out, each with an `id` selector and a `reason`, and optionally a [replacement](#exclude-or-replace-a-rule). |
 | `sources.<name>.rules.pins` | Optional list of rules to hold at one version, each with an `id`, a `version`, and a `reason`. See [Pin a rule](#pin-a-rule). |
 | `sources.<name>.skills.include` | Optional [skill selectors](#skill-selectors): `recommended`, `"*"`, or skill IDs. |
-| `sources.<name>.skills.exclude` | Optional list of skills to leave out, each with an `id` and a `reason`, and optionally a [replacement](#exclude-or-replace-a-skill). |
+| `sources.<name>.skills.exclude` | Optional list of skills to leave out, each with an `id` and a `reason`. See [Exclude a skill](#exclude-a-skill). |
+| `sources.<name>.skills.forks` | Optional map of a skill ID to the authored skill installed in its place, with `as`, a `reason`, and optionally `basedOn`. See [Fork a skill](#fork-a-skill). |
 | `sources.<name>.skills.uses` | Optional map of a skill ID to the skill IDs it calls that its own metadata doesn't declare. See [Declare the skills a skill calls](#declare-the-skills-a-skill-calls). |
 | `sources.<name>.skills.rename` | Optional map of a skill ID to the install name it gets in this repository. See [Rename a skill](#rename-a-skill). |
 | `library` | Optional. The [manifest](#library-manifest): what this repository publishes as a library, and the level of each skill it offers. |
 
 Unknown fields are rejected, at every level.
-Every part of a source except `repository` is optional. A source with no `include` still installs the skills its library [requires](#skill-levels).
+Every part of a source except `repository` is optional. A source with no `include` still installs the skills its library [requires](#skill-levels), and still supplies the skills it [forks](#fork-a-skill).
 Authored rules, rule groups, and skills are discovered from `rules/` and `skills/` in the Trail Guide directory; they need no configuration entry. See [Project files](/reference/files/).
 
 ## Selectors
@@ -112,7 +109,15 @@ Each rule ID in `include` must name a rule the source publishes, and each prefix
 
 Skill selectors have no prefixes: `skills/*` and `recommended/*` are rejected. A library's required skills always install, whatever `include` says; see [Skill levels](#skill-levels). A skill a library curates from another repository is named as the library's manifest names it, with the curated source's name, such as `mattpocock:skills/engineering/to-spec`; see [Curated skills](#curated-skills).
 
-`exclude` entries take a skill ID, `recommended`, or `"*"`, with a reason. Excluding a required skill fails validation, however the exclusion names it.
+`exclude` leaves skills out, each entry with a reason. An entry names one skill by its ID, or a level:
+
+| Entry | Leaves out |
+| --- | --- |
+| `skills/deploy-preview` | That skill. |
+| `recommended` | Every skill the library recommends, even one `include` names. Use it with `include: ["*"]` to install the offered skills without the recommended ones. |
+| `"*"` | Every skill that isn't required, so the project installs only the library's required skills. Use it to take a library's rules without its optional skills. |
+
+An exclusion wins over `include`, but never over a required skill: excluding a required skill by ID fails validation, and a level exclusion leaves required skills installed. A level exclusion also leaves in a skill that another installed skill uses, so the installed skill works; to leave such a skill out, exclude it by ID. `recommended` fails for a source that isn't a library, since such a repository recommends nothing; exclude its skills by ID, or exclude `"*"` to install none of them.
 
 ## Skill levels
 
@@ -165,26 +170,60 @@ An excluded rule is still kept in the source's vendor snapshot, so you can revie
 - With `basedOn`, whenever the library's newest version of the rule is newer than `basedOn`, whatever version the project includes. The preview lists every change after `basedOn`. To replace your rule with a fork of the newest version, overwriting your edits, pass `trailguide project update --update-fork SOURCE:RULE`, or answer `replace` to the terminal question; either sets `basedOn` to that version. If you merge the changes into your rule by hand instead, edit `basedOn` to the version you merged. Trail Guide never advances it otherwise, because only you know whether your rule took the changes in.
 - Without `basedOn`, such as for a replacement you wrote yourself, whenever the library's newest version of the rule is newer than the version the project includes, also when a pin holds the vendored copy there. The preview lists the changes since that version, which your rule may already have. Replacing your rule with a fork, as above, also records `basedOn`.
 
-## Exclude or replace a skill
+## Exclude a skill
 
 ```yaml
 skills:
   exclude:
     - id: skills/write-changelog
       reason: Release Planner writes our release notes.
-    - id: skills/fix-bug
-      reason: We use our own bug workflow.
-      replacedBy: skills/fix-bug
-      basedOn: "1.0.0"
 ```
 
-An excluded skill isn't installed into the target folders or listed in `generated/SKILLS.md`. A replacement is an authored skill in `skills/`, named by its skill ID and installed in place of the excluded skill under its own name. Each authored skill can replace only one skill, and a rule can't replace a skill or the reverse. [Forking a skill](/reference/cli/#fork-a-skill) writes the exclusion for you, with the forked version as `basedOn`. For a skill from a non-library source, which has no versions, `basedOn` is the full 40-character commit SHA the fork copied.
+An excluded skill isn't installed into the target folders, and `generated/SKILLS.md` lists it under its excluded skills with your reason. An entry takes only an `id` and a `reason`; to install your own skill in its place, [fork it](#fork-a-skill) instead.
 
-Excluding or forking a [required skill](#skill-levels) fails validation and names the library that requires it. To stop using a required skill, stop using the source.
+Excluding a [required skill](#skill-levels) fails validation and names the library that requires it. To stop using a required skill, stop using the source.
 
-When another installed skill calls a skill you exclude without a replacement, `trailguide project sync` warns that the skill it calls isn't installed. With a replacement, the calling skill's installed copy lists your skill instead in its "Skills this skill uses" line.
+When another installed skill calls a skill you exclude, `trailguide project sync` warns that the skill it calls isn't installed. Fork the skill instead to give the calling skill your version.
 
 You can also exclude a rule that an installed skill cites, such as one outside your rule `include`. The skill's installed copy then says the rule is excluded by this repository, with your reason.
+
+## Fork a skill
+
+A source's `skills.forks` installs an authored skill of yours in place of one of the source's skills, and records where it came from:
+
+```yaml
+sources:
+  pocock:
+    repository: https://github.com/mattpocock/skills.git
+    ref: main
+    skills:
+      forks:
+        skills/engineering/fix-bug:
+          as: skills/fix-bug
+          basedOn: "9f2c4e1a7b3d5f60817a2b4c6d8e0f1a3b5c7d9e"
+          reason: We use our own bug workflow.
+```
+
+| Field | Meaning |
+| --- | --- |
+| *(key)* | The ID of the source's skill, such as `skills/engineering/fix-bug`, or of a skill the source's library [curates](#curated-skills), such as `mattpocock:skills/to-spec`. |
+| `as` | Required. The ID of your authored skill in `skills/`, `skills/<name>`, installed in place of the source's skill under its own name. |
+| `reason` | Required non-blank text explaining why the repository uses its own skill. |
+| `basedOn` | Optional. The full 40-character commit SHA, in quotes, of the source's copy your skill was made from. For a curated skill, it's a commit of the repository the library curates it from. Leave it out for a skill you wrote from scratch. |
+
+[Forking a skill](/reference/cli/#fork-a-skill) copies it into `skills/` and writes the entry for you, with the commit it copied as `basedOn`. To fork one by hand, copy its folder into `.trailguide/skills/<name>/`, correct its frontmatter, and add the entry.
+
+A fork needs no `skills.include` entry. The source supplies each skill it forks from its recorded revision, whatever `include` selects, so updates can compare it with your fork, and never installs it, nor the skills only the source's copy uses: your fork's own `trailguide-skills-used` decides what it needs. A source can exist only for its forks. If the source deletes the skill, your fork stays installed, even when `include` still names the skill, and the next update says the source no longer has it.
+
+Each authored skill can be the fork of only one skill, and a rule can't replace a skill or the reverse. A skill can't be both forked and excluded, and a fork installs under its own name, so a forked skill can't be renamed either. Forking a [required skill](#skill-levels) fails validation, as excluding one does.
+
+When another installed skill calls a skill you fork, its installed copy lists your skill instead in its "Skills this skill uses" line.
+
+The `trailguide project update` preview lists a forked skill as `replaced` whenever the source's copy at the revision the update takes differs from the copy `basedOn` names, or, without `basedOn`, from the copy at the commit the project recorded. The preview lists the files that changed. Compare them with your fork, then set `basedOn` to the commit you compared, so later updates list only newer changes. [`--update-fork`](/reference/cli/#replace-a-fork-with-the-newest-version) instead replaces your fork with a new copy, overwriting your edits.
+
+In a library repository, the same entry records where a skill the library [forked](/reference/cli/#fork-a-skill-into-the-library) came from. [`trailguide library check`](/reference/cli/#library-check) lists the source's changes to the skill whenever its `ref` moves past `basedOn`, and says so when the source deletes it. Projects that use the library install the library's own skill and never the source's.
+
+Earlier versions recorded a fork as a `skills.include` entry plus a `skills.exclude` entry with `replacedBy` and `basedOn`. An exclusion with either field now fails validation with the `skills.forks` entry to write instead. Move the entry, and remove the skill from `skills.include` if it's there only for the fork.
 
 ## Rename a skill
 
@@ -208,7 +247,7 @@ Trail Guide doesn't rewrite the old name where skill text mentions it, such as i
 Warning: fabrica:skills/review-change is installed as fabrica-review. Mentions of review-change in skill text aren't rewritten; check the skills that call it by that name.
 ```
 
-The renamed skill's own text and other skills from its source may still say `review-change`, such as a step that says to use the `review-change` skill or runs `/review-change`. After a clash, that name usually belongs to the other skill, so an agent following the old mention can run the wrong one. Check those skills, and [fork](/reference/cli/#project-add-skill) any you need to change; a fork of a renamed skill takes its new name, and the fork's exclusion replaces the rename. Trail Guide doesn't rewrite mentions for you, because a bare word, `/review-change`, and ordinary prose look alike, and a wrong match would corrupt the skill.
+The renamed skill's own text and other skills from its source may still say `review-change`, such as a step that says to use the `review-change` skill or runs `/review-change`. After a clash, that name usually belongs to the other skill, so an agent following the old mention can run the wrong one. Check those skills, and [fork](/reference/cli/#project-add-skill) any you need to change; a fork of a renamed skill takes its new name, and the fork's entry replaces the rename. Trail Guide doesn't rewrite mentions for you, because a bare word, `/review-change`, and ordinary prose look alike, and a wrong match would corrupt the skill.
 
 A required skill can be renamed too, because it stays installed, and a source can rename one without `include`.
 
@@ -228,16 +267,20 @@ Each key is a skill ID the source installs, and each value lists skill IDs in th
 
 ## Refs
 
-A source's `ref` names where to take it from. Each project resolves the ref to a commit when it runs `trailguide project update`, records that commit in the source's vendor snapshot, and keeps it on every `trailguide project sync`:
+A source's `ref` names where to take it from. Sync resolves it to a commit when it first reads the source, or after you change `ref`, records that commit in the source's vendor snapshot, and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. Only `trailguide project update` moves it:
 
 | `ref` | Sync takes | Update moves to |
 | --- | --- | --- |
 | *(none)* | The recorded library release. | The newest library release. |
-| A branch, such as `main` | The recorded commit. | The branch's newest commit. |
-| A tag, such as `release/5` or `v1.2` | The recorded commit. | The commit the tag names now, warning when the tag moved since the last update. |
+| A branch, such as `main` or `refs/heads/main` | The recorded commit. | The branch's newest commit. |
+| A tag, such as `release/5`, `v1.2`, or `refs/tags/v1.2` | The recorded commit. | For a non-library source, the commit the tag names now, warning when the tag moved since the last update. A library source stays. |
 | A full 40-character commit SHA | That commit. | Nowhere; it never moves. |
 
-When a bare name is both a branch and a tag, sync and update fail with `ambiguous-ref`; write `refs/heads/<name>` or `refs/tags/<name>` to say which one you mean. Abbreviated SHAs aren't accepted.
+A bare name, such as `main`, means the repository's branch or tag of that name. When the repository has both, sync and update fail with `ambiguous-ref`; write `refs/heads/<name>` or `refs/tags/<name>` to say which one you mean. Abbreviated SHAs aren't accepted.
+
+A branch suits a [non-library source](/reference/imports/#non-library-sources), such as a third party's skill collection with no tags, and a [curated source](#curated-skills). A library source can follow a branch too, such as `ref: main` to always take a library's newest commit, which frees the library from publishing library releases. The cost is change notes: rules and skills changed since the library's last library release have no change notes, and no version either, so update can't ask whether to keep a major change or apply a pin to them, and its preview lists the commit move and skill changes but not each rule. Sync and update warn about such a source every time they resolve its branch; leave `ref` out to follow the library's releases instead.
+
+When the commit a branch's snapshot records is no longer in the repository, such as after a force-push, sync fails with `version-not-found` and asks you to run `trailguide project update SOURCE`, which takes the branch's newest commit. When the branch itself is renamed or deleted, update fails with `version-not-found` and names the ref; sync keeps working while the repository still has the recorded commit.
 
 Sources have no declared type. Trail Guide decides when it fetches a source:
 
@@ -248,7 +291,7 @@ All of a source's skills come from its one recorded revision, so skills that cal
 
 ### Take one revision
 
-Taking a library at a revision other than a library release, such as a branch with unreleased changes, opts that source out of versions for what changed: rules and skills whose files match a published version record that version, and the rest record `null`, have no version to cite, and update previews list the files that changed but no summaries of the changes. `trailguide project sync` and `trailguide project update` warn about such a source, naming its unreleased rules and skills, and the generated library summary in `generated/libraries/<source-name>/README.md` says so. `trailguide project check` still passes.
+Taking a library at a revision other than a library release, such as a tag or commit with unreleased changes, opts that source out of versions for what changed: rules and skills whose files match a published version record that version, and the rest record `null`, have no version to cite, and update previews list the files that changed but no summaries of the changes. `trailguide project sync` and `trailguide project update` warn about such a source, naming its unreleased rules and skills, and the generated library summary in `generated/libraries/<source-name>/README.md` says so. `trailguide project check` still passes. Update doesn't move a library source whose `ref` is a tag or commit; change `ref` and run `trailguide project sync` to take another revision. A library source whose `ref` names a branch moves to the branch's newest commit, as [Refs](#refs) describes.
 
 A source can use `rules.pins` or `ref`, not both.
 
@@ -354,10 +397,58 @@ A library can list skills from another repository in its levels, such as a third
 
 - **Every curated skill is listed.** A skill from a curated source reaches projects only when a level lists it.
 - **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and provenance records which library required, recommended, or offered it.
-- **Refs resolve per project.** A library release doesn't lock a curated source's `ref`. Each project resolves it when it runs `trailguide project update` and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit.
+- **Refs resolve per project.** A library release doesn't lock a curated source's `ref`, which can name a branch, a tag, or a commit, or be left out to follow the curated repository's library releases. Each project resolves it when it first syncs and again when it runs `trailguide project update`, and records the commit in the library source's `_source.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the recorded commit. `trailguide library check` resolves the ref on every run to check the skills the library lists, and fails, naming the ref, when the repository has no such branch, tag, or commit.
+- **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
+- **The library's skills can call them.** A skill the library authors can name a curated skill in its [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), such as `anthropic:skills/skill-creator`, as long as a level lists it. A project that installs the calling skill installs the curated skill too, whatever its level, and provenance records which of the library's skills use it.
 
-The library repository is a project too: it installs the required skills of the sources it curates from, as any project would, and whatever it includes from them for its own use.
+The library repository is a project too: it installs the required skills of the sources it curates from, as any project would, and whatever it includes from them for its own use. Listing a curated skill in `library.skills` publishes it to projects but doesn't install it in the library repository. When the library's own skills call it there, also list it in that source's `skills.include`.
+
+For example, Fabrica's library authors `add-skill`, which calls Anthropic's `skill-creator`. The library's configuration curates `skill-creator`, publishes both skills, and installs `skill-creator` for its own use:
+
+```yaml
+# fabricahq/.trailguide: .trailguide/config.yaml
+schemaVersion: 2
+skillTargets: [claude]
+sources:
+  anthropic:
+    repository: https://github.com/anthropics/skills.git
+    ref: main
+    skills:
+      include: [skills/skill-creator] # installs it in this repository
+library:
+  skills:
+    recommended: [skills/add-skill]
+    offered: [anthropic:skills/skill-creator] # publishes it to projects
+```
+
+`add-skill` names the curated skill by the ID `library.skills` lists it under:
+
+```markdown
+<!-- fabricahq/.trailguide: .trailguide/skills/add-skill/SKILL.md -->
+---
+name: add-skill
+description: Add a skill to this library.
+metadata:
+  trailguide-skills-used: |
+    anthropic:skills/skill-creator
+---
+```
+
+A project that uses the library names only the library and the skill it wants:
+
+```yaml
+# A project: .trailguide/config.yaml
+schemaVersion: 2
+skillTargets: [claude]
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/.trailguide.git
+    skills:
+      include: [skills/add-skill]
+```
+
+`trailguide project sync` installs `add-skill` from Fabrica's library and `skill-creator` from anthropics/skills, though the project never names either `skill-creator` or Anthropic's repository.
 
 ## Repository addresses
 
@@ -487,7 +578,7 @@ Error: .trailguide/config.yaml uses schemaVersion 1, which this version of Trail
   skillTargets: [claude, agents]
   sources:
     fabrica:
-      repository: https://github.com/fabricahq/public-rules.git
+      repository: https://github.com/fabricahq/public-library.git
       rules:
         include: [practices/testing/*]
         exclude:

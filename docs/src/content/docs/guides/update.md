@@ -3,26 +3,49 @@ title: "Update rules and skills"
 description: "Move the rules and skills your project takes from its sources to newer versions: preview each change, keep rules where they are when you need to, and take the rest deliberately."
 ---
 
-:::caution[Preview]
-Skills, skill levels, curated skills, non-library sources, and branch refs aren't in a released version of Trail Guide yet. This guide describes how updating them will work. The released CLI doesn't move a source that uses `ref`.
+The rules and skills your project takes from libraries and other repositories keep changing after you add them: authors fix mistakes, improve advice, add new rules and skills, and retire old ones. Your project doesn't pick up those changes on its own, so every so often you'll want to bring it up to date. This guide shows how to do that with `trailguide project update`, how to see what will change before you accept it, and how to handle the cases where you don't want every change, such as keeping one rule where it is.
+
+This guide starts with a full update and what it does to your [skills](#update-skills), including sources that [aren't libraries](#update-a-non-library-source) and rules and skills a library [retires](#handle-retired-rules-and-skills). [Advanced use cases](#advanced-use-cases) cover the less common needs, such as updating [one rule](#update-one-rule-to-its-newest-version) or [keeping a rule](#keep-a-rule-at-its-current-version) where it is. The guide ends with how to [recover from a failed update](#recover-from-a-failed-update).
+
+You need a project that already takes rules or skills from at least one source; if yours doesn't yet, start with [Select rules](/guides/select-rules/) or [Install skills](/guides/install-skills/). If you're publishing new rule versions from a library you maintain, see [Version your rules](/guides/version-rules/). If you're looking for exactly which files each command writes, see [Sync and recovery](/reference/sync/).
+
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet: an update lists a library skill as changed or added, with its changed files, but without a version or summary.
 :::
-
-This guide is for projects that take rules and skills from sources: libraries, and repositories of skills that aren't libraries. Updating brings changes from those sources into your project. Library authors may improve advice, fix mistakes, add rules and skills, make rules stricter, change a skill's steps or level, or retire either. Your project takes those changes only when you run `trailguide project update` and confirm them. `trailguide project sync` never moves a source, as [Sync and update](#sync-and-update) explains, and a [pin](#keep-a-rule-at-its-current-version) holds a rule back even when you update.
-
-In this guide, you'll preview and apply updates, keep a rule at its current version when you're not ready for a change, [update one source](#update-one-source) or [move a single rule](#update-one-rule-to-its-newest-version), and commit the result. You'll also learn how [skills](#update-skills), [skill levels](#level-changes), [non-library sources and curated skills](#update-a-non-library-source), and [one library release](#take-one-library-release) update, how to change what you include, and how to recover from a failed update.
-
-Start with a project that already [includes rules](/guides/select-rules/). To publish new rule versions from a library you maintain, see [Version your rules](/guides/version-rules/) instead. For details about how commands change files, see [Sync and recovery](/reference/sync/).
 
 ## Sync and update
 
-Two commands take rules and skills from your sources, and they do different things:
+Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**: one file per source, `.trailguide/vendor/<source-name>/_source.json`, which names the source's exact Git commit and the version of each rule and skill it took. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.
 
-- **`trailguide project sync`** restores the **lock** recorded in `.trailguide/vendor/`: each source's library release or commit, and each rule's version. Everyone who syncs the project gets the same rules and skills. Sync never moves a source: a rule or skill you newly include comes from the recorded library release or commit too, and a source that's new to the project is taken as an update would take it. When you include something the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
-- **`trailguide project update`** moves each source along its `ref`: it looks for newer rule and skill versions, new rules and skills, level changes, retirements, and new commits on branches and tags, including those of [curated skills](/reference/configuration/#curated-skills), shows you a preview, and applies the changes once you confirm.
+Two commands work with the lock, and they have opposite jobs:
 
-Neither command runs during ordinary coding, review, or `trailguide project check`, so rules and skills never change underneath your agents.
+- **`trailguide project sync`** reproduces the lock. It installs what the lock records and never moves a source to a newer revision. Run it after you check out the project, or after you change what you include.
+- **`trailguide project update`** moves the lock forward. It looks for newer revisions of your sources, shows you what would change, and writes the new lock only after you confirm.
 
-## Update your sources
+The split exists so that changes arrive only when someone chooses them. A teammate who syncs, or a CI job that builds, gets exactly what the project recorded. A change in a library reaches your project only when someone runs update, reads the preview, and commits the result. Neither command runs during ordinary coding, review, or `trailguide project check`, so rules and skills never change underneath your agents.
+
+Sync does take something new in two cases. A source that's new to the project is taken as an update would take it, and a source whose `ref` you changed is taken at the new `ref`. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+
+## Run an update and read the preview
+
+Update never changes your project without showing you first. It prints a preview of every change, waits for you to read it, and applies nothing until you confirm. This section walks through that preview and what to look for in it.
+
+The versions and summaries in the preview come from **library releases**. A library publishes its changes in numbered releases, tagged `release/1`, `release/2`, and so on, and each release gives every changed rule and skill a new version and a one-line summary of what changed.
+
+### Rules and skills update differently
+
+One update covers both the rules and the skills your project takes from a source, and the preview lists them together. But they update in different ways:
+
+| | Rules | Skills |
+| --- | --- | --- |
+| What gets updated | Each rule updates to its own newest version. | All of a source's skills update together, to the source's newest release or commit. |
+| Update one at a time | `trailguide project update SOURCE:RULE` takes one rule's newest version. | Not possible. You must update all of a source's skills at the same time. |
+| Hold one back | [Pin it](#keep-a-rule-at-its-current-version), and it stays at its current version. | [Exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release). |
+| What a change level tells you | Whether code that followed the old version still complies. | Whether whatever relied on the old version, such as your workflow or another skill that uses it, still works the same way. |
+
+Skills update together because they often call one another, and skills from one revision always match. The rest of this section explains the preview using rule rows; [Update skills](#update-skills) covers what's different in skill rows, such as script warnings and level changes.
+
+### Run the update
 
 From the project root, run:
 
@@ -30,7 +53,7 @@ From the project root, run:
 trailguide project update
 ```
 
-The command previews every change in each source, with each [rule version](/concepts/rule/#how-a-rule-is-versioned)'s summary, then asks you to confirm:
+The command previews every change to the rules and skills in each source, with the summary of each new [version](/concepts/rule/#how-a-rule-is-versioned), then asks you to confirm:
 
 ```text
 team
@@ -54,7 +77,18 @@ team
   pinned    practices/testing/verify-backoff       1.3.0
             Newest version: 2.0.0.
             Reason: Waiting on the author's response to acme/.trailguide#45.
+  minor     skills/build-feature                   1.2.0 -> 1.3.0
+            Add a step that writes a failing test before each slice.
+            script changed: scripts/verify.sh
+  new       skills/tdd                             1.1.0
+            Write a failing test before each change.
+            Installed because skills/build-feature uses it.
+            script added: scripts/run-tests.sh
+
+Warning: some skills in this update add or change scripts. Trail Guide never runs them, but your agents may; read them before you confirm.
 ```
+
+Each source lists its rules first, then its skills. Here, `team` has seven rule rows and two skill rows: a newer version of `skills/build-feature`, and a new skill, `skills/tdd`, that it now uses.
 
 When a rule moves through several versions, each summary starts with the version it belongs to, such as `1.4.0: Add an example.`
 
@@ -68,23 +102,37 @@ When a rule moves through several versions, each summary starts with the version
 | `replaced` | The library changed a rule you [replaced with your own](/guides/select-rules/#replace-a-rule) since the version your rule is based on, its `basedOn`, which a fork records. The preview lists those changes. Without `basedOn`, it lists the changes since the version your project's lock records, which your rule may already have. Your rule doesn't change unless you replace it with a fork of the newest version. |
 | `pinned` | A newer version exists, but your [pin](#keep-a-rule-at-its-current-version) keeps the rule where it is. |
 
-When a library release changed [library-wide files](/reference/rule-versions/#what-a-version-covers), such as rule group descriptions or shared diagrams, the preview ends the source with a line such as `Shared files: release 3 -> 4`. The update brings them in even when no rule changes.
+At the end of a source's list, the preview may show a line such as `Shared files: release 3 -> 4`. Besides rules and skills, a library publishes files that every rule draws on, such as rule group descriptions and shared diagrams; see [What a version covers](/reference/rule-versions/#what-a-version-covers). This line means a newer release changed some of them, and the update brings them in even when no rule changes.
 
-Read the major changes, new rules, and retirements closely: each can change what your code must do. Skills appear in the same list; see [Update skills](#update-skills). For each replaced rule, check whether your own rule needs the same change. Then confirm, and the update applies exactly the changes the preview showed.
+### What to check before you confirm
 
-For a replaced rule you forked and never edited, or whose edits you no longer need, replace your rule with a fork of the newest version. In a terminal, answer `replace` when the update asks about the rule; it first names the files that replacing replaces or removes. In a script, pass `--update-fork team:<rule>` with `--yes`; the preview, without `--yes`, lists the files it would replace and those it would remove. Either writes the new fork exactly as [forking](/reference/cli/#fork-a-library-rule) that version would, at your rule's path, replaces your rule's asset directory, and sets the exclusion's `basedOn` to the version, all in the same step as the rest of the update. Your edits to the rule and its assets are overwritten, so commit them first; see [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
+Most rows need no action, but a few can change what your code must do, so read these closely:
 
-To keep your edits, merge the library's changes into your rule by hand instead, then set `basedOn` in `.trailguide/config.yaml` to the version you merged, so later updates list only newer changes. Trail Guide never moves `basedOn` on its own, because only you know whether your rule took the changes in.
+- **`major`:** code that followed the old version may break the new one.
+- **`new`:** your agents will start following a rule they didn't follow before.
+- **`retired`:** your agents will stop following the rule; check whether its replacement covers what you need.
 
-The preview lists a skill you [forked](/guides/install-skills/#fork-a-skill) as `replaced` too, when the source's copy changed since the commit your fork is based on, naming the files that changed. The update never changes your fork: compare the files, merge what you need, and set the exclusion's `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
+For skill rows, see [Update skills](#update-skills). Rows marked `replaced` need a decision from you, described next.
 
-:::note[Preview]
-Forking skills comes in the next Trail Guide release.
-:::
+When you confirm, the update applies exactly the changes the preview showed, and nothing else.
 
-In a terminal, the command also asks about each new rule: add it, or exclude it. Excluding a rule asks for a reason and writes an [exclusion](/guides/select-rules/#exclude-a-rule), so the rule doesn't join now or on later updates. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes` to do the same.
+### Rules you replaced with your own
 
-In a script or CI job, where there's no terminal to confirm in, the command only shows the preview. To apply it, pass `--yes`:
+You may have [replaced a library rule with your own rule](/guides/select-rules/#replace-a-rule), often by forking it: copying the library's rule into your project so you can edit it. Your rule doesn't follow the library, so when the library changes the original, the preview flags it as `replaced` and lists what changed. Update never touches your rule on its own; you choose one of two ways to bring it up to date.
+
+**Take the library's newest version, discarding your edits.** Choose this when you never edited your fork, or no longer need your edits. In a terminal, answer `replace` when the update asks about the rule; it first names the files it would replace or remove. In a script, pass `--update-fork team:<rule>` with `--yes`. Either way, your rule becomes a fresh fork of the newest version, exactly as [forking](/reference/cli/#fork-a-library-rule) that version would write it, its asset directory is replaced, and Trail Guide records the version you're now based on. Your edits are overwritten, so commit them first. See [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
+
+**Keep your edits and merge by hand.** Copy the library's changes you want into your rule. Then set the rule's `basedOn` in `.trailguide/config.yaml` to the version you merged. `basedOn` is how Trail Guide knows which library changes your rule already has: later previews list only the changes after it. Trail Guide never moves `basedOn` itself, because only you know whether you took the changes in.
+
+A [forked skill](/guides/install-skills/#fork-a-skill) works the same way. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed. Merge what you need, and set `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
+
+### New rules: add or exclude
+
+When a library adds a rule to a rule group you include, your project takes it by default. If the rule doesn't fit your project, you can turn it down with an [exclusion](/guides/select-rules/#exclude-a-rule): a line in `.trailguide/config.yaml` that leaves the rule out, with the reason why, so later updates don't offer it again. In a terminal, the update asks about each new rule and asks for the reason if you exclude it. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes`.
+
+### Apply an update in a script or CI
+
+A script or CI job has no terminal to answer the confirmation, so there the command only prints the preview and changes nothing. To apply the update without being asked, pass `--yes`:
 
 ```sh
 trailguide project update --yes
@@ -92,7 +140,9 @@ trailguide project update --yes
 
 ## Update skills
 
-Library skills have versions too, so the preview lists them beside the rules, with the same changes and summaries. Unlike rules, skills aren't updated one by one: all of a source's skills come from the one library release or commit the project recorded for it, the one that supplies its [library-wide files](/reference/rule-versions/#what-a-version-covers). When an update moves that revision, every installed skill from the source moves with it, and the preview lists each skill whose version changed:
+Unlike rules, skills don't update one at a time; see [Rules and skills update differently](#rules-and-skills-update-differently). All of a source's skills come from the one library release or commit the project recorded for it, the same revision that supplies its [library-wide files](/reference/rule-versions/#what-a-version-covers), so skills that call each other always match. When an update moves that revision, every installed skill from the source moves with it.
+
+Library skills have versions too, so the preview lists them beside the rules, with the same changes and summaries. It lists each skill whose version changed:
 
 ```text
 fabrica
@@ -134,41 +184,43 @@ After you confirm, the update rewrites the installed copies in your target folde
 
 ### Level changes
 
-A library can change a skill's [level](/reference/configuration/#skill-levels) in any library release. The preview shows each move on the skill's row, with the library release that made it:
+A library sets a **level** for each skill it offers. A `required` skill installs in every project that uses the library. A `recommended` skill installs in projects that include `recommended`. An `offered` skill installs only when you name it. See [Skill levels](/reference/configuration/#skill-levels).
+
+A library can change a skill's level in any library release, so an update can start or stop installing a skill you never named. The preview shows each move under the skill's row, with what it means for your project:
 
 ```text
 fabrica
-  new       skills/ship-service                    1.0.0
-            level: offered -> required, by fabrica release 8
-  level     skills/build-feature                   1.3.0
-            level: offered -> recommended, by fabrica release 8
-            Not installed: this project doesn't include recommended.
-  dropped   skills/write-design-doc                1.1.0
-            level: recommended -> offered, by fabrica release 8
-            Was installed because this project includes recommended; add skills/write-design-doc to keep it.
+  added     skills/ship-service
+            level: offered -> required
+            Now required: it installs whatever skills.include says, and the project can't exclude or fork it.
+  removed   skills/write-design-doc
+            level: recommended -> offered
+            No longer recommended: it installs only when skills.include names it or has "*".
+  level     skills/build-feature  offered -> recommended
+            Now recommended: it installs when skills.include has recommended.
 ```
 
-- A move that installs a skill, such as `offered -> required`, or `offered -> recommended` when you include `recommended`, shows the skill as `new`.
-- A move that stops installing one, such as `recommended -> offered` when you don't name the skill, shows it as `dropped`. To keep it, add its ID to the source's `skills.include` before you confirm.
-- A move that changes nothing for your project, such as `offered -> recommended` when you don't include `recommended`, shows the skill as `level`, so you can decide whether to include it.
-
-When a skill's version changes too, its row shows the version change, with the level move on the line below.
+- A move that installs a skill, such as `offered -> required`, or `offered -> recommended` when you include `recommended`, shows the skill as `added`, with the move on the line below.
+- A move that stops installing one, such as `recommended -> offered` when you don't name the skill, shows it as `removed`. To keep it, add its ID to the source's `skills.include` before you confirm.
+- When the skill's files change too, the move appears under its `changed` row, or its `replaced` row for a skill you forked, before the files.
+- A move that installs or removes nothing, such as `offered -> recommended` when you don't include `recommended`, gets a `level` row of its own, so you can decide whether to include the skill.
 
 A skill that becomes required while your project excludes or forks it stops the update: required skills can't be excluded or forked. The error names the library and your exclusion; remove the exclusion, or stop using the source. Levels don't chain: a project sees only the levels of the libraries it names as sources.
 
 ## Update a non-library source
 
-A [non-library source](/reference/imports/#non-library-sources) has no versions. When its `ref` names a branch, the update moves it to the newest commit on the branch, and the preview lists each installed skill folder that changed between the recorded commit and that one, with the files that changed:
+A **non-library source** is any Git repository of skills that hasn't adopted Trail Guide, that is, one without a Trail Guide library manifest. Most skill collections you'll find, such as a third party's, are non-library sources. Such a repository may tag its own releases, such as `v1.2.0`, and you can set `ref` to one of those tags. What it doesn't have is what a library release adds: a version for each skill, and a change note saying what changed in it. So the update preview can't say how each skill changed; it lists the skill folders and files that changed instead. With no library releases to follow, the source must name a `ref`, and an update follows that `ref`. See [Non-library sources](/reference/imports/#non-library-sources).
+
+When its `ref` names a branch, the update moves it to the newest commit on the branch. The preview shows the commit it moves from and to, then lists each installed skill folder that changed between the two, with the files that changed:
 
 ```text
-pstack  main: 3f9c2e1 -> 8a41d07
+pstack
+  main: 3f9c2e1a5b7d -> 8a41d07c2e9f
   changed   skills/architect
             Changed: SKILL.md, scripts/diagram.sh
             script changed: scripts/diagram.sh
   added     skills/review
-            Included by "*".
   removed   skills/sketch
-            The folder no longer exists on main.
 
 Warning: some skills in this update add or change scripts. Trail Guide never runs them, but your agents may; read them before you confirm.
 ```
@@ -177,11 +229,18 @@ Warning: some skills in this update add or change scripts. Trail Guide never run
 - `added` lists a new skill folder that the source's `"*"` includes. New folders you haven't included aren't listed; run `trailguide project list skills` to see them.
 - `removed` lists an installed skill whose folder is gone. Applying the update stops installing it. When the skill is in your `skills.include`, the entry no longer does anything, and sync and update warn about it so you can delete it.
 
-Scripts are flagged and warned about as they are for [library skills](#update-skills). Read the changed files before you confirm: without versions or summaries, the diff is the only record of what changed. A tag that now names a different commit than at your last update moves too, and the preview warns that the tag moved. A non-library source whose `ref` is a commit never moves; to take another commit, change `ref` and run `trailguide project update SOURCE`. `--keep` and pins don't apply to non-library sources; to hold one that tracks a branch at its current commit, set its `ref` to the commit recorded in its `_source.json`.
+
+Scripts are flagged and warned about as they are for [library skills](#update-skills). Read the changed files before you confirm: without versions or summaries, the diff is the only record of what changed. When the branch has no new commit, the preview says `main: no new commit.`
+
+- **A tag.** A tag that now names a different commit than at your last update moves too, and the preview warns that the tag moved. Only a non-library source follows a tag this way; a library source with a tag `ref` [holds one revision](#take-one-library-release).
+- **A commit.** A non-library source whose `ref` is a commit never moves. To take another commit, change `ref` and run `trailguide project sync`.
+- **Holding it back.** `--keep` and pins don't apply to non-library sources. To hold one that tracks a branch at its current commit, set its `ref` to the commit recorded in its `_source.json`.
 
 ### Curated skills
 
-A library can list skills it [curates](/reference/configuration/#curated-skills) from another repository at a level. Your project resolves the curated source's ref itself, when it updates, so a curated skill can move even when the library doesn't publish a new library release. The preview lists the curated source's move under the library that curates it, with the same rows as a non-library source:
+A library can also offer skills that live in another repository. These are **curated skills**: the library names the other repository, a `ref` in it, and a level for each skill. See [Curated skills](/reference/configuration/#curated-skills).
+
+Your project resolves the curated source's `ref` itself when it updates, so a curated skill can move even when the library doesn't publish a new library release. The preview lists the curated source's move under the library that curates it, with the same rows as a non-library source:
 
 ```text
 fabrica  release 7 -> 7
@@ -190,11 +249,34 @@ fabrica  release 7 -> 7
             Changed: SKILL.md
 ```
 
-To take a newer or older revision of a curated skill than the library's ref gives you, declare the same repository as your own source, with the `ref` you want. Your source's ref then decides for every skill from that repository; see [Try a newer version of a curated skill](/guides/install-skills/#try-a-newer-version-of-a-curated-skill).
+To take a newer or older revision of a curated skill than the library's `ref` gives you, declare the same repository as your own source, with the `ref` you want. Your source's `ref` then decides for every skill from that repository; see [Try a newer version of a curated skill](/guides/install-skills/#try-a-newer-version-of-a-curated-skill).
 
-## Update one source
+## Handle retired rules and skills
 
-When your project takes rules and skills from several sources, you can update just one of them. Name the source, its name under `sources` in `.trailguide/config.yaml`:
+Libraries retire rules and skills that no longer earn their place, often because a broader one replaces them. A retirement removes guidance your agents relied on, so the preview shows it for you to check. A retired rule or skill appears with its last version, the summary explaining why, and its replacement if it has one. A rule never replaces a skill, or the reverse. If the library later retired the replacement too, the preview says so and names the rule that replaced it, if any.
+
+**Retired rules.** When you confirm, the rule is dropped and your agents stop following it. If it has a replacement, read the replacement and check that your selectors include it. To keep following the retired rule, choose to keep it when the update asks, or pin it to its last version before you confirm; once the retirement is applied, the rule is gone and can't be pinned. If you exclude, replace, or include by ID a rule that the library retires, that entry no longer does anything; sync and update warn about it so you can delete it. A fork of the retired rule stays. When the retired rule was the only source of its rule group's metadata, the update writes that metadata to `.trailguide/rules/<group-id>/_group.yaml`, so the fork keeps its rule group.
+
+**Retired skills.** When you confirm, the skill's installed folders are removed. If it has a replacement, check that you include it. To keep using the skill, [fork it](/guides/install-skills/#fork-a-skill) before you apply the update.
+
+## Review and commit the update
+
+An update changes what your agents read and may change scripts they run, so review it like any other change before you commit. `trailguide project update` reports added, changed, and removed file paths. Before committing:
+
+- Inspect the diff of `.trailguide/vendor/` for changes from your sources, including rules and skills hidden by your exclusions and replacements, and changes to retained licenses and notices.
+- Inspect the diff of the installed skills in `.claude/skills/` and `.agents/skills/`, especially scripts, which your agents may run.
+- For each `replaced` rule in the preview, compare the library's old and new text before deciding whether your own rule still makes sense.
+- When updated rules introduce competing obligations, use the [conflict-review prompt](/guides/conflicting-guidance/#generate-a-review-prompt) to inspect the combined guidance.
+
+Commit the configuration, vendor snapshots, generated files, and installed skill folders together.
+
+## Advanced use cases
+
+Most updates need only the steps above. The cases below come up less often: taking changes from one source or one rule at a time, holding rules back, staying on one library release, and changing what you include without updating.
+
+### Update one source
+
+When your project takes rules and skills from several sources, you may want to take one library's changes now and leave the others for later. Name the source, its name under `sources` in `.trailguide/config.yaml`:
 
 ```sh
 trailguide project update team
@@ -202,23 +284,25 @@ trailguide project update team
 
 The update works like a full one, with the same preview and questions, for `team` only. Your other sources stay where they are until your next full update.
 
-## Update one rule to its newest version
+A library source whose `ref` is a tag or commit doesn't move this way; see [Take one library release](#take-one-library-release).
 
-To move a single rule to its newest version, without taking anything else from its library, name it after its source, as `SOURCE:RULE`:
+### Update one rule to its newest version
+
+Sometimes you need one rule's newest version, such as a fix your team is waiting for, without taking anything else its library changed. Name the rule after its source, as `SOURCE:RULE`:
 
 ```sh
 trailguide project update team:techs/react/prefer-server-components
 ```
 
-The preview and the update cover only that rule. The library's new rules, its other rule changes, and its shared files stay where they are, with one exception: when the rule's new version comes from a newer library release than your shared files, they move to that library release, because a rule version can rely on the shared files its library release published. The source's skills come from the same library release, so they move with the shared files, and the preview lists them. To move several rules together, name each of them.
+The preview and the update cover only that rule. The library's new rules, its other rule changes, and its shared files stay where they are. There's one exception. A rule version can rely on the shared files its library release published, so when the rule's new version comes from a newer library release than your shared files, the shared files move to that release. The source's skills come from the same release, so they move too, and the preview lists them. To move several rules together, name each of them.
 
 You can't update one skill on its own: a library's skills all come from one library release, and a non-library source's from one commit. Update the whole source instead.
 
 A pinned rule doesn't move; [delete its pin](#keep-a-rule-at-its-current-version) first. A source that uses `ref` moves only as a whole; see [Refs](/reference/configuration/#refs).
 
-## Keep a rule at its current version
+### Keep a rule at its current version
 
-When an update brings a change you're not ready for, keep that rule where it is with a **pin**, and let everything else update. A pin records the version and why you're keeping it:
+An update can bring a change you're not ready for, such as a major version that your code doesn't meet yet. You don't have to choose between taking it and skipping the whole update. A **pin** keeps one rule at one version while everything else updates. It records the version and why you're keeping it:
 
 ```yaml
 sources:
@@ -255,17 +339,11 @@ When you're ready for the newer version, delete the pin and [update that rule](#
 trailguide project update team:practices/testing/verify-retry-limits
 ```
 
-A pin can also move a rule to a specific version: set `version`, and `trailguide project sync` moves the rule to exactly that version, up or down, when your recorded library release or an earlier one published it; for a later version, run `trailguide project update SOURCE`. To change what a rule says instead, [fork it](/reference/cli/#fork-a-library-rule) into your project's `.trailguide/rules/`. See [Pin a rule](/reference/configuration/#pin-a-rule) for the details.
+A pin can also move a rule to a specific version. Set `version`, and `trailguide project sync` moves the rule to exactly that version, up or down, when your recorded library release or an earlier one published it. For a later version, run `trailguide project update SOURCE`. To change what a rule says instead, [fork it](/reference/cli/#fork-a-library-rule) into your project's `.trailguide/rules/`. See [Pin a rule](/reference/configuration/#pin-a-rule) for the details.
 
-## Handle retirements
+### Take one library release
 
-A retired rule or skill appears in the preview with its last version, the summary explaining why, and its replacement if it has one. A rule never replaces a skill, or the reverse. If the library later retired the replacement too, the preview says so and names the rule that replaced it, if any. When you confirm, the rule is dropped, or the skill's installed folders are removed. For a rule with a replacement, read the replacement, and check that your selectors include it; for a skill, check that you include its replacement. To keep using a skill the library retires, [fork it](/guides/install-skills/#fork-a-skill) before you apply the update.
-
-To keep following a rule the library retires, choose to keep it when the update preview offers, or pin it to its last version before you confirm. Once the retirement is applied, the rule is gone and can't be pinned. If you exclude, replace, or include by ID a rule that the library retires, that entry no longer does anything; sync and update warn about it so you can delete it. A fork of the retired rule stays; when the retired rule was the only source of its rule group's metadata, the update writes that metadata to `.trailguide/rules/<group-id>/_group.yaml` so the fork keeps its rule group.
-
-## Take one library release
-
-To take exactly what one library release published, set the source's `ref` to its tag:
+By default, a library source follows the library's releases, and each update moves it to the newest one. Sometimes you want to stay on one release, such as while you adapt your code to the next one. To take exactly what one library release published, set the source's `ref` to its tag:
 
 ```yaml
 sources:
@@ -276,34 +354,23 @@ sources:
       include: ["*"]
 ```
 
-`trailguide project update` doesn't move this source past release 5. To take another library release, change the tag and run `trailguide project update vendor-rules`; sync never moves a source, so it reports that the record is out of date. To go back to following library releases, remove `ref` and update the source.
+`trailguide project update` doesn't move this source past release 5. To take another library release, change the tag and run `trailguide project sync`, which takes the source at the new `ref`. To go back to following library releases, remove `ref` and update the source.
 
-`ref` also accepts a branch, any other tag, or a full commit SHA, which library authors use to test unreleased changes. Rules and skills with unreleased changes have no version, so Trail Guide warns about them every time you sync or update. See [Take one revision](/reference/configuration/#take-one-revision).
+`ref` also accepts other revisions:
 
-## Review and commit the update
+- **Another tag or a full commit SHA.** Library authors use these to test unreleased changes. Like a release tag, they hold the source in place.
+- **A branch, such as `main`.** The source takes the library's newest commit each time you update, so the library never has to publish a library release.
 
-`trailguide project update` reports added, changed, and removed file paths. Before committing:
+The catch with anything other than a release is change notes. A library writes them only when it publishes a release, so rules and skills changed since its last release come without them. The update preview shows the commit move and skill changes instead. Trail Guide warns about such a source when you sync or update. See [Take one revision](/reference/configuration/#take-one-revision).
 
-- Inspect the diff of `.trailguide/vendor/` for changes from your sources, including rules and skills hidden by your exclusions and replacements, and changes to retained licenses and notices.
-- Inspect the diff of the installed skills in `.claude/skills/` and `.agents/skills/`, especially scripts, which your agents may run.
-- For each `replaced` rule in the preview, compare the library's old and new text before deciding whether your own rule still makes sense.
-- When updated rules introduce competing obligations, use the [conflict-review prompt](/guides/conflicting-guidance/#generate-a-review-prompt) to inspect the combined guidance.
+### Change what you include
 
-Commit the configuration, vendor snapshots, generated files, and installed skill folders together.
+Including a new rule or skill, or excluding one, isn't an update: you're changing the selection, not moving the source. Edit the source's `rules.include` or `skills.include`, or its `exclude` lists, and run `trailguide project sync`.
 
-## Change what you include
-
-Edit the source's `rules.include` or `skills.include`, or its `exclude` lists, and run `trailguide project sync`.
 Sync takes newly included rules and skills from the library release or commit your project already recorded for the source, and leaves the rest of your rules and skills unchanged. Each new rule gets the newest version that library release or an earlier one published. When something you include isn't in the recorded revision, such as a skill the library published after your last update, sync fails and names `trailguide project update SOURCE`, which moves the whole source.
-The vendor snapshot must match your selectors before an offline build can use it.
-Regeneration removes a rule group index only when no source or authored rule group still supplies it.
-You don't need to create rule group metadata before you stop including, or remove, the last source supplying an authored rule's rule group: sync writes the rule group's metadata, from the library release that supplies that library's shared files or, when that library release no longer has the rule group, from its last vendored copy, to `.trailguide/rules/<group-id>/_group.yaml` and warns that it did. See [Keep the rule group of an authored rule](/reference/sync/#keep-the-rule-group-of-an-authored-rule). Review the file afterward; it's now yours to edit. If `.trailguide/rules/<group-id>/_group.yaml` already exists, sync leaves it unchanged.
+
+When you stop including, or remove, the last source that supplies an authored rule's rule group, sync writes the rule group's metadata to `.trailguide/rules/<group-id>/_group.yaml` and warns that it did. Review the file afterward; it's now yours to edit. If the file already exists, sync leaves it unchanged. See [Keep the rule group of an authored rule](/reference/sync/#keep-the-rule-group-of-an-authored-rule).
 
 ## Recover from a failed update
 
-`trailguide project update` and `trailguide project sync` validate and render before installing output.
-A failed sync, or an update you didn't confirm, preserves the previous working rules and skills.
-Interrupted installations must be detected and recovered before another operation can claim success.
-
-Rules and skills never change automatically during coding, review, or offline checks.
-Trail Guide keeps the versions and commits it recorded until you change a pin or confirm an update.
+An update or sync can fail partway, such as when a source is unreachable or a rule doesn't validate. Both commands validate and render before installing anything, so a failed sync, or an update you didn't confirm, leaves the previous rules and skills in place. An interrupted installation is detected, and must be recovered, before another command can report success. See [Sync and recovery](/reference/sync/) for how recovery works.

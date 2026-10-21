@@ -51,6 +51,9 @@ type ReleaseResult struct {
 	// NoGitHubRelease, on other hosts, and when there's nothing to publish.
 	GitHubRelease *GitHubReleasePage `json:"githubRelease,omitempty"`
 	Warnings      []string           `json:"warnings"`
+	// ForkedSkills lists the skills the library forked whose sources changed them since, as CheckResult does; it is
+	// empty, never nil, when there are none.
+	ForkedSkills []ForkedSkill `json:"forkedSkills"`
 }
 
 // GitHubReleasePage is a library release's announcement on GitHub.com.
@@ -93,7 +96,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	if err != nil {
 		return ReleaseResult{}, err
 	}
-	result := ReleaseResult{Repository: displayRepository(branch.pushURL), Remote: branch.remote, Branch: branch.branch, GitHubRepository: gitHubRepository(branch.pushURL), DryRun: request.DryRun, Rules: []PendingRule{}, LibraryFiles: []string{}}
+	result := ReleaseResult{Repository: displayRepository(branch.pushURL), Remote: branch.remote, Branch: branch.branch, GitHubRepository: gitHubRepository(branch.pushURL), DryRun: request.DryRun, Rules: []PendingRule{}, LibraryFiles: []string{}, ForkedSkills: []ForkedSkill{}}
 	remote, err := git.readRemote(ctx, branch)
 	if err != nil {
 		return ReleaseResult{}, err
@@ -112,11 +115,11 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	// A release tag only this clone has is checked against the library release this commit would publish after
 	// the latest one the remote published, instead of serving as the baseline itself.
 	git = git.withoutUnpublished(unpushed)
-	checked, err := checkLibrary(ctx, root, git, request.Curated)
+	checked, err := checkLibrary(ctx, root, git, request.Curated, request.Forks)
 	if err != nil {
 		return ReleaseResult{}, err
 	}
-	result.Warnings = checked.result.Warnings
+	result.Warnings, result.ForkedSkills = checked.result.Warnings, checked.result.ForkedSkills
 	if err = git.requireCommitted(ctx, result.Commit, checked.input); err != nil {
 		return ReleaseResult{}, err
 	}

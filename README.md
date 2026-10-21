@@ -45,7 +45,7 @@ Most people already guide their agents with skills, the AI skills we all know, o
 
 Pulling many files from versioned sources into a project, and keeping them up to date, is a familiar problem. Programming languages have solved it for more than 20 years with the humble package manager. Trail Guide applies that same approach to skills. Each project declares its sources in one configuration file, and Trail Guide records each skill's source and exact revision, updates it only when you ask, and writes it into the folders your agents read. Your organization can publish shared skills in its own `.trailguide` repository and require or recommend them for every project.
 
-To publish skills, you put them in a **[library](https://trailguide.fabricahq.com/concepts/libraries/)**: a Git repository whose manifest lists the skills it offers, with a version for each skill and a change note for each change, so tools and projects can read exactly what you publish. For example, see the [Fabrica Public Rules Library](https://github.com/fabricahq/public-rules).
+To publish skills, you put them in a **[library](https://trailguide.fabricahq.com/concepts/libraries/)**: a Git repository whose manifest lists the skills it offers, with a version for each skill and a change note for each change, so tools and projects can read exactly what you publish. For example, see the [Fabrica Public Rules Library](https://github.com/fabricahq/public-library).
 
 ### Skills aren't enough
 
@@ -158,11 +158,11 @@ Commit `.trailguide/` and `AGENTS.md`, and you're done. Now ask your agent for a
 
 Once a rule proves itself, you may want to move it into a **library**: a Git repository of rule groups that any project can import. A library keeps its rules in `.trailguide/rules/`, the same layout a project uses, with its manifest in the `library` section of `.trailguide/config.yaml`, so one repository can be both.
 
-We recommend publishing your team's default rules in a repository such as `acme/.trailguide`, or starting from an existing library like the [Fabrica Public Rules Library](https://github.com/fabricahq/public-rules):
+We recommend publishing your team's default rules in a repository such as `acme/.trailguide`, or starting from an existing library like the [Fabrica Public Rules Library](https://github.com/fabricahq/public-library):
 
 ```sh
 trailguide project add source fabrica \
-  --repository https://github.com/fabricahq/public-rules.git \
+  --repository https://github.com/fabricahq/public-library.git \
   --rules 'practices/testing/*' \
   --rules 'techs/go/*'
 trailguide project sync
@@ -175,7 +175,7 @@ schemaVersion: 2
 skillTargets: [claude, agents]
 sources:
   fabrica:
-    repository: https://github.com/fabricahq/public-rules.git
+    repository: https://github.com/fabricahq/public-library.git
     rules:
       include:
         - practices/testing/*

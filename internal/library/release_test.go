@@ -151,7 +151,7 @@ func TestRelease_FirstLibraryReleaseGivesEveryRuleOneAndPushesOnlyItsTag(t *test
 	if remote, err := fixture.Command(ctx, "rev-parse", "refs/tags/release/1"); err != nil || remote != local {
 		t.Fatalf("the clone's release/1 is %s, the remote's %s: %v", local, remote, err)
 	}
-	want := ReleaseResult{Repository: fixture.Repository, Remote: "origin", Branch: "main", Commit: fixture.LatestCommit, Release: 1, Tag: "release/1", Rules: result.Rules, LibraryFiles: []string{"config.yaml", "practices/testing/_group.yaml"}, Notes: notes, TagCreated: true, Warnings: []string{"License is undeclared. Decide terms before sharing this library."}}
+	want := ReleaseResult{Repository: fixture.Repository, Remote: "origin", Branch: "main", Commit: fixture.LatestCommit, Release: 1, Tag: "release/1", Rules: result.Rules, LibraryFiles: []string{"config.yaml", "practices/testing/_group.yaml"}, Notes: notes, TagCreated: true, Warnings: []string{"License is undeclared. Decide terms before sharing this library."}, ForkedSkills: []ForkedSkill{}}
 	if !reflect.DeepEqual(result, want) || !slices.Equal(previewRows(PendingRelease{Rules: result.Rules}), []string{"practices/testing/a new - 1.0.0", "practices/testing/b new - 1.0.0"}) {
 		t.Fatalf("result %+v\nwant %+v", result, want)
 	}
@@ -772,7 +772,7 @@ func planFixtureRelease(t *testing.T, options Options) (plannedRelease, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	checked, err := checkLibrary(ctx, root, git, nil)
+	checked, err := checkLibrary(ctx, root, git, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

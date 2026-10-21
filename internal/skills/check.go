@@ -50,7 +50,8 @@ func (c Citation) String() string {
 // Check returns every problem in the frontmatter of the skill a repository authors in skills/<folder>/, in a fixed
 // order, or none: frontmatter that is missing, a name other than folder, a type that isn't in Types, a reserved trailguide-
 // key, and trailguide-rules-used or trailguide-skills-used lines that aren't IDs, repeat an ID, or name the skill itself. qualified
-// allows IDs that name a source, as a project's skills may; a library's skills cite only its own rules and skills.
+// allows rule IDs that name a source, as a project's skills may; a library's skills cite only its own rules. Skill IDs
+// may name a source either way: a project's skills use its sources' skills, and a library's use the skills it curates.
 // It checks the IDs' form only, not that the rules and skills they name exist. Each problem is a sentence about
 // SKILL.md, for the caller to place at its location.
 func Check(folder string, metadata Metadata, qualified bool) []string {
@@ -100,10 +101,10 @@ func ValidRuleCitation(line string, qualified bool) bool {
 	return ruleProblem(ParseCitation(line), qualified) == ""
 }
 
-// ValidSkillCitation reports whether line, a line of trailguide-skills-used, has the form of a skill ID, qualified by a
-// source name only when qualified allows it. It doesn't check that the skill exists.
-func ValidSkillCitation(line string, qualified bool) bool {
-	return skillProblem(ParseCitation(line), qualified) == ""
+// ValidSkillCitation reports whether line, a line of trailguide-skills-used, has the form of a skill ID: skills/ and a
+// skill name, or a source name, a colon, and the skill's ID in that source. It doesn't check that the skill exists.
+func ValidSkillCitation(line string) bool {
+	return skillProblem(ParseCitation(line), true) == ""
 }
 
 // ruleProblem returns what is wrong with the form of a cited rule, or empty when it is a rule ID, qualified by a
@@ -126,12 +127,10 @@ func ruleProblem(citation Citation, qualified bool) string {
 }
 
 // skillProblem returns what is wrong with the form of a skill a skill uses, or empty when it is a skill ID: skills/
-// and a skill name for a skill in the same repository, or, when qualified allows it, a source name, a colon, and the
-// skill's ID in that source.
-func skillProblem(citation Citation, qualified bool) string {
+// and a skill name for a skill in the same repository, or a source name, a colon, and the skill's ID in that source.
+// It takes qualified, which it ignores, so that checkLines can check skill and rule lines alike.
+func skillProblem(citation Citation, _ bool) string {
 	switch {
-	case citation.Source != "" && !qualified:
-		return "name a skill in this library by its ID, without a source name, such as skills/tdd"
 	case citation.Source != "" && (!sourceName(citation.Source) || ValidateID(citation.ID, "") != nil):
 		return "expected a source name, a colon, and the skill's ID in that source, such as fabrica:skills/tdd"
 	case citation.Source == "":

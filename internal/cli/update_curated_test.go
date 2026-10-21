@@ -99,7 +99,7 @@ func TestUpdate_JSONReportsCuratedSkillsAndTheirScripts(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &result); err != nil || code != 0 || diagnostic != "" || !result.OK || len(result.Value.Sources) != 1 || len(result.Value.Sources[0].Curated) != 1 {
 		t.Fatalf("exit %d, %v:\n%s%s", code, err, out, diagnostic)
 	}
-	want := `{"name":"pocock","repository":"git@fixture.invalid:pocock","ref":"stable","commit":{"from":"` + from + `","to":"` + to + `"},"tagMoved":true,"changes":[{"id":"pocock:skills/ops/deploy","change":"changed","files":["scripts/deploy.sh"],"scripts":[{"path":"scripts/deploy.sh","change":"changed"}]}]}`
+	want := `{"name":"pocock","repository":"git@fixture.invalid:pocock","ref":"stable","commit":{"from":"` + from + `","to":"` + to + `"},"tagMoved":true,"changes":[{"id":"pocock:skills/ops/deploy","change":"changed","files":["scripts/deploy.sh"],"scripts":[{"path":"scripts/deploy.sh","change":"changed"}]}],"replaced":[]}`
 	if got := compactJSON(t, result.Value.Sources[0].Curated[0]); got != want {
 		t.Fatalf("curated row:\n%s\nwant:\n%s", got, want)
 	}

@@ -78,12 +78,14 @@ func TestSync_InstallsSkillsByLevel(t *testing.T) {
 		skills string
 		want   []string
 	}{
-		"nothing included":       {``, []string{"ship"}},
-		"rules only":             {`,"rules":{"include":["techs/go/*"]}`, []string{"ship"}},
-		"recommended":            {`,"skills":{"include":["recommended"]}`, []string{"review", "ship"}},
-		"an offered skill":       {`,"skills":{"include":["skills/build-feature"]}`, []string{"build-feature", "ship"}},
-		"a required skill named": {`,"skills":{"include":["skills/ship"]}`, []string{"ship"}},
-		"every skill":            {`,"skills":{"include":["*"]}`, []string{"build-feature", "deploy", "review", "ship"}},
+		"nothing included":                {``, []string{"ship"}},
+		"rules only":                      {`,"rules":{"include":["techs/go/*"]}`, []string{"ship"}},
+		"recommended":                     {`,"skills":{"include":["recommended"]}`, []string{"review", "ship"}},
+		"an offered skill":                {`,"skills":{"include":["skills/build-feature"]}`, []string{"build-feature", "ship"}},
+		"a required skill named":          {`,"skills":{"include":["skills/ship"]}`, []string{"ship"}},
+		"every skill":                     {`,"skills":{"include":["*"]}`, []string{"build-feature", "deploy", "review", "ship"}},
+		"every skill but the recommended": {`,"skills":{"include":["*"],"exclude":[{"id":"recommended","reason":"We review our own way."}]}`, []string{"build-feature", "deploy", "ship"}},
+		"only the required":               {`,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"We pick our own."}]}`, []string{"ship"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY`+test.skills+`}}}`)
@@ -309,6 +311,36 @@ func TestUpdate_PreviewsLevelChangesAndInstallsNewRequiredSkills(t *testing.T) {
 	}
 }
 
+// A library source that follows its branch previews the level changes at the branch's newest commit, as one
+// without ref previews those of its newest library release.
+func TestUpdate_PreviewsLevelChangesOfALibraryOnABranch(t *testing.T) {
+	ctx := context.Background()
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"main"}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	releaseNewLevels(t, f)
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []imports.SkillLevelUpdate{{ID: "skills/audit", To: "required"}, {ID: "skills/review", From: "recommended", To: "required"}}
+	if got := preview.Sources[0].SkillLevels; !slices.Equal(got, want) {
+		t.Fatalf("level rows = %+v; want %+v", got, want)
+	}
+	if _, err := plan.Apply(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedSkills(t, options); !slices.Equal(got, []string{"audit", "review", "ship"}) {
+		t.Fatalf("after update, installed %v; want the new required skills too", got)
+	}
+}
+
 // TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose keeps the only rule a scoped update moves, so the
 // skills stay at release/1 and the preview shows none of release/2's level changes.
 func TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose(t *testing.T) {
@@ -361,5 +393,94 @@ func TestSync_RenamesARequiredSkill(t *testing.T) {
 	}
 	if len(changes.Warnings) != 1 || !strings.HasPrefix(changes.Warnings[0], "team:skills/ship is installed as team-ship.") {
 		t.Fatalf("warnings = %q", changes.Warnings)
+	}
+}
+
+func TestSyncBuildAndList_LeaveOutTheExcludedLevels(t *testing.T) {
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["recommended"]}}}}`)
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	// Excluding a level the project installs leaves the installed skills out of date until sync.
+	configure(t, options, f, `"skills":{"include":["recommended"],"exclude":[{"id":"*","reason":"We pick our own."}]}`)
+	if _, err := Build(context.Background(), options); err == nil || !strings.Contains(err.Error(), "run trailguide project sync") {
+		t.Fatalf("build: got %v; want it to ask for sync", err)
+	}
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := installedSkills(t, options), []string{"ship"}; !slices.Equal(got, want) {
+		t.Fatalf("installed %v; want %v", got, want)
+	}
+	if _, err := Build(context.Background(), options); err != nil {
+		t.Fatalf("build after sync: %v", err)
+	}
+	listing, err := ListSkills(context.Background(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, skill := range listing.Skills {
+		got = append(got, skill.ID+" "+skill.Status)
+	}
+	want := []string{"team:skills/build-feature excluded", "team:skills/deploy excluded", "team:skills/review excluded", "team:skills/ship installed"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("listing:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+func TestSync_ForksASkillItAlsoExcludesByLevel(t *testing.T) {
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"*","reason":"Only what the library requires."}],"forks":{"skills/deploy":{"as":"skills/our-deploy","reason":"Ours."}}}}}}`)
+	root, err := openProject(context.Background(), options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "skills/our-deploy/SKILL.md", "---\nname: our-deploy\ndescription: Deploy our way.\n---\n# Deploy\n")
+	root.Close()
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := installedSkills(t, options), []string{"our-deploy", "ship"}; !slices.Equal(got, want) {
+		t.Fatalf("installed %v; want %v", got, want)
+	}
+	if _, err := Build(context.Background(), options); err != nil {
+		t.Fatalf("build after sync: %v", err)
+	}
+}
+
+// A level change that stops installing a skill shows on the skill's removed row, which the preview prints with the
+// level change beneath it.
+func TestUpdate_PreviewsALevelChangeThatRemovesASkillOnItsRow(t *testing.T) {
+	ctx := context.Background()
+	f := leveledLibrary(t)
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["recommended"]}}}}`)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`)}
+	if _, err := f.Commit(ctx, f.Worktree(), "Stop recommending review", gitfixture.Library(files)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := plan.Preview(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := preview.Sources[0]
+	if !slices.ContainsFunc(source.Skills, func(row imports.SkillUpdate) bool {
+		return row.ID == "skills/review" && row.Change == imports.SkillRemoved
+	}) {
+		t.Fatalf("skill rows = %+v; want review removed", source.Skills)
+	}
+	if want := []imports.SkillLevelUpdate{{ID: "skills/review", From: "recommended", To: "offered"}}; !slices.Equal(source.SkillLevels, want) {
+		t.Fatalf("level rows = %+v; want %+v", source.SkillLevels, want)
 	}
 }

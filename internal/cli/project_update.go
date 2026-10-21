@@ -21,8 +21,8 @@ import (
 
 // projectUpdateCommand previews newer rule versions and applies them after confirmation or with --yes.
 func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command {
-	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rule versions from libraries", Args: cobra.ArbitraryArgs}
-	cmd.Long = "Preview newer rule versions, new rules, and retirements from your libraries, then\napply them after you confirm. With no arguments, every source is updated.\nSOURCE, such as team, updates one library. SOURCE:RULE, such as\nteam:techs/go/errors, moves only that rule and adds no new rules. Sources that\nuse ref don't move.\n\nIn a terminal, update asks about each major change and retirement (adopt it, or\nkeep the current version with a pin), each new rule (add it, or exclude it), and\neach local rule that replaces a changed library rule (review the changes later,\nor replace your rule with a fork of the newest version, overwriting your edits),\nthen asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
+	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rules and skills from your sources", Args: cobra.ArbitraryArgs}
+	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release. A\nsource whose ref is a branch moves to the branch's newest commit; a library\nsource whose ref is a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\noverwriting your edits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
 	f := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory}
 	cmd.PostRunE = f.finishPrompts
 	cmd.Flags().Bool("yes", false, "Apply the previewed changes without asking; required without a terminal or with --json")
@@ -121,7 +121,15 @@ func updateTargets(args []string) ([]imports.UpdateTarget, error) {
 		}
 		if scoped {
 			if err := librarytree.ValidateRuleID(rule, arg); err != nil {
-				return nil, err
+				if skills.ValidateID(rule, arg) != nil {
+					return nil, err
+				}
+				// A path under a group may be a malformed rule ID or a non-library skill in a folder of that name, so
+				// it keeps the rule error and adds the skill guidance.
+				if group := strings.ToLower(rule); strings.HasPrefix(group, "techs/") || strings.HasPrefix(group, "practices/") {
+					return nil, fmt.Errorf("%w. If %s is a skill, run trailguide project update %s: a source's skills all come from one revision, so they update only together", err, rule, source)
+				}
+				return nil, fmt.Errorf("%s: SOURCE:RULE names one rule, such as team:techs/go/errors, and %s isn't a rule ID. A source's skills all come from one revision, so they update only together: run trailguide project update %s", arg, rule, source)
 			}
 		}
 		targets = append(targets, imports.UpdateTarget{Source: source, Rule: rule})
@@ -365,7 +373,8 @@ func updateReport(result project.UpdateResult, cancelled, shown bool, location u
 const updateKindWidth = len(imports.UpdateReplaced)
 
 // formatUpdatePreview lists each source's rule rows with the change, rule ID, and versions in aligned columns, then
-// its skill rows with the change and skill ID, each row's details indented beneath them, and any move of its shared
+// its skill rows with the change and skill ID, each row's details indented beneath them, including a change of the
+// skill's level, the level changes of skills without a row of their own, and any move of its shared
 // files. It writes nothing when no source has
 // anything to show, so the caller's summary stands alone.
 func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
@@ -390,6 +399,13 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 	for _, source := range sources {
 		out.WriteString(source.Name + "\n")
 		switch {
+		case source.FollowsRef && source.Commit != nil:
+			fmt.Fprintf(out, "  %s: %s -> %s\n", source.Ref, shortCommit(source.Commit.From), shortCommit(source.Commit.To))
+			if source.TagMoved {
+				fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, source.Ref)
+			}
+		case source.FollowsRef:
+			fmt.Fprintf(out, "  %s: no new commit.\n", source.Ref)
 		case source.Ref != "":
 			fmt.Fprintf(out, "  Imports %s with ref, so update doesn't move it.\n", source.Ref)
 		case len(source.Rules) == 0 && len(source.Skills) == 0 && source.SharedFiles == nil && len(source.Curated) == 0:
@@ -401,15 +417,17 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
-		formatSkillRows(out, source.Skills)
+		levels := levelsByID(source.SkillLevels)
+		formatSkillRows(out, source.Skills, levels)
 		for _, row := range source.ReplacedSkills {
 			fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, imports.UpdateReplaced, idWidth, row.ID, commitSpan(row.From, row.To))
+			writeLevelLines(out, levels, row.ID)
 			for _, line := range replacedSkillDetails(row) {
 				fmt.Fprintf(out, "%s%s\n", indent, line)
 			}
 		}
-		formatLevelRows(out, source.SkillLevels, idWidth)
-		formatCuratedRows(out, source.Name, source.Curated)
+		formatLevelRows(out, source, idWidth)
+		formatCuratedRows(out, source.Name, source.Curated, levels)
 		if shared := source.SharedFiles; shared != nil {
 			fmt.Fprintf(out, "  Shared files: release %d -> %d\n", shared.From, shared.To)
 		}
@@ -417,26 +435,70 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 }
 
 // formatCuratedRows lists the sources library curates skills from, each on a line naming the library, the curated
-// source, and how its revision moves, with the rows of its skills beneath it.
-func formatCuratedRows(out *strings.Builder, library string, rows []imports.CuratedUpdate) {
+// source, and how its revision moves, with the rows of its skills, each with its level change from levels, if any,
+// and of the curated skills the project replaces, beneath it.
+func formatCuratedRows(out *strings.Builder, library string, rows []imports.CuratedUpdate, levels map[string]imports.SkillLevelUpdate) {
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
 		fmt.Fprintf(out, "  %s curates %s  %s\n", library, row.Name, curatedSpan(row))
 		if row.TagMoved {
 			fmt.Fprintf(out, "%sThe tag %s now names a different commit than at the last update.\n", indent, row.Ref)
 		}
-		formatSkillRows(out, row.Changes)
+		formatSkillRows(out, row.Changes, levels)
+		for _, replaced := range row.Replaced {
+			fmt.Fprintf(out, "  %-*s  %s  %s\n", updateKindWidth, imports.UpdateReplaced, replaced.ID, commitSpan(replaced.From, replaced.To))
+			writeLevelLines(out, levels, replaced.ID)
+			for _, line := range replacedSkillDetails(replaced) {
+				fmt.Fprintf(out, "%s%s\n", indent, line)
+			}
+		}
 	}
 }
 
-// formatLevelRows lists a source's skill level rows with the skill ID, in a column idWidth wide, and the levels it
-// moves between, each row's detail indented beneath it.
-func formatLevelRows(out *strings.Builder, rows []imports.SkillLevelUpdate, idWidth int) {
+// formatLevelRows lists the source's skill level changes that no skill or replaced skill row of the source or its
+// curated sources shows, since the skill's files don't change, as rows of their own with the skill ID, in a column idWidth wide,
+// and the levels it moves between, each row's detail indented beneath it.
+func formatLevelRows(out *strings.Builder, source imports.SourceUpdate, idWidth int) {
+	shown := map[string]bool{}
+	for _, row := range source.Skills {
+		shown[row.ID] = true
+	}
+	for _, row := range source.ReplacedSkills {
+		shown[row.ID] = true
+	}
+	for _, curated := range source.Curated {
+		for _, row := range curated.Changes {
+			shown[row.ID] = true
+		}
+		for _, row := range curated.Replaced {
+			shown[row.ID] = true
+		}
+	}
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
-	for _, row := range rows {
+	for _, row := range source.SkillLevels {
+		if shown[row.ID] {
+			continue
+		}
 		fmt.Fprintf(out, "  %-*s  %-*s  %s\n", updateKindWidth, "level", idWidth, row.ID, levelSpan(row))
 		fmt.Fprintf(out, "%s%s\n", indent, levelDetail(row))
 	}
+}
+
+// writeLevelLines writes, indented under the row of skill id, the skill's level change from levels, if it has one.
+func writeLevelLines(out *strings.Builder, levels map[string]imports.SkillLevelUpdate, id string) {
+	if level, ok := levels[id]; ok {
+		indent := strings.Repeat(" ", 2+updateKindWidth+2)
+		fmt.Fprintf(out, "%slevel: %s\n%s%s\n", indent, levelSpan(level), indent, levelDetail(level))
+	}
+}
+
+// levelsByID returns rows by skill ID.
+func levelsByID(rows []imports.SkillLevelUpdate) map[string]imports.SkillLevelUpdate {
+	levels := map[string]imports.SkillLevelUpdate{}
+	for _, row := range rows {
+		levels[row.ID] = row
+	}
+	return levels
 }
 
 // levelSpan shows the levels a skill's level row moves between, with "none" for a side where the library has no
@@ -463,11 +525,13 @@ func levelDetail(row imports.SkillLevelUpdate) string {
 	return `No longer recommended: it installs only when skills.include names it or has "*".`
 }
 
-// formatSkillRows lists a source's skill rows with the change and skill ID, each row's details indented beneath them.
-func formatSkillRows(out *strings.Builder, rows []imports.SkillUpdate) {
+// formatSkillRows lists a source's skill rows with the change and skill ID, each row's details indented beneath them:
+// first its level change from levels, if any, then the details of its files.
+func formatSkillRows(out *strings.Builder, rows []imports.SkillUpdate, levels map[string]imports.SkillLevelUpdate) {
 	indent := strings.Repeat(" ", 2+updateKindWidth+2)
 	for _, row := range rows {
 		fmt.Fprintf(out, "  %-*s  %s\n", updateKindWidth, row.Change, row.ID)
+		writeLevelLines(out, levels, row.ID)
 		for _, line := range skillUpdateDetails(row) {
 			fmt.Fprintf(out, "%s%s\n", indent, line)
 		}
@@ -494,13 +558,17 @@ func answeredSkills(before, after project.UpdateResult) string {
 		if len(source.Skills) == 0 && len(source.SkillLevels) == 0 && len(source.Curated) == 0 {
 			out.WriteString("  No skill changes.\n")
 		}
-		formatSkillRows(&out, source.Skills)
+		levels := levelsByID(source.SkillLevels)
+		formatSkillRows(&out, source.Skills, levels)
 		idWidth := 0
 		for _, row := range source.SkillLevels {
 			idWidth = max(idWidth, len(row.ID))
 		}
-		formatLevelRows(&out, source.SkillLevels, idWidth)
-		formatCuratedRows(&out, source.Name, source.Curated)
+		// This list leaves out the source's own replaced rows, so their level changes get rows of their own.
+		unreplaced := source
+		unreplaced.ReplacedSkills = nil
+		formatLevelRows(&out, unreplaced, idWidth)
+		formatCuratedRows(&out, source.Name, source.Curated, levels)
 	}
 	if warning := after.ScriptsWarning(); out.Len() > 0 && warning != "" {
 		fmt.Fprintf(&out, "\nWarning: %s\n", warning)
@@ -553,13 +621,16 @@ func curatedSpan(row imports.CuratedUpdate) string {
 	return ref + ": " + from + " -> " + to
 }
 
-// replacedSkillDetails returns the lines shown under a replaced skill's row: the authored skill that replaces it,
-// what the row compares with, and the files that changed.
+// replacedSkillDetails returns the lines shown under a forked skill's row: the fork, what the row compares with,
+// and the files that changed, or that the source no longer has the skill.
 func replacedSkillDetails(row imports.ReplacedSkillUpdate) []string {
 	lines := []string{}
-	if row.BasedOn != "" {
+	switch {
+	case row.Removed:
+		return append(lines, "Your skill: "+row.LocalSkill+".", "The source no longer has this skill at commit "+shortCommit(row.To)+". Your skill stays installed; the update doesn't change it.")
+	case row.BasedOn != "":
 		lines = append(lines, "Your skill: "+row.LocalSkill+", based on commit "+shortCommit(row.BasedOn)+".", "Changed since commit "+shortCommit(row.BasedOn)+", the copy your skill is based on:")
-	} else {
+	default:
 		lines = append(lines, "Your skill: "+row.LocalSkill+".", "Changed since the imported commit "+shortCommit(row.From)+"; your skill may already have some of these changes:")
 	}
 	for _, file := range row.Files {

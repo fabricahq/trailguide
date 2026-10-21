@@ -3,10 +3,6 @@ title: "Skill"
 description: "A reusable procedure that tells an agent what to do, step by step, and which rules each step applies."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This page describes how it will work.
-:::
-
 A **skill** is the AI skill you already know, officially a folder that follows the open [Agent Skills](https://agentskills.io) standard. It holds a `SKILL.md` file that tells an agent how to carry out one kind of task, plus any scripts, references, or assets it bundles.
 
 Skills are coarse-grained. A skill that builds a feature combines many practices, from where the code lives to how it's tested and verified, and not all of them apply every time. That makes skills good for playbooks, techniques, and coordinating a whole task, but clumsy as the only way to deliver guidance: you can't adopt, update, or version one practice inside a skill on its own.
@@ -58,7 +54,7 @@ All three keys are optional. The standard sets `metadata` aside for properties i
 
 ## Skill types
 
-A skill type classifies what a skill is for, so skills are easier to search and browse. You can already filter by type, such as `trailguide project list skills --type review`. The full payoff comes from interfaces that show types, such as a catalog like [Rulemart](https://rulemart.fabricahq.com) that lets you browse every review skill across libraries.
+A skill type classifies what a skill is for, so skills are easier to search and browse. The payoff comes from interfaces that show types, such as a catalog like [Rulemart](https://rulemart.fabricahq.com) that lets you browse every review skill across libraries.
 
 There are probably many useful kinds of skills, but we're conservative about which types we name, because removing or redefining a type later would break the skills that use it. For now there are two, and a skill can declare one:
 
@@ -96,10 +92,12 @@ Skills don't belong to [rule groups](/concepts/groups/), and including a rule gr
 A repository gets skills from three places:
 
 - **Libraries.** A [library](/concepts/libraries/) publishes the skills in its `.trailguide/skills/` folder, and can list skills it **curates** from other repositories. It sets a level for each one; see [Skill levels](#skill-levels).
-- **Non-library sources.** Any Git repository with skill folders and no library manifest, such as a third party's skill collection. Every skill in it is offered. Because it has no library releases, its `ref` names a branch, tag, or commit, and Trail Guide records the exact commit.
+- **Non-library sources.** Any Git repository of skills that hasn't adopted Trail Guide, so it has skill folders but no library manifest, such as a third party's skill collection. Every skill in it is offered. Because it has no library releases, its `ref` names a branch, tag, or commit, and Trail Guide records the exact commit.
 - **Your repository.** Skills you author live in `.trailguide/skills/`.
 
-When a skill calls others, Trail Guide installs them alongside it, from the same repository and revision.
+When a skill calls others in the same repository, Trail Guide installs them alongside it from that repository and revision.
+
+A library's own skill can also call a skill the library curates from another repository. For example, Fabrica's library authors `add-skill` and curates Anthropic's `skill-creator` from the anthropics/skills repository. When `add-skill` lists `anthropic:skills/skill-creator` in its `trailguide-skills-used`, a project that installs `add-skill` also gets `skill-creator`, with its files taken from anthropics/skills, not from Fabrica's library.
 
 A skill's ID is its folder's path in the repository that holds it, such as `skills/build-feature`. Its identity is that repository plus that path, so two sources that reach the same repository name the same skill. In a project, an ID is qualified by the source name you chose, such as `fabrica:skills/build-feature`. Configuration uses these IDs to include, exclude, rename, and replace skills.
 
@@ -130,6 +128,10 @@ A person can also install **personal skills** outside any repository, which thei
 Skill decisions layer in this order, each overriding the ones before it: a library, an org library, the project, then each person's personal skills. Required skills are a floor the project can't remove.
 
 ## How a skill is versioned
+
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet. This section describes the planned design; today a project's skills move with their source's revision and carry no version.
+:::
 
 A library skill has its own semantic version, which covers its whole folder and follows the same levels as a [rule's](/concepts/rule/#how-a-rule-is-versioned):
 

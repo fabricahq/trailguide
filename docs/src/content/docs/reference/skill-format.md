@@ -3,10 +3,6 @@ title: "Skill format"
 description: "What Trail Guide accepts in a skill folder and its SKILL.md: IDs, frontmatter, metadata keys, links, files, and every library check."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This page describes how it will work.
-:::
-
 This page defines what Trail Guide accepts in a [skill](/concepts/skill/): its folder, its `SKILL.md` file, and the Trail Guide keys in its metadata. The same format applies to every skill a repository authors, whether it's a library, a project, or both. For how to write a skill well, see [Write a skill](/guides/write-skills/).
 
 A skill uses the [Agent Skills](https://agentskills.io) format. Trail Guide adds three optional `metadata` keys and checks the rest of the format as the Agent Skills specification defines it, so a skill that passes `trailguide library check` also works in tools that read Agent Skills directly.
@@ -107,13 +103,13 @@ Trail Guide adds three optional keys under `metadata`. Each value is a string, a
 | --- | --- | --- |
 | `trailguide-skill-type` | `playbook` or `review` | Must be a type on the canonical list. Unknown values fail `trailguide library check`. |
 | `trailguide-rules-used` | The IDs of the rules the skill applies, one per line | Each must be a current rule in this repository, or, outside a library, in a source the project names. |
-| `trailguide-skills-used` | The IDs of the skills this skill calls, one per line | Each must be a current skill in the same repository, other than this one, and the skills called can't form a cycle. |
+| `trailguide-skills-used` | The IDs of the skills this skill calls, one per line | Each must be a current skill in the same repository, other than this one, or, in a library, a skill the library curates, and the skills called can't form a cycle. |
 
 Other `metadata` keys, such as `author`, are preserved and ignored. Keys that start with `trailguide-` are reserved for Trail Guide, so any other `trailguide-` key fails `trailguide library check`.
 
 ### Skill type
 
-`trailguide-skill-type` labels the skill as a `playbook` or a `review`; see [Skill types](/concepts/skill/#skill-types). Leave it out when neither fits. The type is a plain label: Trail Guide shows it, and `trailguide project list skills --type` filters by it, but it installs, checks, and updates every skill the same way, whatever its type.
+`trailguide-skill-type` labels the skill as a `playbook` or a `review`; see [Skill types](/concepts/skill/#skill-types). Leave it out when neither fits. The type is a plain label: Trail Guide installs, checks, and updates every skill the same way, whatever its type.
 
 The canonical type list is `canonical-skill-types.yaml` in the Trail Guide repository. Each Trail Guide release builds the list in, so a new type needs a Trail Guide release, and your library's CI must use that release before a skill can declare the type. Only `trailguide library check` checks the type: a project installs a skill whose type its Trail Guide doesn't know without complaint, and shows the type as written.
 
@@ -145,6 +141,16 @@ metadata:
 ```
 
 Each line is a skill ID in the same repository, `skills/<name>`. A skill can't call itself, and the skills called can't form a cycle, directly or through other skills. When a project installs the skill, Trail Guide also installs every skill it calls, and the skills those call in turn, from the same repository and revision. A project declares calls a skill's metadata leaves out with [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls); Trail Guide doesn't search skill text for them.
+
+A library's skill can also call a skill the library [curates](/reference/configuration/#curated-skills), by the ID the library's manifest lists it under, such as `anthropic:skills/skill-creator`:
+
+```yaml
+metadata:
+  trailguide-skills-used: |
+    anthropic:skills/skill-creator
+```
+
+The library must list the curated skill in `library.skills`, at any level. When a project installs the calling skill, Trail Guide also installs the curated skill, from the repository the library curates it from, at the commit the project resolves for that repository, as it installs any curated skill, whatever level the library gives it. A curated skill brings the skills it calls in its own repository, but not skills that repository curates in turn.
 
 ## Links
 
@@ -201,6 +207,9 @@ Check fails with these problems:
 | A cited rule that was retired without a replacement | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/code-design/comment-intent, which is retired; remove it` |
 | An ID listed twice | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/verify-retries twice` |
 | A used skill that doesn't exist | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library` |
+| A used curated skill that `library.skills` doesn't list | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropic:skills/skill-creator, which isn't a skill the library curates; list it in library.skills, at any level, so projects that install the skill can install it too` |
+| A used curated skill whose source name `library.skills` doesn't use | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropik:skills/skill-creator, but library.skills lists no skill from a source named anthropik; the library curates skills from anthropic. Correct the source name, or name a skill of this library as skills/<name>` |
+| A curated skill named without its source name | `skills/add-skill/SKILL.md: trailguide-skills-used names skills/skill-creator, which isn't a skill in this library; the library curates anthropic:skills/skill-creator, so name it that way` |
 | A used skill that is retired | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/triage-bug, which is retired and replaced by skills/fix-bug; use the replacement`, or `which is retired; remove it` when nothing replaces it |
 | A skill that uses itself | `skills/build-feature/SKILL.md: trailguide-skills-used names the skill itself` |
 | Skills that use each other in a cycle | `skills/build-feature/SKILL.md: trailguide-skills-used forms a cycle: skills/build-feature -> skills/tdd -> skills/build-feature` |

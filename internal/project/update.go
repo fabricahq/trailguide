@@ -79,12 +79,13 @@ type UpdateResult struct {
 	FileChanges
 }
 
-// Moves reports whether the update has anything to apply: a source's library-wide files, a skill it adds, changes,
-// or removes, or a rule of any row except pinned rules, retirements a pin keeps, and rows the project decided to
-// keep. A replaced row counts even when its imported copy stays, since applying it can replace the local rule's fork.
+// Moves reports whether the update has anything to apply: a source's library-wide files or the commit its ref names,
+// a skill it adds, changes, or removes, or a rule of any row except pinned rules, retirements a pin keeps, and rows
+// the project decided to keep. A replaced row counts even when its imported copy stays, since applying it can replace
+// the local rule's fork.
 func (r UpdateResult) Moves() bool {
 	for _, source := range r.Sources {
-		if source.SharedFiles != nil || len(source.Skills) > 0 || len(source.Curated) > 0 {
+		if source.SharedFiles != nil || source.Commit != nil || len(source.Skills) > 0 || len(source.Curated) > 0 {
 			return true
 		}
 		for _, row := range source.Rules {

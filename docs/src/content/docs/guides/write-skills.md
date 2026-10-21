@@ -3,10 +3,6 @@ title: "Write a skill"
 description: "Turn a repeatable task into ordered steps that cite the rules each step applies, then check, version, and retire it."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **skill** tells an agent how to carry out one kind of task, step by step. Writing a skill turns a workflow you keep explaining, such as how your team fixes a bug or reviews tests, into steps every agent follows the same way. A useful skill names the task that should trigger it, orders the steps, and cites the rules each step applies.
 
 This guide covers deciding between a skill and a rule, creating a skill, writing and checking it, setting its level in a library, and versioning it. For every field and check, see [Skill format](/reference/skill-format/).
@@ -40,7 +36,7 @@ A skill can declare one [type](/concepts/skill/#skill-types) in `trailguide-skil
 - **`playbook`**: ordered steps for carrying out one kind of engineering task, citing the rules each step applies, such as building a feature or fixing a bug.
 - **`review`**: examines existing work, such as a diff, a plan, or a test suite, against stated criteria and reports findings.
 
-Ask what the skill's main job is: a playbook changes the work, and a review judges work that already exists. A playbook can include a review step, and a review can offer to fix what it found. If neither fits, leave the type out. The type is a label for people and for filters such as `trailguide project list skills --type review`; Trail Guide treats every skill the same way.
+Ask what the skill's main job is: a playbook changes the work, and a review judges work that already exists. A playbook can include a review step, and a review can offer to fix what it found. If neither fits, leave the type out. The type is a label for people and for catalogs that browse skills by type; Trail Guide treats every skill the same way.
 
 ## Create the skill
 
@@ -81,7 +77,18 @@ trailguide project add skill --from fabrica:skills/fix-bug \
   --reason 'We fix bugs behind a feature flag first.'
 ```
 
-The fork copies the version the project installs into `.trailguide/skills/fix-bug/`, rewrites its citations to project IDs, and excludes the source's skill in favor of the fork. A required skill can't be forked. See [project add skill](/reference/cli/#project-add-skill).
+The fork copies the version the project installs into `.trailguide/skills/fix-bug/`, rewrites its citations to project IDs, and excludes the source's skill in favor of the fork. A required skill can't be forked. See [project add skill](/reference/cli/#project-add-skill). A skill your library source curates from another repository forks the same way, such as `--from fabrica:mattpocock:skills/to-spec`.
+
+In a library, fork a skill from one of the library's sources, such as a third party's skill you want to publish with your own changes:
+
+```sh
+trailguide library add skill --from pstack:pstack/skills/show-me-your-work \
+  --reason 'We ask for evidence before every claim.'
+```
+
+The fork copies the skill at the revision the source's `ref` names into `.trailguide/skills/show-me-your-work/`, and records the source, the skill, and the commit it copied in `config.yaml`. When you move the source's `ref`, `trailguide library check` lists what the source changed in the original since that commit. See [library add skill](/reference/cli/#fork-a-skill-into-the-library).
+
+A source can exist only to track forks. Projects that use your library never read its `sources`, so declaring a third party's repository to fork from it doesn't offer that repository to them; they get only the forks, through `library.skills`. Keep the source declared for as long as you want check to compare your forks with it, and move its `ref` to compare with a newer revision. To stop tracking a fork, delete the source's `include` and `exclude` entries for it, and the source once nothing else uses it; the fork stays a skill of your own.
 
 ## Write the steps
 
@@ -233,6 +240,10 @@ Levels are library-wide settings, like rule group metadata: changing one needs n
 
 ## Record a change note
 
+:::note[Preview]
+Skill versions and skill change notes aren't implemented yet, so `trailguide library change` records rule changes only. This section describes the planned workflow.
+:::
+
 Skills are versioned like rules. Before your library's first library release, skills need no change notes; the first library release gives every skill version `1.0.0`. After it, record every new or changed skill with `trailguide library change`, in the same pull request as the change.
 
 For a new skill, leave out `--bump`:
@@ -282,7 +293,7 @@ skills:
   skills/fix-bug: new
 ```
 
-In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and excluding the source's skill with `replacedBy: skills/<name>`; see [Configuration](/reference/configuration/#exclude-or-replace-a-skill). To remove one of your own skills, delete its folder and any exclusion that names it as `replacedBy`, then run `trailguide project build`.
+In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and adding a `skills.forks` entry for the source's skill with `as: skills/<name>`; see [Configuration](/reference/configuration/#fork-a-skill). To remove one of your own skills, delete its folder and any `skills.forks` entry that names it as `as`, then run `trailguide project build`.
 
 ## Next steps
 

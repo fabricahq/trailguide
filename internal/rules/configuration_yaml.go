@@ -10,6 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -143,7 +144,7 @@ func AppendConfigurationLibrary(input []byte, value any) ([]byte, error) {
 }
 
 // SourceEdit lists pins and exclusions to add to one source, pins to remove from it, basedOn versions to set, and
-// skill exclusions to add; each may be empty or nil.
+// skill forks to add; each may be empty or nil.
 type SourceEdit struct {
 	Pins    map[string]Pin
 	Exclude map[string]Exclusion
@@ -151,21 +152,21 @@ type SourceEdit struct {
 	Unpin []string
 	// BasedOn sets the basedOn version of each existing replacement it names, adding or replacing the field.
 	BasedOn map[string]trailguide.RuleVersion
-	// SkillExclude holds the entries to add to skills.exclude, by skill ID.
-	SkillExclude map[string]SkillExclusion
+	// SkillForks holds the entries to add to skills.forks, by skill ID.
+	SkillForks map[string]SkillFork
 	// SkillUnrename names skills whose existing skills.rename entries the edit removes.
 	SkillUnrename []string
 }
 
-// EditConfigurationSource adds pins, exclusions, and skill exclusions to the existing source alias, removes the pins
+// EditConfigurationSource adds pins, exclusions, and skill forks to the existing source alias, removes the pins
 // edit.Unpin names and the skill renames edit.SkillUnrename names, and sets the basedOn version of the existing replacements edit.BasedOn names, keeping a replaced
 // value's comment, without dropping other comments or reordering entries. Setting basedOn of a rule the source
 // doesn't replace fails. A rules.pins list or skills.rename mapping left empty is removed; a pin or rename to remove that the source lacks
 // fails. New
-// entries follow the source's existing ones in rule or skill ID order, in a rules.pins, rules.exclude, or
-// skills.exclude list that is created when absent. Versions and commits are written quoted, such as
-// version: "1.3.0", so YAML reads them as text. A rule or skill the source already pins or excludes by its ID fails
-// rather than being replaced. Folded scalars use literal style, as in AppendConfigurationSource. The complete
+// entries follow the source's existing ones in rule or skill ID order, in a rules.pins or rules.exclude list or a
+// skills.forks mapping that is created when absent. Versions and commits are written quoted, such as
+// version: "1.3.0", so YAML reads them as text. A rule or skill the source already pins, excludes, or forks by its ID
+// fails rather than being replaced. Folded scalars use literal style, as in AppendConfigurationSource. The complete
 // resulting configuration is validated before any bytes are returned.
 func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byte, error) {
 	document, data, err := decode.YAML(input, "configuration")
@@ -183,7 +184,7 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 	if err := removeSkillRenames(source, edit.SkillUnrename, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
-	if err := addSkillExclusions(source, edit.SkillExclude, "sources."+alias+".skills"); err != nil {
+	if err := addSkillForks(source, edit.SkillForks, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
 	where := "sources." + alias + ".rules"
@@ -220,30 +221,37 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 	return encodeConfiguration(document)
 }
 
-// addSkillExclusions appends exclude, in skill ID order, to the skills.exclude list of source, creating the list
-// when it's absent. It fails, at a location under where, when the source includes no skills or already excludes
-// one of them.
-func addSkillExclusions(source *yaml.Node, exclude map[string]SkillExclusion, where string) error {
-	if len(exclude) == 0 {
+// addSkillForks adds forks, in skill ID order, to the skills.forks mapping of source, creating the skills mapping and
+// skills.forks when they're absent. It fails, at a location under where, when the source already forks one of them.
+func addSkillForks(source *yaml.Node, forks map[string]SkillFork, where string) error {
+	if len(forks) == 0 {
 		return nil
 	}
 	skillFields := mappingValue(source, "skills")
 	if skillFields == nil {
-		return invalid(where, "the source includes no skills, so it has no skills to exclude")
+		skillFields = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		source.Content = append(source.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "skills"}, skillFields)
 	}
 	skillFields.Style = 0
-	nodes := map[string]*yaml.Node{}
-	for id, exclusion := range exclude {
-		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "reason"}, textNode(exclusion.Reason)}}
-		if exclusion.ReplacedBy != "" {
-			node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "replacedBy"}, textNode(exclusion.ReplacedBy))
-		}
-		if !exclusion.BasedOn.IsZero() {
-			node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "basedOn"}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: exclusion.BasedOn.Canonical(), Style: yaml.DoubleQuotedStyle})
-		}
-		nodes[id] = node
+	entries := mappingValue(skillFields, "forks")
+	if entries == nil {
+		entries = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		skillFields.Content = append(skillFields.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "forks"}, entries)
 	}
-	return addEntries(skillFields, "exclude", nodes, where)
+	entries.Style = 0
+	for _, id := range slices.Sorted(maps.Keys(forks)) {
+		if mappingValue(entries, id) != nil {
+			return invalid(where+".forks."+id, "the source already forks this skill; remove the entry to fork it again")
+		}
+		fork := forks[id]
+		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "as"}, textNode(fork.As)}}
+		if !fork.BasedOn.IsZero() {
+			node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "basedOn"}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fork.BasedOn.Canonical(), Style: yaml.DoubleQuotedStyle})
+		}
+		node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "reason"}, textNode(fork.Reason))
+		entries.Content = append(entries.Content, textNode(id), node)
+	}
+	return nil
 }
 
 // removeSkillRenames deletes the entry of each of ids from the skills.rename mapping of source, and the mapping
@@ -427,4 +435,41 @@ func normalizeFoldedScalars(node *yaml.Node) {
 	for _, child := range node.Content {
 		normalizeFoldedScalars(child)
 	}
+}
+
+// ReplaceLibrarySkill returns input, a library's configuration, with the entry of its library.skills levels that
+// names the skill from replaced by to, at the same level and position, keeping comments and formatting elsewhere. It
+// fails when no level lists from. The complete resulting configuration is validated before any bytes are returned.
+func ReplaceLibrarySkill(input []byte, from, to string) ([]byte, error) {
+	document, data, err := decode.YAML(input, "configuration")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ParseConfiguration(data); err != nil {
+		return nil, err
+	}
+	levels := mappingValue(mappingValue(document.Content[0], "library"), "skills")
+	replaced := false
+	for _, level := range skills.Levels {
+		list := mappingValue(levels, level)
+		if list == nil || list.Kind != yaml.SequenceNode {
+			continue
+		}
+		for _, entry := range list.Content {
+			if entry.Kind == yaml.ScalarNode && entry.Value == from {
+				entry.Value, entry.Style, replaced = to, 0, true
+			}
+		}
+	}
+	if !replaced {
+		return nil, invalid("library.skills", "no level lists "+from)
+	}
+	output, err := encodeConfiguration(document)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ParseConfigurationYAML(output); err != nil {
+		return nil, err
+	}
+	return output, nil
 }

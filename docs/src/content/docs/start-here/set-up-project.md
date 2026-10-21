@@ -3,10 +3,6 @@ title: "Set up your first project"
 description: "Write a rule for your coding agent, then reuse rules and skills written by others."
 ---
 
-:::caution[Preview]
-This walkthrough uses version 2 configuration and skills, which aren't in a released version of Trail Guide yet. The released CLI writes your own rules to `.trailguide/local/` and adds a library with `trailguide project add library`.
-:::
-
 We're going to enable your coding agent to get consistent instructions for how to write and review code in your codebase. In Trail Guide, that codebase is your **project**.
 
 We will declare guidance in a **rule,** which is a Markdown file that explains one practice you want your agent to follow, such as testing changes to your code.
@@ -115,13 +111,13 @@ This checks the rule files, not whether your application follows the rules.
 
 Now let's reuse rules someone else has written. A **library** is a repository that publishes rule groups and skills for projects to take.
 
-The [Fabrica public library](https://github.com/fabricahq/public-rules) includes a code design practice group. Its rules help agents structure functions, modules, and folders, such as **Express operations as meaningful steps**, which keeps functions understandable without extracting unnecessary helpers. Read them before deciding to include them.
+The [Fabrica public library](https://github.com/fabricahq/public-library) includes a code design practice group. Its rules help agents structure functions, modules, and folders, such as **Express operations as meaningful steps**, which keeps functions understandable without extracting unnecessary helpers. Read them before deciding to include them.
 
 From the same project root, run:
 
 ```sh
 trailguide project add source fabrica \
-  --repository https://github.com/fabricahq/public-rules.git \
+  --repository https://github.com/fabricahq/public-library.git \
   --rules 'practices/code-design/*'
 ```
 
@@ -149,7 +145,7 @@ schemaVersion: 2
 skillTargets: [claude, agents]
 sources:
   fabrica:
-    repository: https://github.com/fabricahq/public-rules.git
+    repository: https://github.com/fabricahq/public-library.git
     rules:
       include: [practices/code-design/*]
     skills:

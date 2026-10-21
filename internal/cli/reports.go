@@ -224,6 +224,7 @@ func libraryCheckedReport(result library.CheckResult) commandReport {
 	for _, warning := range result.Warnings {
 		fmt.Fprintf(&out, "Warning: %s\n", warning)
 	}
+	formatForkedSkills(&out, result.ForkedSkills)
 	// With nothing pending, check says what library release would, rather than describe an empty release. The first
 	// library release always publishes the library-wide files, which check doesn't list before it.
 	first := result.PendingRelease.Release == 1
@@ -243,6 +244,29 @@ func libraryCheckedReport(result library.CheckResult) commandReport {
 		fmt.Fprintf(&out, "Library-wide files changed since release/%d:\n  %s\n", result.PendingRelease.Release-1, strings.Join(files, "\n  "))
 	}
 	return commandReport{value: result, human: out.String()}
+}
+
+// formatForkedSkills lists the skills the library forked whose sources changed them since the commit each fork is
+// based on, with the files that differ, so the maintainer can compare them with the fork.
+func formatForkedSkills(out *strings.Builder, rows []library.ForkedSkill) {
+	if len(rows) == 0 {
+		return
+	}
+	out.WriteString("\nForked skills that their sources changed:\n")
+	for _, row := range rows {
+		fmt.Fprintf(out, "  %s, forked from %s:%s at commit %s\n", row.Skill, row.Source, row.ID, shortCommit(row.BasedOn))
+		if row.Removed {
+			fmt.Fprintf(out, "    %s no longer has the skill at %s, commit %s.\n", row.Source, row.Revision, shortCommit(row.Commit))
+			fmt.Fprintf(out, "    Your fork stays the library's own skill. To stop comparing it with the source, remove\n    sources.%s.skills.forks.%s.basedOn.\n", row.Source, row.ID)
+			continue
+		}
+		fmt.Fprintf(out, "    Changed at %s, commit %s:\n", row.Revision, shortCommit(row.Commit))
+		for _, file := range row.Files {
+			fmt.Fprintf(out, "      %s\n", file)
+		}
+		fmt.Fprintf(out, "    Once your fork has the changes you want, set sources.%s.skills.forks.%s.basedOn\n    to %q.\n", row.Source, row.ID, row.Commit)
+	}
+	out.WriteString("  Compare them with your forks, which check leaves as they are.\n")
 }
 
 // pendingVersions shows a pending rule's current and next version, or the only one it has.

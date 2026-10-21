@@ -109,7 +109,7 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 		t.Fatalf("the fork's script isn't executable: %v %v", info, err)
 	}
 	data := []byte(readRepositoryFile(t, options, ".trailguide/config.yaml"))
-	if want := "      exclude:\n        - id: skills/build-feature\n          reason: We build with make.\n          replacedBy: skills/build-feature\n          basedOn: \"" + commit + "\"\n"; !strings.Contains(string(data), want) {
+	if want := "      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \"" + commit + "\"\n          reason: We build with make.\n"; !strings.Contains(string(data), want) {
 		t.Fatalf("config.yaml:\n%s\nwant:\n%s", data, want)
 	}
 	if _, err := Build(ctx, options); err != nil {
@@ -119,7 +119,7 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 		t.Fatalf("installed copy isn't the fork:\n%s", installed)
 	}
 	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
-	for _, want := range []string{"**Skill:** `skills/build-feature`, authored in this project", "**Replaces:** `team:skills/build-feature`, which the project excludes, based on its copy at commit `" + commit + "`", "**Reason:** We build with make."} {
+	for _, want := range []string{"**Skill:** `skills/build-feature`, authored in this project", "**Replaces:** `team:skills/build-feature`, which the project forks, based on its copy at commit `" + commit + "`", "**Reason:** We build with make."} {
 		if !strings.Contains(index, want) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
 		}
@@ -221,7 +221,7 @@ func TestPlanSkillFork_ForksARenamedSkillUnderItsInstallName(t *testing.T) {
 		t.Fatalf("fork's SKILL.md:\n%s", fork)
 	}
 	config := readRepositoryFile(t, options, ".trailguide/config.yaml")
-	if strings.Contains(config, "rename") || !strings.Contains(config, "replacedBy: skills/team-review") {
+	if strings.Contains(config, "rename") || !strings.Contains(config, "as: skills/team-review") {
 		t.Fatalf("config.yaml:\n%s", config)
 	}
 	changes, err := Build(ctx, options)
@@ -372,9 +372,9 @@ func TestUpdate_ListsChangesToAReplacedSkill(t *testing.T) {
 	}
 }
 
-// TestSync_ChecksTheCommitAReplacementIsBasedOn fails with version-not-found for a commit the repository lacks, and
+// TestSync_ChecksTheCommitAForkIsBasedOn fails with version-not-found for a commit the repository lacks, and
 // with a validation error for a commit without the skill.
-func TestSync_ChecksTheCommitAReplacementIsBasedOn(t *testing.T) {
+func TestSync_ChecksTheCommitAForkIsBasedOn(t *testing.T) {
 	ctx := context.Background()
 	f, _ := skillLibrary(t)
 	// A commit after release/1 removes the skill, so the repository has the commit but the commit lacks the skill.
@@ -388,19 +388,19 @@ func TestSync_ChecksTheCommitAReplacementIsBasedOn(t *testing.T) {
 	}{
 		{"missing commit", strings.Repeat("a", 40), func(t *testing.T, err error) {
 			var failure *imports.Error
-			if !errors.As(err, &failure) || failure.Code != "version-not-found" || !strings.Contains(err.Error(), "sources.team.skills.exclude.skills/build-feature.basedOn: the repository has no commit "+strings.Repeat("a", 40)) {
+			if !errors.As(err, &failure) || failure.Code != "version-not-found" || !strings.Contains(err.Error(), "sources.team.skills.forks.skills/build-feature.basedOn: the repository has no commit "+strings.Repeat("a", 40)) {
 				t.Fatalf("got %v; want version-not-found naming basedOn", err)
 			}
 		}},
 		{"commit without the skill", without, func(t *testing.T, err error) {
 			var invalid errs.ValidationError
-			if !errors.As(err, &invalid) || invalid.ValidationLocation() != "sources.team.skills.exclude.skills/build-feature.basedOn" || !strings.Contains(invalid.ValidationProblem(), "commit "+without+" has no skill skills/build-feature") {
+			if !errors.As(err, &invalid) || invalid.ValidationLocation() != "sources.team.skills.forks.skills/build-feature.basedOn" || !strings.Contains(invalid.ValidationProblem(), "commit "+without+" has no skill skills/build-feature") {
 				t.Fatalf("got %v; want a validation error naming basedOn", err)
 			}
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			options, git := skillProject(t, f, skillConfig("      exclude:\n        - id: skills/build-feature\n          reason: Ours.\n          replacedBy: skills/build-feature\n          basedOn: \""+test.basedOn+"\"\n"))
+			options, git := skillProject(t, f, skillConfig("      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+test.basedOn+"\"\n          reason: Ours.\n"))
 			root, err := openProject(ctx, options, false)
 			if err != nil {
 				t.Fatal(err)
@@ -430,7 +430,8 @@ func TestForkedSkillFile_NamesTheSourceInAForkedSkillsCitations(t *testing.T) {
 	}{
 		{"library", cited, true, nil, qualified},
 		{"repository that isn't a library", cited, false, nil, strings.Replace(qualified, "team:practices/testing/tdd", "practices/testing/tdd", 1)},
-		{"nothing to qualify", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n"},
+		{"curated skill", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    anthropic:skills/skill-creator\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:anthropic:skills/skill-creator\n---\n"},
+		{"nothing to qualify", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n", false, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |-\n    other:skills/tdd\n---\n"},
 		{"quoted list", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: \"skills/tdd\"\n  trailguide-skill-type: playbook\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:skills/tdd\n  trailguide-skill-type: playbook\n---\n"},
 		{"plain list on two lines", "---\nname: fix-bug\nmetadata:\n    trailguide-skills-used:\n      skills/tdd\n---\n", true, nil, "---\nname: fix-bug\nmetadata:\n    trailguide-skills-used: |\n      team:skills/tdd\n---\n"},
 		{"configured uses", "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    skills/tdd\n---\n", true, []string{"skills/plan", "skills/tdd"}, "---\nname: fix-bug\nmetadata:\n  trailguide-skills-used: |\n    team:skills/tdd\n    team:skills/plan\n---\n"},
@@ -443,32 +444,31 @@ func TestForkedSkillFile_NamesTheSourceInAForkedSkillsCitations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", test.library, test.uses, "SKILL.md")
-			if err != nil || string(got) != test.want {
-				t.Errorf("got %v:\n%s\nwant:\n%s", err, got, test.want)
+			got, fixes, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", test.library, test.uses, "SKILL.md")
+			if err != nil || len(fixes) > 0 || string(got) != test.want {
+				t.Errorf("got %v, fixes %q:\n%s\nwant:\n%s", err, fixes, got, test.want)
 			}
 		})
 	}
 }
 
-// TestForkedSkillFile_RefusesWhatItCannotRewrite fails, naming the source's SKILL.md, rather than fork a skill whose
-// citations would name the project's own skills, or that build would refuse.
-func TestForkedSkillFile_RefusesWhatItCannotRewrite(t *testing.T) {
+// TestForkedSkillFile_ListsWhatItCannotRewrite returns the SKILL.md with what the author must fix, rather than
+// refuse, when the skill's citations would name the project's own skills, or when build would refuse the fork.
+func TestForkedSkillFile_ListsWhatItCannotRewrite(t *testing.T) {
 	for _, test := range []struct {
-		name, original, problem string
+		name, original, fix string
 	}{
-		{"flow mapping", "---\nname: fix-bug\nmetadata: {trailguide-skills-used: \"skills/tdd\"}\n---\n", "Trail Guide can't rewrite this frontmatter for the fork"},
-		{"invalid type", "---\nname: fix-bug\nmetadata:\n  trailguide-skill-type: workflow\n---\n", "trailguide-skill-type is \"workflow\"; use playbook or review"},
+		{"flow mapping", "---\nname: fix-bug\nmetadata: {trailguide-skills-used: \"skills/tdd\"}\n---\n", "Name the skill fix-bug, and cite the source's skills and rules with the source's name, such as team:skills/tdd"},
+		{"invalid type", "---\nname: fix-bug\nmetadata:\n  trailguide-skill-type: workflow\n---\n", "Fix what build reports: trailguide-skill-type is \"workflow\"; use playbook or review"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			metadata, err := skills.ReadMetadata([]byte(test.original), "SKILL.md")
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", true, nil, "SKILL.md")
-			var invalid errs.ValidationError
-			if !errors.As(err, &invalid) || invalid.ValidationLocation() != "SKILL.md" || !strings.Contains(invalid.ValidationProblem(), test.problem) || !strings.Contains(invalid.ValidationProblem(), "copy it into .trailguide/skills/fix-bug/") {
-				t.Fatalf("got %v; want a validation error saying %q", err, test.problem)
+			got, fixes, err := forkedSkillFile([]byte(test.original), metadata, "fix-bug", "team", true, nil, "SKILL.md")
+			if err != nil || len(fixes) != 1 || !strings.Contains(fixes[0], test.fix) || string(got) != test.original {
+				t.Fatalf("got %v, fixes %q:\n%s\nwant a fix saying %q", err, fixes, got, test.fix)
 			}
 		})
 	}
@@ -555,5 +555,88 @@ func TestUpdate_ListsAReplacedSkillOnlyAtTheRevisionTheDecisionsChoose(t *testin
 		if got := kept.Sources[0].ReplacedSkills; got == nil || len(got) != 0 {
 			t.Errorf("%s with errors kept lists replaced skills %+v; want none, since the skills stay at release/1", step.name, got)
 		}
+	}
+}
+
+// TestUpdate_KeepsAForkOfASkillItsSourceDeletes forks a skill that skills.include doesn't select, so the source
+// supplies it only for comparison, and keeps the fork installed after a library release deletes the skill, listing
+// the deletion in the update preview.
+func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
+	// A project may also still include the skill it forks by ID, which mustn't stop the update either.
+	for name, include := range map[string]string{"forks only": "", "included too": "      include: [skills/build-feature]\n"} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			f, commit := skillLibrary(t)
+			options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n"+include+"      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")
+			root, err := openProject(ctx, options, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+			root.Close()
+			if _, err := Sync(ctx, options, git); err != nil {
+				t.Fatal(err)
+			}
+			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
+				t.Fatalf("installed %v; want only the fork", got)
+			}
+			if !exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+				t.Fatal("sync didn't import the forked skill to compare with the fork")
+			}
+			later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+				t.Fatal(err)
+			}
+			plan, err := PlanUpdate(ctx, options, git, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			applied, err := plan.Apply(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []imports.ReplacedSkillUpdate{{ID: "skills/build-feature", LocalSkill: "skills/build-feature", BasedOn: commit, From: commit, To: later, Files: []string{}, Removed: true}}
+			if len(applied.Sources) != 1 || !reflect.DeepEqual(applied.Sources[0].ReplacedSkills, want) {
+				t.Fatalf("update = %+v\nwant replaced skills %+v", applied.Sources, want)
+			}
+			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
+				t.Fatalf("after the update, installed %v; want the fork", got)
+			}
+			if exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+				t.Fatal("the update kept the deleted skill's vendored copy")
+			}
+			if again, err := Sync(ctx, options, git); err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {
+				t.Fatalf("sync after the update = %+v, %v; want no changes", again, err)
+			}
+		})
+	}
+}
+
+func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
+	ctx := context.Background()
+	f, _ := skillLibrary(t)
+	using := "---\nname: build-feature\ndescription: Build a feature from a spec.\nmetadata:\n  trailguide-skills-used: |-\n    skills/review\n---\n# Build a feature\n"
+	commit, err := f.Commit(ctx, f.Worktree(), "Review each feature", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": []byte(using)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+		t.Fatal(err)
+	}
+	options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+	root.Close()
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
+		t.Fatalf("installed %v; want only the fork, which uses no other skill", got)
 	}
 }

@@ -481,23 +481,29 @@ func TestPlanUpdate_NamesTheSourceWhoseLibraryHasAnInvalidReleaseRecord(t *testi
 	}
 }
 
-// TestPlanUpdate_RejectsTargetsItCantMove names the target in each failure.
+// TestPlanUpdate_RejectsTargetsItCantMove names the target in each failure. A library source that uses ref doesn't
+// move once sync has recorded it.
 func TestPlanUpdate_RejectsTargetsItCantMove(t *testing.T) {
 	h := newHistory(t)
 	config := h.source(t, `"rules":{"include":["techs/go/*"]}`)
 	refConfig := h.source(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`)
+	synced, err := h.sync(t, refConfig, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for name, test := range map[string]struct {
-		config rules.Configuration
-		target UpdateTarget
+		config   rules.Configuration
+		recorded *library.Snapshot
+		target   UpdateTarget
 	}{
-		"unknown source":    {config, UpdateTarget{Source: "other"}},
-		"ref source":        {refConfig, UpdateTarget{Source: "team"}},
-		"unimported rule":   {config, UpdateTarget{Source: "team", Rule: "practices/testing/c"}},
-		"rule of a ref":     {refConfig, UpdateTarget{Source: "team", Rule: "techs/go/a"}},
-		"missing rule name": {config, UpdateTarget{Source: "team", Rule: "techs/go/missing"}},
+		"unknown source":    {config, nil, UpdateTarget{Source: "other"}},
+		"ref source":        {refConfig, &synced.Snapshot, UpdateTarget{Source: "team"}},
+		"unimported rule":   {config, nil, UpdateTarget{Source: "team", Rule: "practices/testing/c"}},
+		"rule of a ref":     {refConfig, nil, UpdateTarget{Source: "team", Rule: "techs/go/a"}},
+		"missing rule name": {config, nil, UpdateTarget{Source: "team", Rule: "techs/go/missing"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := h.plan(t, test.config, nil, test.target)
+			_, err := h.plan(t, test.config, test.recorded, test.target)
 			var validation errs.ValidationError
 			where := test.target.Source
 			if test.target.Rule != "" {

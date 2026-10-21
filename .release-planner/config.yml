@@ -45,7 +45,7 @@ release-assets:
 # Credentials and recovery: the Release pipeline section of .release-planner/policy.md.
 downstream:
   - repository: fabricahq/homebrew-tap
-    workflow: update-code-rules.yml
+    workflow: update-trailguide.yml
 
 # Release notes rules to turn off. release-planner validate checks the notes against every rule;
 # list them with: release-planner validate --rules

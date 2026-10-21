@@ -430,7 +430,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: expected one YAML document",
+        "message": "library/.trailguide/config.yaml: invalid YAML at line 2, column 1: did not find expected node content",
         "location": "library/.trailguide/config.yaml"
       }
     }

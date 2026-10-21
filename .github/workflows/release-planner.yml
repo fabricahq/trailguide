@@ -1,4 +1,4 @@
-# release-planner:generated v0.4.3 sha256:2b26c14f616592c4. Do not edit; change .release-planner/config.yml and run release-planner install.
+# release-planner:generated v0.4.3 sha256:94682fc0d17b28bf. Do not edit; change .release-planner/config.yml and run release-planner install.
 name: Release
 # A pull request that adds or edits release notes is validated, checked, and built before it
 # merges, and blocks at the start and end of its description report the release's status. Merging it
@@ -209,7 +209,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['fabricahq/homebrew-tap:update-code-rules.yml']
+        target: ['fabricahq/homebrew-tap:update-trailguide.yml']
     runs-on: ubuntu-latest
     environment: downstream
     permissions:
@@ -303,4 +303,4 @@ jobs:
           MERGED: ${{ inputs.merged-commit || github.sha }}
         run: |
           if [ -n "$PULL_REQUEST" ]; then target=(--pull-request "$PULL_REQUEST" --head-sha "$HEAD_SHA" --head-ref "$HEAD_REF" --head-repository "$HEAD_REPOSITORY"); else target=(--merged "$MERGED"); fi
-          release-planner report --needs "$NEEDS" --branch main --plan "$RUNNER_TEMP/plan/release-plan.json" --assets "$RUNNER_TEMP/release-assets" --downstream fabricahq/homebrew-tap:update-code-rules.yml "${target[@]}"
+          release-planner report --needs "$NEEDS" --branch main --plan "$RUNNER_TEMP/plan/release-plan.json" --assets "$RUNNER_TEMP/release-assets" --downstream fabricahq/homebrew-tap:update-trailguide.yml "${target[@]}"

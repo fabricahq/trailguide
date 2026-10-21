@@ -42,8 +42,16 @@ var updateChangeOrder = []UpdateChange{UpdateMajor, UpdateMinor, UpdatePatch, Up
 // SourceUpdate is one source's part of the update preview.
 type SourceUpdate struct {
 	Name string `json:"name"`
-	// Ref is the source's ref, which update doesn't move, so Rules is empty; it is empty for other sources.
+	// Ref is the source's ref, so Rules is empty; it is empty for other sources.
 	Ref string `json:"ref,omitempty"`
+	// FollowsRef reports that the update resolves Ref again, which it does for a branch, and for a tag of a
+	// repository that isn't a library. Any other source that uses ref stays at the commit sync keeps.
+	FollowsRef bool `json:"followsRef,omitempty"`
+	// Commit moves a source that follows its ref from the commit its source record locks to the one its ref names
+	// now; it is nil when the commit doesn't move, and for other sources. TagMoved reports that Ref names a tag that
+	// now names a different commit than at the last update.
+	Commit   *CommitMove `json:"commit,omitempty"`
+	TagMoved bool        `json:"tagMoved,omitempty"`
 	// Rules is sorted by change, in the order of the UpdateChange constants, then by rule ID. It is empty, never
 	// nil, when nothing changes.
 	Rules []RuleUpdate `json:"rules"`
@@ -97,6 +105,10 @@ type CuratedUpdate struct {
 	// commit with those at the recorded one, as SourceUpdate.Skills compares a source's own skills, by their IDs in
 	// the library. It is empty, never nil, when they don't differ.
 	Changes []SkillUpdate `json:"changes"`
+	// Replaced lists, sorted by ID, the curated skills the project replaces with authored skills whose copy at the
+	// new commit differs from the copy the replacement is based on, as SourceUpdate.ReplacedSkills lists a source's
+	// own, by their IDs in the library. It is empty, never nil, when there are none.
+	Replaced []ReplacedSkillUpdate `json:"replaced"`
 }
 
 // CommitMove is the move of a source's revision between two commits.
@@ -192,13 +204,17 @@ type Update struct {
 // plannedSource is one source an update names, with what its planner read, so applying the project's decisions
 // reads nothing from the library again.
 type plannedSource struct {
-	// before is what project sync would import.
+	// before is what project sync would import, except for a source that follows its ref, whose before is the
+	// revision its ref names now, which the update imports.
 	before sourcePlan
 	// moved maps every rule the source imports after the update, before the project's decisions, to its version.
 	// It is nil for a source that uses ref, which the update doesn't move.
 	moved map[string]library.ImportedRule
 	// scoped reports that the update names some of the source's rules rather than the whole source.
-	scoped   bool
+	scoped bool
+	// follows reports that the source uses ref and follows it, as followsRef decides, so the update moves it to the
+	// commit its ref names now.
+	follows  bool
 	recorded *library.Snapshot
 	history  releaseHistory
 	// skills maps each commit that can supply the source's skills once the project decides, the shared files'
@@ -290,7 +306,7 @@ func (s plannedSource) replacedRows(kept []string) []ReplacedSkillUpdate {
 // changes, the update doesn't name source, or source uses ref, which the update doesn't move.
 func (u Update) SkillLevels(source string, kept []string) []SkillLevelUpdate {
 	planned, named := u.plans[source]
-	if !named || planned.moved == nil {
+	if !named || planned.moved == nil && !planned.follows {
 		return []SkillLevelUpdate{}
 	}
 	return planned.levelRows(kept)
@@ -467,7 +483,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 	if err := ctx.Err(); err != nil {
 		return Update{}, gitexec.ContextFailure(err)
 	}
-	scopes, err := updateScopes(configuration, targets)
+	scopes, err := updateScopes(configuration, recorded, targets)
 	if err != nil {
 		return Update{}, err
 	}
@@ -487,8 +503,8 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 	}
 	// Curated skills come from other repositories, or from a source that overrides the library's ref, whose
 	// revision once the update is applied is known only once every source is planned. Only an update of a whole
-	// source resolves the library's refs for them again; a scoped one, and one of a source that uses ref, which the
-	// update doesn't move, keep them where sync would.
+	// source resolves the library's refs for them again: of a source without ref, or one that follows its ref; a
+	// scoped one, and one of a source whose ref the update doesn't move, keep them where sync would.
 	overridden := map[string]library.Snapshot{}
 	for name, snapshot := range recorded {
 		overridden[name] = snapshot
@@ -504,7 +520,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 			if at.manifest == nil || at.err != nil {
 				continue
 			}
-			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero(), overridden, nil, options)
+			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero() && !planned.follows, overridden, nil, options)
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return Update{}, gitexec.ContextFailure(ctxErr)
 			}
@@ -595,8 +611,12 @@ func planOverriddenCurating(ctx context.Context, configuration rules.Configurati
 	if err != nil || manifest == nil {
 		return []CuratedUpdate{}, err
 	}
+	used, err := curatedUses(recorded.Skills, recorded.Files, "vendor/"+source.Name)
+	if err != nil {
+		return nil, err
+	}
 	// Only the curated sources a named source overrides move; sync keeps the others where they are.
-	_, rows, err := planCurated(ctx, configuration, source, manifest, recorded, true, overridden, func(_ string, override *rules.Source) bool {
+	_, rows, err := planCurated(ctx, configuration, source, manifest, used, recorded, true, overridden, func(_ string, override *rules.Source) bool {
 		return moves(override)
 	}, options)
 	return rows, err
@@ -658,8 +678,9 @@ func sourceError(source string, err error) error {
 }
 
 // updateScopes maps each source the targets name to the rules they name, or to nil for every rule. No targets
-// names every source.
-func updateScopes(configuration rules.Configuration, targets []UpdateTarget) (map[string][]string, error) {
+// names every source. A target can name a source that uses ref only when the update moves it, as followsRef decides
+// from the source's snapshot in recorded, or when sync hasn't recorded its branch or tag yet, and then only as a whole.
+func updateScopes(configuration rules.Configuration, recorded map[string]library.Snapshot, targets []UpdateTarget) (map[string][]string, error) {
 	scopes := map[string][]string{}
 	whole := map[string]bool{}
 	for _, source := range configuration.Sources {
@@ -676,7 +697,10 @@ func updateScopes(configuration rules.Configuration, targets []UpdateTarget) (ma
 		if index < 0 {
 			return nil, &ValidationError{Location: where, Problem: "no source named " + target.Source + " in .trailguide/config.yaml"}
 		}
-		if !configuration.Sources[index].Ref.IsZero() {
+		source := configuration.Sources[index]
+		snapshot := recordedSnapshot(recorded, source.Name)
+		unrecorded := snapshot == nil && source.Ref.Kind() != rules.GitRefCommit
+		if !source.Ref.IsZero() && (target.Rule != "" || !unrecorded && !followsRef(source, snapshot)) {
 			return nil, &ValidationError{Location: where, Problem: "the source imports one revision with ref, so update doesn't move it; change sources." + target.Source + ".ref and run trailguide project sync"}
 		}
 		if target.Rule == "" {
@@ -689,9 +713,29 @@ func updateScopes(configuration rules.Configuration, targets []UpdateTarget) (ma
 	return scopes, nil
 }
 
+// followsRef reports whether an update resolves source's ref again, given recorded, its snapshot from the last
+// sync, or nil: a branch, which moves to its newest commit, or a tag of a repository that wasn't a library at the
+// recorded commit, which moves to the commit it names now. A library's bare name other than a library release may
+// name a branch, so it is resolved again too, and planSourceUpdate keeps it where it was when it names a tag. A
+// library's tag, a ref that is a commit, and a source sync hasn't recorded stay where sync keeps them.
+func followsRef(source rules.Source, recorded *library.Snapshot) bool {
+	if recorded == nil || recorded.Repository != source.Repository {
+		return false
+	}
+	switch source.Ref.Kind() {
+	case rules.GitRefBranch:
+		return true
+	case rules.GitRefTag:
+		return recorded.NonLibrary || source.Ref.Bare() && recorded.Release == 0
+	}
+	return false
+}
+
 // planSourceUpdate plans one source within the same deadline as an import, and returns its preview and the
 // warnings that installing it without decisions would give. A nil scope moves every rule and adds new ones;
-// otherwise it moves only the rules scope names. A source that uses ref stays as sync would import it. Either way,
+// otherwise it moves only the rules scope names. A source that follows its ref, as followsRef decides, moves to the
+// commit its ref names now, without reading the commit its record locks, which may be gone; any other source that
+// uses ref stays as sync would import it. Either way,
 // the preview lists the replaced skills whose copy at the revision the update takes skills from, before the
 // project's decisions, differs from the copy their replacement is based on; the plan keeps those rows for every
 // revision the decisions can choose.
@@ -712,13 +756,25 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 		}
 	}()
 	p := newPlanner(ctx, repo, source, recorded)
+	p.again = followsRef(source, p.recorded)
 	before, err := p.choose()
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
 	}
-	preview := SourceUpdate{Name: source.Name, Ref: source.Ref.String(), Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
+	// A library's bare name that names a tag, not a branch, holds one revision, like any library tag.
+	if p.again && !before.nonLibrary && before.resolved == rules.GitRefTag {
+		p.again = false
+		if before, err = p.choose(); err != nil {
+			return plannedSource{}, SourceUpdate{}, nil, err
+		}
+	}
+	preview := SourceUpdate{Name: source.Name, Ref: source.Ref.String(), FollowsRef: p.again, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
+	if p.again && before.commit != p.recorded.Commit {
+		preview.Commit = &CommitMove{From: p.recorded.Commit, To: before.commit}
+		preview.TagMoved = before.resolved == rules.GitRefTag && p.recorded.Ref.Equal(source.Ref)
+	}
 	if !source.Ref.IsZero() {
-		planned := plannedSource{before: before}
+		planned := plannedSource{before: before, follows: p.again}
 		if planned.skills, err = repo.previewSkills(ctx, source, recorded, []sourcePlan{before}); err != nil {
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
@@ -726,6 +782,9 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 		preview.ReplacedSkills = planned.replacedRows(nil)
+		if planned.follows {
+			preview.SkillLevels = planned.levelRows(nil)
+		}
 		return planned, preview, before.warnings, nil
 	}
 	for _, id := range scope {

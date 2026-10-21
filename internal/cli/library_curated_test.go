@@ -17,11 +17,19 @@ import (
 // skills/team/review, and skills/ops/ship, whose SKILL.md names it review, tagged stable.
 func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 	t.Helper()
+	return checkCuratingLibraryWith(t, config, nil)
+}
+
+// checkCuratingLibraryWith runs library check, with args, on a library whose config is config and whose authored
+// skills include skills, by path under .trailguide/skills/, besides review.
+func checkCuratingLibraryWith(t *testing.T, config string, skills map[string]string, args ...string) (string, string, int) {
+	t.Helper()
 	ctx := context.Background()
 	pocock, err := gitfixture.New(ctx, map[string][]byte{
 		"skills/ops/deploy/SKILL.md":  []byte("---\nname: deploy\ndescription: Deploy a service.\n---\n# Deploy\n"),
 		"skills/team/review/SKILL.md": []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n"),
 		"skills/ops/ship/SKILL.md":    []byte("---\nname: review\ndescription: Ship and review a change.\n---\n# Ship\n"),
+		"skills/grill/SKILL.md":       []byte("---\nname: grill\ndescription: Grill a plan.\n---\n# Grill\n"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -35,10 +43,14 @@ func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	for name, text := range map[string]string{
+	files := map[string]string{
 		".trailguide/config.yaml":            config,
 		".trailguide/skills/review/SKILL.md": "---\nname: review\ndescription: Review a pull request.\n---\n# Review\n",
-	} {
+	}
+	for name, text := range skills {
+		files[".trailguide/skills/"+name] = text
+	}
+	for name, text := range files {
 		file := filepath.Join(directory, name)
 		if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 			t.Fatal(err)
@@ -47,13 +59,30 @@ func checkCuratingLibrary(t *testing.T, config string) (string, string, int) {
 			t.Fatal(err)
 		}
 	}
-	return runCLIWithEnvironment(t, buildCLI(t), directory, environment, "library", "check")
+	return runCLIWithEnvironment(t, buildCLI(t), directory, environment, append([]string{"library", "check"}, args...)...)
 }
 
 func TestLibraryCheck_AcceptsCuratedSkillsTheirSourceHas(t *testing.T) {
 	out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  skills:\n    required: [pocock:skills/ops/deploy]\n")
 	if code != 0 || !strings.Contains(out, "Library is valid") {
 		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
+	}
+}
+
+func TestLibraryCheck_AcceptsCuratedSkillsFromABranch(t *testing.T) {
+	for _, ref := range []string{"main", "refs/heads/main"} {
+		out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: "+ref+"\nlibrary:\n  skills:\n    required: [pocock:skills/ops/deploy]\n")
+		if code != 0 || !strings.Contains(out, "Library is valid") {
+			t.Fatalf("%s: exit %d:\n%s%s", ref, code, out, diagnostic)
+		}
+	}
+}
+
+func TestLibraryCheck_NamesACuratedBranchItCannotResolve(t *testing.T) {
+	out, diagnostic, code := checkCuratingLibrary(t, "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: trunk\nlibrary:\n  skills:\n    required: [pocock:skills/ops/deploy]\n")
+	want := "The library curates skills from its source pocock at ref trunk, which the repository doesn't resolve: the repository has no branch or tag trunk; check the ref, and whether a branch of that name was renamed or deleted. Fix sources.pocock.ref in .trailguide/config.yaml."
+	if code == 0 || !strings.Contains(out+diagnostic, want) {
+		t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
 	}
 }
 

@@ -58,9 +58,11 @@ type skillPreview struct {
 	err      error
 	replaced []ReplacedSkillUpdate
 	levels   []SkillLevelUpdate
-	// manifest is the library's .trailguide/config.yaml at the revision, or nil when it has none; curated and
-	// revisions are what planCurated plans from it.
+	// manifest is the library's .trailguide/config.yaml at the revision, or nil when it has none, and used the curated
+	// skills the library's skills the source installs there use, as curatedUses gives them; curated and revisions are
+	// what planCurated plans from them.
 	manifest  []byte
+	used      map[string][]string
 	curated   []CuratedUpdate
 	revisions map[string]library.CuratedSource
 }
@@ -98,12 +100,18 @@ func (r *repository) previewSkills(ctx context.Context, source rules.Source, rec
 			previews[plan.commit] = skillPreview{err: err, replaced: replaced, levels: levels, manifest: manifest}
 			continue
 		}
+		used, err := curatedUses(installed.skills, installed.files, source.Name+"@"+plan.commit)
+		if err != nil {
+			previews[plan.commit] = skillPreview{err: err, replaced: replaced, levels: levels, manifest: manifest}
+			continue
+		}
 		// A curated skill's rows are its curated source's, which planCurated compares at that source's revisions.
 		rows := slices.DeleteFunc(skillChanges(recorded, installed), func(row SkillUpdate) bool {
 			_, excluded := source.SkillExclude[row.ID]
-			return excluded || strings.Contains(row.ID, ":")
+			_, forked := source.SkillForks[row.ID]
+			return excluded || forked || strings.Contains(row.ID, ":")
 		})
-		previews[plan.commit] = skillPreview{rows: rows, replaced: replaced, levels: levels, manifest: manifest}
+		previews[plan.commit] = skillPreview{rows: rows, replaced: replaced, levels: levels, manifest: manifest, used: used}
 	}
 	return previews, nil
 }

@@ -3,19 +3,11 @@ title: "Provenance"
 description: "Where to find a rule's or skill's source, version, level, replacement reason, and declared license."
 ---
 
-:::caution[Preview]
-This page describes the records Trail Guide writes for version 2 configuration and branch refs, which aren't in a released version of Trail Guide yet.
-:::
-
 **Provenance** records where your project's rules and skills came from. The main file is `generated/provenance.json` in the **Trail Guide directory**, so its path from the project root is `.trailguide/generated/provenance.json`. It identifies the sources and versions your project uses, the source of each active rule and installed skill, the library that set each skill's level, and any replacements.
 
 Read it when you want to understand why a rule or skill is present, investigate a library update, or find out why your project replaced a rule or skill. Tools can also read the JSON to report this information. To find and follow the rules themselves, agents start with [the generated rule index](/reference/files/#where-agents-start).
 
 This page shows where the records live, how Trail Guide creates them, and how to trace a rule or skill back to its source.
-
-:::note[Preview]
-Skills, source record format 3, and the `kind`, `skillInclude`, `skills`, and `executable` fields, and the `upstream`, `replacementReason`, and `basedOn` fields of a skill, come in the next Trail Guide release.
-:::
 
 ## Where to look
 
@@ -100,7 +92,7 @@ Installed skills are in the top-level `skills` array, one entry per skill the pr
   "origin": {
     "source": "fabrica",
     "curatedFrom": null,
-    "repository": "https://github.com/fabricahq/public-rules.git",
+    "repository": "https://github.com/fabricahq/public-library.git",
     "resolvedCommit": "4f1c2a95…",
     "folder": "skills/tdd",
     "version": "1.1.0",
@@ -134,7 +126,7 @@ Installed skills are in the top-level `skills` array, one entry per skill the pr
 | `uses` | The project IDs of the skills this one uses, from its `trailguide-skills-used` list and your configuration's `skills.uses`. When your project replaces one, the replacement's ID is listed. |
 | `rulesUsed` | The project IDs of the rules its `trailguide-rules-used` list names. Each of those rules' entries in `rules` lists this skill in `citedBy`. |
 | `targets` | The folders it's installed in, relative to the project root, as in `generated/installed-skills.json`. Empty when the project has no skill targets. |
-| `upstream`, `replacementReason`, and `basedOn` | For an authored skill that replaces one from a source, the replaced skill's origin, your configured reason, and the version or, for a non-library source, the commit your skill is based on; otherwise `null`. |
+| `upstream`, `replacementReason`, and `basedOn` | For a [fork](/reference/configuration/#fork-a-skill), the forked skill's origin, your configured reason, and the commit your skill is based on; otherwise `null`. |
 | `license` and `licenseBasis` | Declared terms, explained [below](#find-declared-licenses-and-source-credits). |
 
 ## Inspect library versions and rule group guidance
@@ -164,7 +156,7 @@ A library's snapshot mirrors its Trail Guide directory, so its files keep their 
   "kind": "library",
   "checksum": "5d1b…c07e",
   "kind": "library",
-  "repository": "https://github.com/fabricahq/public-rules.git",
+  "repository": "https://github.com/fabricahq/public-library.git",
   "release": 3,
   "resolvedCommit": "9e07b3d6f0c1a4b85e2d7c3f9a61b04e8d52c7aa",
   "ruleInclude": [
@@ -215,7 +207,7 @@ A library's snapshot mirrors its Trail Guide directory, so its files keep their 
 | `repository` | The source's repository address. |
 | `ref` | The source's `ref` from configuration when the snapshot was recorded, omitted when configuration has none. Changing it to another spelling of the same revision, such as `refs/tags/release/2` for `release/2`, keeps the recorded spelling, so the record stays current. Changing it to another revision makes the record out of date until `trailguide project update SOURCE` takes that revision. Pins and exclusions aren't recorded: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. So adding, rewording, or removing a pin that moves nothing, or an exclusion, by hand or with a fork, never makes the record out of date, unless the entry names a retired rule that `retiredRules` doesn't list yet; then offline checks ask for `trailguide project sync`, which records the retirement. Generated guidance and `generated/provenance.json` show the configured pins and their reasons. |
 | `release` | The library release that supplied the library-wide files: the manifest, rule group metadata, shared assets, and license files. Every skill from the source, and every skill level, comes from it too. It is the newest library release when the source was added or last updated, or the library release your `ref` names, and never older than the `release` of any recorded rule. `trailguide project sync` keeps it, including when you include more rules or skills: those come from this library release too. It's omitted when the source isn't a library, or your `ref` isn't a library release. |
-| `resolvedCommit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to, which sync records when you add a source and update moves when the branch or tag moved. |
+| `resolvedCommit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to, which sync records when you add a source and update moves when a source's branch, or a non-library source's tag, moved. |
 | `ruleInclude` | Your configured `rules.include` selectors, as written. Empty when you include no rules. |
 | `skillInclude` | Your configured `skills.include` selectors, as written. Empty when you name none; the library's required skills are recorded in `skills` all the same. |
 | `groups` | The rule groups whose rules the record holds, with their metadata. A rule group the selectors reach only for some of its rules is listed too. |
@@ -340,7 +332,7 @@ When a library's manifest lists [curated skills](/reference/configuration/#curat
 }
 ```
 
-`ref` is the ref the library's manifest names, from the library release your project recorded, and `resolvedCommit` the commit your project resolved it to at its last update; `level` is the level the library sets. A curated library's skills also record `version`, `release`, and `commit`. When your project declares the curated repository as its own source, the entry still records the library's curated skills, from your source's commit: `source` names your source, and `ref` and `resolvedCommit` are your source's. The library record's `checksum` covers `curated`.
+`ref` is the ref the library's manifest names, from the library release your project recorded, and `resolvedCommit` the commit your project resolved it to at its last update; `level` is the level the library sets. A skill's `usedBy` names the skills of the curated repository that use it, by their IDs there, and `usedByLibrary`, present only when the library's own skills use it, names those, sorted, by their IDs in the library. A curated library's skills also record `version`, `release`, and `commit`. When your project declares the curated repository as its own source, the entry still records the library's curated skills, from your source's commit: `source` names your source, and `ref` and `resolvedCommit` are your source's. The library record's `checksum` covers `curated`.
 
 ### What offline checks can verify
 

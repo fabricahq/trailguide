@@ -82,8 +82,11 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 // skill except those in a folder whose name starts with a dot, such as another tool's installed copies in
 // .claude/skills/, and each skill it names. A named skill the revision lacks fails: with skill-not-in-revision when
 // the revision is the one the source record locks, since sync never moves a source, and otherwise as invalid
-// configuration. Excluding a required skill fails too, since a project that uses the library can't diverge from it,
-// as does excluding one LibraryRequires lists.
+// configuration. Excluding or forking a required skill fails too, since a project that uses the library can't diverge
+// from it, as does excluding or forking one LibraryRequires lists. Each skill skills.forks names is chosen when
+// available has it, so updates can compare it with its fork, whatever skills.include selects; one available lacks,
+// such as a skill the source deleted, isn't, and its fork stays, even when skills.include names it. A level exclusion, recommended or "*" in skills.exclude, then leaves
+// out the chosen skills of its levels, as rules.Source.ExcludesLevel says, but never a required one.
 // The skills the library curates, whose IDs have a colon, are curateSkills' to choose, and naming one of a repository
 // that isn't a library fails, since only a library curates skills; the skills the configuration's own library section
 // requires of the source, LibraryRequires, are chosen as required too.
@@ -95,9 +98,10 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			return nil, &ValidationError{Location: "library.skills.required", Problem: fmt.Sprintf("lists %s:%s, which sources.%s doesn't have at %s; check the skill ID, or set sources.%s.ref to a revision that has it", source.Name, id, source.Name, revision, source.Name)}
 		}
 	}
-	for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+	diverging := source.SkillDivergences()
+	for _, id := range slices.Sorted(maps.Keys(diverging)) {
 		if slices.Contains(source.LibraryRequires, id) {
-			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.LibraryRequiresProblem(source.Name, id)}
+			return nil, &ValidationError{Location: diverging[id], Problem: rules.LibraryRequiresProblem(source.Name, id)}
 		}
 	}
 	chosen = append(chosen, source.LibraryRequires...)
@@ -110,10 +114,15 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			}
 		}
 		chosen = append(chosen, levels.Required...)
-		for _, id := range slices.Sorted(maps.Keys(source.SkillExclude)) {
+		for _, id := range slices.Sorted(maps.Keys(diverging)) {
 			if slices.Contains(levels.Required, id) {
-				return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + id, Problem: rules.RequiredSkillProblem(source.Name, id, plan.release)}
+				return nil, &ValidationError{Location: diverging[id], Problem: rules.RequiredSkillProblem(source.Name, id, plan.release)}
 			}
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(source.SkillForks)) {
+		if slices.Contains(available, id) {
+			chosen = append(chosen, id)
 		}
 	}
 	for _, id := range source.Skills {
@@ -126,6 +135,8 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			chosen = append(chosen, levels.Recommended...)
 		case slices.Contains(available, id):
 			chosen = append(chosen, id)
+		case isForked(source.SkillForks, id):
+			// The source deleted a skill the project forks, and the fork stays.
 		case strings.Contains(id, ":") && levels != nil:
 		case strings.Contains(id, ":"):
 			return nil, &ValidationError{Location: "sources." + source.Name + ".skills.include", Problem: fmt.Sprintf("names %s, but only a library's curated skills have IDs with a colon, and the repository isn't a library at %s, so it curates none; name its skills by their folder, such as skills/to-spec", id, revision)}
@@ -133,6 +144,16 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 			return nil, skillNotInRevision(source, plan, "sources."+source.Name+".skills.include", id)
 		}
 	}
+	if _, recommended := source.SkillExcludeLevels[skills.Recommended]; recommended && levels == nil {
+		return nil, &ValidationError{Location: "sources." + source.Name + ".skills.exclude." + skills.Recommended, Problem: fmt.Sprintf("the repository isn't a library at %s, so it recommends no skills to exclude; exclude its skills by ID, or exclude \"*\" to install none of them", revision)}
+	}
+	chosen = slices.DeleteFunc(chosen, func(id string) bool {
+		level := skills.LevelOffered
+		if levels != nil {
+			level = levels.Level(id)
+		}
+		return !slices.Contains(source.LibraryRequires, id) && source.ExcludesLevel(id, level)
+	})
 	slices.Sort(chosen)
 	return slices.Compact(chosen), nil
 }
@@ -152,8 +173,14 @@ func skillNotInRevision(source rules.Source, plan sourcePlan, field, id string) 
 	revision := revisionName(plan.release, plan.commit)
 	if plan.locked != "" && plan.locked == plan.commit {
 		next := fmt.Sprintf("Run trailguide project update %s, which moves the source to its newest library release, and takes the skill from it if it has it, or check the skill ID.", source.Name)
-		if !source.Ref.IsZero() {
-			next = fmt.Sprintf("To take the skill, set sources.%s.ref to a tag or commit that has it, then run trailguide project sync, or check the skill ID.", source.Name)
+		retag := fmt.Sprintf("set sources.%s.ref to a tag or commit that has it, then run trailguide project sync, or check the skill ID.", source.Name)
+		switch {
+		case plan.nonLibrary && source.Ref.Kind() == rules.GitRefBranch:
+			next = fmt.Sprintf("Run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it, or check the skill ID.", source.Name)
+		case plan.nonLibrary && source.Ref.Bare():
+			next = fmt.Sprintf("If sources.%s.ref names a branch, run trailguide project update %s, which takes the branch's newest commit, and the skill if it has it. Otherwise, %s", source.Name, source.Name, retag)
+		case !source.Ref.IsZero():
+			next = "To take the skill, " + retag
 		}
 		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision vendor/%s/_source.json records for the source. Sync never moves a source, so it takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)
 	}
@@ -207,14 +234,20 @@ func installedSkills(source rules.Source, plan sourcePlan, chosen []string, uses
 // skillUses reads the SKILL.md of every skill chosen reaches in folders, the skills of the plan's commit, and returns
 // what each uses: its trailguide-skills-used lines, then the skills the source's skills.uses adds. It fetches the
 // SKILL.md files one level of uses at a time, so it never downloads those of skills nothing installed uses. A used
-// skill folders lacks is absent from the result, for installedSkills to report. It fails when a SKILL.md it reads
-// has unreadable frontmatter.
-func (r *repository) skillUses(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry, chosen []string) (map[string][]string, error) {
+// skill folders lacks is absent from the result, for installedSkills to report. A library's skill can also use a
+// skill the library curates, named with its curated source's name; isLibrary leaves those out, for curateSkills to
+// install. A skill of forked, which the project forks, uses none: its fork replaces it, so the skills the source's
+// copy uses aren't installed for it. It fails when a SKILL.md it reads has unreadable frontmatter.
+func (r *repository) skillUses(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry, chosen []string, isLibrary bool, forked []string) (map[string][]string, error) {
 	uses := map[string][]string{}
 	for pending := chosen; len(pending) > 0; {
 		entries := map[string]treeEntry{}
 		for _, id := range pending {
 			if _, seen := uses[id]; seen {
+				continue
+			}
+			if slices.Contains(forked, id) {
+				uses[id] = []string{}
 				continue
 			}
 			if entry, ok := folders[id][id+"/"+skills.File]; ok {
@@ -240,11 +273,43 @@ func (r *repository) skillUses(ctx context.Context, source rules.Source, folders
 			if err != nil {
 				return nil, err
 			}
-			uses[id] = slices.Concat(metadata.SkillsUsed, source.SkillUses[id])
+			used := metadata.SkillsUsed
+			if isLibrary {
+				used = slices.DeleteFunc(slices.Clone(used), isCuratedUse)
+			}
+			uses[id] = slices.Concat(used, source.SkillUses[id])
 			pending = append(pending, uses[id]...)
 		}
 	}
 	return uses, nil
+}
+
+// isCuratedUse reports whether line, a line of trailguide-skills-used in a library's skill, names a skill the
+// library curates, which has its curated source's name and a colon before its ID.
+func isCuratedUse(line string) bool { return strings.Contains(line, ":") }
+
+// curatedUses returns, by the ID of each curated skill that a skill of installed uses, such as
+// anthropic:skills/skill-creator, the IDs of those skills, sorted. installed holds a library source's skills by ID,
+// and files their files by snapshot path; curated skills, and the skills they use, use none of the library's. It
+// fails when a SKILL.md has unreadable frontmatter, reading it at where and its path.
+func curatedUses(installed map[string]library.ImportedSkill, files map[string][]byte, where string) (map[string][]string, error) {
+	result := map[string][]string{}
+	for _, id := range slices.Sorted(maps.Keys(installed)) {
+		if _, _, curated := library.SplitCurated(id); curated {
+			continue
+		}
+		file := library.SkillFolder(id) + "/" + skills.File
+		metadata, err := skills.ReadMetadata(files[file], where+"/"+file)
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range metadata.SkillsUsed {
+			if isCuratedUse(line) && !slices.Contains(result[line], id) {
+				result[line] = append(result[line], id)
+			}
+		}
+	}
+	return result, nil
 }
 
 // isLibrary reports whether a fetched commit holds a library: a .trailguide/config.yaml with a library section, or a
@@ -345,7 +410,7 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 	if err := requireConfiguredUses(source, plan, available); err != nil {
 		return importedSkills{}, err
 	}
-	uses, err := r.skillUses(ctx, source, folders, chosen)
+	uses, err := r.skillUses(ctx, source, folders, chosen, isLibrary, slices.Collect(maps.Keys(source.SkillForks)))
 	if err != nil {
 		return importedSkills{}, err
 	}
@@ -443,4 +508,10 @@ func (r *repository) skillLevelChanges(ctx context.Context, recorded *library.Sn
 		}
 	}
 	return rows, nil
+}
+
+// isForked reports whether forks, a source's skills.forks, forks skill id.
+func isForked(forks map[string]rules.SkillFork, id string) bool {
+	_, forked := forks[id]
+	return forked
 }

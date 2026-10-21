@@ -3,10 +3,6 @@ title: "Install skills"
 description: "Install skills from libraries and other repositories into the folders your agents read, and manage their levels, names, and exceptions."
 ---
 
-:::caution[Preview]
-Skill support isn't in a released version of Trail Guide yet. This guide describes how it will work.
-:::
-
 A **[skill](/concepts/skill/)** tells an agent how to carry out one kind of task, step by step, and which rules each step applies. Installing skills with Trail Guide gives every checkout of your project the same skills, from the revisions you choose, beside the rules they cite.
 
 Skills come from **sources**: the repositories your project takes skills and rules from. A source is usually a [library](/concepts/libraries/), but any Git repository of skill folders works too.
@@ -74,34 +70,28 @@ Sync takes the source's newest library release, records it in `.trailguide/vendo
 
 ## See what's available
 
-List every skill your sources offer, with its level:
+List the skills in your project, with their levels:
 
 ```sh
 trailguide project list skills
 ```
 
 ```text
-NAME            ID                                               LEVEL        SET BY             VERSION  STATUS
-build-feature   fabrica:skills/build-feature                     recommended  fabrica release 7  1.3.0    installed
-deploy-preview  fabrica:skills/deploy-preview                    offered      fabrica release 7  1.0.0    installed
-review-change   fabrica:skills/review-change                     offered      fabrica release 7  3.0.0    available
-grilling        fabrica:mattpocock:skills/productivity/grilling  offered      fabrica release 7  8a41d07  available
-ship-service    fabrica:skills/ship-service                      required     fabrica release 7  1.0.0    installed
-tdd             fabrica:skills/tdd                               offered      fabrica release 7  1.1.0    installed
-to-spec         fabrica:mattpocock:skills/engineering/to-spec    recommended  fabrica release 7  8a41d07  installed
+SKILL                                            LEVEL        SET BY              STATUS
+fabrica:mattpocock:skills/engineering/to-spec    recommended  fabrica, release 7  installed
+fabrica:mattpocock:skills/productivity/grilling  offered      fabrica, release 7  available
+fabrica:skills/build-feature                     recommended  fabrica, release 7  installed
+fabrica:skills/deploy-preview                    offered      fabrica, release 7  installed
+fabrica:skills/review-change                     offered      fabrica, release 7  available
+fabrica:skills/ship-service                      required     fabrica, release 7  installed
+fabrica:skills/tdd                               offered      fabrica, release 7  installed
 ```
 
-Each row shows a skill's install name, its ID, its level and the library release that set it, its version, or a commit for a skill without versions, and whether the project installs it. `installed` covers skills you included, required skills, and skills another installed skill calls; `available` means a source offers it and the project doesn't install it.
+Each row shows a skill's ID, its level and the library release that set it, and whether the project installs it. `installed` covers skills you included, required skills, and skills another installed skill uses; `available` means a source offers it and the project doesn't install it. The list comes from the library release your project recorded, so it doesn't show skills a newer release adds until you run `trailguide project update fabrica`.
 
 The `mattpocock:` skills are **curated**: Fabrica's library lists them at a level, but their files come from the original repository, at a commit your project resolves when it updates. See [Curated skills](/reference/configuration/#curated-skills).
 
-Narrow the list:
-
-- `--type review` lists only review skills, and `--type playbook` only playbooks.
-- `--applies-rules-from practices/testing` lists only skills whose `trailguide-rules-used` names a rule in that rule group.
-- `--json` returns the list for scripts.
-
-See [project list skills](/reference/cli/#project-list-skills) for every option.
+Add `--json` to get the list for scripts. See [project list skills](/reference/cli/#project-list-skills) for every column and status.
 
 ## What lands where
 
@@ -127,7 +117,7 @@ Trail Guide writes only the skill folders it installs. Other folders in `.claude
 
 A skill can call other skills and cite rules. When you install it, Trail Guide installs those too:
 
-- **Skills it calls.** Every skill in its `trailguide-skills-used` list, and the skills those call, from the same repository and revision. `SKILLS.md` says each was installed because another skill uses it.
+- **Skills it calls.** Every skill in its `trailguide-skills-used` list, and the skills those call, from the same repository and revision, or, for a skill the library [curates](/reference/configuration/#curated-skills), from the repository the library curates it from. `SKILLS.md` says each was installed because another skill uses it.
 - **Rules it cites.** Every rule in its `trailguide-rules-used` list, from the same library, even ones your rule `include` doesn't name. These cited rules are reference-only: each gets its generated rule file, and the installed skill links to it, but `RULES.md` doesn't list it. Installing a skill never widens the rules your agents apply to all work.
 
 If you exclude or replace a cited rule, the installed skill follows your choice: it links to your replacement, or says the rule is excluded by this project, with your reason. A cited rule your project also includes is an ordinary rule.
@@ -249,18 +239,18 @@ trailguide project add skill \
   --non-interactive
 ```
 
-The command copies the version your project installs into `.trailguide/skills/fix-bug/`, and adds an exclusion that names the fork:
+The command copies the version your project installs into `.trailguide/skills/fix-bug/`, and records the fork under the source:
 
 ```yaml
 skills:
-  exclude:
-    - id: skills/fix-bug
+  forks:
+    skills/fix-bug:
+      as: skills/fix-bug
+      basedOn: "9f2c4e1a7b3d5f60817a2b4c6d8e0f1a3b5c7d9e"
       reason: We use our own bug workflow.
-      replacedBy: skills/fix-bug
-      basedOn: "1.0.0"
 ```
 
-Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill. With `basedOn`, `trailguide project update` lists the library's later changes to the skill, so you can decide whether your fork needs them, or replace it with a fork of the newest version with `--update-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. See [project add skill](/reference/cli/#project-add-skill).
+Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill, which the project no longer installs. `basedOn` is the commit the fork copied. `trailguide project update` lists the library's later changes to the skill, so you can decide whether your fork needs them, or replace it with a fork of the newest version with `--update-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. See [project add skill](/reference/cli/#project-add-skill).
 
 ## Write your own skill
 
@@ -273,7 +263,7 @@ trailguide project add skill review-migration \
   --non-interactive
 ```
 
-The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Run `trailguide project build` to install it. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
+The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
 
 ## Personal skills with the same name
 

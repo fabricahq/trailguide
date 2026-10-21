@@ -116,6 +116,10 @@ func TestGenerateRejectsAnAuthoredSkillThatUsesASkillTheProjectDoesNotInstall(t 
 			map[string]SkillFiles{"skills/release": authored("release", "team:skills/tdd")}, "skills/release/SKILL.md",
 			"trailguide-skills-used names team:skills/tdd, which the project doesn't install; add skills/tdd to sources.team.skills.include, then run trailguide project sync",
 		},
+		"a curated skill the library doesn't list": {
+			map[string]SkillFiles{"skills/release": authored("release", "team:anthropic:skills/skill-creator")}, "skills/release/SKILL.md",
+			"trailguide-skills-used names team:anthropic:skills/skill-creator, which library team doesn't curate at the revision the project installs; remove it, or declare the skill's repository as a source of your own and name the skill with that source's name",
+		},
 		"authored skills in a cycle": {
 			map[string]SkillFiles{"skills/release": authored("release", "skills/tag"), "skills/tag": authored("tag", "skills/release")}, "skills/release/SKILL.md",
 			"trailguide-skills-used forms a cycle: skills/release -> skills/tag -> skills/release. A skill installs with every skill it uses, so uses can't form a cycle; remove one of them",
@@ -141,10 +145,8 @@ func TestGenerateRedirectsAUseOfAnExcludedSkillToItsReplacement(t *testing.T) {
 	files := map[string][]byte{"skills/build": skillFile("build", "skills/tdd", "skills/how"), "skills/tdd": skillFile("tdd"), "skills/how": skillFile("how")}
 	config, libraries := fixture(t, `[]`)
 	config.SkillTargets = []string{"claude"}
-	config.Sources[0].SkillExclude = map[string]rules.SkillExclusion{
-		"skills/tdd": {Reason: "Ours.", ReplacedBy: "skills/our-tdd"},
-		"skills/how": {Reason: "Not needed."},
-	}
+	config.Sources[0].SkillExclude = map[string]rules.SkillExclusion{"skills/how": {Reason: "Not needed."}}
+	config.Sources[0].SkillForks = map[string]rules.SkillFork{"skills/tdd": {As: "skills/our-tdd", Reason: "Ours."}}
 	team := libraries["team"]
 	team.Snapshot.Skills = snapshot
 	team.Snapshot.Files = map[string][]byte{}

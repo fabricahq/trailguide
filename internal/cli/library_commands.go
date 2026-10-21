@@ -30,11 +30,21 @@ func (f *authoringFlags) libraryOptions(ctx context.Context, initialize bool) (l
 		directory = f.file("directory")
 	}
 	directory, err := commandDirectory(ctx, directory, "library", initialize)
-	return library.Options{Directory: directory, Git: f.git, Curated: f.readCurated}, err
+	return library.Options{Directory: directory, Git: f.git, Curated: f.readCurated, ReadSkill: f.readSourceSkill, Forks: f.readForks}, err
+}
+
+// readSourceSkill reads a skill from a source the library declares, which a fork copies.
+func (f *authoringFlags) readSourceSkill(ctx context.Context, name string, source rules.CuratedSource, id string) (library.SourceSkill, error) {
+	return imports.ReadSourceSkill(ctx, name, source, id, f.imports)
+}
+
+// readForks compares the skills the library forked from a source with the source's copies.
+func (f *authoringFlags) readForks(ctx context.Context, name string, source rules.CuratedSource, forks map[string]rules.SkillFork) ([]library.ForkedSkill, error) {
+	return imports.LibraryForks(ctx, name, source, forks, f.imports)
 }
 
 // readCurated reads a source the library curates skills from, as a project that uses the library would.
-func (f *authoringFlags) readCurated(ctx context.Context, name string, source rules.CuratedSource, ids []string) (map[string]string, string, error) {
+func (f *authoringFlags) readCurated(ctx context.Context, name string, source rules.CuratedSource, ids []string) (map[string]library.CuratedSkill, string, error) {
 	return imports.CuratedSkillNames(ctx, name, source, ids, f.imports)
 }
 
@@ -44,9 +54,9 @@ func addLibraryCommands(root *cobra.Command, options Options, output *commandOut
 	library.Long = library.Short + "\n\nA library keeps its manifest in the library section of .trailguide/config.yaml,\nits rules in .trailguide/rules/, shared assets in .trailguide/assets/, and change\nnotes in .trailguide/changes/. The same repository can also be a project.\n\nRun init from the Git repository root. Other library commands can run from any\nsubdirectory. Outside Git, run commands from the library root." + documentationHelp
 	root.AddCommand(library)
 	library.AddCommand(libraryInitCommand(options, output), libraryCheckCommand(options, output), libraryChangeCommand(options, output), libraryReleaseCommand(options, output))
-	add := &cobra.Command{Use: "add", Short: "Add a library group or rule"}
+	add := &cobra.Command{Use: "add", Short: "Add a library group, rule, or skill"}
 	library.AddCommand(add)
-	add.AddCommand(libraryGroupCommand(options, output), libraryRuleCommand(options, output))
+	add.AddCommand(libraryGroupCommand(options, output), libraryRuleCommand(options, output), librarySkillCommand(options, output))
 }
 
 // libraryInitCommand reads explicit publisher terms before creating library-owned files.
