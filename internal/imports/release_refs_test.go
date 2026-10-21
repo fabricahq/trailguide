@@ -1,6 +1,7 @@
 package imports
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -161,6 +162,26 @@ func TestPlanUpdate_EditedReleaseRefTakesExactlyThatRelease(t *testing.T) {
 	_, err = h.plan(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), &installed.Snapshot)
 	requireCode(t, err, "ref-changed")
 	if !strings.Contains(err.Error(), "older than library release 2, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// TestPlanUpdate_EditedReleaseRefWithoutAnyReleaseTagsFails: after the library deletes every release tag, an update
+// of a ref edited to another release fails with version-not-found and names no newest release.
+func TestPlanUpdate_EditedReleaseRefWithoutAnyReleaseTagsFails(t *testing.T) {
+	h := newHistory(t)
+	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/*"]}`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range []string{"release/1", "release/2", "release/3"} {
+		if _, err := h.fixture.Command(context.Background(), "tag", "--delete", tag); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err = h.plan(t, h.source(t, `"ref":"release/2","rules":{"include":["techs/go/*"]}`), &one.Snapshot)
+	requireCode(t, err, "version-not-found")
+	if !strings.Contains(err.Error(), "sources.team.ref names release/2, which the library doesn't have. The repository has no release/<number> tags now") {
 		t.Fatalf("got %v", err)
 	}
 }
