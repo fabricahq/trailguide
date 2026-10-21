@@ -1,0 +1,20 @@
+schemaVersion: 2
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/public-library.git
+    rules:
+      include:
+        - practices/code-design/*
+        - practices/concurrency/*
+        - practices/performance/*
+        - practices/readmes/*
+        - practices/testing/*
+        - techs/go/*
+        - techs/javascript/*
+        - techs/typescript/*
+      exclude:
+        - id: techs/typescript/comment-role-result-and-constraints
+          reason: This repository's comment policy also covers its website's Astro components
+            and private helpers, as its ESLint configuration enforces.
+          replacedBy: techs/typescript/comment-role-result-and-constraints
+          basedOn: "1.0.0"

@@ -56,6 +56,21 @@ func LocalRuleAssets(file string) Target {
 // stays small enough to read during recovery.
 const maxLocalRules = 1000
 
+// AuthoredSkill is the folder of the authored skill named name, skills/<name>, a fork of a source's skill. Only
+// project update replaces it, when it merges the source's changes into the fork, so recovery restores or finishes
+// the fork, the configuration that records the commit it's based on, and the output generated from them together.
+func AuthoredSkill(name string) Target { return Target(skills.Directory + "/" + name) }
+
+// maxAuthoredSkills bounds the authored skill folders one transaction can replace, so its journal stays small enough
+// to read during recovery.
+const maxAuthoredSkills = 1000
+
+// authoredSkillTarget reports whether target is an AuthoredSkill target of a valid skill name.
+func authoredSkillTarget(target Target) bool {
+	name, authored := strings.CutPrefix(string(target), skills.Directory+"/")
+	return authored && skills.ValidName(name)
+}
+
 // AgentsFile is the repository's AGENTS.md, beside the Trail Guide directory, which holds a section Trail Guide maintains.
 // Init, build, sync, and update replace it together with their other output, so recovery restores or finishes it with
 // them. Callers must establish that the file's text outside the section is unchanged.
@@ -118,10 +133,10 @@ func localRuleAssetsTarget(target Target) bool {
 	return localRuleTarget(LocalRule(file)) && LocalRuleAssets(file) == target
 }
 
-// localTarget reports whether target is an authored file or directory under rules/, which follows the fixed targets
-// in a transaction.
+// localTarget reports whether target is an authored file or directory under rules/ or skills/, which follows the
+// fixed targets in a transaction.
 func localTarget(target Target) bool {
-	return localGroupMetadataTarget(target) || localRuleTarget(target) || localRuleAssetsTarget(target)
+	return localGroupMetadataTarget(target) || localRuleTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target)
 }
 
 // fileTarget reports whether target is a single file rather than a directory tree.
@@ -131,7 +146,7 @@ func fileTarget(target Target) bool {
 
 func validTarget(target Target) bool {
 	_, skill := skillFolderTarget(target)
-	return target == Vendor || target == Generated || fileTarget(target) || localRuleAssetsTarget(target) || skill
+	return target == Vendor || target == Generated || fileTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) || skill
 }
 
 // removable reports whether a nil file map may remove target: a local rule's asset directory or a skill folder.

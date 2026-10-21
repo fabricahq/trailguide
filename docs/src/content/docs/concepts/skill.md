@@ -103,7 +103,7 @@ A library's own skill can also call a skill the library curates from another rep
 
 A skill's ID is its folder's path in the repository that holds it, such as `skills/build-feature`. Its identity is that repository plus that path, so two sources that reach the same repository name the same skill. In a project, an ID is qualified by the source name you chose, such as `fabrica:skills/build-feature`. Configuration uses these IDs to include, exclude, rename, and replace skills.
 
-A project can [exclude](/guides/install-skills/#exclude-a-skill) a source's skill it doesn't want, with a reason, or [fork](/guides/install-skills/#fork-a-skill) it into an authored skill that installs in its place under the same name. Updates list the source's later changes to a skill the project forked, so the project can decide whether its fork needs them.
+A project can [exclude](/guides/install-skills/#exclude-a-skill) a source's skill it doesn't want, with a reason, or [fork](/guides/fork-skills/) it into an authored skill that installs in its place under the same name. Updates list the source's later changes to a skill the project forked, and can merge them into the fork while keeping the project's edits.
 
 See [Install skills](/guides/install-skills/) to add skills to a project.
 
