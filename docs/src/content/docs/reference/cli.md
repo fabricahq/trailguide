@@ -356,7 +356,7 @@ Each row shows:
 - **SET BY:** the library and the library release, or the commit, whose manifest set the level; `not a library` for a source without a manifest; or `this project` for an authored skill.
 - **STATUS:** `installed` for a skill the project installs, whether included, required, or used by another installed skill; `excluded` for one `skills.exclude` leaves out, by ID or by level; `replaced by` and the fork that `skills.forks` installs in its place; and `available` for one a source offers that the project doesn't install.
 
-Source skills are sorted by project ID, and authored skills follow them. To install an available skill, add it to that source's `skills.include` and run `trailguide project sync`.
+Source skills are sorted by project ID, and authored skills follow them. To install an available skill, add it to that source's `skills.include` and run `trailguide project sync`. A `dependency` can't be included on its own: include a skill that calls it instead.
 
 JSON output lists the skills in `value.skills`, each with its `id`, `status`, and, where they apply, `source`, `level`, `setBy` (the `source`, `release`, and `commit` that set the level), and `replacedBy`.
 

@@ -29,11 +29,13 @@ type CuratedReader func(ctx context.Context, name string, source rules.CuratedSo
 // requireCuratedSkills fails when manifest, the library's configuration, lists a curated skill that its source
 // doesn't have at the ref the library declares, or that uses one the source doesn't have, or when two skills it offers projects, its own in authored, its
 // skills/ folder, the curated ones it lists, and the curated ones those use, which projects install with them, have
-// the same install name, which agents find skills by. read reads each curated source; nil skips the check.
-func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetxn.Tree, read CuratedReader) error {
+// the same install name, which agents find skills by. read reads each curated source; nil skips the check. It returns
+// the IDs, as the manifest names them, of the curated skills that listed curated skills use in their own repository,
+// directly or through others, or nil when it skips the check.
+func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetxn.Tree, read CuratedReader) (map[string]bool, error) {
 	declaration, err := rules.ParseLibraryManifest(manifest, manifestPath)
 	if err != nil || declaration == nil || read == nil {
-		return err
+		return nil, err
 	}
 	// Every skill the library authors reaches projects, since one no level lists is offered.
 	names := map[string]string{}
@@ -53,14 +55,14 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 	installed, revisions := map[string]map[string]CuratedSkill{}, map[string]string{}
 	for _, source := range slices.Sorted(maps.Keys(wanted)) {
 		if installed[source], revisions[source], err = read(ctx, source, declaration.Curated[source], wanted[source]); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	for _, id := range listed {
 		source, skill, _ := SplitCurated(id)
 		if _, ok := installed[source][skill]; !ok {
 			field := declaration.Skills.Field(id)
-			return &ValidationError{Location: manifestPath + ": " + field, Problem: field + " names " + id + ", which " + source + " doesn't have at " + revisions[source] + "; check the skill ID, or set sources." + source + ".ref to a revision that has it"}
+			return nil, &ValidationError{Location: manifestPath + ": " + field, Problem: field + " names " + id + ", which " + source + " doesn't have at " + revisions[source] + "; check the skill ID, or set sources." + source + ".ref to a revision that has it"}
 		}
 	}
 	// A curated skill installs under the name its SKILL.md declares, which needn't be its folder's.
@@ -72,7 +74,7 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 		source, skill, _ := SplitCurated(id)
 		name := installed[source][skill].Name
 		if other, clash := seen[name]; clash {
-			return &ValidationError{Location: manifestPath + ": library.skills", Problem: "library.skills lists " + other + " and " + id + ", which both install as " + name + "; list one of them, or rename the folder of your own skill"}
+			return nil, &ValidationError{Location: manifestPath + ": library.skills", Problem: "library.skills lists " + other + " and " + id + ", which both install as " + name + "; list one of them, or rename the folder of your own skill"}
 		}
 		seen[name] = id
 	}
@@ -84,13 +86,15 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 			}
 		}
 	}
+	called := map[string]bool{}
 	for _, id := range listed {
 		source, skill, _ := SplitCurated(id)
 		for _, used := range usedSkills(installed[source], skill) {
 			usedID := source + ":" + used
+			called[usedID] = true
 			field := declaration.Skills.Field(id)
 			if _, found := installed[source][used]; !found {
-				return &ValidationError{Location: manifestPath + ": " + field, Problem: id + " uses " + usedID + ", which " + source + " doesn't have at " + revisions[source] + ", so projects can't install " + id + "; stop listing it, or set sources." + source + ".ref to a revision that has both"}
+				return nil, &ValidationError{Location: manifestPath + ": " + field, Problem: id + " uses " + usedID + ", which " + source + " doesn't have at " + revisions[source] + ", so projects can't install " + id + "; stop listing it, or set sources." + source + ".ref to a revision that has both"}
 			}
 			name := installed[source][used].Name
 			other, clash := seen[name]
@@ -107,10 +111,10 @@ func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetx
 			} else {
 				problem += "; stop listing one of them, or rename the folder of your own skill"
 			}
-			return &ValidationError{Location: manifestPath + ": " + field, Problem: problem}
+			return nil, &ValidationError{Location: manifestPath + ": " + field, Problem: problem}
 		}
 	}
-	return nil
+	return called, nil
 }
 
 // usedSkills returns, sorted, the skills, by ID, that the skill id of known uses, directly or through the skills it

@@ -114,7 +114,7 @@ A skill can cite rules from any rule group in the library with `trailguide-rules
 | `recommended` | When it includes `recommended` or `"*"`, or names the skill. |
 | `offered` | When it includes `"*"`, or names the skill. |
 
-An authored skill that no level lists is offered, so list only the skills you have an opinion about. Each skill can appear in one level, or in `dependencies`. Levels are library-wide settings: changing one needs no change note, and projects see the change, such as `recommended -> required`, in their update preview after the next library release.
+An authored skill that no list names, neither a level nor `dependencies`, is offered, so list only the skills you have an opinion about. Each skill can appear in one level, or in `dependencies`. Levels are library-wide settings: changing one needs no change note, and projects see the change, such as `recommended -> required`, in their update preview after the next library release.
 
 A project sees only the levels of the libraries it names as sources. Levels don't chain: when your library curates a skill from another library, your projects see the level you set, not the other library's.
 
@@ -129,7 +129,7 @@ library:
     dependencies: [anthropic:skills/skill-creator]
 ```
 
-A project installs a dependency only with a skill that calls it, in its `trailguide-skills-used` or the project's `skills.uses`. `"*"` and `recommended` never include it, and a project that names it in `include` fails with a message naming the skills that call it. A dependency can be your own skill or one you curate. `trailguide library check` fails when none of your skills calls a dependency. See [Dependencies](/reference/configuration/#dependencies).
+A project installs a dependency only with a skill that calls it, in its `trailguide-skills-used` or the project's `skills.uses`. `"*"` and `recommended` never include it, and a project that names it in `include` fails with a message naming the skills that call it. A dependency can be your own skill or one you curate. `trailguide library check` fails when nothing calls a dependency: none of your skills, and, for a curated one, no curated skill you list from its repository. See [Dependencies](/reference/configuration/#dependencies).
 
 ### Curated skills
 

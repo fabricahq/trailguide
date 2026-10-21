@@ -91,7 +91,8 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = requireLeveledSkills(root, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
-	if err = requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated); err != nil {
+	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
+	if err != nil {
 		return checkedLibrary{}, err
 	}
 	catalog, err := LoadSource(ctx, capturedLibrary{input.tree}, "library", rules.GroupSelection{Pattern: "*"}, nil)
@@ -126,7 +127,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		curatedSkills, dependencies = declaration.Skills.Curated(), declaration.Skills.Dependencies
 	}
 	problems := skillProblems(input.skills, current, curatedSkills, changes)
-	if problems = append(problems, uncalledDependencies(input.skills, dependencies)...); len(problems) > 0 {
+	if problems = append(problems, uncalledDependencies(input.skills, dependencies, curatedCalls)...); len(problems) > 0 {
 		return checkedLibrary{}, failure("invalid-skill", "skills don't pass library check:\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
 	plan, err := changes.plan()

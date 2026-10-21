@@ -96,11 +96,16 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 }
 
 // uncalledDependencies returns a problem, in ID order, for each of dependencies, the skills library.skills.dependencies
-// lists, that no skill in tree, the library's skills/ folder, other than itself, names in its trailguide-skills-used:
-// a dependency installs only with the skills that use it, so projects could never install one nothing uses. A nil
-// tree has no skills, so every dependency is uncalled. A SKILL.md that skillProblems rejects names none.
-func uncalledDependencies(tree *filetxn.Tree, dependencies []string) []string {
-	called := map[string]bool{}
+// lists, that no skill in tree, the library's skills/ folder, other than itself, names in its trailguide-skills-used,
+// and that curatedCalls, the curated skills that listed curated skills use, lacks: a dependency installs only with
+// the skills that use it, so projects could never install one nothing uses. A nil curatedCalls, when the curated
+// sources weren't read, leaves curated dependencies unchecked. A nil tree has no skills. A SKILL.md that skillProblems
+// rejects names none.
+func uncalledDependencies(tree *filetxn.Tree, dependencies []string, curatedCalls map[string]bool) []string {
+	called := maps.Clone(curatedCalls)
+	if called == nil {
+		called = map[string]bool{}
+	}
 	if tree != nil {
 		for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
 			folder, file, _ := strings.Cut(name, "/")
@@ -120,6 +125,9 @@ func uncalledDependencies(tree *filetxn.Tree, dependencies []string) []string {
 	}
 	problems := []string{}
 	for _, id := range dependencies {
+		if _, _, curated := SplitCurated(id); curated && curatedCalls == nil {
+			continue
+		}
 		if !called[id] {
 			problems = append(problems, fmt.Sprintf("library.skills.%s lists %s, but no skill of the library names it in %s, and a dependency installs only with the skills that use it, so no project would install it. Name it in the %s of the skills that call it, or move it to a level", skills.Dependencies, id, skills.SkillsUsedKey, skills.SkillsUsedKey))
 		}
