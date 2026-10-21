@@ -285,7 +285,7 @@ func TestGenerateKeepsTheCodexInterfaceFileASkillShips(t *testing.T) {
 	team := libraries["team"]
 	team.Snapshot.Files["skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review.\nmetadata:\n  display-name: Ours\n---\n# Review\n")
 	team.Snapshot.Files["skills/review/agents/openai.yaml"] = ships
-	team.Snapshot.Files["skills/fix/SKILL.md"] = []byte("---\nname: fix\ndescription: Fix.\nmetadata:\n  short-description: Fix a bug\n---\n# Fix\n")
+	team.Snapshot.Files["skills/fix/SKILL.md"] = []byte("---\nname: fix\ndescription: Fix.\nmetadata:\n  short-description: Fix a bug\n  default-prompt: Use $fix to fix this bug, not $fix-flaky.\n---\n# Fix\n")
 	output, err := build.Generate(config, libraries, nil, build.Options{ToolVersion: "test"})
 	if err != nil {
 		t.Fatal(err)
@@ -295,8 +295,8 @@ func TestGenerateKeepsTheCodexInterfaceFileASkillShips(t *testing.T) {
 			t.Errorf("%s/agents/openai.yaml = %q, want the skill's own file", folder, got)
 		}
 	}
-	// A renamed skill's display name falls back to the name it's installed under.
-	if got := string(output.Skills[".agents/skills/team-fix"].Files["agents/openai.yaml"]); !strings.Contains(got, "  display_name: \"team-fix\"\n  short_description: \"Fix a bug\"\n") {
+	// A renamed skill's display name falls back to the name it's installed under, and its prompt mentions it by that name.
+	if got := string(output.Skills[".agents/skills/team-fix"].Files["agents/openai.yaml"]); !strings.HasSuffix(got, "  display_name: \"team-fix\"\n  short_description: \"Fix a bug\"\n  default_prompt: \"Use $team-fix to fix this bug, not $fix-flaky.\"\n") {
 		t.Errorf(".agents/skills/team-fix/agents/openai.yaml =\n%s", got)
 	}
 }

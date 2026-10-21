@@ -47,3 +47,32 @@ func TestOpenAIInterfaceReturnsNilWithoutInterfaceText(t *testing.T) {
 		}
 	}
 }
+
+func TestRenamedChangesOnlyMentionsOfTheSkillItself(t *testing.T) {
+	text := skills.Interface{DisplayName: "fix", ShortDescription: "Like $fix-flaky, but $fix.", DefaultPrompt: "Use $fix, then $fixer and $fix"}
+	want := skills.Interface{DisplayName: "fix", ShortDescription: "Like $fix-flaky, but $team-fix.", DefaultPrompt: "Use $team-fix, then $fixer and $team-fix"}
+	if got := text.Renamed("fix", "team-fix"); got != want {
+		t.Fatalf("Renamed = %#v, want %#v", got, want)
+	}
+}
+
+func TestInterfaceTextOnlyAcceptsOnlyTheGeneratedFields(t *testing.T) {
+	for input, want := range map[string]bool{
+		"interface:\n  display_name: Fix\n":                                              true,
+		"interface:\n  short_description: Fix\n  default_prompt: \"Use $fix.\"\n":        true,
+		string(skills.OpenAIInterface(skills.Interface{DisplayName: "Fix"}, "fix")):      true,
+		"interface:\n  display_name: Fix\n  icon_small: ./assets/icon.svg\n":             false,
+		"interface:\n  display_name: Fix\npolicy:\n  allow_implicit_invocation: false\n": false,
+		"interface:\n  display_name: Fix\ndependencies:\n  tools:\n    - type: mcp\n":    false,
+		"interface:\n  display_name: 3\n":                                                false,
+		"interface: {}\n":                                                                false,
+		"interface:\n  display_name: [Fix]\n":                                            false,
+		"policy:\n  allow_implicit_invocation: false\n":                                  false,
+		"interface:\n  display_name: Fix\n  display_name: Again\n":                       false,
+		"": false,
+	} {
+		if got := skills.InterfaceTextOnly([]byte(input)); got != want {
+			t.Errorf("InterfaceTextOnly(%q) = %v, want %v", input, got, want)
+		}
+	}
+}

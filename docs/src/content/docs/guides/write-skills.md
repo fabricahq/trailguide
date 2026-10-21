@@ -134,7 +134,7 @@ metadata:
   default-prompt: "Use $fix-bug to reproduce and fix this bug."
 ```
 
-All three are optional. When a project installs the skill, Trail Guide writes the file each agent reads, such as `agents/openai.yaml` in the `.agents/skills/` copy for Codex, so don't ship that file in the skill folder: library check warns when a skill does, and projects then install your file as it is instead. In `default-prompt`, Codex recognizes the skill when the prompt names it with `$`, as in `$fix-bug`. Keep `short-description` to one line; agents still decide when to use the skill from its `description`. See [Text agents show](/reference/skill-format/#text-agents-show).
+All three are optional. When a project installs the skill, Trail Guide writes the file each agent reads, such as `agents/openai.yaml` in the `.agents/skills/` copy for Codex. If you also need settings the keys don't cover, such as icons, tool dependencies, or a policy that stops Codex from using the skill on its own, ship your own `agents/openai.yaml` instead: projects install it as it is, and Trail Guide generates nothing for the skill. Library check warns about a shipped file that sets only the text the keys cover. In `default-prompt`, Codex recognizes the skill when the prompt names it with `$`, as in `$fix-bug`. Keep `short-description` to one line; agents still decide when to use the skill from its `description`. See [Text agents show](/reference/skill-format/#text-agents-show).
 
 ## Example: a playbook
 

@@ -123,31 +123,30 @@ func TestUncuratedProblemWithoutCuratedSkills(t *testing.T) {
 	}
 }
 
-func TestCheck_WarnsAboutASkillThatShipsItsOwnCodexInterfaceFile(t *testing.T) {
+func TestCheck_WarnsOnlyAboutACodexInterfaceFileTheMetadataCanReplace(t *testing.T) {
 	ctx := context.Background()
 	_, options := authorClone(t, libraryFiles(), releaseOne)
 	edit(t, options.Directory, map[string]string{
 		".trailguide/skills/fix/SKILL.md":               "---\nname: fix\n---\n# Fix\n",
-		".trailguide/skills/fix/agents/openai.yaml":     "interface:\n  display_name: Fix\n",
-		".trailguide/skills/fix/references/openai.yaml": "not the interface file\n",
-		".trailguide/skills/review/SKILL.md":            "---\nname: review\nmetadata:\n  display-name: Review\n---\n# Review\n",
-		".trailguide/skills/review/references/notes.md": "# Notes\n",
+		".trailguide/skills/fix/agents/openai.yaml":     "interface:\n  display_name: Fix\n  default_prompt: Use $fix.\n",
+		".trailguide/skills/fix/references/openai.yaml": "interface:\n  display_name: Not the interface file\n",
+		".trailguide/skills/quiet/SKILL.md":             "---\nname: quiet\n---\n# Quiet\n",
+		".trailguide/skills/quiet/agents/openai.yaml":   "interface:\n  display_name: Quiet\npolicy:\n  allow_implicit_invocation: false\n",
+		".trailguide/skills/brand/SKILL.md":             "---\nname: brand\n---\n# Brand\n",
+		".trailguide/skills/brand/agents/openai.yaml":   "interface:\n  display_name: Brand\n  icon_small: ./assets/icon.svg\n",
 	})
 	result, err := Check(ctx, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "skills/fix/agents/openai.yaml: projects install a skill's own agents/openai.yaml unchanged. To have Trail Guide generate it from the skill's metadata instead, set metadata.display-name, short-description, and default-prompt in SKILL.md, then delete this file."
-	found := 0
+	want := "skills/fix/agents/openai.yaml: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.display-name, short-description, and default-prompt in SKILL.md instead, then delete this file."
+	found := []string{}
 	for _, warning := range result.Warnings {
 		if strings.Contains(warning, "openai.yaml") {
-			found++
-			if warning != want {
-				t.Errorf("warning = %q, want %q", warning, want)
-			}
+			found = append(found, warning)
 		}
 	}
-	if found != 1 {
-		t.Fatalf("warnings = %q; want one about skills/fix/agents/openai.yaml", result.Warnings)
+	if !reflect.DeepEqual(found, []string{want}) {
+		t.Fatalf("warnings = %q; want only %q", found, want)
 	}
 }

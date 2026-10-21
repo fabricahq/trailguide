@@ -252,7 +252,8 @@ func (skill resolvedSkill) installed() SkillFiles {
 
 // installedAt returns the files of skill's installed copy in target, given installed, its copy for every target.
 // The copy in the agents target, which Codex reads, also gets skills.OpenAIFile, generated from the skill's interface
-// metadata, unless the skill declares none of it or ships its own file, which it keeps unchanged.
+// metadata with a renamed skill's $name mentions of itself changed to its install name, unless the skill declares
+// none of that metadata or ships its own file, which it keeps unchanged.
 func (skill resolvedSkill) installedAt(target string, installed SkillFiles) SkillFiles {
 	if path.Dir(target) != rules.SkillTargetFolders["agents"] {
 		return installed
@@ -260,7 +261,11 @@ func (skill resolvedSkill) installedAt(target string, installed SkillFiles) Skil
 	if _, ships := installed.Files[skills.OpenAIFile]; ships {
 		return installed
 	}
-	generated := skills.OpenAIInterface(skill.Interface, skill.Name)
+	text := skill.Interface
+	if skill.RenamedFrom != "" {
+		text = text.Renamed(skill.RenamedFrom, skill.Name)
+	}
+	generated := skills.OpenAIInterface(text, skill.Name)
 	if generated == nil {
 		return installed
 	}

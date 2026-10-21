@@ -5,9 +5,14 @@ package skills
 
 import (
 	"bytes"
+	"encoding/json"
+	"regexp"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/fabricahq/trailguide/internal/decode"
 )
 
 // The metadata keys that give agents' interfaces the text to show for a skill. They name no agent, so other agents
@@ -32,6 +37,46 @@ func (i Interface) IsZero() bool {
 	return strings.TrimSpace(i.DisplayName) == "" && strings.TrimSpace(i.ShortDescription) == "" && strings.TrimSpace(i.DefaultPrompt) == ""
 }
 
+// openAITextFields are the interface fields of OpenAIFile that OpenAIInterface generates.
+var openAITextFields = []string{"display_name", "short_description", "default_prompt"}
+
+// InterfaceTextOnly reports whether data, a skill's own OpenAIFile, holds only what OpenAIInterface generates: an
+// interface mapping of one or more of display_name, short_description, and default_prompt, each a string. It
+// reports false for a file with other settings, such as icons, tool dependencies, or a policy, which the metadata
+// keys can't express, and for one it can't read.
+func InterfaceTextOnly(data []byte) bool {
+	_, encoded, err := decode.YAML(data, OpenAIFile)
+	if err != nil {
+		return false
+	}
+	var file map[string]json.RawMessage
+	if json.Unmarshal(encoded, &file) != nil || len(file) != 1 || file["interface"] == nil {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(file["interface"], &fields) != nil || len(fields) == 0 {
+		return false
+	}
+	for key, raw := range fields {
+		var text string
+		if !slices.Contains(openAITextFields, key) || !readString(raw, &text) {
+			return false
+		}
+	}
+	return true
+}
+
+// Renamed returns i with each mention of the skill by its declared name, from, written as $from, as Codex prompts
+// mention skills, changed to $to, the name a project installs it under. A longer name that starts with from, such as
+// $from-other, is left as it is.
+func (i Interface) Renamed(from, to string) Interface {
+	mention := regexp.MustCompile(`\$` + regexp.QuoteMeta(from) + `([^a-z0-9-]|$)`)
+	for _, field := range []*string{&i.DisplayName, &i.ShortDescription, &i.DefaultPrompt} {
+		*field = mention.ReplaceAllString(*field, "$$"+to+"${1}")
+	}
+	return i
+}
+
 // OpenAIInterface returns the contents of OpenAIFile for a skill installed as name whose metadata declares i: a
 // generated-file comment, then interface.display_name, short_description, and default_prompt, each double-quoted.
 // The display name falls back to name, and the other two are left out when the skill doesn't declare them. It
@@ -45,7 +90,7 @@ func OpenAIInterface(i Interface, name string) []byte {
 		display = name
 	}
 	fields := []*yaml.Node{}
-	for _, field := range [][2]string{{"display_name", display}, {"short_description", strings.TrimSpace(i.ShortDescription)}, {"default_prompt", strings.TrimSpace(i.DefaultPrompt)}} {
+	for _, field := range [][2]string{{openAITextFields[0], display}, {openAITextFields[1], strings.TrimSpace(i.ShortDescription)}, {openAITextFields[2], strings.TrimSpace(i.DefaultPrompt)}} {
 		if field[1] == "" {
 			continue
 		}
