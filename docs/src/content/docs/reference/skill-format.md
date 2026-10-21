@@ -97,7 +97,7 @@ A skill has no version field, and no metadata key sets its version. In a library
 
 ## Metadata
 
-Trail Guide adds three optional keys under `metadata`. Each value is a string, as the Agent Skills format requires, so the file stays valid everywhere skills are read.
+Trail Guide reads six optional keys under `metadata`: the three `trailguide-` keys in the table below, and three keys for the [text agents show](#text-agents-show). Each value is a string, as the Agent Skills format requires, so the file stays valid everywhere skills are read.
 
 | Key | Value | Checks |
 | --- | --- | --- |
