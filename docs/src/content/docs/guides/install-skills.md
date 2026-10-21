@@ -250,7 +250,7 @@ skills:
       reason: We use our own bug workflow.
 ```
 
-Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill, which the project no longer installs. `basedOn` is the commit the fork copied. `trailguide project update` lists the library's later changes to the skill, so you can decide whether your fork needs them, or replace it with a fork of the newest version with `--update-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. See [project add skill](/reference/cli/#project-add-skill).
+Edit the fork, then run `trailguide project build`. Agents get your fork in place of the library's skill, which the project no longer installs. `basedOn` is the commit the fork copied. `trailguide project update` lists the library's later changes to the skill and can merge them into your fork, keeping your edits, with `--merge-fork fabrica:skills/fix-bug`. The library's license still applies to the copied text. For the whole workflow, including changes that conflict with your edits, see [Fork a skill](/guides/fork-skills/).
 
 ## Write your own skill
 

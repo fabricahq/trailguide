@@ -51,7 +51,7 @@ func TestPlanSkillFork_ForksACuratedSkillAndUpdateListsItsSourcesChanges(t *test
 		t.Fatalf("curated rows = %+v; want only the replaced deploy", curated)
 	}
 	replaced := curated[0].Replaced[0]
-	if replaced.ID != "pocock:skills/ops/deploy" || replaced.LocalSkill != "skills/deploy" || replaced.BasedOn != b.pocock.FirstCommit || replaced.To != moved || !slices.Equal(replaced.Files, []string{"scripts/deploy.sh"}) || replaced.Merge != imports.SkillMergeClean {
+	if replaced.ID != "pocock:skills/ops/deploy" || replaced.LocalSkill != "skills/deploy" || replaced.BasedOn != b.pocock.FirstCommit || replaced.To != moved || !slices.Equal(replaced.Files, []string{"scripts/deploy.sh"}) || replaced.Merge != imports.SkillMergeNoConflicts {
 		t.Fatalf("replaced row = %+v", replaced)
 	}
 
@@ -60,7 +60,7 @@ func TestPlanSkillFork_ForksACuratedSkillAndUpdateListsItsSourcesChanges(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plan.Apply(ctx, []UpdateDecision{{Source: "team", Rule: "pocock:skills/ops/deploy", Kind: DecisionUpdateFork}}); err != nil {
+	if _, err := plan.Apply(ctx, []UpdateDecision{{Source: "team", Rule: "pocock:skills/ops/deploy", Kind: DecisionMergeFork}}); err != nil {
 		t.Fatal(err)
 	}
 	if script := readRepositoryFile(t, b.options, ".trailguide/skills/deploy/scripts/deploy.sh"); script != "#!/bin/sh\necho deploy safely\n" {

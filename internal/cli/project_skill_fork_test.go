@@ -105,8 +105,8 @@ func TestForkSkill_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 		"            Your skill: skills/build-feature, based on commit " + commit[:12] + ".\n" +
 		"            Changed since commit " + commit[:12] + ", the copy your skill is based on:\n" +
 		"              SKILL.md\n" +
-		"            They merge into your skill without touching your edits. To merge them and set\n" +
-		"            basedOn to commit " + later[:12] + ", pass --update-fork team:skills/build-feature.\n"
+		"            Merging them into your skill finds no text conflicts with your edits. To merge\n" +
+		"            them and set basedOn to commit " + later[:12] + ", pass --merge-fork team:skills/build-feature.\n"
 	if code != 0 || diagnostic != "" || !strings.Contains(out, row) {
 		t.Fatalf("exit %d, stderr %q, stdout:\n%s\nwant the row:\n%s", code, diagnostic, out, row)
 	}
@@ -119,11 +119,16 @@ func TestForkSkill_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 			}
 		}
 	}
-	wantRow := map[string]any{"id": "skills/build-feature", "localSkill": "skills/build-feature", "basedOn": commit, "from": commit, "to": later, "files": []any{"SKILL.md"}, "merge": "clean"}
+	wantRow := map[string]any{"id": "skills/build-feature", "localSkill": "skills/build-feature", "basedOn": commit, "from": commit, "to": later, "files": []any{"SKILL.md"}, "merge": "no-conflicts"}
 	if err := json.Unmarshal([]byte(out), &preview); err != nil || code != 0 || len(preview.Value.Sources) != 1 || !reflect.DeepEqual(preview.Value.Sources[0].ReplacedSkills, []map[string]any{wantRow}) {
 		t.Fatalf("exit %d, %v:\n%s", code, err, out)
 	}
+	// --update-fork replaces a rule's fork, discarding its edits, so it points a forked skill to --merge-fork.
 	out, diagnostic, code = u.run(t, "project", "update", "--yes", "--update-fork", "team:skills/build-feature")
+	if code != 2 || !strings.Contains(diagnostic, "pass --merge-fork team:skills/build-feature") {
+		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
+	}
+	out, diagnostic, code = u.run(t, "project", "update", "--yes", "--merge-fork", "team:skills/build-feature")
 	if code != 0 || diagnostic != "" || !strings.Contains(out, "The update merges these changes into your skill, keeping your edits, and sets\n            sources.team.skills.forks.skills/build-feature.basedOn to commit "+later[:12]+".\n") || !strings.Contains(out, "  Change: skills/build-feature/SKILL.md\n") {
 		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
 	}

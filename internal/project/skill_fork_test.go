@@ -356,7 +356,7 @@ func TestUpdate_ListsChangesToAReplacedSkill(t *testing.T) {
 			want := []imports.ReplacedSkillUpdate{{ID: "skills/build-feature", LocalSkill: "skills/build-feature", BasedOn: basedOn, From: commit, To: later, Files: []string{"SKILL.md", "scripts/check.sh"}}}
 			// Only a fork with basedOn has an unedited copy to merge the source's changes into.
 			if recorded {
-				want[0].Merge = imports.SkillMergeClean
+				want[0].Merge = imports.SkillMergeNoConflicts
 			}
 			if len(preview.Sources) != 1 || !reflect.DeepEqual(visibleSkillRows(preview.Sources[0].ReplacedSkills), want) {
 				t.Fatalf("preview = %+v\nwant replaced skills %+v", preview.Sources, want)

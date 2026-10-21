@@ -301,10 +301,11 @@ func TestUpdate_RefusesToUpdateAForkItCant(t *testing.T) {
 			decision UpdateDecision
 			text     string
 		}{
-			{UpdateDecision{Source: "team", Rule: "techs/go/added", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/added: sources.team neither excludes this rule with replacedBy nor forks this skill"},
-			{UpdateDecision{Source: "team", Rule: "techs/go/licensed", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/licensed: sources.team neither excludes this rule with replacedBy nor forks this skill"},
+			{UpdateDecision{Source: "team", Rule: "techs/go/added", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/added: sources.team doesn't exclude this rule with replacedBy"},
+			{UpdateDecision{Source: "team", Rule: "techs/go/licensed", Kind: DecisionUpdateFork}, "--update-fork team:techs/go/licensed: sources.team doesn't exclude this rule with replacedBy"},
 			{UpdateDecision{Source: "other", Rule: "techs/go/errors", Kind: DecisionUpdateFork}, "--update-fork other:techs/go/errors: no source named other"},
 			{UpdateDecision{Source: "team", Rule: "techs/go/errors", Kind: DecisionUpdateFork, Reason: "Why."}, "records no reason"},
+			{UpdateDecision{Source: "team", Rule: "techs/go/errors", Kind: DecisionMergeFork}, "--merge-fork team:techs/go/errors: a local rule replaces this rule, and --merge-fork merges only into a forked skill. To replace your rule with a fork of the newest version, discarding your edits, pass --update-fork team:techs/go/errors"},
 		} {
 			_, err := PlanUpdate(context.Background(), f.options, noGit, nil, []UpdateDecision{test.decision})
 			invalid(t, err, test.text)

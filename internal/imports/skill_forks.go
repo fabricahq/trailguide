@@ -33,13 +33,14 @@ type ReplacedSkillUpdate struct {
 	// is then empty; the fork stays installed.
 	Files   []string `json:"files"`
 	Removed bool     `json:"removed,omitempty"`
-	// Merge reports, for a fork with basedOn of a skill the source still has, whether the source's changes since
-	// basedOn merge into the fork: SkillMergeClean when they do, which includes a fork with no edits of its own, and
-	// SkillMergeConflicts when the fork's edits and the source's touch the same lines of Conflicts, its files, sorted.
-	// It's empty for any other row, which has nothing to merge.
+	// Merge reports, for a fork with basedOn of a skill the source still has, whether merging the source's changes
+	// since basedOn into the fork finds text conflicts: SkillMergeNoConflicts when it finds none, which includes a
+	// fork with no edits of its own, and SkillMergeConflicts when the fork's edits and the source's touch the same
+	// lines of Conflicts, its files, sorted. Changes to different lines can still contradict each other, which no
+	// merge detects. It's empty for any other row, which has nothing to merge.
 	Merge     SkillMerge `json:"merge,omitempty"`
 	Conflicts []string   `json:"conflicts,omitempty"`
-	// Decision is "update-fork" when the update merges the source's changes into the fork and sets basedOn to To.
+	// Decision is "merge-fork" when the update merges the source's changes into the fork and sets basedOn to To.
 	Decision string `json:"decision,omitempty"`
 	// Base and Upstream are the source's copies of the skill at BasedOn and To, set only when Merge can be: the row
 	// has basedOn and the source still has the skill. Library reports whether the source is a library at To, which
@@ -48,13 +49,13 @@ type ReplacedSkillUpdate struct {
 	Library        bool       `json:"-"`
 }
 
-// SkillMerge is whether a source's changes to a forked skill merge into the fork.
+// SkillMerge is whether merging a source's changes to a forked skill into the fork finds text conflicts.
 type SkillMerge string
 
 // The merge states of a forked skill's preview row.
 const (
-	SkillMergeClean     SkillMerge = "clean"
-	SkillMergeConflicts SkillMerge = "conflicts"
+	SkillMergeNoConflicts SkillMerge = "no-conflicts"
+	SkillMergeConflicts   SkillMerge = "conflicts"
 )
 
 // requireSkillBasedOn checks that the repository has the commit each of the source's skill forks is based on,

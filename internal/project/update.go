@@ -57,14 +57,17 @@ const (
 	DecisionExclude UpdateDecisionKind = "exclude"
 	// DecisionUpdateFork replaces a replaced rule's local rule and its asset directory with a fork of the library's
 	// newest version, exactly as forking that version writes it, overwriting any edits, and sets the exclusion's
-	// basedOn to that version, so later updates compare with it. For a forked skill, it merges the source's changes
-	// since the fork's basedOn into the fork, keeping the fork's own edits, and sets basedOn to the commit merged; it
-	// refuses changes that touch the same lines as the fork's edits.
+	// basedOn to that version, so later updates compare with it.
 	DecisionUpdateFork UpdateDecisionKind = "update-fork"
+	// DecisionMergeFork merges a source's changes to a forked skill since the fork's basedOn into the fork, keeping
+	// the fork's own edits, and sets basedOn to the commit merged; it refuses changes that touch the same lines as
+	// the fork's edits. Its own kind keeps a merge, which keeps edits, apart from a rule fork's replacement, which
+	// discards them.
+	DecisionMergeFork UpdateDecisionKind = "merge-fork"
 )
 
-// UpdateDecision answers one preview row. Reason is recorded with a pin or exclusion, and a fork update has none.
-// Rule is the rule's ID, or, for a fork update of a forked skill, the skill's.
+// UpdateDecision answers one preview row. Reason is recorded with a pin or exclusion, and a fork update or merge has
+// none. Rule is the rule's ID, or, for a fork merge, the forked skill's.
 type UpdateDecision struct {
 	Source string
 	Rule   string
@@ -95,7 +98,7 @@ func (r UpdateResult) Moves() bool {
 			return true
 		}
 		for _, row := range source.ReplacedSkills {
-			if row.Merge == imports.SkillMergeClean || row.Decision != "" {
+			if row.Merge == imports.SkillMergeNoConflicts || row.Decision != "" {
 				return true
 			}
 		}
@@ -169,10 +172,7 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 		return nil, unchanged(err, recovered)
 	}
 	for _, decision := range decisions {
-		if decision.Kind != DecisionUpdateFork {
-			continue
-		}
-		if _, err := forkUpdateRefusal(state.config, decision); err != nil {
+		if err := forkDecisionRefusal(state.config, decision); err != nil {
 			return nil, unchanged(err, recovered)
 		}
 	}
@@ -310,7 +310,7 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 			return nil, nil, nil, nil, refuse("the update received more than one decision for this rule")
 		}
 		decided[where] = true
-		if decision.Kind != DecisionUpdateFork && strings.TrimSpace(decision.Reason) == "" {
+		if decision.Kind != DecisionUpdateFork && decision.Kind != DecisionMergeFork && strings.TrimSpace(decision.Reason) == "" {
 			return nil, nil, nil, nil, refuse("give a reason to record with the decision")
 		}
 		row := previewRow(sources, decision.Source, decision.Rule)
@@ -325,14 +325,15 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 				edit.Pins = map[string]rules.Pin{}
 			}
 			edit.Pins[decision.Rule] = rules.Pin{Version: *row.From, Reason: decision.Reason}
-		case DecisionUpdateFork:
-			forksSkill, err := forkUpdateRefusal(p.planned.config, decision)
-			if err != nil {
+		case DecisionMergeFork:
+			if err := forkDecisionRefusal(p.planned.config, decision); err != nil {
 				return nil, nil, nil, nil, err
 			}
-			if forksSkill {
-				skillDecisions = append(skillDecisions, decision)
-				continue
+			skillDecisions = append(skillDecisions, decision)
+			continue
+		case DecisionUpdateFork:
+			if err := forkDecisionRefusal(p.planned.config, decision); err != nil {
+				return nil, nil, nil, nil, err
 			}
 			switch {
 			case row != nil && row.Change == imports.UpdateRetired:
@@ -383,7 +384,7 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 	skillForks := []skillForkUpdate{}
 	for _, decision := range skillDecisions {
 		refuse := func(problem string) error {
-			return invalidArguments("--update-fork " + decision.Source + ":" + decision.Rule + ": " + problem)
+			return invalidArguments("--merge-fork " + decision.Source + ":" + decision.Rule + ": " + problem)
 		}
 		row := previewSkillRow(sources, decision.Source, decision.Rule)
 		switch {
@@ -396,7 +397,7 @@ func (p *UpdatePlan) decide(decisions []UpdateDecision) ([]imports.SourceUpdate,
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		row.Decision = string(DecisionUpdateFork)
+		row.Decision = string(DecisionMergeFork)
 		edit := edits[decision.Source]
 		if edit.SkillForkBasedOn == nil {
 			edit.SkillForkBasedOn = map[string]rules.GitRef{}
@@ -447,36 +448,49 @@ func (p *UpdatePlan) readForks(ctx context.Context, sources []imports.SourceUpda
 	return nil
 }
 
-// forkUpdateRefusal returns the invalid-arguments refusal of decision, a fork update, that configuration alone
-// decides, or nil, and whether the decision names a forked skill rather than a replaced rule. It refuses one that
-// has a reason, names a source configuration doesn't have, or names neither a rule that source excludes with
-// replacedBy nor a skill it forks with basedOn, which a merge needs to tell the fork's edits from the source's.
-func forkUpdateRefusal(configuration rules.Configuration, decision UpdateDecision) (bool, error) {
-	where := "--update-fork " + decision.Source + ":" + decision.Rule + ": "
+// forkDecisionRefusal returns the invalid-arguments refusal of decision that configuration alone decides, or nil,
+// for a fork update or merge; other decisions pass. It refuses either one that has a reason or names a source
+// configuration doesn't have. It refuses a fork update that names no rule the source excludes with replacedBy, and a
+// fork merge that names no skill the source forks with basedOn, which a merge needs to tell the fork's edits from
+// the source's, each pointing to the other flag when that's the one the fork takes.
+func forkDecisionRefusal(configuration rules.Configuration, decision UpdateDecision) error {
+	if decision.Kind != DecisionUpdateFork && decision.Kind != DecisionMergeFork {
+		return nil
+	}
+	where := decisionFlags[decision.Kind] + " " + decision.Source + ":" + decision.Rule + ": "
 	if decision.Reason != "" {
-		return false, invalidArguments(where + "replacing a fork records no reason; give --reason only with --keep or --exclude")
+		return invalidArguments(where + "a fork's update records no reason; give --reason only with --keep or --exclude")
 	}
 	index := slices.IndexFunc(configuration.Sources, func(source rules.Source) bool { return source.Name == decision.Source })
 	if index < 0 {
-		return false, invalidArguments(where + "no source named " + decision.Source + " in .trailguide/config.yaml")
+		return invalidArguments(where + "no source named " + decision.Source + " in .trailguide/config.yaml")
 	}
 	source := configuration.Sources[index]
-	if exclusion := source.Exclude[decision.Rule]; exclusion.ReplacedBy != "" {
-		return false, nil
-	}
+	replaced := source.Exclude[decision.Rule].ReplacedBy != ""
 	fork, forked := source.SkillForks[decision.Rule]
-	switch {
-	case !forked:
-		return false, invalidArguments(where + "sources." + decision.Source + " neither excludes this rule with replacedBy nor forks this skill, so no local rule or skill replaces it; to fork the rule, run trailguide project add rule " + decision.Rule + " --from " + decision.Source + "@VERSION")
-	case fork.BasedOn.IsZero():
-		return false, invalidArguments(where + "sources." + decision.Source + ".skills.forks." + decision.Rule + " records no basedOn, the commit your fork was copied from, so Trail Guide can't tell your fork's edits from the source's changes. Set basedOn to that commit, or merge the changes into " + fork.As + " by hand")
+	if decision.Kind == DecisionUpdateFork {
+		switch {
+		case replaced:
+			return nil
+		case forked:
+			return invalidArguments(where + "sources." + decision.Source + " forks this skill, and --update-fork replaces only a rule's fork, discarding its edits. To merge the source's changes into " + fork.As + ", keeping your edits, pass --merge-fork " + decision.Source + ":" + decision.Rule)
+		}
+		return invalidArguments(where + "sources." + decision.Source + " doesn't exclude this rule with replacedBy, so no local rule replaces it; to fork the rule, run trailguide project add rule " + decision.Rule + " --from " + decision.Source + "@VERSION")
 	}
-	return true, nil
+	switch {
+	case replaced:
+		return invalidArguments(where + "a local rule replaces this rule, and --merge-fork merges only into a forked skill. To replace your rule with a fork of the newest version, discarding your edits, pass --update-fork " + decision.Source + ":" + decision.Rule)
+	case !forked:
+		return invalidArguments(where + "sources." + decision.Source + ".skills.forks has no entry for this skill, so no skill of yours replaces it; to fork it, run trailguide project add skill --from " + decision.Source + ":" + decision.Rule)
+	case fork.BasedOn.IsZero():
+		return invalidArguments(where + "sources." + decision.Source + ".skills.forks." + decision.Rule + " records no basedOn, the commit your fork was copied from, so Trail Guide can't tell your fork's edits from the source's changes. Set basedOn to that commit, or merge the changes into " + fork.As + " by hand")
+	}
+	return nil
 }
 
 // decisionFlags names the trailguide project update flag that makes each kind of decision; a terminal answer
 // makes the same decision.
-var decisionFlags = map[UpdateDecisionKind]string{DecisionKeep: "--keep", DecisionExclude: "--exclude", DecisionUpdateFork: "--update-fork"}
+var decisionFlags = map[UpdateDecisionKind]string{DecisionKeep: "--keep", DecisionExclude: "--exclude", DecisionUpdateFork: "--update-fork", DecisionMergeFork: "--merge-fork"}
 
 // invalidArguments is a refusal of the command's arguments, which the CLI reports as a usage error.
 func invalidArguments(problem string) error { return failure("invalid-arguments", problem, nil) }

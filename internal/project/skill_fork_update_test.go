@@ -42,7 +42,7 @@ func forkedSkillProject(t *testing.T, edit func(string) string) (Options, import
 }
 
 // updateSkillFork is the decision that merges the source's changes into the fork of skills/build-feature.
-var updateSkillFork = []UpdateDecision{{Source: "team", Rule: "skills/build-feature", Kind: DecisionUpdateFork}}
+var updateSkillFork = []UpdateDecision{{Source: "team", Rule: "skills/build-feature", Kind: DecisionMergeFork}}
 
 // TestUpdate_MergesTheSourcesChangesIntoASkillFork merges the source's changes into a fork without edits and into
 // one whose edits touch other lines, keeping those edits, adds the source's new file, and moves basedOn to the
@@ -65,14 +65,14 @@ func TestUpdate_MergesTheSourcesChangesIntoASkillFork(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rows := preview.Sources[0].ReplacedSkills; len(rows) != 1 || rows[0].Merge != imports.SkillMergeClean || rows[0].Conflicts != nil || rows[0].BasedOn != commit {
+			if rows := preview.Sources[0].ReplacedSkills; len(rows) != 1 || rows[0].Merge != imports.SkillMergeNoConflicts || rows[0].Conflicts != nil || rows[0].BasedOn != commit {
 				t.Fatalf("replaced skills = %+v; want one that merges cleanly", rows)
 			}
 			applied, err := plan.Apply(ctx, updateSkillFork)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rows := applied.Sources[0].ReplacedSkills; rows[0].Decision != string(DecisionUpdateFork) {
+			if rows := applied.Sources[0].ReplacedSkills; rows[0].Decision != string(DecisionMergeFork) {
 				t.Fatalf("replaced skills = %+v; want the fork update marked", rows)
 			}
 			for _, want := range []string{".trailguide/config.yaml", "skills/build-feature/SKILL.md", "skills/build-feature/scripts/check.sh"} {
@@ -137,6 +137,27 @@ func TestUpdate_RefusesToMergeConflictingChangesIntoASkillFork(t *testing.T) {
 	}
 }
 
+// TestUpdate_RefusesToReplaceASkillForkOrMergeIntoAnUnforkedSkill points --update-fork, which replaces a rule's fork
+// and discards its edits, to --merge-fork for a forked skill, and refuses --merge-fork for a skill the source doesn't
+// fork, before reading any source.
+func TestUpdate_RefusesToReplaceASkillForkOrMergeIntoAnUnforkedSkill(t *testing.T) {
+	ctx := context.Background()
+	options, git, _, _ := forkedSkillProject(t, func(fork string) string { return fork })
+	for _, test := range []struct {
+		decision UpdateDecision
+		text     string
+	}{
+		{UpdateDecision{Source: "team", Rule: "skills/build-feature", Kind: DecisionUpdateFork}, "--update-fork team:skills/build-feature: sources.team forks this skill, and --update-fork replaces only a rule's fork, discarding its edits. To merge the source's changes into skills/build-feature, keeping your edits, pass --merge-fork team:skills/build-feature"},
+		{UpdateDecision{Source: "team", Rule: "skills/review", Kind: DecisionMergeFork}, "--merge-fork team:skills/review: sources.team.skills.forks has no entry for this skill"},
+	} {
+		_, err := PlanUpdate(ctx, options, git, nil, []UpdateDecision{test.decision})
+		var failure *filetxn.Error
+		if !errors.As(err, &failure) || failure.Code != "invalid-arguments" || !strings.Contains(err.Error(), test.text) {
+			t.Fatalf("got %v; want a refusal saying %q", err, test.text)
+		}
+	}
+}
+
 // TestUpdate_RefusesToMergeIntoASkillForkWithoutBasedOn refuses before reading any source, since without basedOn
 // Trail Guide can't tell the fork's edits from the source's changes.
 func TestUpdate_RefusesToMergeIntoASkillForkWithoutBasedOn(t *testing.T) {
@@ -175,7 +196,7 @@ func TestUpdate_OffersToMergeAForkAfterTheSourceMoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeClean || !preview.Moves() {
+	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeNoConflicts || !preview.Moves() {
 		t.Fatalf("preview = %+v; want only a fork whose changes merge, which the update can apply", preview.Sources)
 	}
 }

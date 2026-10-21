@@ -64,7 +64,7 @@ func (p *UpdatePlan) mergeSkillForks(ctx context.Context, sources []imports.Sour
 				}
 				p.skillMerges[key] = result
 			}
-			row.Merge, row.Conflicts = imports.SkillMergeClean, nil
+			row.Merge, row.Conflicts = imports.SkillMergeNoConflicts, nil
 			if len(result.conflicts) > 0 {
 				row.Merge, row.Conflicts = imports.SkillMergeConflicts, slices.Clone(result.conflicts)
 			}
@@ -74,7 +74,7 @@ func (p *UpdatePlan) mergeSkillForks(ctx context.Context, sources []imports.Sour
 		row := previewSkillRow(sources, forks[i].source, forks[i].id)
 		result := p.skillMerges[forks[i].source+":"+row.ID+"@"+row.To]
 		if len(result.conflicts) > 0 {
-			return invalidArguments(fmt.Sprintf("--update-fork %s:%s: your fork's edits and the source's changes since commit %s touch the same lines of %s, so Trail Guide can't merge them. Merge the source's changes into %s by hand, then set sources.%s.skills.forks.%s.basedOn to %q", forks[i].source, forks[i].id, shortSHA(row.BasedOn), strings.Join(result.conflicts, ", "), row.LocalSkill, forks[i].source, forks[i].id, row.To))
+			return invalidArguments(fmt.Sprintf("--merge-fork %s:%s: your fork's edits and the source's changes since commit %s touch the same lines of %s, so Trail Guide can't merge them. Merge the source's changes into %s by hand, then set sources.%s.skills.forks.%s.basedOn to %q", forks[i].source, forks[i].id, shortSHA(row.BasedOn), strings.Join(result.conflicts, ", "), row.LocalSkill, forks[i].source, forks[i].id, row.To))
 		}
 		forks[i].files = result.merged
 	}

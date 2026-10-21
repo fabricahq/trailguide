@@ -22,14 +22,15 @@ import (
 // projectUpdateCommand previews newer rule versions and applies them after confirmation or with --yes.
 func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd := &cobra.Command{Use: "update [SOURCE | SOURCE:RULE ...]", Short: "Preview and apply newer rules and skills from your sources", Args: cobra.ArbitraryArgs}
-	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release. A\nsource whose ref is a branch moves to the branch's newest commit; a library\nsource whose ref is a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\noverwriting your edits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
+	cmd.Long = "Preview newer versions of the rules and skills your sources supply, new rules\nand skills, and retirements, then apply them after you confirm. With no\narguments, every source is updated. SOURCE, such as team, updates one source's\nrules and skills. SOURCE:RULE, such as team:techs/go/errors, moves only that\nrule and adds no new rules. No command updates one skill: a source's skills\nall come from the revision that supplies its shared files, so they move\ntogether whenever it does, also when SOURCE:RULE needs a newer release. A\nsource whose ref is a branch moves to the branch's newest commit; a library\nsource whose ref is a tag or commit doesn't move.\n\nIn a terminal, update asks about each major change and retirement of a rule\n(adopt it, or keep the current version with a pin), each new rule (add it, or\nexclude it), and each local rule that replaces a changed library rule (review the\nchanges later, or replace your rule with a fork of the newest version,\ndiscarding your edits), and each forked skill whose source's changes merge\ninto it with no text conflicts (review them later, or merge them, keeping your\nedits), then asks you to confirm. Without a terminal, or with --json, it only shows the\npreview unless you pass --yes. The update applies exactly the versions the\npreview showed." + documentationHelp
 	f := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory}
 	cmd.PostRunE = f.finishPrompts
 	cmd.Flags().Bool("yes", false, "Apply the previewed changes without asking; required without a terminal or with --json")
-	var keep, exclude, forks []string
+	var keep, exclude, forks, merges []string
 	cmd.Flags().StringArrayVar(&keep, "keep", nil, "Pin `SOURCE:RULE` at its current version instead of updating it (repeat); requires --reason")
 	cmd.Flags().StringArrayVar(&exclude, "exclude", nil, "Exclude the new rule `SOURCE:RULE` instead of adding it (repeat); requires --reason")
-	cmd.Flags().StringArrayVar(&forks, "update-fork", nil, "Replace your local rule that replaces `SOURCE:RULE` with a fork of the newest version, overwriting your edits, or merge the source's changes into your fork of SOURCE:SKILL, keeping your edits, and set its basedOn to what it now has (repeat)")
+	cmd.Flags().StringArrayVar(&forks, "update-fork", nil, "Replace your local rule that replaces `SOURCE:RULE` with a fork of the newest version, discarding your edits, and set its basedOn to that version (repeat)")
+	cmd.Flags().StringArrayVar(&merges, "merge-fork", nil, "Merge the source's changes into your fork of `SOURCE:SKILL`, keeping your edits, and set its basedOn to the commit merged; refuses when they conflict with your edits (repeat)")
 	f.add(cmd, "reason", "Reason recorded with each pin and exclusion the update writes")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// Every refusal says that the update wrote nothing, as a failed sync or update does.
@@ -37,7 +38,7 @@ func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command
 		if err != nil {
 			return usage(&project.UnchangedError{Err: err})
 		}
-		decisions, err := flagDecisions(keep, exclude, forks, f.value("reason"))
+		decisions, err := flagDecisions(keep, exclude, forks, merges, f.value("reason"))
 		if err != nil {
 			return usage(&project.UnchangedError{Err: err})
 		}
@@ -137,10 +138,10 @@ func updateTargets(args []string) ([]imports.UpdateTarget, error) {
 	return targets, nil
 }
 
-// flagDecisions turns --keep and --exclude into decisions with --reason, and --update-fork into decisions without
-// one, ignoring repeated values. --reason is required with --keep or --exclude and accepted only with one of them,
-// and two of the flags naming one rule fail.
-func flagDecisions(keep, exclude, forks []string, reason string) ([]project.UpdateDecision, error) {
+// flagDecisions turns --keep and --exclude into decisions with --reason, and --update-fork and --merge-fork into
+// decisions without one, ignoring repeated values. --reason is required with --keep or --exclude and accepted only
+// with one of them, and two of the flags naming one rule or skill fail.
+func flagDecisions(keep, exclude, forks, merges []string, reason string) ([]project.UpdateDecision, error) {
 	if len(keep)+len(exclude) > 0 && reason == "" {
 		return nil, fmt.Errorf("--keep and --exclude require --reason, which is recorded with each pin and exclusion")
 	}
@@ -155,17 +156,20 @@ func flagDecisions(keep, exclude, forks []string, reason string) ([]project.Upda
 		flag   string
 		kind   project.UpdateDecisionKind
 		values []string
-	}{{"--keep", project.DecisionKeep, keep}, {"--exclude", project.DecisionExclude, exclude}, {"--update-fork", project.DecisionUpdateFork, forks}} {
+	}{{"--keep", project.DecisionKeep, keep}, {"--exclude", project.DecisionExclude, exclude}, {"--update-fork", project.DecisionUpdateFork, forks}, {"--merge-fork", project.DecisionMergeFork, merges}} {
 		for _, value := range group.values {
 			source, rule, ok := strings.Cut(value, ":")
-			if !ok || source == "" {
-				if group.kind == project.DecisionUpdateFork {
-					return nil, fmt.Errorf("%s %q: expected SOURCE:RULE or SOURCE:SKILL, such as team:techs/go/errors or team:skills/build-feature", group.flag, value)
+			if group.kind == project.DecisionMergeFork {
+				if !ok || source == "" || !forkedSkillID(rule) {
+					return nil, fmt.Errorf("%s %q: expected SOURCE:SKILL, such as team:skills/build-feature", group.flag, value)
 				}
+			} else if !ok || source == "" {
 				return nil, fmt.Errorf("%s %q: expected SOURCE:RULE, such as team:techs/go/errors", group.flag, value)
-			}
-			if err := librarytree.ValidateRuleID(rule, group.flag+" "+value); err != nil && (group.kind != project.DecisionUpdateFork || !forkedSkillID(rule)) {
-				return nil, err
+			} else if err := librarytree.ValidateRuleID(rule, group.flag+" "+value); err != nil {
+				// A skill ID passes on, so the project names the flag a forked skill takes.
+				if group.kind != project.DecisionUpdateFork || !forkedSkillID(rule) {
+					return nil, err
+				}
 			}
 			if seen[group.flag+value] {
 				continue
@@ -176,7 +180,7 @@ func flagDecisions(keep, exclude, forks []string, reason string) ([]project.Upda
 			decided[value] = group.flag
 			seen[group.flag+value] = true
 			decision := project.UpdateDecision{Source: source, Rule: rule, Kind: group.kind, Reason: reason}
-			if group.kind == project.DecisionUpdateFork {
+			if group.kind == project.DecisionUpdateFork || group.kind == project.DecisionMergeFork {
 				decision.Reason = ""
 			}
 			decisions = append(decisions, decision)
@@ -272,16 +276,16 @@ func askUpdateDecisions(f *authoringFlags, plan *project.UpdatePlan, preview pro
 			decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: kind, Reason: reason})
 		}
 		for _, row := range forkedSkillRows(source) {
-			if row.Decision != "" || row.Merge != imports.SkillMergeClean {
+			if row.Decision != "" || row.Merge != imports.SkillMergeNoConflicts {
 				continue
 			}
-			f.introduction += fmt.Sprintf("\n%s:%s: forked as %s, with source changes up to commit %s that merge\nwithout touching your edits.\n", source.Name, row.ID, row.LocalSkill, shortCommit(row.To))
+			f.introduction += fmt.Sprintf("\n%s:%s: forked as %s. Merging the source's changes up to commit %s\ninto it finds no text conflicts with your edits. Changes to different lines can\nstill contradict each other, so review the merged skill.\n", source.Name, row.ID, row.LocalSkill, shortCommit(row.To))
 			answer, err := askChoice(f, "Review later, or merge them into your skill?", [2]string{"later", "merge"})
 			if err != nil {
 				return nil, err
 			}
 			if answer == "merge" {
-				decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionUpdateFork})
+				decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionMergeFork})
 			}
 		}
 	}
@@ -338,7 +342,7 @@ func answersSummary(sources []imports.SourceUpdate) string {
 			}
 		}
 		for _, row := range forkedSkillRows(source) {
-			if row.Decision == "update-fork" {
+			if row.Decision == "merge-fork" {
 				fmt.Fprintf(&out, "  Merge the changes to %s:%s, up to commit %s, into %s.\n", source.Name, row.ID, shortCommit(row.To), row.LocalSkill)
 			}
 		}
@@ -679,10 +683,10 @@ func replacedSkillDetails(source string, row imports.ReplacedSkillUpdate) []stri
 	}
 	field := "sources." + source + ".skills.forks." + row.ID + ".basedOn"
 	switch {
-	case row.Decision == "update-fork":
-		return append(lines, "The update merges these changes into your skill, keeping your edits, and sets", field+" to commit "+shortCommit(row.To)+".")
-	case row.Merge == imports.SkillMergeClean:
-		return append(lines, "They merge into your skill without touching your edits. To merge them and set", "basedOn to commit "+shortCommit(row.To)+", pass --update-fork "+source+":"+row.ID+".")
+	case row.Decision == "merge-fork":
+		return append(lines, "The update merges these changes into your skill, keeping your edits, and sets", field+" to commit "+shortCommit(row.To)+".", "Review the merged skill: changes to different lines can still contradict each other.")
+	case row.Merge == imports.SkillMergeNoConflicts:
+		return append(lines, "Merging them into your skill finds no text conflicts with your edits. To merge", "them and set basedOn to commit "+shortCommit(row.To)+", pass --merge-fork "+source+":"+row.ID+".")
 	case row.Merge == imports.SkillMergeConflicts:
 		lines = append(lines, "Your edits and these changes touch the same lines of:")
 		for _, file := range row.Conflicts {
