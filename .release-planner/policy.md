@@ -25,8 +25,8 @@ Versions follow [SemVer 2.0.0](https://semver.org/), with Git tags `vMAJOR.MINOR
 
 Before 1.0.0:
 
-- Minor: any breaking change or new feature. Always document breaking changes; 0.x is not permission to hide them.
-- Patch: compatible fixes, documentation, and internal changes
+- Minor: any breaking change or significant new feature. Always document breaking changes; 0.x is not permission to hide them.
+- Patch: smaller compatible features and improvements, fixes, documentation, and internal changes
 
 From 1.0.0:
 
