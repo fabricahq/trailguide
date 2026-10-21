@@ -217,3 +217,21 @@ func TestReplaceLibrarySkillKeepsItsLevel(t *testing.T) {
 		t.Fatalf("got %v; want a validation error at library.skills", err)
 	}
 }
+
+func TestEditConfigurationSourceSetsASkillForksBasedOn(t *testing.T) {
+	const later = "2222222222222222222222222222222222222222"
+	input := skillSource + "      forks:\n        skills/fix:\n          as: skills/fix\n          basedOn: \"" + commit + "\" # Copied in March.\n          reason: Ours.\n        skills/review:\n          as: skills/review\n          reason: Written from scratch.\n"
+	out, err := rules.EditConfigurationSource([]byte(input), "team", rules.SourceEdit{SkillForkBasedOn: map[string]rules.GitRef{"skills/fix": mustRef(t, later), "skills/review": mustRef(t, later)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "      forks:\n        skills/fix:\n          as: skills/fix\n          basedOn: \"" + later + "\" # Copied in March.\n          reason: Ours.\n        skills/review:\n          as: skills/review\n          reason: Written from scratch.\n          basedOn: \"" + later + "\"\n"
+	if !strings.HasSuffix(string(out), want) {
+		t.Fatalf("configuration:\n%s\nwant it to end with:\n%s", out, want)
+	}
+	_, err = rules.EditConfigurationSource([]byte(input), "team", rules.SourceEdit{SkillForkBasedOn: map[string]rules.GitRef{"skills/other": mustRef(t, later)}})
+	var validation errs.ValidationError
+	if !errors.As(err, &validation) || validation.ValidationLocation() != "sources.team.skills.forks.skills/other" || !strings.Contains(validation.ValidationProblem(), "doesn't fork this skill") {
+		t.Fatalf("got %v; want a validation error for a skill the source doesn't fork", err)
+	}
+}

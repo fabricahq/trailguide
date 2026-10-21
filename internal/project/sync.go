@@ -17,6 +17,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/imports"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // Sync imports the rule versions each source's snapshot records, choosing versions only where configuration asks
@@ -73,8 +74,10 @@ type installation struct {
 	edited   []byte
 	imported map[string]imports.Library
 	options  Options
-	// forks are the forks an update replaces, each with its files read.
-	forks []forkUpdate
+	// forks are the forks an update replaces, each with its files read, and skillForks the skill forks it merges the
+	// source's changes into, each with its merged files.
+	forks      []forkUpdate
+	skillForks []skillForkUpdate
 }
 
 // install renders the project from the installation's imported sources and replaces vendor and generated output,
@@ -119,6 +122,9 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 			maps.Copy(local, fork.files)
 		}
 		state.local = &filetxn.Tree{Files: local}
+	}
+	if len(in.skillForks) > 0 {
+		state.skills = mergedSkills(before.skills, in.skillForks)
 	}
 	output, err := renderProject(ctx, state, libraries, in.options)
 	if err != nil {
@@ -165,6 +171,40 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		// A nil map removes the old asset directory when the new fork has no assets.
 		targets[filetxn.LocalRuleAssets(fork.file)] = assetFiles
 	}
+	for _, fork := range in.skillForks {
+		folder := skills.AuthoredID(fork.name)
+		previous := map[string][]byte{}
+		for name, data := range treeFiles(before.skills) {
+			if relative, ok := strings.CutPrefix(name, fork.name+"/"); ok {
+				previous[path.Join(folder, relative)] = data
+			}
+		}
+		merged := map[string][]byte{}
+		for name, data := range fork.files.Files {
+			merged[path.Join(folder, name)] = data
+		}
+		forkChanges := compareFiles(previous, merged)
+		// compareFiles compares contents alone, so a file whose executable bit alone changed is added here.
+		wasExecutable := map[string]bool{}
+		if before.skills != nil {
+			for _, name := range before.skills.Executable {
+				if relative, ok := strings.CutPrefix(name, fork.name+"/"); ok {
+					wasExecutable[relative] = true
+				}
+			}
+		}
+		for name := range fork.files.Files {
+			file := path.Join(folder, name)
+			if _, ok := previous[file]; ok && wasExecutable[name] != slices.Contains(fork.files.Executable, name) && !slices.Contains(forkChanges.Changed, file) {
+				forkChanges.Changed = append(forkChanges.Changed, file)
+			}
+		}
+		changes.Added = append(changes.Added, forkChanges.Added...)
+		changes.Changed = append(changes.Changed, forkChanges.Changed...)
+		changes.Removed = append(changes.Removed, forkChanges.Removed...)
+		targets[filetxn.AuthoredSkill(fork.name)] = fork.files.Files
+		executable[filetxn.AuthoredSkill(fork.name)] = fork.files.Executable
+	}
 	slices.Sort(changes.Added)
 	slices.Sort(changes.Changed)
 	slices.Sort(changes.Removed)
@@ -199,6 +239,37 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		return FileChanges{}, err
 	}
 	return changes, nil
+}
+
+// mergedSkills returns authored, the project's authored skills, with the folder of each of forks holding its merged
+// files instead.
+func mergedSkills(authored *filetxn.Tree, forks []skillForkUpdate) *filetxn.Tree {
+	result := &filetxn.Tree{Files: map[string][]byte{}, Directories: []string{}, Executable: []string{}}
+	if authored != nil {
+		maps.Copy(result.Files, authored.Files)
+		result.Directories = slices.Clone(authored.Directories)
+		result.Executable = slices.Clone(authored.Executable)
+	}
+	for _, fork := range forks {
+		prefix := fork.name + "/"
+		inFork := func(name string) bool { return strings.HasPrefix(name, prefix) }
+		maps.DeleteFunc(result.Files, func(name string, _ []byte) bool { return inFork(name) })
+		result.Directories = slices.DeleteFunc(result.Directories, inFork)
+		result.Executable = slices.DeleteFunc(result.Executable, inFork)
+		for name, data := range fork.files.Files {
+			result.Files[prefix+name] = data
+			for parent := path.Dir(name); parent != "."; parent = path.Dir(parent) {
+				result.Directories = append(result.Directories, prefix+parent)
+			}
+		}
+		for _, name := range fork.files.Executable {
+			result.Executable = append(result.Executable, prefix+name)
+		}
+	}
+	slices.Sort(result.Directories)
+	result.Directories = slices.Compact(result.Directories)
+	slices.Sort(result.Executable)
+	return result
 }
 
 // forkPaths returns the files of local, by path relative to rules/, that belong to the authored rule at file: the

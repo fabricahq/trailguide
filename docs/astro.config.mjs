@@ -69,6 +69,7 @@ export default defineConfig({
         { label: 'Projects', collapsed: true, items: [
           { label: 'Include rules', slug: 'guides/select-rules' },
           { label: 'Install skills', slug: 'guides/install-skills' },
+          { label: 'Fork a skill', slug: 'guides/fork-skills' },
           { label: 'Update rules and skills', slug: 'guides/update' },
           { label: 'Resolve conflicting rules', slug: 'guides/conflicting-guidance' },
         ] },

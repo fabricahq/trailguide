@@ -124,7 +124,7 @@ You may have [replaced a library rule with your own rule](/guides/select-rules/#
 
 **Keep your edits and merge by hand.** Copy the library's changes you want into your rule. Then set the rule's `basedOn` in `.trailguide/config.yaml` to the version you merged. `basedOn` is how Trail Guide knows which library changes your rule already has: later previews list only the changes after it. Trail Guide never moves `basedOn` itself, because only you know whether you took the changes in.
 
-A [forked skill](/guides/install-skills/#fork-a-skill) works the same way. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed. Merge what you need, and set `basedOn` to the commit you merged. See [project update](/reference/cli/#project-update).
+A [forked skill](/guides/fork-skills/) is different: its update keeps your edits. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed, and says whether merging them into your fork finds text conflicts. When it finds none, answer `merge`, or pass `--merge-fork fabrica:<skill>`, and Trail Guide merges the changes into your fork and moves its `basedOn`. When it finds conflicts, merge by hand and set `basedOn` yourself. See [Fork a skill](/guides/fork-skills/#merge-the-sources-changes).
 
 ### New rules: add or exclude
 
@@ -156,12 +156,12 @@ fabrica
   new       practices/testing/test-behavior-not-implementation  2.0.0
             Test what callers observe, not how the code does it.
             Cited by skills/build-feature; reference-only.
-  replaced  skills/fix-bug                         1.0.0 -> 1.1.0
-            Reproduce the bug in a failing test before fixing it.
-            Your skill: skills/fix-bug, based on 1.0.0.
-            Changes since 1.0.0, the version your skill is based on.
-            To replace your skill with a fork of 1.1.0,
-            pass --update-fork fabrica:skills/fix-bug.
+  replaced  skills/fix-bug                         commit 9f2c4e1a7b3d -> 4b8e0c2d6f1a
+            Your skill: skills/fix-bug, based on commit 9f2c4e1a7b3d.
+            Changed since commit 9f2c4e1a7b3d, the copy your skill is based on:
+              SKILL.md
+            Merging them into your skill finds no text conflicts with your edits. To merge
+            them and set basedOn to commit 4b8e0c2d6f1a, pass --merge-fork fabrica:skills/fix-bug.
 
 Warning: some skills in this update add or change scripts. Trail Guide never runs them, but your agents may; read them before you confirm.
 ```
@@ -178,7 +178,7 @@ For a skill, the change levels describe what the skill does rather than an oblig
 
 A skill's new version can use more skills or cite more rules. The preview lists each skill it newly brings in as `new`, saying which skill uses it, and each rule it newly cites as `new`, at the rule's newest version, marked reference-only unless your selectors also reach it. A skill or cited rule that no installed skill needs any longer is dropped.
 
-`--exclude` and `--update-fork` take skill IDs the same way they take rule IDs, such as `--exclude fabrica:skills/review-change`. Pins and `--keep` are for rules only, and `trailguide project update fabrica:skills/build-feature` is refused: skills move only when their whole source updates, in a full update or `trailguide project update fabrica`. In a terminal, the update asks you to confirm each major skill change, retirement, and level change, and asks about each new skill that isn't required, as it does for rules. To hold a skill back, stop the update, then [exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release), which holds every rule and skill from that source. `--update-fork` replaces your whole `.trailguide/skills/<name>/` folder with a fork of the newest version and sets the exclusion's `basedOn` to it; files you added to the folder are removed, so commit your edits first.
+`--exclude` takes skill IDs the same way it takes rule IDs, such as `--exclude fabrica:skills/review-change`. Pins, `--keep`, and `--update-fork` are for rules only, and `--merge-fork` is for forked skills only, and `trailguide project update fabrica:skills/build-feature` is refused: skills move only when their whole source updates, in a full update or `trailguide project update fabrica`. In a terminal, the update asks you to confirm each major skill change, retirement, and level change, and asks about each new skill that isn't required, as it does for rules. To hold a skill back, stop the update, then [exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release), which holds every rule and skill from that source. For a skill you forked, `--merge-fork` merges the source's changes into your fork instead of replacing it; see [Fork a skill](/guides/fork-skills/).
 
 After you confirm, the update rewrites the installed copies in your target folders, `generated/SKILLS.md`, and `generated/installed-skills.json` in the same step as `vendor/` and `generated/`.
 
