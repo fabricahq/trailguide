@@ -55,8 +55,11 @@ The notes present changes in this order, leaving out any with nothing to say:
 
 ## Always and never
 
-- Always keep new features and improvements high level: say what readers can now do in a short bullet, and leave option names, flags, and edge cases to the linked docs. Give a feature its own section only when it's a major change, such as a new capability or a rename, and summarize its parts in bullets.
-- Always give migration steps for a breaking change, with the commands or before-and-after examples readers need. Until Trail Guide is publicly announced, summarize breaking changes in a sentence instead, and say that upgrade instructions are omitted because Trail Guide is in initial development.
+- Always keep new features and improvements high level and concise: one short bullet per point, and leave option names, flags, and edge cases to the linked docs.
+- Always open the notes with one plain sentence on what the release is about and who it matters to most, such as "v0.5.0 is mostly for teams that share skills: it adds forks, branch sources, and draft skills."
+- Always give each new feature its own `###` heading that names what changed for the reader, such as "Sources can follow branches", then summarize it in one or two bullets. When it helps, start with what was hard before. End with a link to the feature's docs, and add a short code block when the feature is a command readers will run.
+- Always say what readers can now do, with "now", such as "You can now fork a skill into your library" or "`project update --help` now explains how skills update".
+- Always give migration steps for a breaking change, with the commands or before-and-after examples readers need. Give each breaking change its own `###` heading that names the change. Until Trail Guide is publicly announced, summarize each breaking change in a sentence instead of migration steps, and say that upgrade instructions are omitted because Trail Guide is in initial development.
 - Always credit external contributors by GitHub handle.
 - Never present internal refactors, CI changes, or website-only changes as new CLI features.
 - Never mention dependency updates unless they fix a security issue.
