@@ -778,7 +778,13 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 		if history.release(number) == nil {
-			return plannedSource{}, SourceUpdate{}, nil, fail("version-not-found", fmt.Sprintf("sources.%s.ref names release/%d, which the library doesn't have. Set sources.%s.ref to a library release it has, such as release/%d, its newest.", source.Name, number, source.Name, history.newest().number), nil)
+			problem := fmt.Sprintf("sources.%s.ref names release/%d, which the library doesn't have.", source.Name, number)
+			if newest := history.newest(); newest != nil {
+				problem += fmt.Sprintf(" Set sources.%s.ref to a library release it has, such as release/%d, its newest.", source.Name, newest.number)
+			} else {
+				problem += fmt.Sprintf(" The repository has no release/<number> tags now; ask the library's maintainer to restore them, or set sources.%s.ref to a branch, tag, or full commit SHA.", source.Name)
+			}
+			return plannedSource{}, SourceUpdate{}, nil, fail("version-not-found", problem, nil)
 		}
 		p.ceiling = number
 		if newest := p.history.newest().number; newest > number {
