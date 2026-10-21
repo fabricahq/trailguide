@@ -6,6 +6,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -22,14 +23,23 @@ const forkedSkill = "---\nname: build-feature\ndescription: Build a feature.\n--
 // build-feature, with an executable script, and returns the fixture and release/1's commit.
 func newSkillForkFixture(t *testing.T) (updateFixture, string) {
 	t.Helper()
+	return newSkillForkFixtureWith(t, nil)
+}
+
+// newSkillForkFixtureWith syncs a project as newSkillForkFixture does, from a library that also publishes extra, its
+// files by path in the library's repository.
+func newSkillForkFixtureWith(t *testing.T, extra map[string][]byte) (updateFixture, string) {
+	t.Helper()
 	ctx := context.Background()
-	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
+	files := map[string][]byte{
 		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
 		"techs/go/_group.yaml":                            []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":                              updateRule("Wrap errors."),
 		".trailguide/skills/build-feature/SKILL.md":       []byte(forkedSkill),
 		".trailguide/skills/build-feature/scripts/run.sh": []byte("#!/bin/sh\necho build\n"),
-	}))
+	}
+	maps.Copy(files, extra)
+	f, err := gitfixture.New(ctx, gitfixture.Library(files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,6 +135,48 @@ func TestForkSkill_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 	}
 	if out, diagnostic, code := u.run(t, "project", "check"); code != 0 {
 		t.Fatal(code, out, diagnostic)
+	}
+}
+
+// TestForkSkill_ForksASkillItCantAdaptAsADraftToFinish forks a skill whose frontmatter Trail Guide can't rewrite,
+// marks the fork as a draft, lists what to fix, and build refuses the fork until the author finishes it.
+func TestForkSkill_ForksASkillItCantAdaptAsADraftToFinish(t *testing.T) {
+	ship := "---\nname: ship\ndescription: Ship a feature.\nmetadata: {trailguide-skills-used: \"skills/build-feature\"}\n---\n# Ship\n"
+	u, _ := newSkillForkFixtureWith(t, map[string][]byte{".trailguide/skills/ship/SKILL.md": []byte(ship)})
+	out, diagnostic, code := u.run(t, "project", "add", "skill", "--from", "team:skills/ship", "--reason", "We ship with make.", "--non-interactive")
+	for _, want := range []string{
+		"Until you finish it, trailguide project build refuses it.\nIn SKILL.md:\n",
+		"  - Name the skill ship, and cite the source's skills and rules with the source's name, such as team:skills/tdd;",
+		"Then remove the <!-- trailguide:draft --> line.",
+	} {
+		if code != 0 || !strings.Contains(out, want) {
+			t.Fatalf("exit %d, want %q:\n%s%s", code, want, out, diagnostic)
+		}
+	}
+	j, _ := newSkillForkFixtureWith(t, map[string][]byte{".trailguide/skills/ship/SKILL.md": []byte(ship)})
+	out, diagnostic, code = j.run(t, "project", "add", "skill", "--from", "team:skills/ship", "--reason", "We ship with make.", "--json")
+	var result struct {
+		OK    bool
+		Value struct {
+			NextSteps []nextStep `json:"nextSteps"`
+		}
+	}
+	if code != 0 || json.Unmarshal([]byte(out), &result) != nil || !result.OK || len(result.Value.NextSteps) == 0 || !strings.Contains(result.Value.NextSteps[0].Instruction, "Then remove the <!-- trailguide:draft --> line.") {
+		t.Fatalf("exit %d, want the fixes as the first next step:\n%s%s", code, out, diagnostic)
+	}
+	file := filepath.Join(u.directory, ".trailguide/skills/ship/SKILL.md")
+	if skill, err := os.ReadFile(file); err != nil || !strings.HasSuffix(string(skill), "---\n<!-- trailguide:draft -->\n# Ship\n") {
+		t.Fatalf("forked SKILL.md:\n%s, %v; want the source's, marked as a draft", skill, err)
+	}
+	if out, diagnostic, code := u.run(t, "project", "build"); code == 0 {
+		t.Fatalf("build installed an unfinished fork:\n%s%s", out, diagnostic)
+	}
+	finished := "---\nname: ship\ndescription: Ship a feature.\nmetadata:\n  trailguide-skills-used: |\n    team:skills/build-feature\n---\n# Ship\n"
+	if err := os.WriteFile(file, []byte(finished), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, diagnostic, code := u.run(t, "project", "build"); code != 0 {
+		t.Fatalf("build refused the finished fork: exit %d:\n%s%s", code, out, diagnostic)
 	}
 }
 
