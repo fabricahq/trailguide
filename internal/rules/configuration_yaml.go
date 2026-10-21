@@ -201,8 +201,8 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 	}
 	where := "sources." + alias + ".rules"
 	ruleFields := mappingValue(source, "rules")
-	if ruleFields == nil {
-		if len(edit.Pins)+len(edit.Exclude)+len(edit.Unpin)+len(edit.BasedOn) > 0 {
+	if ruleEdits := len(edit.Pins) + len(edit.Exclude) + len(edit.Unpin) + len(edit.BasedOn); ruleFields == nil || ruleEdits == 0 {
+		if ruleEdits > 0 {
 			return nil, invalid(where, "the source includes no rules, so it has no rules to pin or exclude")
 		}
 		return encodeConfiguration(document)

@@ -155,3 +155,23 @@ sources:
 		}
 	}
 }
+
+// TestEditConfigurationSource_SetsTheRef replaces a ref in place, keeping its comment, and adds one after the
+// repository when the source has none.
+func TestEditConfigurationSource_SetsTheRef(t *testing.T) {
+	five, err := rules.ParseGitRef("release/5", "ref")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ input, want string }{
+		{"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/4 # reviewed\n    rules: {include: [techs/go/*]}\n",
+			"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/5 # reviewed\n    rules: {include: [techs/go/*]}\n"},
+		{"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    rules: {include: [techs/go/*]}\n",
+			"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/5\n    rules: {include: [techs/go/*]}\n"},
+	} {
+		got, err := rules.EditConfigurationSource([]byte(test.input), "team", rules.SourceEdit{Ref: five})
+		if err != nil || string(got) != test.want {
+			t.Errorf("got %v:\n%s\nwant:\n%s", err, got, test.want)
+		}
+	}
+}
