@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // entries returns a tree of regular files at names, keyed by repository path.
@@ -192,7 +193,7 @@ func TestInstalledSkillsReportsTheSkillsAMissingUseOrCycleInvolves(t *testing.T)
 }
 
 func TestCuratedSkillsWildcardSkipsDotFolders(t *testing.T) {
-	manifest := &rules.Library{Skills: rules.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{"pocock:.claude/skills/local", "pocock:skills/grilling"}}}
+	manifest := &rules.Library{Skills: trailguide.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{"pocock:.claude/skills/local", "pocock:skills/grilling"}}}
 	for _, test := range []struct {
 		include []string
 		want    []string
@@ -212,7 +213,7 @@ func TestCuratedSkillsWildcardSkipsDotFolders(t *testing.T) {
 }
 
 func TestCuratedSkillsAddsTheCuratedSkillsTheLibrarysSkillsUse(t *testing.T) {
-	manifest := &rules.Library{Skills: rules.SkillLevels{Required: []string{}, Recommended: []string{"anthropic:skills/skill-creator"}, Offered: []string{"pocock:skills/grilling"}}}
+	manifest := &rules.Library{Skills: trailguide.SkillLevels{Required: []string{}, Recommended: []string{"anthropic:skills/skill-creator"}, Offered: []string{"pocock:skills/grilling"}}}
 	got, err := curatedSkills(manifest, rules.Source{Name: "team", Skills: []string{"pocock:skills/grilling"}}, 1, map[string][]string{"anthropic:skills/skill-creator": {"skills/add-skill"}})
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +234,7 @@ func TestCuratedSkillsAddsTheCuratedSkillsTheLibrarysSkillsUse(t *testing.T) {
 func TestChooseSkillsLeavesOutTheExcludedLevels(t *testing.T) {
 	const locked = "1111111111111111111111111111111111111111"
 	available := []string{"skills/build", "skills/lint", "skills/review", "skills/ship"}
-	levels := &rules.SkillLevels{Required: []string{"skills/ship"}, Recommended: []string{"skills/review"}, Offered: []string{"skills/build"}}
+	levels := &trailguide.SkillLevels{Required: []string{"skills/ship"}, Recommended: []string{"skills/review"}, Offered: []string{"skills/build"}}
 	source := func(include []string, exclude ...string) rules.Source {
 		excluded := map[string]string{}
 		for _, id := range exclude {
@@ -243,7 +244,7 @@ func TestChooseSkillsLeavesOutTheExcludedLevels(t *testing.T) {
 	}
 	tests := map[string]struct {
 		source rules.Source
-		levels *rules.SkillLevels
+		levels *trailguide.SkillLevels
 		want   []string
 	}{
 		"every skill but the recommended":     {source([]string{"*"}, "recommended"), levels, []string{"skills/build", "skills/lint", "skills/ship"}},

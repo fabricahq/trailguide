@@ -1,6 +1,6 @@
 // Adapt SPDX expression validation while retaining authored spelling and baseline case rules.
 
-package rules
+package trailguide
 
 import (
 	"github.com/github/go-spdx/v2/spdxexp"

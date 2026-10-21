@@ -201,7 +201,7 @@ Projects can't import a library release in the earlier layout; sync and update f
 
 ## Read libraries from other tools
 
-Tools written in Go, such as a catalog of libraries, can read library release tags, release records, rule files, rule group metadata, and the [canonical rule group list](/concepts/groups/#canonical-rule-group-ids) with the `github.com/fabricahq/trailguide/trailguide` package, whose Go documentation describes its API. Trail Guide reads libraries through the same package, so both read them the same way. The package only parses text the tool has already read, such as with a Git library; it has no Git, filesystem, or network access. It follows Trail Guide's version, and its API may change before Trail Guide 1.0.0.
+Tools written in Go, such as a catalog of libraries, can read library release tags, release records, the library's manifest, rule files, rule group metadata, and the [canonical rule group list](/concepts/groups/#canonical-rule-group-ids), and place each library file in its repository, with the `github.com/fabricahq/trailguide/trailguide` package, whose Go documentation describes its API. Trail Guide reads libraries through the same package, so both read them the same way. The package only parses text the tool has already read, such as with a Git library; it has no Git, filesystem, or network access. Of a library's `.trailguide/config.yaml`, it reads only what the library publishes: the schema version, the names of its sources, and its library section, not the settings that configure the repository as a project. It follows Trail Guide's version, and its API may change before Trail Guide 1.0.0.
 
 ## Related guides
 

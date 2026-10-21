@@ -37,10 +37,10 @@ type Catalog struct {
 	Selection rules.GroupSelection `json:"groupSelection"`
 	// Rules lists the individually selected rule IDs, sorted; it is empty, never nil, when there are none.
 	// A group that Selection doesn't include holds only the rules this list names.
-	Rules           []string                  `json:"ruleSelection"`
-	Groups          []Group                   `json:"groups"`
-	License         *rules.LicenseDeclaration `json:"license"`
-	SupportingFiles map[string][]byte         `json:"supportingFiles"`
+	Rules           []string                       `json:"ruleSelection"`
+	Groups          []Group                        `json:"groups"`
+	License         *trailguide.LicenseDeclaration `json:"license"`
+	SupportingFiles map[string][]byte              `json:"supportingFiles"`
 }
 
 // Group includes display metadata and path-sorted rules; empty groups are valid.
@@ -224,7 +224,7 @@ func (r *reader) read(path string) ([]byte, error) {
 
 // license validates the manifest's library section and its license declaration before reading the declared files;
 // bytes stay unchanged. A configuration without a library section fails: the repository isn't a library.
-func (r *reader) license(source string) (*rules.LicenseDeclaration, error) {
+func (r *reader) license(source string) (*trailguide.LicenseDeclaration, error) {
 	location := source + "/" + manifestPath
 	declaration, err := rules.ParseLibraryManifest(r.files[librarytree.Manifest], location)
 	if err != nil {

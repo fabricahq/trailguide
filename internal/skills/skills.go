@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -44,6 +45,9 @@ const LevelDependency = "dependency"
 // Dependencies is the list of library.skills that names a library's dependencies, beside its Levels.
 const Dependencies = "dependencies"
 
+// Lists names the lists of library.skills, the levels from the strongest to the weakest, then the dependencies.
+var Lists = append(slices.Clone(Levels), Dependencies)
+
 // Directory is the folder, in a repository's Trail Guide directory, that holds the repository's authored skills,
 // and, in a library's vendor snapshot, the skills the library publishes.
 const Directory = "skills"
@@ -71,6 +75,12 @@ func ValidateID(id, location string) error {
 	}
 	return nil
 }
+
+// ValidSourceName reports whether name can name a source in a configuration's sources: a lowercase letter, then
+// lowercase letters, digits, and hyphens. A curated skill's ID starts with the name of the source it comes from.
+func ValidSourceName(name string) bool { return sourceNamePattern.MatchString(name) }
+
+var sourceNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 // AuthoredID returns the ID of the skill a repository authors, or a library publishes, in the folder named name of
 // its skills/ folder.

@@ -187,7 +187,7 @@ func relocatedURL(destination string, active resolvedRule, paths []string, outpu
 type licenseMapping struct{ Source, Generated, Kind string }
 
 // licenseMappings assigns stable license and notice names while preserving declaration order.
-func licenseMappings(source string, license *rules.LicenseDeclaration) []licenseMapping {
+func licenseMappings(source string, license *trailguide.LicenseDeclaration) []licenseMapping {
 	root := "libraries/" + source + "/licenses"
 	result := []licenseMapping{}
 	for _, file := range license.Files {

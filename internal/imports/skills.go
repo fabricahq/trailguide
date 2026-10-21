@@ -16,6 +16,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // librarySkillsFolder is where a library keeps the skills it publishes, relative to its repository root.
@@ -90,7 +91,7 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 // The skills the library curates, whose IDs have a colon, are curateSkills' to choose, and naming one of a repository
 // that isn't a library fails, since only a library curates skills; the skills the configuration's own library section
 // requires of the source, LibraryRequires, are chosen as required too.
-func chooseSkills(source rules.Source, plan sourcePlan, available []string, levels *rules.SkillLevels) ([]string, error) {
+func chooseSkills(source rules.Source, plan sourcePlan, available []string, levels *trailguide.SkillLevels) ([]string, error) {
 	chosen := []string{}
 	revision := revisionName(plan.release, plan.commit)
 	for _, id := range source.LibraryRequires {
@@ -161,11 +162,11 @@ func chooseSkills(source rules.Source, plan sourcePlan, available []string, leve
 }
 
 // ownSkillLevels returns levels without the skills the library curates.
-func ownSkillLevels(levels rules.SkillLevels) rules.SkillLevels {
+func ownSkillLevels(levels trailguide.SkillLevels) trailguide.SkillLevels {
 	own := func(ids []string) []string {
 		return slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return strings.Contains(id, ":") })
 	}
-	return rules.SkillLevels{Required: own(levels.Required), Recommended: own(levels.Recommended), Offered: own(levels.Offered), Dependencies: own(levels.Dependencies)}
+	return trailguide.SkillLevels{Required: own(levels.Required), Recommended: own(levels.Recommended), Offered: own(levels.Offered), Dependencies: own(levels.Dependencies)}
 }
 
 // skillNotInRevision reports that field, a configuration field of source, names skill id, which the plan's revision
@@ -344,13 +345,13 @@ func (r *repository) isLibrary(ctx context.Context, commit string) (bool, error)
 
 // skillLevels returns the levels the library at a fetched commit gives its skills, or nil when the commit holds no
 // library. A library in the layout before version 2 gives none, so each of its skills is offered.
-func (r *repository) skillLevels(ctx context.Context, commit string) (*rules.SkillLevels, error) {
+func (r *repository) skillLevels(ctx context.Context, commit string) (*trailguide.SkillLevels, error) {
 	tree, err := r.repositoryTree(ctx, commit)
 	if err != nil {
 		return nil, err
 	}
 	if _, legacy := tree[librarytree.LegacyManifest]; legacy {
-		return &rules.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}, Dependencies: []string{}}, nil
+		return &trailguide.SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}, Dependencies: []string{}}, nil
 	}
 	data, found, err := r.manifest(ctx, tree)
 	if err != nil || !found {
@@ -398,7 +399,7 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 	if err != nil {
 		return importedSkills{}, err
 	}
-	var levels *rules.SkillLevels
+	var levels *trailguide.SkillLevels
 	if isLibrary {
 		if levels, err = r.skillLevels(ctx, plan.commit); err != nil {
 			return importedSkills{}, err
@@ -472,7 +473,7 @@ func (r *repository) readFiles(ctx context.Context, source string, entries map[s
 
 // importedSkill returns the record of skill id given levels, the levels its library gives its skills, or nil for a
 // repository that isn't a library, whose skills have no level.
-func importedSkill(id string, levels *rules.SkillLevels) library.ImportedSkill {
+func importedSkill(id string, levels *trailguide.SkillLevels) library.ImportedSkill {
 	if levels == nil {
 		return library.ImportedSkill{}
 	}
@@ -532,7 +533,7 @@ func isForked(forks map[string]rules.SkillFork, id string) bool {
 // so the project can include one of those instead; for a curated dependency only the library's skills that use it
 // are known here, so when none does, it points to the curated skills of its source, which may use it in their own
 // repository.
-func (r *repository) requireNoNamedDependencies(ctx context.Context, source rules.Source, plan sourcePlan, folders map[string]map[string]treeEntry, levels *rules.SkillLevels) error {
+func (r *repository) requireNoNamedDependencies(ctx context.Context, source rules.Source, plan sourcePlan, folders map[string]map[string]treeEntry, levels *trailguide.SkillLevels) error {
 	if levels == nil {
 		return nil
 	}

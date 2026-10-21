@@ -91,3 +91,42 @@ Check every error a function returns.
 	//   techs/go/handle-errors minor 1.1.0: Add an example for wrapped errors.
 	// fabrica:techs/go/handle-errors techs/go HIGH Handle errors
 }
+
+// ExampleParseLibraryManifest reads the manifest of a library release: the library section of the configuration at
+// the tagged commit, which also configures the repository as a project. It reads only what the library publishes.
+func ExampleParseLibraryManifest() {
+	// The configuration at the tagged commit, read with go-git from trailguide.RepositoryPath(trailguide.Manifest).
+	config := `schemaVersion: 2
+skillTargets: [claude]
+sources:
+  anthropic:
+    repository: https://github.com/anthropics/skills.git
+    ref: main
+library:
+  license:
+    spdxExpression: MIT
+    file: LICENSE.md
+    notices: []
+  skills:
+    required: [anthropic:skills/skill-creator]
+    recommended: [skills/build-feature]
+`
+	location := "acme/rules/" + trailguide.RepositoryPath(trailguide.Manifest)
+	library, err := trailguide.ParseLibraryManifest([]byte(config), location)
+	if err != nil {
+		fmt.Println("invalid manifest:", err)
+		return
+	}
+	if library == nil {
+		fmt.Println("not a library")
+		return
+	}
+	fmt.Println(location)
+	fmt.Println(*library.License.SPDXExpression, library.License.Files)
+	fmt.Println(library.Skills.Required, library.Skills.Level("skills/build-feature"))
+
+	// Output:
+	// acme/rules/.trailguide/config.yaml
+	// MIT [LICENSE.md]
+	// [anthropic:skills/skill-creator] recommended
+}

@@ -10,6 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -497,7 +498,7 @@ func ReplaceLibrarySkill(input []byte, from, to string) ([]byte, error) {
 	}
 	levels := mappingValue(mappingValue(document.Content[0], "library"), "skills")
 	replaced := false
-	for _, level := range SkillLists {
+	for _, level := range skills.Lists {
 		list := mappingValue(levels, level)
 		if list == nil || list.Kind != yaml.SequenceNode {
 			continue
