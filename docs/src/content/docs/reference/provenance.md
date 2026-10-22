@@ -38,7 +38,7 @@ Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report tha
 
 ## Trace a rule to its source
 
-Open the rule's page in `generated/rules/`. A rule from a source is at `generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`; an authored rule is under `generated/rules/local/`, and its ID has no source name.
+Open the rule's page in `generated/rules/`. A rule from a source is at `generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`. An authored rule is under `generated/rules/local/`, and its page shows its ID with the `local:` prefix, such as `local:practices/testing/service-retries`; in configuration, such as an exclusion's `replacedBy`, you write it without the prefix.
 
 Below its title, the page shows:
 
@@ -77,7 +77,7 @@ Read this as: agents receive your `service-retries` rule, which replaces `team`'
 
 Write the test first.
 
-- **Skill:** `fabrica:skills/tdd`, from release/2, commit `4f1c2a95…`
+- **Skill:** `fabrica:skills/tdd`, from release/7, commit `4f1c2a95…`
 - **Level:** recommended by `fabrica`, release 7
 - **Installed because:** included, and used by `build-feature`
 - **Installed at:** [.agents/skills/tdd/SKILL.md](…), [.claude/skills/tdd/SKILL.md](…)
