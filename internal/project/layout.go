@@ -28,7 +28,8 @@ func (l managedLayout) vendorLocation() string {
 }
 
 // readLayout returns where the project at root keeps its managed trees. A project with neither tree uses the current
-// layout. It fails with mixed-layout when _managed/ and a legacy tree are both present, which no command writes.
+// layout. It fails with mixed-layout when a tree under _managed/ and a legacy tree are both present, which no command
+// writes. An empty _managed/, as a sync that rolled back its move leaves, doesn't count, so the next sync can move.
 func readLayout(root *os.Root) (managedLayout, error) {
 	legacy := []string{}
 	for _, name := range []string{librarytree.LegacyVendor, librarytree.LegacyGenerated} {
@@ -43,9 +44,13 @@ func readLayout(root *os.Root) (managedLayout, error) {
 	if len(legacy) == 0 {
 		return currentLayout, nil
 	}
-	managed, err := present(root, librarytree.Managed)
-	if err != nil {
-		return managedLayout{}, err
+	managed := false
+	for _, target := range []filetxn.Target{filetxn.Vendor, filetxn.Generated} {
+		found, err := present(root, string(target))
+		if err != nil {
+			return managedLayout{}, err
+		}
+		managed = managed || found
 	}
 	if managed {
 		return managedLayout{}, failure("mixed-layout", fmt.Sprintf(".trailguide/%s/ and .trailguide/%s/, a folder Trail Guide 0.6 and earlier wrote, are both present. Sync never writes both, so a merge combined a migrated branch with one that wasn't. Take one branch's .trailguide/%s/, %s/, and %s/ folders and %s, then run trailguide project sync", librarytree.Managed, legacy[0], librarytree.Managed, librarytree.LegacyVendor, librarytree.LegacyGenerated, lockFile), nil)

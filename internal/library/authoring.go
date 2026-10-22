@@ -418,6 +418,6 @@ func failure(code, problem string, cause error) error {
 }
 
 func groupFiles(directory, id string, metadata []byte) []filetxn.File {
-	instructions := fmt.Sprintf("## Add or edit rules\n\nRun commands from the repository root, four directories above this folder.\nUse `trailguide library add rule %s/<rule-name>` to add a rule; run `trailguide library add rule --help` for metadata and body options.\nEdit existing rule files directly, then run `trailguide library check`. Resolve errors before committing or publishing the library.\n\nA consuming project selects this group in its configuration and runs sync. Its generated/RULES.md identifies the adopted rules after exclusions and replacements.\n", id)
+	instructions := fmt.Sprintf("## Add or edit rules\n\nRun commands from the repository root, four directories above this folder.\nUse `trailguide library add rule %s/<rule-name>` to add a rule; run `trailguide library add rule --help` for metadata and body options.\nEdit existing rule files directly, then run `trailguide library check`. Resolve errors before committing or publishing the library.\n\nA consuming project selects this group in its configuration and runs sync. Its .trailguide/_managed/generated/RULES.md identifies the adopted rules after exclusions and replacements.\n", id)
 	return []filetxn.File{{Path: path.Join(directory, "_group.yaml"), Content: metadata}, {Path: path.Join(directory, "README.md"), Content: rules.GroupGuide(id, instructions)}}
 }

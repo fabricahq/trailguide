@@ -72,7 +72,7 @@ func TestSync_MovesTheManagedTreesUnderManaged(t *testing.T) {
 	requireCurrent(t, options)
 }
 
-// TestProject_RefusesAMixedLayout fails, writing nothing, when _managed/ and a tree where Trail Guide 0.6 kept it
+// TestProject_RefusesAMixedLayout fails, writing nothing, when a tree under _managed/ and a tree where Trail Guide 0.6 kept it
 // are both present, as a merge of a moved branch with one that wasn't leaves them.
 func TestProject_RefusesAMixedLayout(t *testing.T) {
 	ctx := context.Background()
@@ -98,6 +98,34 @@ func TestProject_RefusesAMixedLayout(t *testing.T) {
 	if projectTree(t, options).Digest() != before.Digest() {
 		t.Fatal("a refusal changed the project")
 	}
+}
+
+// TestSync_MovesTheManagedTreesPastAnEmptyManagedFolder: a move that rolled back leaves the _managed/ it created,
+// empty, beside the legacy trees, and the next sync still moves them.
+func TestSync_MovesTheManagedTreesPastAnEmptyManagedFolder(t *testing.T) {
+	ctx := context.Background()
+	_, options, git := syncProject(t)
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	toLegacyLayout(t, root)
+	if err := root.Mkdir("_managed", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"vendor", "generated"} {
+		if _, err := root.Stat(name); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s: %v, want it moved under _managed/", name, err)
+		}
+	}
+	requireCurrent(t, options)
 }
 
 // TestAuthoredSkills_LeaveOutTheFoldersGuide reads skills/README.md as the folder's guide, not a skill, and still
