@@ -16,7 +16,7 @@ Trail Guide keeps these related records:
 | File | What it tells you |
 | --- | --- |
 | `generated/provenance.json` | Where active rules and installed skills came from, which versions are in use, which library set each skill's level, and why rules and skills were replaced. |
-| `vendor/<source-name>/_source.json` | Which commit and original files the vendor snapshot of one source holds: the source's **lock**. |
+| `lock.json` | Which revision, rule and skill versions, and original files each source's vendor snapshot holds: the project's **lockfile**. |
 | `generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule and skill versions and levels, and declared license terms. |
 | `generated/installed-skills.json` | Which skill folders Trail Guide installed in the target folders. See [Installed skills](/reference/files/#installed-skills). |
 
@@ -27,7 +27,7 @@ Trail Guide writes these files. To change the information they describe, edit yo
 ## How the records are created
 
 1. **You include rules and skills.** Configuration records the sources, the rules and skills you include from each, pins, exclusions, replacements, and renames.
-2. **Sync and update record what they take.** `trailguide project update` moves each source along its `ref` and writes its `_source.json` record with the exact Git commit, rule and skill versions, skill levels, and file checksums. `trailguide project sync` restores exactly what that record says, and never moves a source.
+2. **Sync and update record what they take.** `trailguide project update` moves each source along its `ref` and writes its entry in `lock.json` with the exact Git commit, rule versions, skill levels, and file digests. `trailguide project sync` restores exactly what that entry says, and never moves a source.
 3. **Generation records the result.** Sync, update, or build combines the vendored and authored rules and skills, then writes `generated/provenance.json` alongside the guidance your agents read.
 
 An **active rule** is one included in that generated guidance. An excluded rule has no active rule entry. A replacement has an entry that also identifies the rule it replaced. A rule taken only because an installed skill cites it has an entry marked `referenceOnly`. Skills work the same way, in their own list.
@@ -144,114 +144,121 @@ For each source, `ruleInclude` and `skillInclude` record the selectors you wrote
 
 Within each rule group record, `guidance` keeps the metadata labeled by source. `effectiveGuidanceSources` identifies which sources supply the guidance agents see. Authored rule group metadata takes precedence when present; otherwise the guidance from all contributing libraries remains effective.
 
-## Inspect the vendor snapshot
+## Inspect the lockfile
 
-Each source has a separate `vendor/<source-name>/_source.json` file. It describes the **vendor snapshot**: the original files the project took from the source, and which version of each rule and skill they belong to. It is the source's lock: `trailguide project sync` restores exactly what it records. The directory name identifies the source.
+`lock.json` in the Trail Guide directory is the project's **lockfile**. It has one entry per source, keyed by source name, that records exactly what the project took from that source: the revision, the version of every rule, every skill, and a digest of every file in the source's **vendor snapshot**, `vendor/<source-name>/`. `trailguide project sync` restores exactly what the lockfile records, and never moves a source. Only `trailguide project update`, a new source, or a changed repository changes what an entry records.
 
 A library's snapshot mirrors its Trail Guide directory, so its files keep their paths relative to the library's `.trailguide/`, such as `rules/practices/testing/verify-retry-limits.md` and `config.yaml` for the manifest. Declared license and notice files outside that directory, such as `LICENSE.md` at the repository root, keep their repository paths. A non-library source's files keep their repository paths.
 
 ```json
 {
-  "formatVersion": 3,
-  "kind": "library",
-  "checksum": "5d1b…c07e",
-  "kind": "library",
-  "repository": "https://github.com/fabricahq/public-library.git",
-  "release": 3,
-  "resolvedCommit": "9e07b3d6f0c1a4b85e2d7c3f9a61b04e8d52c7aa",
-  "ruleInclude": [
-    "practices/testing/*",
-    "techs/go/wrap-errors-with-operation"
-  ],
-  "skillInclude": [],
-  "groups": [
-    "practices/testing",
-    "techs/go"
-  ],
-  "rules": {
-    "practices/testing/verify-backoff": {
-      "version": "1.3.0",
-      "release": 2,
-      "commit": "4f1c2a95…"
-    },
-    "practices/testing/verify-retry-limits": {
-      "version": "2.0.0",
+  "lockVersion": 1,
+  "notice": "Written by trailguide project sync and update. Do not edit by hand.",
+  "sources": {
+    "fabrica": {
+      "availableSkills": {},
+      "commit": "9e07b3d6f0c1a4b85e2d7c3f9a61b04e8d52c7aa",
+      "executable": [],
+      "files": {
+        "config.yaml": "a90e…13f2",
+        "rules/practices/testing/verify-retry-limits.md": "4c1f…e9a2",
+        "…": "…"
+      },
+      "groups": ["practices/testing", "techs/go"],
+      "integrity": "sha256-FR7BXXdLEY6ygFjyuH+3a/k9/NCQRw+Bhh4OAobLc64=",
+      "kind": "library",
+      "ref": "latest-release",
       "release": 3,
-      "commit": "9e07b3d6…"
-    },
-    "techs/go/wrap-errors-with-operation": {
-      "version": "1.1.0",
-      "release": 3,
-      "commit": "9e07b3d6…"
+      "releaseCommits": {
+        "2": "4f1c2a95…",
+        "3": "9e07b3d6f0c1a4b85e2d7c3f9a61b04e8d52c7aa"
+      },
+      "repository": "https://github.com/fabricahq/public-library.git",
+      "retiredRules": ["practices/testing/check-retry-backoff"],
+      "rules": {
+        "practices/testing/verify-backoff": { "release": 2, "version": "1.3.0" },
+        "practices/testing/verify-retry-limits": { "release": 3, "version": "2.0.0" },
+        "techs/go/wrap-errors-with-operation": { "release": 3, "version": "1.1.0" }
+      },
+      "selectors": {
+        "groups": ["practices/testing"],
+        "rules": ["techs/go/wrap-errors-with-operation"],
+        "skills": []
+      },
+      "skills": {}
     }
-  },
-  "retiredRules": [
-    "practices/testing/check-retry-backoff"
-  ],
-  "skills": {},
-  "retiredSkills": [],
-  "files": {
-    "config.yaml": "a90e…13f2",
-    "rules/practices/testing/verify-retry-limits.md": "4c1f…e9a2",
-    "…": "…"
-  },
-  "executable": []
+  }
 }
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `formatVersion` | The snapshot format version, `3`. A record in any other format, such as one written for version 1 configuration, whose file paths don't match this layout, fails with advice to delete `.trailguide/vendor/<source-name>/` and run `trailguide project sync`, which takes the source again as a newly added source: at the newest library release, or the commit your `ref` names now, except rules you pin. To keep what you had, pin rules or set `ref: release/<number>` first. A newer format, written by a later Trail Guide, fails with `unsupported-source-record` and asks you to install a newer Trail Guide instead, since syncing would rewrite the project in the older format. Unknown fields are always rejected. |
-| `kind` | `library` when the source's repository has a [manifest](/reference/library-format/#the-manifest) at the recorded commit, and `non-library` otherwise. Trail Guide detects it; configuration never declares it. |
-| `checksum` | The SHA-256 checksum of the record's other fields, as sync wrote them. Offline, `trailguide project build` and `trailguide project check` refuse a record whose checksum doesn't match, or that has none, as changed outside `trailguide project sync`, such as by hand or in a merge resolution, because its versions and releases can't be trusted without the source. `trailguide project sync`, `trailguide project update`, and a [fork](/reference/cli/#fork-a-library-rule) refuse it too and write nothing, as sync does when it removes a source whose record holds the rule group metadata an authored rule needs; a removed source whose record no authored rule needs is discarded with the rest of its files: it never records again a record it didn't write, whatever the record says, since no check of individual facts can establish that an edited record is right. To recover, restore a record sync wrote with `git checkout -- .trailguide/vendor/<source-name>/_source.json`, or, during a merge conflict, take one side with `git checkout --ours` or `git checkout --theirs` for that file, then run `trailguide project sync`, which applies any configuration changes; or delete `.trailguide/vendor/<source-name>/` and run `trailguide project sync`, which takes the source again, with its unpinned rules at their newest versions. To resolve a merge conflict in `_source.json`, take one side of the file rather than combining them, and let sync apply the merged configuration. A record that sync can't read at all, such as one with an unknown field, fails with advice to delete `.trailguide/vendor/<source-name>/` and sync. |
-| `repository` | The source's repository address. |
-| `ref` | The source's `ref` from configuration when the snapshot was recorded, omitted when it names a library release or is `latest-release`, since `release` records the release. Changing it to another spelling of the same revision, such as `refs/tags/release/2` for `release/2`, keeps the recorded spelling, so the record stays current. Changing it to another revision makes the record out of date until `trailguide project update SOURCE` takes that revision. Pins and exclusions aren't recorded: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. So adding, rewording, or removing a pin that moves nothing, or an exclusion, by hand or with a fork, never makes the record out of date, unless the entry names a retired rule that `retiredRules` doesn't list yet; then offline checks ask for `trailguide project sync`, which records the retirement. Generated guidance and `generated/provenance.json` show the configured pins and their reasons. |
-| `release` | The library release that supplied the library-wide files: the manifest, rule group metadata, shared assets, and license files. Every skill from the source, and every skill level, comes from it too. It is the newest library release when the source was added or last updated, or the library release your `ref` names, and never older than the `release` of any recorded rule. `trailguide project sync` keeps it, including when you include more rules or skills: those come from this library release too. It's omitted when the source isn't a library, or your `ref` isn't a library release. |
-| `resolvedCommit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to, which sync records when you add a source and update moves when a source's branch, or a non-library source's tag, moved. |
-| `ruleInclude` | Your configured `rules.include` selectors, as written. Empty when you include no rules. |
-| `skillInclude` | Your configured `skills.include` selectors, as written. Empty when you name none; the library's required skills are recorded in `skills` all the same. |
-| `groups` | The rule groups whose rules the record holds, with their metadata. A rule group the selectors reach only for some of its rules is listed too. |
-| `rules` | Each recorded rule's ID, its `version`, the `release` that published it, and that library release's full `commit`. A rule records the newest version that the recorded `release` or an earlier one published, unless a pin names another. |
-| `retiredRules` | The IDs of the rules the library retired that the source would otherwise include, sorted, and empty when there are none. A retired rule the source still includes, such as one a pin keeps at its last version, is in both `rules` and `retiredRules`, which says it's retired, and the generated library README marks it so. The rules it lists are those your selectors reach, and those the previous record held or listed, so an exclusion left after you stop including a retired rule still only warns. It records what the library told sync, not your configuration, so offline checks can tell an exclusion of a retired rule from a typo. `trailguide project update` refreshes it; `trailguide project sync` keeps it byte for byte unless the selectors, `ref`, or `release` change, so a pin or exclusion edit leaves `_source.json` unchanged when the record already covers the rule it names. When you pin or exclude a retired rule the record doesn't list yet, sync checks it against the library and adds it. |
-| `files` | Each retained path and its SHA-256 checksum, written as lowercase hexadecimal text. Each file is stored at its snapshot path, including the files of rules from a library release other than `release`, because the snapshot holds one version of each rule. |
-| `executable` | The retained paths whose executable bit is set, sorted. A file's mode is part of its content, so offline checks compare it as they compare checksums. |
+| `lockVersion` | The lockfile format, `1`. A newer format, written by a later Trail Guide, fails with `unsupported-lock` and asks you to upgrade Trail Guide, since an older one would rewrite the project in its own format. |
+| `notice` | A reminder that Trail Guide writes the file. |
+| `sources` | One entry per configured source, keyed by its name in configuration. |
 
-A **checksum** detects whether a file's contents differ from the recorded copy. The `files` map covers the original file bytes and excludes `_source.json` itself.
+Each source's entry has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `library` when the source's repository has a [manifest](/reference/library-format/#the-manifest) at the locked commit, and `non-library` otherwise. Trail Guide detects it; configuration never declares it. |
+| `repository` | The source's repository address. |
+| `ref` | The source's `ref` from configuration when the entry was written, such as `release/3`, `latest-release`, or `main`. Changing it to another spelling of the same revision, such as `refs/tags/release/3` for `release/3`, keeps the locked spelling, so the entry stays current. Changing it to another library release makes the entry out of date until `trailguide project update SOURCE` takes that release, and offline checks report it at `lock.json.sources.<source-name>.ref`; changing it to a branch, tag, or commit makes the entry out of date until `trailguide project sync` takes that revision. Pins and exclusions aren't locked: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. Generated guidance and `generated/provenance.json` show the configured pins and their reasons. |
+| `release` | The library release that supplied the library-wide files: the manifest, rule group metadata, shared assets, and license files. Every skill from the source, and every skill level, comes from it too. It is the newest library release when the source was added or last updated, or the library release your `ref` names, and never older than the `release` of any locked rule. `trailguide project sync` keeps it, including when you include more rules or skills: those come from this library release too. It's omitted when the source isn't a library, or its `ref` is a branch, tag, or commit rather than a library release. |
+| `commit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to. Every file in the snapshot that isn't a rule from an older release comes from it. |
+| `releaseCommits` | For a library, each library release that a locked rule comes from, and `release`, mapped to the full commit SHA of its `release/<number>` tag. Offline checks require it to list exactly those releases. |
+| `selectors` | Your configured selectors when the entry was written: `groups`, the rule groups your `rules.include` selects whole, such as `practices/testing` for `practices/testing/*`; `rules`, the rules it includes by ID; and `skills`, your `skills.include` selectors, as written. A non-library source has only `skills`. Offline checks compare them with configuration, so a changed selector makes the entry out of date until `trailguide project sync`. |
+| `groups` | The rule groups whose rules the entry holds, with their metadata. A rule group the selectors reach only for some of its rules is listed too. |
+| `rules` | Each locked rule's ID, its `version`, and the `release` that published it, whose commit `releaseCommits` lists. A rule records the newest version that `release` or an earlier library release published, unless a pin names another. `legacyLayout: true` marks a rule from a library release written before library format 2. |
+| `retiredRules` | The IDs of the rules the library retired that the source would otherwise include, sorted, and empty when there are none. A retired rule the source still includes, such as one a pin keeps at its last version, is in both `rules` and `retiredRules`, and the generated library README marks it retired. It records what the library told sync, not your configuration, so offline checks can tell an exclusion of a retired rule from a typo. `trailguide project update` refreshes it; `trailguide project sync` adds a retired rule you pin or exclude that it doesn't list yet. |
+| `skills` | Each installed skill, as [Skills in the lockfile](#skills-in-the-lockfile) describes. |
+| `availableSkills` | Every skill the source offers at the locked revision, installed or not, with its `level`, so offline checks can validate skill selectors and `trailguide project list skills` can list them. |
+| `files` | Each file in the source's snapshot and its SHA-256 digest, written as lowercase hexadecimal text. A rule's files come from the commit of its own `release`, because the snapshot holds one version of each rule. |
+| `executable` | The snapshot paths whose executable bit is set, sorted. A file's mode is part of its content, so offline checks compare it as they compare digests. |
+| `curated` | The sources a library curates skills from, as [Curated sources in the lockfile](#curated-sources-in-the-lockfile) describes. Omitted when the project installs no curated skill. |
+| `integrity` | A checksum of the entry, which detects an entry edited by hand or combined by a merge. Anyone can recompute it, so it doesn't prove who wrote the entry; see [Integrity](#integrity). |
 
 A rule's `version` and `release` are `null` when the vendored file isn't a published version, which can happen only when your `ref` names a revision other than a library release. Generated guidance shows no version for it.
 
-For a prefix selector, the snapshot must contain every rule the prefix reaches in the recorded revision, and record the exact selector.
+For a prefix selector, the snapshot must contain every rule the prefix reaches in the locked revision.
 
-### Skills in the source record
+### Integrity
 
-A source that installs skills records each one, with its version, its level, and why the project installs it:
+`integrity` is `sha256-` followed by the base64 SHA-256 of the entry's canonical form: the JSON object `{"entry": …, "name": …}`, holding the entry without `integrity` and the source's name, serialized as [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) specifies. Formatting and key order therefore don't matter, but any change to a field, an added or removed field, or moving the entry to another source's name does.
+
+Offline, `trailguide project build` and `trailguide project check` refuse an entry whose `integrity` doesn't match, or that has none, as changed outside Trail Guide, such as by hand or in a merge resolution, because its versions can't be trusted without the source. Sync, update, and a [fork](/reference/cli/#fork-a-library-rule) refuse it too and write nothing; no check of individual facts can establish that an edited entry is right. An entry for a source you removed from configuration is discarded with its snapshot, whatever it says, unless an authored rule needs the rule group metadata in that snapshot.
+
+When an entry was changed outside Trail Guide, restore the one Trail Guide wrote, then sync:
+
+```sh
+git checkout -- .trailguide/lock.json
+trailguide project sync
+```
+
+When the entry can't be restored, take the source again at its `ref`. This resolves the source as if you had just added it, so its unpinned rules move to the newest versions that `ref` offers:
+
+```sh
+trailguide project sync --retake fabrica
+```
+
+Strict parsing also refuses a key that appears twice in an object, and a field the format doesn't define. `integrity` is an unkeyed checksum: it detects accidental edits and merge results that combine both sides, but anyone can recompute it, so it can't detect a deliberate change to both an entry and its checksum, or authenticate files against the remote repository.
+
+### Skills in the lockfile
+
+A source that installs skills records each one, with its level, and why the project installs it:
 
 ```json
 {
   "skills": {
     "skills/build-feature": {
-      "version": "1.3.0",
-      "release": 3,
-      "commit": "9e07b3d6…",
-      "level": "recommended",
       "included": true,
+      "level": "recommended",
       "usedBy": []
     },
     "skills/tdd": {
-      "version": "1.1.0",
-      "release": 2,
-      "commit": "4f1c2a95…",
-      "level": "offered",
       "included": false,
+      "level": "offered",
       "usedBy": ["skills/build-feature"]
-    }
-  },
-  "rules": {
-    "practices/testing/test-behavior-not-implementation": {
-      "version": "2.0.0",
-      "release": 3,
-      "commit": "9e07b3d6…",
-      "citedBy": ["skills/build-feature", "skills/tdd"]
     }
   }
 }
@@ -259,91 +266,102 @@ A source that installs skills records each one, with its version, its level, and
 
 | Field | Meaning |
 | --- | --- |
-| `skills` | Each recorded skill's ID; its `version` as the record's `release` lists it, the `release` that published that version, and that library release's full `commit`, as `rules` records them; its `level` in the manifest at the record's `release`, `null` for a non-library source; `included`, `true` when your selectors or a level include it; and `usedBy`, the IDs of the recorded skills that use it, empty for a skill that's only included. The skill's files come from the record's `release`, where they match the published version. Excluded skills are recorded too, so update can preview their changes. |
-| `retiredSkills` | The IDs of the skills the library retired that the source would otherwise install, as `retiredRules` records rules. |
-| `rules.<id>.citedBy` | The source-relative IDs of the installed skills that cite the rule, sorted. Omitted when no installed skill cites it. A rule that only `citedBy` brings in is taken for reference only; your selectors don't reach it. |
+| `level` | The skill's level in the manifest at the entry's `release`, or `null` for a non-library source. |
+| `included` | `true` when your selectors or a level include the skill, and `false` when it's installed only because another skill uses it. |
+| `usedBy` | The IDs of the installed skills that use it, sorted, and empty for a skill that's only included. |
 
-The `checksum` covers these fields too.
+A library skill's files and version come from the entry's `release`. A non-library source's skills come from its `commit`, and have no versions or levels.
 
-A non-library source's record has no `release`, `ruleInclude`, `groups`, `rules`, or `retiredRules`, and its skills have no versions or levels:
+### Curated sources in the lockfile
 
-```json
-{
-  "formatVersion": 3,
-  "kind": "non-library",
-  "checksum": "6f3a…c2d8",
-  "repository": "https://github.com/example/pstack.git",
-  "ref": "main",
-  "resolvedCommit": "8a41d07c3e5b9f2a1d6c4e8b7a90f3c2d1e5b6a4",
-  "skillInclude": [
-    "skills/architect"
-  ],
-  "skills": {
-    "skills/architect": {
-      "level": null,
-      "included": true,
-      "usedBy": []
-    },
-    "skills/how": {
-      "level": null,
-      "included": false,
-      "usedBy": ["skills/architect"]
-    }
-  },
-  "retiredSkills": [],
-  "files": {
-    "LICENSE": "e3b0…b855",
-    "skills/architect/SKILL.md": "1c4d…9a0f",
-    "…": "…"
-  },
-  "executable": []
-}
-```
-
-`ref` records the configured value, and `resolvedCommit` the exact commit every skill came from. `trailguide project sync` keeps that commit; only `trailguide project update` moves a source whose `ref` names a branch, or a tag that moved.
-
-### Curated sources in the source record
-
-When a library's manifest lists [curated skills](/reference/configuration/#curated-skills), the library's record holds a `curated` object with one entry per curated source the project installs skills from. The files are stored under `vendor/<source-name>/curated/<curated-source>/`, at their paths in the curated repository:
+When a library's manifest lists [curated skills](/reference/configuration/#curated-skills), the library's entry holds a `curated` object with one entry per curated source the project installs skills from. The files are stored under `vendor/<source-name>/curated/<curated-source>/`, at their paths in the curated repository:
 
 ```json
 {
   "curated": {
     "mattpocock": {
-      "kind": "non-library",
-      "repository": "https://github.com/mattpocock/skills.git",
-      "ref": "main",
-      "resolvedCommit": "c2e7a4019b5d3f86e1a0c7d94b2f58e3a6d1c0b9",
-      "skills": {
-        "skills/engineering/to-spec": {
-          "level": "recommended",
-          "included": true,
-          "usedBy": []
-        }
-      },
+      "commit": "c2e7a4019b5d3f86e1a0c7d94b2f58e3a6d1c0b9",
+      "executable": [],
       "files": {
         "LICENSE": "77ab…0e41",
         "skills/engineering/to-spec/SKILL.md": "3d8f…a512",
         "…": "…"
       },
-      "executable": []
+      "kind": "non-library",
+      "ref": "main",
+      "repository": "https://github.com/mattpocock/skills.git",
+      "skills": {
+        "skills/engineering/to-spec": {
+          "included": true,
+          "level": "recommended",
+          "usedBy": []
+        }
+      }
     }
   }
 }
 ```
 
-`ref` is the ref the library's manifest names, from the library release your project recorded, and `resolvedCommit` the commit your project resolved it to at its last update; `level` is the level the library sets. A skill's `usedBy` names the skills of the curated repository that use it, by their IDs there, and `usedByLibrary`, present only when the library's own skills use it, names those, sorted, by their IDs in the library. A curated library's skills also record `version`, `release`, and `commit`. When your project declares the curated repository as its own source, the entry still records the library's curated skills, from your source's commit: `source` names your source, and `ref` and `resolvedCommit` are your source's. The library record's `checksum` covers `curated`.
+`ref` is the ref the library's manifest names, from the library release your project locked, and `commit` the commit your project resolved it to at its last update; `level` is the level the library sets. A skill's `usedBy` names the skills of the curated repository that use it, by their IDs there, and `usedByLibrary`, present only when the library's own skills use it, names those, sorted, by their IDs in the library. A curated library has a `release` too. When your project declares the curated repository as its own source, the entry still records the library's curated skills, from your source's commit: `source` names your source, and `ref` and `commit` are your source's. The library entry's `integrity` covers `curated`.
+
+### Resolve a merge conflict in the lockfile
+
+When two branches each sync or update a source, merging them can leave conflict markers in `lock.json`. Trail Guide refuses the file with `lock-conflict` and names each conflicted source with the ref, release, and commit each side locked, such as `fabrica: ours ref release/3, release 3, commit 9e07…, theirs ref release/4, release 4, commit 1c5a…`.
+
+Resolve each conflicted source by keeping one side's whole entry, never lines from both, since a combined entry fails its integrity check. Leave the other sources as Git merged them. Then sync, which applies the merged configuration:
+
+```sh
+trailguide project sync
+```
+
+When the side you kept is behind the other, such as the older release, take the newer one with `trailguide project update SOURCE`.
+
+When you'd rather not choose a side, leave the conflict markers in place and retake each conflicted source. Sync keeps the entries both sides agree on, resolves each retaken source again at its `ref`, and writes `lock.json` without markers:
+
+```sh
+trailguide project sync --retake fabrica
+```
+
+This works only when both sides of the file are valid JSON and you retake every conflicted source; otherwise sync still fails with `lock-conflict`. In that case, restore valid JSON first, such as by taking one whole side with `git checkout --ours -- .trailguide/lock.json`, then sync, with `--retake` for any source whose entry you don't trust.
+
+### Migrate from Trail Guide 0.5
+
+Trail Guide 0.5 kept a record in each source's snapshot, `vendor/<source-name>/_source.json`, instead of `lock.json`. Offline, build and check refuse such a project with `lock-migration-needed`. Migrate it once, and commit the result:
+
+```sh
+trailguide project sync
+```
+
+Sync reads each record, checks it and the vendored files as 0.5 did, writes `lock.json` in their place, and removes the records. It moves no source. Migration refuses, writing nothing, when:
+
+| Error | Meaning and next step |
+| --- | --- |
+| `record-missing` | A source's snapshot has files but no `_source.json`. Restore the record from Git, or run `trailguide project sync --retake SOURCE`. |
+| `lock-migration-blocked` | `vendor/` holds a folder that belongs to no configured source. Add the source back to configuration, or delete the folder. |
+| `mixed-layout` | Both `lock.json` and a `_source.json` record are present, usually because a merge combined a migrated branch with one that wasn't. Take one branch's whole `vendor/` folder and `lock.json`, then sync. |
+
+A record changed outside Trail Guide 0.5 is refused as an edited lock entry is, and recovers the same way.
+
+### When the lockfile is missing
+
+When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. The same applies when `lock.json` exists but doesn't read at all, such as a truncated file: every command fails, and only a restore, or a sync that retakes every configured source, recovers it. When configuration names no source, delete `.trailguide/vendor/` instead.
+
+When `lock.json` exists but has no entry for a configured source whose vendor folder holds files, such as after a merge resolution dropped the entry, every command fails with `lock-entry-missing`. Sync doesn't treat the source as new, since that could move it. Restore the entry from Git and sync, or take the source again at its `ref`:
+
+```sh
+trailguide project sync --retake fabrica
+```
 
 ### What offline checks can verify
 
-`trailguide project build` and `trailguide project check` compare the recorded selectors with configuration and compare stored files with their checksums. Version checks depend on how the source chooses versions:
+`trailguide project build` and `trailguide project check` compare the locked selectors with configuration and compare stored files with their digests. Version checks depend on how the source chooses versions:
 
 | Choice | What Trail Guide verifies offline |
 | --- | --- |
 | Library releases, the default | Each pinned rule records its pinned version. Other rules may record any version the recorded `release` or an earlier one published. `release` is at least as new as every rule's `release`. |
-| One revision, with `ref` | For a commit SHA, `resolvedCommit` equals it. For a library release `release/N`, the source records release N, and every rule records a published version from library release N or earlier. A branch's or tag's recorded commit is used without checking where it points now. |
+| One revision, with `ref` | For a commit SHA, `commit` equals it. For a library release `release/N`, the source records release N, and every rule records a published version from library release N or earlier. A branch's or tag's recorded commit is used without checking where it points now. |
 
-For every source, offline checks first verify the record's `checksum`, so a record changed outside sync fails until you restore a record sync wrote or take the source again. They also verify that `rules` and `skills` list exactly the rules and skills your selectors, the levels, and the skills' dependencies reach, that each skill's dependencies and cited rules match its recorded version's metadata, and that generated provenance, guidance, and installed skills show the same versions and levels. Each exclusion must name a rule in `rules` or `retiredRules`; any other exclusion could be a typo that leaves the rule you meant active, so the check reports that it names no rule the library supplies and asks you to run `trailguide project sync`, which checks it against the library.
+For every source, offline checks first verify the entry's [`integrity`](#integrity), so an entry changed outside Trail Guide fails until you restore the entry Trail Guide wrote or take the source again. They also verify that `rules` and `skills` list exactly the rules and skills your selectors, the levels, and the skills' dependencies reach, that each skill's dependencies and cited rules match its recorded version's metadata, and that generated provenance, guidance, and installed skills show the same versions and levels. Each exclusion must name a rule in `rules` or `retiredRules`; any other exclusion could be a typo that leaves the rule you meant active, so the check reports that it names no rule the library supplies and asks you to run `trailguide project sync`, which checks it against the library.
 
 Offline checks cannot prove that a recorded version was the newest available, or that recorded versions match the library's release tags; `trailguide project update` checks the latter against the release records before it records anything. These records also cannot authenticate files against the remote repository if someone changed both the local files and their records.
 

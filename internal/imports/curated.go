@@ -297,19 +297,19 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	return result, err
 }
 
-// revision returns the revision the curated source's skills come from, fetched, and reports whether a source record
+// revision returns the revision the curated source's skills come from, fetched, and reports whether a lock entry
 // locked it, which sync never moves, and, for a ref it resolved now, what the ref named, a tag or a branch; resolved
 // is empty for any other revision.
 func (l curatedSource) revision(ctx context.Context, repo *repository, recorded, planned library.CuratedSource, isPlanned bool) (_ library.CuratedSource, kept bool, resolved rules.GitRefKind, _ error) {
 	if l.override != nil {
 		revision := library.CuratedSource{Repository: l.override.Repository, Ref: l.override.Ref, Release: l.overridden.Release, Commit: l.overridden.Commit, Source: l.override.Name, NonLibrary: l.overridden.NonLibrary}
-		return revision, true, "", repo.fetchCommits(ctx, []string{revision.Commit}, fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync again, or delete vendor/%s and run trailguide project sync to resolve sources.%s again.", l.override.Name, l.override.Name, l.override.Name, l.override.Name))
+		return revision, true, "", repo.fetchCommits(ctx, []string{revision.Commit}, fmt.Sprintf("The commit that .trailguide/lock.json records for sources.%s is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync again, or run trailguide project sync --retake %s to resolve sources.%s again.", l.override.Name, l.override.Name, l.override.Name))
 	}
 	if isPlanned && l.declares(planned) {
 		return planned, false, "", repo.fetchCommits(ctx, []string{planned.Commit}, l.vanished("trailguide project update "+l.library))
 	}
 	if recorded.Source == "" && l.declares(recorded) {
-		missing := fmt.Sprintf("The commit that vendor/%s/_source.json records for the skills library %s curates from %s is missing from that repository, so it may have rewritten its history. Run trailguide project update %s to resolve the library's ref for %s again.", l.library, l.library, l.name, l.library, l.name)
+		missing := fmt.Sprintf("The commit that .trailguide/lock.json records for the skills library %s curates from %s is missing from that repository, so it may have rewritten its history. Run trailguide project update %s to resolve the library's ref for %s again.", l.library, l.name, l.library, l.name)
 		if err := repo.fetchCommits(ctx, []string{recorded.Commit}, missing); err != nil {
 			return library.CuratedSource{}, false, "", err
 		}
@@ -405,7 +405,7 @@ func (l curatedSource) missing(id string, revision library.CuratedSource, kept b
 	case l.override != nil:
 		return fail("skill-not-in-revision", fmt.Sprintf("Library %s lists %s, which isn't in %s, the revision of sources.%s, which declares the same repository and so supplies the skills the library curates from it. Run trailguide project update %s, or set sources.%s.ref to a revision that has the skill, then run trailguide project sync.", l.library, id, where, l.override.Name, l.override.Name, l.override.Name), nil)
 	case kept:
-		return fail("skill-not-in-revision", fmt.Sprintf("Library %s lists %s, which isn't in %s, the revision vendor/%s/_source.json records for the skills it curates from %s. Sync never moves that revision; run trailguide project update %s, which resolves the library's ref for %s again.", l.library, id, where, l.library, l.name, l.library, l.name), nil)
+		return fail("skill-not-in-revision", fmt.Sprintf("Library %s lists %s, which isn't in %s, the revision .trailguide/lock.json records for the skills it curates from %s. Sync never moves that revision; run trailguide project update %s, which resolves the library's ref for %s again.", l.library, id, where, l.name, l.library, l.name), nil)
 	}
 	return &ValidationError{Location: "sources." + l.library, Problem: fmt.Sprintf("library %s lists %s, which its repository %s doesn't have at %s; ask the library's maintainer to fix library.skills or sources.%s.ref", l.library, id, l.declared.Repository, where, l.name)}
 }

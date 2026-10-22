@@ -5,7 +5,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"maps"
 	"path/filepath"
@@ -267,11 +266,8 @@ func TestUpdate_ReplacesAForkWhosePinKeepsTheImportedCopy(t *testing.T) {
 	if config := string(after["config.yaml"]); !strings.Contains(config, "      pins:\n        - id: techs/go/errors\n          version: \"1.0.0\"\n") || !strings.Contains(config, "          basedOn: \"2.0.0\"\n") {
 		t.Fatalf("configuration:\n%s", config)
 	}
-	var record struct {
-		Rules map[string]struct{ Version string }
-	}
-	if err := json.Unmarshal(after["vendor/team/_source.json"], &record); err != nil || record.Rules["techs/go/errors"].Version != "1.0.0" {
-		t.Fatalf("the pin didn't keep the imported copy, %v:\n%s", err, after["vendor/team/_source.json"])
+	if version := lockEntry(t, after[lockFile], "team").Rules["techs/go/errors"].Version; version == nil || version.String() != "1.0.0" {
+		t.Fatalf("the pin didn't keep the imported copy:\n%s", after[lockFile])
 	}
 }
 

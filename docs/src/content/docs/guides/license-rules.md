@@ -69,7 +69,6 @@ The consuming project retains them alongside the vendored rules:
     fabrica/
       LICENSE.md
       config.yaml
-      _source.json
       rules/practices/testing/...
   generated/
     RULES.md

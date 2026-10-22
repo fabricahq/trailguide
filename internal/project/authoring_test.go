@@ -187,7 +187,7 @@ func TestRuleUsesImportedGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vendor, err := encodeSnapshots(config, map[string]snapshot{"team": {Repository: config.Sources[0].Repository, Ref: gitRef(t, "v1.0.0"), Commit: strings.Repeat("a", 40), Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{}}`), "techs/go/_group.yaml": []byte(`{"name":"Go","description":"Imported guidance.","whenToRead":"When editing Go."}`)}}})
+	vendor, lock, err := encodeSnapshots(config, map[string]snapshot{"team": {Repository: config.Sources[0].Repository, Ref: gitRef(t, "v1.0.0"), Commit: strings.Repeat("a", 40), Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{}}`), "techs/go/_group.yaml": []byte(`{"name":"Go","description":"Imported guidance.","whenToRead":"When editing Go."}`)}}}, sourceRecords{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,6 +199,9 @@ func TestRuleUsesImportedGroup(t *testing.T) {
 		if err := os.WriteFile(target, data, 0600); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if err := os.WriteFile(filepath.Join(directory, lockFile), lock, 0600); err != nil {
+		t.Fatal(err)
 	}
 	body := "Return errors."
 	result, err := AddLocalRule(ctx, "techs/go/errors", rules.RuleMetadata{Title: "Errors", Impact: "HIGH", ImpactDescription: "Failures.", WhenToRead: "When calling."}, RuleOptions{Options: options, Body: &body})

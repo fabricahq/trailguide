@@ -189,7 +189,7 @@ func skillNotInRevision(source rules.Source, plan sourcePlan, field, id string) 
 		case !source.Ref.IsZero():
 			next = "To take the skill, " + retag
 		}
-		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision vendor/%s/_source.json records for the source. Sync takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)
+		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision .trailguide/lock.json records for sources.%s. Sync takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)
 	}
 	return &ValidationError{Location: field, Problem: fmt.Sprintf("the source has no skill %s at %s; check the skill ID. A library's skills are the folders in its .trailguide/skills/, such as skills/build-feature; another repository's are the folders that hold a SKILL.md, named by their path from the repository root", id, revision)}
 }

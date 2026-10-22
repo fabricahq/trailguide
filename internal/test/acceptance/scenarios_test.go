@@ -376,7 +376,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) || !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/naming.md"], libraryTree.Files[".trailguide/rules/techs/go/naming.md"]) {
 			return report, fmt.Errorf("update did not keep the pinned rule at 1.0.0 beside the release's other rule")
 		}
-		if !strings.Contains(string(after.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") || !strings.Contains(string(after.Files[".trailguide/vendor/team/_source.json"]), `"release": 2,`) {
+		if !strings.Contains(string(after.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") || !strings.Contains(string(after.Files[".trailguide/lock.json"]), `"release": 2,`) {
 			return report, fmt.Errorf("the pinned version or the new release is missing")
 		}
 		if err := invoke("Check the pinned version offline", consumer, offline, 0, "project", "check"); err != nil {

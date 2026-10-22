@@ -229,11 +229,18 @@ func requireCheckUnchanged(ctx context.Context, root *os.Root, before projectSta
 
 // projectState holds original bytes and inventories for optimistic change detection before writing. local is the
 // rules/ folder, with files keyed by their path in it, and assets the assets/ folder, with files keyed by their path
-// in it; authoredFiles combines them. skills is the skills/ folder of authored skills.
+// in it; authoredFiles combines them. skills is the skills/ folder of authored skills. lock is the lockfile, or nil
+// when the project has none.
 type projectState struct {
 	config                                   rules.Configuration
 	configBytes                              []byte
+	lock                                     []byte
 	local, assets, skills, vendor, generated *filetxn.Tree
+}
+
+// records returns the project's records, as readRecords reads them for every command but sync.
+func (s projectState) records() (sourceRecords, error) {
+	return readRecords(s.config, s.lock, treeFiles(s.vendor), false, nil)
 }
 
 // readProject validates configuration and retains every authored and managed byte used for change detection. It
@@ -246,7 +253,11 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 	if err != nil {
 		return projectState{}, err
 	}
-	state := projectState{config: config, configBytes: data}
+	lock, err := filetxn.ReadOptional(ctx, root, lockFile)
+	if err != nil {
+		return projectState{}, err
+	}
+	state := projectState{config: config, configBytes: data, lock: lock}
 	for _, item := range []struct {
 		name  string
 		value **filetxn.Tree
@@ -263,7 +274,11 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 // prepareProject verifies persisted identity, reloads native library semantics from the verified bytes, resolves,
 // and renders in memory.
 func prepareProject(ctx context.Context, state projectState, options Options) (build.Output, error) {
-	snapshots, err := decodeSnapshots(state.config, treeFiles(state.vendor))
+	stored, err := state.records()
+	if err != nil {
+		return build.Output{}, err
+	}
+	snapshots, err := decodeSnapshots(state.config, stored, treeFiles(state.vendor))
 	if err != nil {
 		return build.Output{}, err
 	}
@@ -346,10 +361,10 @@ func requireUnchanged(ctx context.Context, root *os.Root, before projectState) e
 	return nil
 }
 
-// sameProject reports whether two reads hold the same configuration bytes and rules, assets, skills, vendor, and
-// generated trees.
+// sameProject reports whether two reads hold the same configuration and lockfile bytes and rules, assets, skills,
+// vendor, and generated trees.
 func sameProject(a, b projectState) bool {
-	return bytes.Equal(a.configBytes, b.configBytes) && a.local.Digest() == b.local.Digest() && a.assets.Digest() == b.assets.Digest() && a.skills.Digest() == b.skills.Digest() && a.vendor.Digest() == b.vendor.Digest() && a.generated.Digest() == b.generated.Digest()
+	return bytes.Equal(a.configBytes, b.configBytes) && (a.lock == nil) == (b.lock == nil) && bytes.Equal(a.lock, b.lock) && a.local.Digest() == b.local.Digest() && a.assets.Digest() == b.assets.Digest() && a.skills.Digest() == b.skills.Digest() && a.vendor.Digest() == b.vendor.Digest() && a.generated.Digest() == b.generated.Digest()
 }
 
 // authoredFiles returns the project's authored files keyed as build.Generate takes them: each file in rules/ by its

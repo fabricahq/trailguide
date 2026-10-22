@@ -15,7 +15,7 @@ Projects don't read skill versions yet: libraries publish them, but an update li
 
 ## Sync and update
 
-Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**: one file per source, `.trailguide/vendor/<source-name>/_source.json`, which names the source's exact Git commit and the version of each rule and skill it took. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.
+Your project records exactly which revision of each source it uses, and which version of each rule. That record is the **lock**: one file, `.trailguide/lock.json`, with an entry per source that names the source's exact Git commit and the version of each rule and skill it took. Because the lock is committed with the project, everyone who checks out the project gets the same rules and skills, and so do their agents and CI.
 
 Two commands work with the lock, and they have opposite jobs:
 
@@ -26,7 +26,26 @@ The split exists so that changes arrive only when someone chooses them. A teamma
 
 For a library, `.trailguide/config.yaml` also says which library release the project takes, as the source's `ref`, such as `ref: release/4`. A reviewer sees an update as a one-line change from `release/4` to `release/5`, next to the new lock.
 
-Sync does take something new in two cases. A source that's new to the project is taken as an update would take it, and a source whose `ref` you changed is taken at the new `ref`. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+Sync does take something new in two cases. A source that's new to the project, or whose repository you changed, is taken as an update would take it. So is a source whose `ref` you changed to a branch, tag, or commit. A source whose `ref` you changed to another library release isn't: sync fails and names `trailguide project update SOURCE`, which takes it. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+
+### A source without a ref
+
+Every source needs a `ref`. A project synced with an earlier Trail Guide may have library sources without one, and then sync, update, build, and check all fail, naming the release your project records:
+
+```text
+Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest-release to take the newest release at each update, then run the command again. No files were written.
+```
+
+Add the line the error names to the source:
+
+```yaml
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
+```
+
+Nothing else changes: the release is the one your lock already records, so check passes and sync writes nothing.
 
 ### A source without a ref
 
@@ -255,7 +274,7 @@ Scripts are flagged and warned about as they are for [library skills](#update-sk
 
 - **A tag.** A tag that now names a different commit than at your last update moves too, and the preview warns that the tag moved. Only a non-library source follows a tag this way; a library source with a tag `ref` [holds one revision](#take-one-library-release).
 - **A commit.** A non-library source whose `ref` is a commit never moves. To take another commit, change `ref` and run `trailguide project sync`.
-- **Holding it back.** `--keep` and pins don't apply to non-library sources. To hold one that tracks a branch at its current commit, set its `ref` to the commit recorded in its `_source.json`.
+- **Holding it back.** `--keep` and pins don't apply to non-library sources. To hold one that tracks a branch at its current commit, set its `ref` to the commit `.trailguide/lock.json` records for it.
 
 ### Curated skills
 
@@ -349,7 +368,7 @@ There are three ways to add one:
     --reason "Waiting on the author's response to acme/.trailguide#45."
   ```
 
-- **By hand.** Add the pin to `.trailguide/config.yaml`, using the version recorded in `.trailguide/vendor/<source-name>/_source.json`, and run `trailguide project sync`. An agent asked to keep a rule at its current version can do this for you.
+- **By hand.** Add the pin to `.trailguide/config.yaml`, using the version recorded in `.trailguide/lock.json`, and run `trailguide project sync`. An agent asked to keep a rule at its current version can do this for you.
 
 Pins are for rules only. To hold a skill back, see [Update skills](#update-skills).
 

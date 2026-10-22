@@ -124,7 +124,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"_source.json", "config.yaml", "rules/practices/testing/_group.yaml", "rules/practices/testing/a.md", "rules/practices/testing/b.md"}; !slices.Equal(imported, want) {
+	if want := []string{"config.yaml", "rules/practices/testing/_group.yaml", "rules/practices/testing/a.md", "rules/practices/testing/b.md"}; !slices.Equal(imported, want) {
 		t.Fatalf("imported %v, want %v", imported, want)
 	}
 	if manifest, err := os.ReadFile(filepath.Join(vendor, "config.yaml")); err != nil || string(manifest) != `{"library":{},"schemaVersion":2,"sources":{}}`+"\n" {

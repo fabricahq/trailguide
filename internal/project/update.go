@@ -176,10 +176,11 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 			return nil, unchanged(err, recovered)
 		}
 	}
-	recorded, err := recordedSnapshots(state.config, treeFiles(state.vendor))
+	stored, err := state.records()
 	if err != nil {
 		return nil, unchanged(err, recovered)
 	}
+	recorded := recordedSnapshots(state.config, stored)
 	if err := requireRefs(ctx, state.config, recorded, git); err != nil {
 		return nil, unchanged(err, recovered)
 	}
@@ -263,7 +264,11 @@ func (p *UpdatePlan) Apply(ctx context.Context, decisions []UpdateDecision) (Upd
 		if !sameProject(p.planned, before) || (guide.Previous == nil) != (p.guide == nil) || !bytes.Equal(guide.Previous, p.guide) {
 			return failure("concurrent-change", "the project's configuration, local rules, imported files, generated output, or Trail Guide guide changed after the update preview; run trailguide project update again", nil)
 		}
-		in := installation{guide: guide, config: before.config, options: p.options, forks: forks, skillForks: skillForks}
+		stored, err := before.records()
+		if err != nil {
+			return err
+		}
+		in := installation{guide: guide, config: before.config, stored: stored, options: p.options, forks: forks, skillForks: skillForks}
 		if len(edits) > 0 {
 			if in.edited, in.config, err = editConfiguration(before.configBytes, edits); err != nil {
 				return err

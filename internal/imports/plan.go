@@ -293,7 +293,7 @@ func (p *planner) editedRelease(number int) error {
 	name, recorded := p.source.Name, p.recorded.Release
 	switch {
 	case number < recorded:
-		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, older than library release %d, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward. To go back, restore .trailguide/config.yaml and vendor/%s/ from the commit that recorded release %d, such as with git revert, then run trailguide project sync; or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
+		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, older than library release %d, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward. To go back, restore .trailguide/config.yaml, .trailguide/lock.json, and .trailguide/vendor/%s/ from the commit that recorded release %d, such as with git revert, then run trailguide project sync; or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
 	case !p.updating:
 		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, but the project records library release %d, and sync doesn't move a source to another release. Run trailguide project update %s to review the move to release %d and take it, or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
 	}
@@ -588,9 +588,9 @@ func (p *planner) lostCommit() string {
 	kind := p.source.Ref.Kind()
 	branch := kind == rules.GitRefBranch || !p.recorded.NonLibrary && p.recorded.Release == 0 && p.bareBranch()
 	if branch || p.recorded.NonLibrary && kind != rules.GitRefCommit {
-		return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref, %s, is missing from the source's repository, so the branch or tag may have been force-pushed, moved, or deleted. Run trailguide project update %s to take the commit sources.%s.ref names now.", name, name, p.source.Ref, name, name)
+		return fmt.Sprintf("The commit that .trailguide/lock.json records for sources.%s.ref, %s, is missing from the source's repository, so the branch or tag may have been force-pushed, moved, or deleted. Run trailguide project update %s to take the commit sources.%s.ref names now.", name, p.source.Ref, name, name)
 	}
-	return fmt.Sprintf("The commit that vendor/%s/_source.json records for sources.%s.ref is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or set sources.%s.ref to a tag or commit the library still has, then run trailguide project sync. As a last resort, delete vendor/%s and run trailguide project sync to resolve the ref again, which may import different content.", name, name, name, name)
+	return fmt.Sprintf("The commit that .trailguide/lock.json records for sources.%s.ref is missing from the library's repository, so the library may have rewritten its history. Ask the library's maintainer to restore it, or set sources.%s.ref to a tag or commit the library still has, then run trailguide project sync. As a last resort, run trailguide project sync --retake %s to resolve the ref again, which may import different content.", name, name, name)
 }
 
 // bareBranch reports whether the source's ref is a bare name that the repository has as a branch now. A name it
@@ -846,7 +846,7 @@ func (p *planner) retiredEntry(field, id string) string {
 // against the library's release history. For a source that follows rule versions, it reads the history when the
 // planner hasn't yet: a rule version its library release doesn't publish, or a library release that supplies a rule
 // or the plan's library-wide files but that the library doesn't have, fails as an invalid source record, as a hand
-// edit or a merge resolution of _source.json can leave it, and a library release tag that now names a different
+// edit of the lockfile can leave it, and a library release tag that now names a different
 // commit than the plan records fails with invalid-release-tag. A source that uses ref keeps the commit its ref named
 // when recorded, even after the tag moves or is gone, so it reads the history only when choosing versions needed it,
 // and then checks only the versions of library releases the history has. Sync reads only records it wrote, whose
@@ -862,7 +862,7 @@ func (p *planner) requireUnmoved(plan sourcePlan) error {
 	if err != nil {
 		return err
 	}
-	record := "vendor/" + p.source.Name + "/_source.json"
+	record := "the source's lock entry in .trailguide/lock.json"
 	missing := func(location string, number int) error {
 		return &ValidationError{Location: location, Problem: fmt.Sprintf("records library release %d, which the library doesn't have; restore %s, such as from version control, or, if the library deleted its release/%d tag, ask the library's maintainer to restore it; then run trailguide project sync again", number, record, number)}
 	}
@@ -894,12 +894,12 @@ func (p *planner) requireUnmoved(plan sourcePlan) error {
 		return nil
 	}
 	if release := history.release(plan.release); plan.release != 0 && release != nil && release.commit != plan.commit {
-		return fail("invalid-release-tag", fmt.Sprintf("Library release tag release/%d now names a different commit than vendor/%s/_source.json records for the library's shared files. Library release tags must not move; ask the library's maintainer, or delete vendor/%s and run trailguide project sync to use the tag's current commit.", plan.release, p.source.Name, p.source.Name), nil)
+		return fail("invalid-release-tag", fmt.Sprintf("Library release tag release/%d now names a different commit than .trailguide/lock.json records for the shared files of sources.%s. Library release tags must not move; ask the library's maintainer, or run trailguide project sync --retake %s to use the tag's current commit.", plan.release, p.source.Name, p.source.Name), nil)
 	}
 	for _, id := range slices.Sorted(maps.Keys(plan.rules)) {
 		rule := plan.rules[id]
 		if release := history.release(rule.Release); release != nil && release.commit != rule.Commit {
-			return fail("invalid-release-tag", fmt.Sprintf("Library release tag release/%d now names a different commit than vendor/%s/_source.json records for %s. Library release tags must not move; ask the library's maintainer, or delete vendor/%s and run trailguide project sync to use the tag's current commit.", rule.Release, p.source.Name, id, p.source.Name), nil)
+			return fail("invalid-release-tag", fmt.Sprintf("Library release tag release/%d now names a different commit than .trailguide/lock.json records for sources.%s rule %s. Library release tags must not move; ask the library's maintainer, or run trailguide project sync --retake %s to use the tag's current commit.", rule.Release, p.source.Name, id, p.source.Name), nil)
 		}
 	}
 	return nil

@@ -69,7 +69,7 @@ func TestSyncRoundTripAndRetirement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshots, err := decodeSnapshots(state.config, state.vendor.Files)
+	snapshots, err := stateSnapshots(state)
 	if err != nil {
 		t.Fatal(err)
 	}

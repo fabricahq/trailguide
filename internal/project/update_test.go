@@ -5,7 +5,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"maps"
 	"os"
@@ -373,8 +372,8 @@ func twoLibraryProject(t *testing.T) (Options, imports.Options) {
 	return options, git
 }
 
-// sourceFiles returns the project's files that belong to source: its vendored snapshot and its generated rules
-// and library page.
+// sourceFiles returns the project's files that belong to source: its lock entry, its vendored snapshot, and its
+// generated rules and library page.
 func sourceFiles(t *testing.T, options Options, source string) map[string]string {
 	t.Helper()
 	files := map[string]string{}
@@ -385,6 +384,7 @@ func sourceFiles(t *testing.T, options Options, source string) map[string]string
 			}
 		}
 	}
+	files[lockFile+": "+source] = entryText(t, options, source)
 	return files
 }
 
@@ -418,14 +418,8 @@ func TestUpdate_ScopedToOneLibraryLeavesTheOtherUnchanged(t *testing.T) {
 			if after := sourceFiles(t, options, "beta"); !reflect.DeepEqual(after, beta) || len(beta) == 0 {
 				t.Fatalf("updating alpha changed beta's files:\nbefore %v\nafter %v", slices.Sorted(maps.Keys(beta)), slices.Sorted(maps.Keys(after)))
 			}
-			alpha := sourceFiles(t, options, "alpha")
-			var record struct {
-				Rules map[string]struct{ Version string }
-			}
-			if err := json.Unmarshal([]byte(alpha["vendor/alpha/_source.json"]), &record); err != nil {
-				t.Fatal(err)
-			}
-			if !slices.Equal(slices.Sorted(maps.Keys(record.Rules)), test.alpha) || record.Rules["techs/go/errors"].Version != "1.1.0" {
+			record := lockedEntry(t, options, "alpha")
+			if !slices.Equal(slices.Sorted(maps.Keys(record.Rules)), test.alpha) || record.Rules["techs/go/errors"].Version.String() != "1.1.0" {
 				t.Fatalf("alpha's rules %+v, want %v with errors at 1.1.0", record.Rules, test.alpha)
 			}
 			requireCurrent(t, options)

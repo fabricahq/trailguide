@@ -138,7 +138,7 @@ Open `.trailguide/generated/RULES.md` again. You'll now see your own Testing rul
 
 Rules are granular: one practice each. A **skill** is coarser: a playbook for one kind of task, such as building a feature, that cites the rules it applies. Fabrica's library includes a **Build a feature** skill, `skills/build-feature`.
 
-Open `.trailguide/config.yaml` and add a `skills` section to the `fabrica` source:
+Open `.trailguide/config.yaml` and add a `skills` section to the `fabrica` source. Keep the `ref` that step 4 wrote, which may name a newer release than this example's `release/4`:
 
 ```yaml
 schemaVersion: 2

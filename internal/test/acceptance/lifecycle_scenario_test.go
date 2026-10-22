@@ -312,7 +312,7 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	if err := wrappingAt(files, wrappingV2, "1.1.0"); err != nil {
 		return err
 	}
-	if err := contains("_source.json", string(files[".trailguide/vendor/team/_source.json"]), `"release": 3,`); err != nil {
+	if err := contains("lock.json", string(files[".trailguide/lock.json"]), `"release": 3,`); err != nil {
 		return err
 	}
 	if err := check("Check the update"); err != nil {

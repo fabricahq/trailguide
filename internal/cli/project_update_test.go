@@ -107,22 +107,25 @@ func (u updateFixture) run(t *testing.T, args ...string) (string, string, int) {
 	return runCLIWithEnvironment(t, u.binary, u.directory, u.fixture.Environment, args...)
 }
 
-// versions returns each rule's recorded version@release from the source record.
+// versions returns each rule's recorded version from team's lock entry.
 func (u updateFixture) versions(t *testing.T) map[string]string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "vendor", "team", "_source.json"))
+	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "lock.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var record struct {
-		Rules map[string]struct {
-			Version string
-			Release int
+	var lock struct {
+		Sources map[string]struct {
+			Rules map[string]struct {
+				Version string
+				Release int
+			}
 		}
 	}
-	if err := json.Unmarshal(data, &record); err != nil {
+	if err := json.Unmarshal(data, &lock); err != nil {
 		t.Fatal(err)
 	}
+	record := lock.Sources["team"]
 	result := map[string]string{}
 	for id, rule := range record.Rules {
 		result[strings.TrimPrefix(id, "techs/go/")] = rule.Version

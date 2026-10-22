@@ -21,12 +21,14 @@ import (
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
-// Sync imports the rule versions each source's snapshot records, choosing versions only where configuration asks
-// for something a snapshot doesn't have, then validates and renders everything before replacing managed trees.
+// Sync imports the rule versions each source's lock entry records, choosing versions only where configuration asks
+// for something the entry doesn't have, then validates and renders everything before replacing managed trees and the
+// lockfile. A project last synced by Trail Guide 0.5 migrates in the same transaction: its per-source records become
+// the lockfile, and no source moves. Each source named in retake is resolved again at its ref, as if it were new.
 // Git settings are trusted caller options. Any failure returns no change report, and, unless a rollback left files
 // to recover, an *UnchangedError. Authored files stay untouched,
 // except that it adds the metadata of a group whose local rules would otherwise lose it, as install does.
-func Sync(ctx context.Context, options Options, git imports.Options) (FileChanges, error) {
+func Sync(ctx context.Context, options Options, git imports.Options, retake ...string) (FileChanges, error) {
 	// recovered reports that the writer first recovered an interrupted earlier command, which changed files.
 	recovered := false
 	if err := ctx.Err(); err != nil {
@@ -48,10 +50,16 @@ func Sync(ctx context.Context, options Options, git imports.Options) (FileChange
 		if err != nil {
 			return err
 		}
-		recorded, err := recordedSnapshots(before.config, treeFiles(before.vendor))
+		for _, name := range retake {
+			if !slices.ContainsFunc(before.config.Sources, func(source rules.Source) bool { return source.Name == name }) {
+				return invalidArguments("--retake names " + name + ", which isn't a source in .trailguide/config.yaml")
+			}
+		}
+		stored, err := readRecords(before.config, before.lock, treeFiles(before.vendor), true, retake)
 		if err != nil {
 			return err
 		}
+		recorded := recordedSnapshots(before.config, stored)
 		if err := requireRefs(ctx, before.config, recorded, git); err != nil {
 			return err
 		}
@@ -60,7 +68,7 @@ func Sync(ctx context.Context, options Options, git imports.Options) (FileChange
 		if err != nil {
 			return err
 		}
-		changes, err = install(ctx, root, w, before, installation{guide: guide, config: before.config, imported: imported, options: options})
+		changes, err = install(ctx, root, w, before, installation{guide: guide, config: before.config, stored: stored, imported: imported, options: options})
 		return err
 	})
 	if err != nil {
@@ -97,9 +105,11 @@ func requireRefs(ctx context.Context, config rules.Configuration, recorded map[s
 // installation is what install writes. guide is the managed guide as planned under the writer. edited is nil unless
 // config is an edited configuration whose bytes install writes to config.yaml. imported holds every source of config.
 type installation struct {
-	guide    *filetxn.File
-	config   rules.Configuration
-	edited   []byte
+	guide  *filetxn.File
+	config rules.Configuration
+	edited []byte
+	// stored is the project's records as the command read them, which supply authored rules' group metadata.
+	stored   sourceRecords
 	imported map[string]imports.Library
 	options  Options
 	// forks are the forks an update replaces, each with its files read, and skillForks the skill forks it merges the
@@ -125,11 +135,11 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		libraries[source.Name] = build.Library{Catalog: item.Catalog, Snapshot: item.Snapshot}
 		warnings = append(warnings, item.Warnings...)
 	}
-	vendor, err := encodeSnapshots(in.config, snapshots)
+	vendor, lock, err := encodeSnapshots(in.config, snapshots, in.stored)
 	if err != nil {
 		return FileChanges{}, err
 	}
-	kept, err := keptGroupMetadata(in.config, before, in.imported)
+	kept, err := keptGroupMetadata(in.config, before, in.stored, in.imported)
 	if err != nil {
 		return FileChanges{}, err
 	}
@@ -167,10 +177,10 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		return FileChanges{}, err
 	}
 	defer agents.close()
-	changes := compareFiles(managedFiles(treeFiles(before.vendor), treeFiles(before.generated)), managedFiles(vendor, output.Files))
+	changes := compareFiles(managedFiles(before.lock, treeFiles(before.vendor), treeFiles(before.generated)), managedFiles(lock, vendor, output.Files))
 	// The report's paths are relative to the Trail Guide directory, one folder below the repository root.
 	mergeChanges(&changes, prefixChanges(installs.changes, "../"))
-	targets := map[filetxn.Target]map[string][]byte{filetxn.Vendor: vendor, filetxn.Generated: output.Files}
+	targets := map[filetxn.Target]map[string][]byte{filetxn.Vendor: vendor, filetxn.Generated: output.Files, filetxn.Lock: {lockFile: lock}}
 	maps.Copy(targets, installs.targets)
 	executable := maps.Clone(installs.executable)
 	executable[filetxn.Vendor] = vendorExecutable(snapshots)
@@ -343,15 +353,15 @@ func groupsWithoutLocalMetadata(state projectState) []string {
 }
 
 // keptGroupMetadata returns, by group ID, the metadata to write to rules/ for each group whose authored rules would
-// otherwise have none: the project has no authored metadata for it, no source now imports it, and a stored source
-// record in vendor/ lists the group's metadata, including the record of a source the configuration no longer has.
-// Each copy comes from the first such record: configured sources in configuration order, then removed sources in
-// name order. A configured source's copy is the metadata in the library release that now supplies its shared
-// files, from imported, when that release still has the group; otherwise, and for a removed source, it is the
-// vendored copy. Records it can't read are skipped. It is empty, never nil, when no group needs one. It fails when
-// a record was changed outside sync, or the vendored copy it would use differs from its record's checksum, so
-// modified metadata never becomes authored guidance.
-func keptGroupMetadata(config rules.Configuration, before projectState, imported map[string]imports.Library) (map[string][]byte, error) {
+// otherwise have none: the project has no authored metadata for it, no source now imports it, and one of stored's
+// records lists the group's metadata, including the record of a source the configuration no longer has. Each copy
+// comes from the first such record: configured sources in configuration order, then removed sources in name order. A
+// configured source's copy is the metadata in the library release that now supplies its shared files, from
+// imported, when that release still has the group; otherwise, and for a removed source, it is the vendored copy. It
+// is empty, never nil, when no group needs one. It fails when a removed source's lock entry was changed outside
+// Trail Guide and its vendor folder holds the group's metadata, or the vendored copy it would use differs from its
+// record's digest, so modified metadata never becomes authored guidance.
+func keptGroupMetadata(config rules.Configuration, before projectState, stored sourceRecords, imported map[string]imports.Library) (map[string][]byte, error) {
 	supplied := map[string]bool{}
 	for _, source := range config.Sources {
 		for _, group := range imported[source.Name].Catalog.Groups {
@@ -364,26 +374,40 @@ func keptGroupMetadata(config rules.Configuration, before projectState, imported
 		return kept, nil
 	}
 	vendored := treeFiles(before.vendor)
-	records := storedRecords(before.config, vendored)
+	names := []string{}
+	for _, source := range config.Sources {
+		names = append(names, source.Name)
+	}
+	removed := slices.Concat(slices.Collect(maps.Keys(stored.records)), slices.Collect(maps.Keys(stored.refused)))
+	slices.Sort(removed)
+	for _, name := range removed {
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
 	for _, group := range needed {
-		for _, record := range records {
-			// Nothing a record changed outside sync lists can be trusted, so one that holds a copy of the group's
-			// metadata refuses; one that doesn't is never used.
-			if record.changed != nil {
-				if _, holds := vendored[record.name+"/"+librarytree.SnapshotPath(group+"/_group.yaml")]; holds {
-					return nil, record.changed
+		for _, name := range names {
+			// Nothing an entry changed outside Trail Guide lists can be trusted, so one whose source's vendor folder
+			// holds a copy of the group's metadata refuses; one that doesn't is never used.
+			if refusal, refused := stored.refused[name]; refused {
+				if _, holds := vendored[name+"/"+librarytree.SnapshotPath(group+"/_group.yaml")]; holds {
+					return nil, refusal
 				}
+				continue
+			}
+			record, ok := stored.records[name]
+			if !ok {
 				continue
 			}
 			recorded, listed := record.digests[group+"/_group.yaml"]
 			if !listed {
 				continue
 			}
-			if current, ok := imported[record.name].GroupMetadata[group]; ok {
+			if current, ok := imported[name].GroupMetadata[group]; ok {
 				kept[group] = current
 				break
 			}
-			file := record.name + "/" + librarytree.SnapshotPath(group+"/_group.yaml")
+			file := name + "/" + librarytree.SnapshotPath(group+"/_group.yaml")
 			data, ok := vendored[file]
 			if !ok || digest(data) != recorded {
 				return nil, invalidSnapshot("vendor/"+file, fmt.Sprintf("missing or modified since sync imported it, so it can't become rules/%s/_group.yaml, the metadata your authored rules in the group need. Restore it: run trailguide project sync with the previous configuration, then change the configuration and sync again; or write rules/%s/_group.yaml yourself", group, group))
@@ -395,49 +419,13 @@ func keptGroupMetadata(config rules.Configuration, before projectState, imported
 	return kept, nil
 }
 
-// storedRecord is a source record in vendor/, named by its source. changed is the refusal of a record changed
-// outside sync, which is then left unread, or nil for a valid record.
-type storedRecord struct {
-	name string
-	parsedRecord
-	changed error
-}
-
-// storedRecords returns every source record in vendor that is valid or changed outside sync: those of config's
-// sources in configuration order, then those of sources config no longer has, in name order. Records that don't
-// parse otherwise are left out.
-func storedRecords(config rules.Configuration, vendored map[string][]byte) []storedRecord {
-	names := []string{}
-	for _, source := range config.Sources {
-		names = append(names, source.Name)
+// managedFiles prefixes source-relative and generated-relative paths for an unambiguous combined change report, with
+// the lockfile, lock, when it isn't nil.
+func managedFiles(lock []byte, vendor, generated map[string][]byte) map[string][]byte {
+	result := make(map[string][]byte, len(vendor)+len(generated)+1)
+	if lock != nil {
+		result[lockFile] = lock
 	}
-	removed := []string{}
-	for file := range vendored {
-		if name, ok := strings.CutSuffix(file, "/_source.json"); ok && !strings.Contains(name, "/") && !slices.Contains(names, name) {
-			removed = append(removed, name)
-		}
-	}
-	slices.Sort(removed)
-	records := []storedRecord{}
-	for _, name := range append(names, removed...) {
-		data, ok := vendored[name+"/_source.json"]
-		if !ok {
-			continue
-		}
-		record, err := parseSourceRecord(data, name)
-		switch {
-		case isChangedOutsideSync(err, name):
-			records = append(records, storedRecord{name: name, changed: err})
-		case err == nil:
-			records = append(records, storedRecord{name: name, parsedRecord: record})
-		}
-	}
-	return records
-}
-
-// managedFiles prefixes source-relative and generated-relative paths for an unambiguous combined change report.
-func managedFiles(vendor, generated map[string][]byte) map[string][]byte {
-	result := make(map[string][]byte, len(vendor)+len(generated))
 	for name, data := range vendor {
 		result["vendor/"+name] = data
 	}

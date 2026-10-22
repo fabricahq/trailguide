@@ -27,6 +27,10 @@ func newProjectCommand(options Options, output *commandOutput) *cobra.Command {
 	for _, name := range []string{"sync", "build", "check"} {
 		descriptions := map[string]string{"sync": "Fetch configured sources, build guidance, and install skills", "build": "Rebuild guidance and installed skills using local snapshots", "check": "Check configuration, generated guidance, and installed skills"}
 		cmd := &cobra.Command{Use: name, Short: descriptions[name], Args: cobra.NoArgs}
+		var retake []string
+		if name == "sync" {
+			cmd.Flags().StringArrayVar(&retake, "retake", nil, "Resolve `SOURCE` again at its ref, ignoring its lock entry; repeat for more sources")
+		}
 		if name == "check" {
 			cmd.Long = "Check project configuration, generated guidance, installed skills, and the Trail Guide guide without changing files or fetching libraries. This checks file consistency, not whether application code follows the rules."
 		}
@@ -39,7 +43,7 @@ func newProjectCommand(options Options, output *commandOutput) *cobra.Command {
 			var changes project.FileChanges
 			switch name {
 			case "sync":
-				changes, err = project.Sync(cmd.Context(), projectOptions, options.Git)
+				changes, err = project.Sync(cmd.Context(), projectOptions, options.Git, retake...)
 			case "build":
 				changes, err = project.Build(cmd.Context(), projectOptions)
 			case "check":

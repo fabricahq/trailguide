@@ -4,7 +4,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"slices"
 	"strings"
@@ -73,11 +72,7 @@ func TestSync_InstallsADependencyOnlyWithTheSkillsThatUseIt(t *testing.T) {
 			if !slices.Contains(test.want, "format-skill") {
 				return
 			}
-			var record sourceRecord
-			if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/vendor/team/_source.json")), &record); err != nil {
-				t.Fatal(err)
-			}
-			if skill := record.Skills["skills/format-skill"]; skill.Level == nil || *skill.Level != "dependency" || skill.Included || !slices.Equal(skill.UsedBy, []string{"skills/add-skill"}) {
+			if skill := lockedEntry(t, options, "team").Skills["skills/format-skill"]; skill.Level == nil || *skill.Level != "dependency" || skill.Included || !slices.Equal(skill.UsedBy, []string{"skills/add-skill"}) {
 				t.Fatalf("format-skill's record = %+v; want a dependency installed because add-skill uses it", skill)
 			}
 			index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")

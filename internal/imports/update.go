@@ -611,7 +611,7 @@ func planOverriddenCurating(ctx context.Context, configuration rules.Configurati
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	if err := repo.fetchCommits(ctx, []string{recorded.Commit}, fmt.Sprintf("The commit that vendor/%s/_source.json records is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync, then trailguide project update again.", source.Name)); err != nil {
+	if err := repo.fetchCommits(ctx, []string{recorded.Commit}, fmt.Sprintf("The commit that .trailguide/lock.json records for sources.%s is missing from its repository, so the repository may have rewritten its history. Run trailguide project sync, then trailguide project update again.", source.Name)); err != nil {
 		return nil, err
 	}
 	manifest, err := repo.manifestAt(ctx, recorded.Commit)

@@ -51,11 +51,11 @@ func ParseSkillForkSource(value string) (SkillForkSource, error) {
 type SkillForkPlan struct {
 	from    SkillForkSource
 	options Options
-	// configBytes is the configuration planning read, and record the source record it copied the skill as, which
-	// digests every vendored file; Commit refuses to write when either changed.
-	configBytes, record []byte
+	// configBytes is the configuration planning read, and lock the lockfile whose entry it copied the skill as,
+	// which digests every vendored file; Commit refuses to write when either changed.
+	configBytes, lock []byte
 	// name is the skill's install name, which names the fork's folder, and commit the commit of the source's
-	// repository that the source record locks, which the fork records as basedOn.
+	// repository that the source's lock entry records, which the fork records as basedOn.
 	name, commit string
 	// renamed reports whether the source's skills.rename gave the skill its install name; Commit then removes that
 	// entry, since the fork replaces it.
@@ -96,11 +96,11 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 		if _, forked := source.SkillForks[from.Skill]; forked {
 			return &ValidationError{Location: "sources." + source.Name + ".skills.forks." + from.Skill, Problem: "the project already forks this skill, and a fork never replaces an existing one; delete the entry and the fork's folder to fork the skill again"}
 		}
-		vendor, err := filetxn.ReadTree(ctx, root, "vendor")
+		stored, vendor, lock, err := readStored(ctx, root, config)
 		if err != nil {
 			return err
 		}
-		snapshots, err := decodeSnapshots(config, treeFiles(vendor))
+		snapshots, err := decodeSnapshots(config, stored, treeFiles(vendor))
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 		if snapshot.Skills[from.Skill].Level == skills.LevelRequired {
 			return &ValidationError{Location: "--from", Problem: rules.RequiredSkillProblem(source.Name, from.Skill, snapshot.Release)}
 		}
-		plan.record = treeFiles(vendor)[source.Name+"/_source.json"]
+		plan.lock = lock
 		if _, installed := snapshot.Skills[from.Skill]; !installed {
 			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("source %s doesn't install skill %s, as its last sync recorded; name a skill its skills.include selects, and if you just added it, run trailguide project sync first", source.Name, from.Skill)}
 		}
@@ -216,7 +216,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 	if strings.TrimSpace(reason) == "" {
 		return AuthoringResult{}, &ValidationError{Location: "--reason", Problem: "give the reason the project uses the fork instead of the skill it installs from " + p.from.Source}
 	}
-	basedOn, err := rules.ParseGitRef(p.commit, "vendor/"+p.from.Source+"/_source.json")
+	basedOn, err := rules.ParseGitRef(p.commit, entryLocation(p.from.Source)+".commit")
 	if err != nil {
 		return AuthoringResult{}, err
 	}
@@ -225,11 +225,11 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		if !bytes.Equal(original, p.configBytes) {
 			return nil, failure("concurrent-change", "the project's configuration changed after the fork was planned; run the command again", nil)
 		}
-		record, err := filetxn.ReadOptional(ctx, root, "vendor/"+p.from.Source+"/_source.json")
+		lock, err := filetxn.ReadOptional(ctx, root, lockFile)
 		if err != nil {
 			return nil, err
 		}
-		if !bytes.Equal(record, p.record) {
+		if !bytes.Equal(lock, p.lock) {
 			return nil, failure("concurrent-change", "the source's imported files changed after the fork was planned; run the command again", nil)
 		}
 		if err := requireSkillForkTarget(ctx, root, config, folder); err != nil {

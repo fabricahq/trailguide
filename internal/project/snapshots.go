@@ -121,24 +121,15 @@ type recordRule struct {
 // unsupportedRecord explains how to replace a source record this version can't read.
 const unsupportedRecord = "unsupported source record; delete .trailguide/vendor/ and run trailguide project sync to import it again, which imports unpinned rules at their newest versions"
 
-// reimport is the next step for a source record sync can't read: importing the source again, as if it were new.
-func reimport(name string) string {
-	return "delete .trailguide/vendor/" + name + "/ and run trailguide project sync to import the source again, which imports its unpinned rules at their newest versions"
-}
+// reimport is the next step for a source record sync can't read: resolving the source again, as if it were new.
+func reimport(name string) string { return retakeAdvice(name) }
 
 // changedOutsideSync refuses the source record of the source name, whose checksum shows it was changed outside sync,
-// for offline commands and sync alike, since nothing in it can be trusted, and says how to recover: restore a record
-// sync wrote, or import the source again.
+// since nothing in it can be trusted, and says how to recover: restore a record sync wrote, or resolve the source
+// again.
 func changedOutsideSync(name string) error {
 	record := ".trailguide/vendor/" + name + "/_source.json"
-	return invalidSnapshot("vendor/"+name+"/_source.json", "was changed outside trailguide project sync, such as by hand or in a merge, and only a record sync wrote can be trusted; restore one with git checkout -- "+record+", or, during a merge conflict, take one side with git checkout --ours or --theirs -- "+record+", then run trailguide project sync, which applies any configuration changes; or delete .trailguide/vendor/"+name+"/ and run trailguide project sync to import the source again, which imports its unpinned rules at their newest versions")
-}
-
-// isChangedOutsideSync reports whether err is changedOutsideSync's refusal of the source name's record.
-func isChangedOutsideSync(err error, name string) bool {
-	var invalid errs.ValidationError
-	refusal := changedOutsideSync(name).(errs.ValidationError)
-	return errors.As(err, &invalid) && invalid.ValidationLocation() == refusal.ValidationLocation() && invalid.ValidationProblem() == refusal.ValidationProblem()
+	return invalidSnapshot("vendor/"+name+"/_source.json", "was changed outside trailguide project sync, such as by hand or in a merge, and only a record sync wrote can be trusted; restore one with git checkout -- "+record+", then run trailguide project sync, which migrates the project to .trailguide/lock.json; or "+retakeAdvice(name))
 }
 
 // recordChecksum returns the SHA-256 of record's fields other than its checksum, encoded as sync writes them.
@@ -151,23 +142,26 @@ func recordChecksum(record sourceRecord) string {
 	return digest(encoded)
 }
 
-// encodeSnapshots prepares complete vendor bytes for parsed configuration, without writing files. Each source's
-// record lists its files by library path, and each file is stored where librarytree.SnapshotPath places it, so the
-// snapshot mirrors the library's Trail Guide directory. Each snapshot must satisfy the same checks offline builds
-// apply. Inputs stay unchanged; returned maps and byte slices belong to the caller. Errors return nil.
-func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot) (map[string][]byte, error) {
+// encodeSnapshots prepares complete vendor bytes and the lockfile for parsed configuration, without writing files.
+// Each source's lock entry lists its files by library path, and each file is stored where librarytree.SnapshotPath
+// places it, so the snapshot mirrors the library's Trail Guide directory. Each snapshot must satisfy the same checks
+// offline builds apply. A source's entry keeps the spelling of its ref in previous, the records the command read,
+// when configuration names the same ref another way. Inputs stay unchanged; returned maps and byte slices belong to
+// the caller. Errors return nil.
+func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot, previous sourceRecords) (map[string][]byte, []byte, error) {
 	output := map[string][]byte{}
+	records := map[string]sourceRecord{}
 	if len(snapshots) != len(config.Sources) {
-		return nil, invalidSnapshot("vendor", "source inventory differs from configuration; run trailguide project sync")
+		return nil, nil, invalidSnapshot("vendor", "source inventory differs from configuration; run trailguide project sync")
 	}
 	for _, source := range config.Sources {
 		snapshot, ok := snapshots[source.Name]
 		if !ok {
-			return nil, invalidSnapshot("vendor/"+source.Name, "missing source snapshot; run trailguide project sync")
+			return nil, nil, invalidSnapshot("vendor/"+source.Name, "missing source snapshot; run trailguide project sync")
 		}
 		selection, err := json.Marshal(snapshot.Selection)
 		if err != nil {
-			return nil, fmt.Errorf("encode selection for %s: %v", source.Name, err)
+			return nil, nil, fmt.Errorf("encode selection for %s: %v", source.Name, err)
 		}
 		kind := libraryKind
 		if snapshot.NonLibrary {
@@ -197,7 +191,7 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot) 
 			}
 			origin, ok := record.Curated[name]
 			if !ok {
-				return nil, invalidSnapshot("vendor/"+source.Name, "the curated skill "+id+" has no recorded curated source")
+				return nil, nil, invalidSnapshot("vendor/"+source.Name, "the curated skill "+id+" has no recorded curated source")
 			}
 			entry.UsedBy = []string{}
 			for _, user := range skill.UsedBy {
@@ -229,16 +223,16 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot) 
 			record.Rules[id] = entry
 		}
 		if err := rules.ValidatePaths(snapshot.Files, nil); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		placed := map[string]string{}
 		for _, file := range slices.Sorted(maps.Keys(snapshot.Files)) {
-			if file == "_source.json" {
-				return nil, invalidSnapshot("vendor/"+source.Name, "_source.json is reserved for the source record")
+			if first, _, _ := strings.Cut(file, "/"); strings.EqualFold(first, legacyRecord) {
+				return nil, nil, invalidSnapshot("vendor/"+source.Name, "_source.json is reserved for the source record of Trail Guide 0.5")
 			}
 			stored := source.Name + "/" + librarytree.SnapshotPath(file)
 			if other, taken := placed[stored]; taken {
-				return nil, invalidSnapshot("vendor/"+stored, "the library files "+other+" and "+file+" would both be stored here")
+				return nil, nil, invalidSnapshot("vendor/"+stored, "the library files "+other+" and "+file+" would both be stored here")
 			}
 			placed[stored] = file
 			if name, relative, curated := curatedFile(file); curated && record.Curated[name].Files != nil {
@@ -248,28 +242,31 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot) 
 			}
 			output[stored] = bytes.Clone(snapshot.Files[file])
 		}
-		record.Checksum = recordChecksum(record)
-		var encoded bytes.Buffer
-		encoder := json.NewEncoder(&encoded)
-		encoder.SetEscapeHTML(false)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(record); err != nil {
-			return nil, fmt.Errorf("encode snapshot %s: %v", source.Name, err)
-		}
-		// Validate the same persisted representation the reader will consume.
-		parsed, err := parseSourceRecord(encoded.Bytes(), source.Name)
-		if err != nil {
-			return nil, err
-		}
-		if err := matchSnapshotSource(source, parsed); err != nil {
-			return nil, err
-		}
-		output[source.Name+"/_source.json"] = encoded.Bytes()
+		records[source.Name] = record
 	}
 	if err := rules.ValidatePaths(output, nil); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return output, nil
+	lock, err := encodeLock(config, records, previous)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Validate the same persisted representation the reader will consume.
+	stored, err := lockRecords(config, lock, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, source := range config.Sources {
+		parsed := stored.records[source.Name]
+		// A snapshot of a library release may also hold the ref that follows releases, as tests and older records do.
+		if ref := snapshots[source.Name].Ref; !parsed.Ref.Equal(ref) && !(parsed.Ref.IsZero() && ref.Equal(source.Ref)) {
+			return nil, nil, invalidSnapshot(entryLocation(source.Name)+".ref", "the source's snapshot records a ref the lock entry doesn't keep")
+		}
+		if err := matchSnapshotSource(source, parsed); err != nil {
+			return nil, nil, err
+		}
+	}
+	return output, lock, nil
 }
 
 // curatedFile returns the curated source's name and the path in its repository of file, a path in a library
@@ -326,30 +323,26 @@ func verifyExecutable(snapshots map[string]snapshot, vendor *filetxn.Tree) error
 	return nil
 }
 
-// decodeSnapshots verifies every original byte, each record, and its agreement with configuration before
-// returning owned snapshots. Unexpected source files and incomplete records fail closed. It performs no
-// filesystem or Git access. Rule and manifest validation remains the catalog loader's responsibility after
-// this integrity check.
-func decodeSnapshots(config rules.Configuration, vendor map[string][]byte) (map[string]snapshot, error) {
+// decodeSnapshots verifies every original byte against the project's records, stored, and each record's agreement
+// with configuration before returning owned snapshots. Unexpected source files, lock entries of sources
+// configuration no longer has, and incomplete records fail closed. It performs no filesystem or Git access. Rule and
+// manifest validation remains the catalog loader's responsibility after this integrity check.
+func decodeSnapshots(config rules.Configuration, stored sourceRecords, vendor map[string][]byte) (map[string]snapshot, error) {
 	if err := rules.ValidatePaths(vendor, nil); err != nil {
 		return nil, err
 	}
 	result := map[string]snapshot{}
 	expected := map[string]bool{}
+	configured := map[string]bool{}
 	for _, source := range config.Sources {
-		recordPath := source.Name + "/_source.json"
-		data, ok := vendor[recordPath]
+		configured[source.Name] = true
+		record, ok := stored.records[source.Name]
 		if !ok {
-			return nil, invalidSnapshot("vendor/"+recordPath, "missing source record; run trailguide project sync")
-		}
-		record, err := parseSourceRecord(data, source.Name)
-		if err != nil {
-			return nil, err
+			return nil, invalidSnapshot(entryLocation(source.Name), "missing lock entry; run trailguide project sync")
 		}
 		if err := matchSnapshotSource(source, record); err != nil {
 			return nil, err
 		}
-		expected[recordPath] = true
 		record.Files = map[string][]byte{}
 		for _, file := range slices.Sorted(maps.Keys(record.digests)) {
 			full := source.Name + "/" + librarytree.SnapshotPath(file)
@@ -365,6 +358,14 @@ func decodeSnapshots(config rules.Configuration, vendor map[string][]byte) (map[
 		}
 		result[source.Name] = record.Snapshot
 	}
+	for _, name := range slices.Sorted(maps.Keys(stored.refused)) {
+		return nil, stored.refused[name]
+	}
+	for _, name := range slices.Sorted(maps.Keys(stored.records)) {
+		if !configured[name] {
+			return nil, invalidSnapshot(entryLocation(name), "lock entry of a source configuration no longer has; run trailguide project sync")
+		}
+	}
 	for _, file := range slices.Sorted(maps.Keys(vendor)) {
 		if !expected[file] {
 			return nil, invalidSnapshot("vendor/"+file, "unexpected imported file or removed source; run trailguide project sync")
@@ -373,29 +374,24 @@ func decodeSnapshots(config rules.Configuration, vendor map[string][]byte) (map[
 	return result, nil
 }
 
-// recordedSnapshots reads the snapshot record of each configured source that has one, without files or checking
-// it against configuration, so sync can restore its versions. A source without a record is absent from the
-// result. An unsupported or invalid record fails, explaining how to import the source again.
-func recordedSnapshots(config rules.Configuration, vendor map[string][]byte) (map[string]library.Snapshot, error) {
+// recordedSnapshots returns the snapshot, without files, of each configured source that stored records, so sync
+// can restore its versions. A source without a record is absent from the result.
+func recordedSnapshots(config rules.Configuration, stored sourceRecords) map[string]library.Snapshot {
 	result := map[string]library.Snapshot{}
 	for _, source := range config.Sources {
-		data, ok := vendor[source.Name+"/_source.json"]
-		if !ok {
-			continue
+		if record, ok := stored.records[source.Name]; ok {
+			result[source.Name] = record.Snapshot
 		}
-		record, err := parseSourceRecord(data, source.Name)
-		if err != nil {
-			return nil, err
-		}
-		result[source.Name] = record.Snapshot
 	}
-	return result, nil
+	return result
 }
 
 // parsedRecord is a validated source record: its snapshot, without files, and its file digests by stored path.
 type parsedRecord struct {
 	library.Snapshot
 	digests map[string]string
+	// lockedRef is the ref a lock entry records, or zero for a per-source record from Trail Guide 0.5.
+	lockedRef rules.GitRef
 }
 
 // parseSourceRecord is the one way to read a source record from disk. It validates a format 3 record's exact fields,
@@ -448,17 +444,31 @@ func readSourceRecord(data []byte, name string) (parsedRecord, error) {
 	if decoder.Decode(&record) != nil {
 		return parsedRecord{}, invalidSnapshot(where, "invalid source record field values")
 	}
-	result := parsedRecord{Snapshot: library.Snapshot{Repository: record.Repository, Release: record.Release, Commit: record.Commit, RuleSelection: []string{}, Rules: map[string]library.ImportedRule{}, NonLibrary: record.Kind == nonLibraryKind, Skills: map[string]library.ImportedSkill{}, AvailableSkills: map[string]library.ImportedSkill{}}, digests: record.Files}
 	if record.Checksum != recordChecksum(record) {
 		return parsedRecord{}, changedOutsideSync(name)
 	}
+	if raw, ok := fields["release"]; ok && record.Release < 1 {
+		return parsedRecord{}, invalidSnapshot(where+".release", "expected a library release number, got "+string(raw))
+	}
+	return checkRecord(record, name, where)
+}
+
+// checkRecord validates a record's values and their relationships, other than to configuration, and returns it
+// parsed, its curated sources folded into its own skills and files. name is the record's source, and where locates the
+// record in diagnostics. A
+// lockfile entry is checked as the record it converts to, so both layouts share one set of rules.
+func checkRecord(record sourceRecord, name, where string) (parsedRecord, error) {
+	result := parsedRecord{Snapshot: library.Snapshot{Repository: record.Repository, Release: record.Release, Commit: record.Commit, RuleSelection: []string{}, Rules: map[string]library.ImportedRule{}, NonLibrary: record.Kind == nonLibraryKind, Skills: map[string]library.ImportedSkill{}, AvailableSkills: map[string]library.ImportedSkill{}}, digests: record.Files}
 	if record.Kind != libraryKind && record.Kind != nonLibraryKind {
 		return parsedRecord{}, invalidSnapshot(where+".kind", "expected library or non-library")
+	}
+	if record.Files == nil {
+		return parsedRecord{}, invalidSnapshot(where+".files", "missing file digests")
 	}
 	if err := foldCurated(&record, where); err != nil {
 		return parsedRecord{}, err
 	}
-	if _, err := rules.ParseRepository(fields["repository"], where+".repository"); err != nil {
+	if _, err := rules.ParseRepository(jsonText(record.Repository), where+".repository"); err != nil {
 		return parsedRecord{}, err
 	}
 	if record.Ref != "" {
@@ -467,25 +477,25 @@ func readSourceRecord(data []byte, name string) (parsedRecord, error) {
 			return parsedRecord{}, err
 		}
 	}
-	if raw, ok := fields["release"]; ok && record.Release < 1 {
-		return parsedRecord{}, invalidSnapshot(where+".release", "expected a library release number, got "+string(raw))
+	if record.Release < 0 {
+		return parsedRecord{}, invalidSnapshot(where+".release", "expected a library release number")
 	}
 	if !fullCommit(record.Commit) {
-		return parsedRecord{}, invalidSnapshot(where+".resolvedCommit", "expected a full commit SHA")
+		return parsedRecord{}, invalidSnapshot(where+".commit", "expected a full commit SHA")
 	}
 	var err error
-	if result.Selection, err = rules.ParseGroupSelection(fields["groupSelection"], where+".groupSelection"); err != nil {
+	if result.Selection, err = rules.ParseGroupSelection(record.Selection, where+".groupSelection"); err != nil {
 		return parsedRecord{}, err
 	}
-	if result.RetiredRules, err = rules.ParseRuleList(fields["retiredRules"], where+".retiredRules"); err != nil {
+	if result.RetiredRules, err = rules.ParseRuleList(jsonText(nonNil(record.RetiredRules)), where+".retiredRules"); err != nil {
 		return parsedRecord{}, err
 	}
-	if raw, ok := fields["ruleSelection"]; ok {
-		if result.RuleSelection, err = rules.ParseRuleList(raw, where+".ruleSelection"); err != nil {
+	if record.RuleSelection != nil {
+		if result.RuleSelection, err = rules.ParseRuleList(jsonText(record.RuleSelection), where+".ruleSelection"); err != nil {
 			return parsedRecord{}, err
 		}
 	}
-	groups, err := rules.ParseGroupSelection(fields["groups"], where+".groups")
+	groups, err := rules.ParseGroupSelection(jsonText(nonNil(record.Groups)), where+".groups")
 	if err != nil {
 		return parsedRecord{}, err
 	}
@@ -745,13 +755,18 @@ func recordedLevel(level string) bool {
 // matchSnapshotSource checks a record against its source's configuration without fetching Git, as documented in
 // "What offline checks can verify": the recorded identity and selections, pinned versions, and ref.
 func matchSnapshotSource(source rules.Source, record parsedRecord) error {
-	where := "vendor/" + source.Name + "/_source.json"
+	where := entryLocation(source.Name)
 	if source.Ref.IsZero() {
 		release := record.Release
 		if record.NonLibrary {
 			release = 0
 		}
 		return failure("ref-required", rules.RefRequiredProblem(source.Name, release, true), nil)
+	}
+	// Only a ref edited to name another library release than the locked one waits for update; sync takes any other
+	// edited ref.
+	if number := source.Ref.Release(); source.Repository == record.Repository && !record.lockedRef.IsZero() && !source.Ref.Equal(record.lockedRef) && number != 0 && !record.NonLibrary && record.Release != 0 && number != record.Release {
+		return invalidSnapshot(where+".ref", fmt.Sprintf("records ref %s, not %s, which sources.%s.ref names, and sync doesn't move a source; run trailguide project update %s to review the move and take it, or set sources.%s.ref back to %s", record.lockedRef, source.Ref, source.Name, source.Name, source.Name, record.lockedRef))
 	}
 	if source.Repository != record.Repository || !recordsRef(source, record) || !source.Groups.Equal(record.Selection) || !slices.Equal(source.Rules, record.RuleSelection) || !slices.Equal(source.Skills, record.SkillSelection) {
 		return invalidSnapshot(where, "source identity or selection changed; run trailguide project sync")
@@ -841,7 +856,7 @@ func matchSnapshotSource(source rules.Source, record parsedRecord) error {
 // or the skills it curates. A difference means configuration changed since sync, such as a new skills.uses entry, so it fails
 // asking for sync, which checks the change against the source.
 func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
-	where := "vendor/" + source.Name + "/_source.json"
+	where := entryLocation(source.Name)
 	uses := map[string][]string{}
 	included := []string{}
 	for _, id := range slices.Sorted(maps.Keys(snapshot.Skills)) {
@@ -887,10 +902,14 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 	return nil
 }
 
-// recordsRef reports whether record holds the ref source asks for. A library source whose ref chooses a library
-// release, release/<number> or latest-release, is recorded without a ref, or, as sync recorded it before Trail Guide
-// required a ref, with the same ref; matchRevision checks the release. Any other ref is recorded as configured.
+// recordsRef reports whether record holds the ref source asks for. A lock entry records the ref configuration named
+// when sync or update wrote it. A per-source record of a library source whose ref chooses a library release,
+// release/<number> or latest-release, is recorded without a ref, or, as sync recorded it before Trail Guide required a ref,
+// with the same ref; matchRevision checks the release. Any other ref is recorded as configured.
 func recordsRef(source rules.Source, record parsedRecord) bool {
+	if !record.lockedRef.IsZero() {
+		return source.Ref.Equal(record.lockedRef)
+	}
 	if source.Ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
 		return record.Ref.IsZero() || record.Ref.Equal(source.Ref)
 	}
@@ -899,7 +918,7 @@ func recordsRef(source rules.Source, record parsedRecord) bool {
 
 // matchRevision checks the record's library release and commit against how the source chooses versions.
 func matchRevision(source rules.Source, record parsedRecord) error {
-	where := "vendor/" + source.Name + "/_source.json"
+	where := entryLocation(source.Name)
 	ref := source.Ref
 	if ref.FollowsReleases() && !record.NonLibrary && record.Release != 0 {
 		if number := ref.Release(); number != 0 && record.Release != number {
@@ -931,6 +950,15 @@ func matchRevision(source rules.Source, record parsedRecord) error {
 		}
 	}
 	return nil
+}
+
+// jsonText returns value as JSON, for the parsers that read configuration's JSON form.
+func jsonText(value any) json.RawMessage {
+	text, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return text
 }
 
 // fullCommit accepts a lowercase 40-digit commit SHA.

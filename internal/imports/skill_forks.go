@@ -241,7 +241,7 @@ func (r *repository) replacementBaseline(ctx context.Context, source string, for
 	if from == "" {
 		return nil, "", nil
 	}
-	if err := r.fetchCommits(ctx, []string{from}, fmt.Sprintf("The repository no longer has commit %s, which vendor/%s/_source.json records. Run trailguide project sync to check the source.", from, source)); err != nil {
+	if err := r.fetchCommits(ctx, []string{from}, fmt.Sprintf("The repository no longer has commit %s, which .trailguide/lock.json records for sources.%s. Run trailguide project sync to check the source.", from, source)); err != nil {
 		// A branch rewritten since the project recorded from leaves nothing to compare with, which mustn't stop the
 		// update that recovers the source.
 		var failure *Error

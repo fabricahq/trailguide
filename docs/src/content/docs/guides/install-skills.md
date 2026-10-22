@@ -69,7 +69,7 @@ skills:
 
 Including a rule group's rules never installs a skill, and including a skill never includes a rule group's rules. See [Skill selectors](/reference/configuration/#skill-selectors).
 
-Sync takes the source's newest library release, records it in `.trailguide/vendor/fabrica/_source.json`, and installs every skill from that one release. Later syncs keep that release, even for skills you include later: a skill that isn't in the recorded release makes sync fail and name `trailguide project update fabrica`, the command that moves the source. See [Update skills](/guides/update/#update-skills).
+Sync takes the source's newest library release, records it in `.trailguide/lock.json`, and installs every skill from that one release. Later syncs keep that release, even for skills you include later: a skill that isn't in the recorded release makes sync fail and name `trailguide project update fabrica`, the command that moves the source. See [Update skills](/guides/update/#update-skills).
 
 ## See what's available
 

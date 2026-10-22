@@ -62,7 +62,7 @@ func TestImport_ExplainsAFailedCommitFetchFromWhatGitReports(t *testing.T) {
 		_, err := ImportLibraries(context.Background(), config, map[string]library.Snapshot{"team": snapshot}, options)
 		requireCode(t, err, "version-not-found")
 		message := err.Error()
-		restore, deletion := strings.Index(message, "restore"), strings.Index(message, "delete vendor/team")
+		restore, deletion := strings.Index(message, "restore"), strings.Index(message, "--retake team")
 		if !strings.Contains(message, "may have rewritten its history") || restore < 0 || deletion < restore || !strings.Contains(message, "which may import different content") {
 			t.Fatalf("the advice doesn't keep the project's versions first: %v", err)
 		}

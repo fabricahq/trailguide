@@ -69,7 +69,11 @@ func ListSkills(ctx context.Context, options Options) (SkillListing, error) {
 	if err != nil {
 		return SkillListing{}, err
 	}
-	snapshots, err := decodeSnapshots(state.config, treeFiles(state.vendor))
+	stored, err := state.records()
+	if err != nil {
+		return SkillListing{}, err
+	}
+	snapshots, err := decodeSnapshots(state.config, stored, treeFiles(state.vendor))
 	if err != nil {
 		return SkillListing{}, err
 	}

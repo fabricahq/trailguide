@@ -153,13 +153,8 @@ func TestSync_RecordsWhichLibrarySetEachLevel(t *testing.T) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
 		}
 	}
-	var record struct {
-		AvailableSkills map[string]struct{ Level string } `json:"availableSkills"`
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/vendor/team/_source.json")), &record); err != nil {
-		t.Fatal(err)
-	}
-	if len(record.AvailableSkills) != 4 || record.AvailableSkills["skills/build-feature"].Level != "offered" || record.AvailableSkills["skills/ship"].Level != "required" {
+	record := lockedEntry(t, options, "team")
+	if len(record.AvailableSkills) != 4 || *record.AvailableSkills["skills/build-feature"].Level != "offered" || *record.AvailableSkills["skills/ship"].Level != "required" {
 		t.Fatalf("availableSkills = %v", record.AvailableSkills)
 	}
 }

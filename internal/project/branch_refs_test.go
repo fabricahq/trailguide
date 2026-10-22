@@ -5,7 +5,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"reflect"
 	"slices"
@@ -38,16 +37,10 @@ func branchProject(t *testing.T, f *gitfixture.Fixture, ref string) (Options, im
 	return options, git
 }
 
-// recordedCommit returns the commit the source record of skills holds.
+// recordedCommit returns the commit the lock entry of skills holds.
 func recordedCommit(t *testing.T, options Options) string {
 	t.Helper()
-	var record struct {
-		Commit string `json:"resolvedCommit"`
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/vendor/skills/_source.json")), &record); err != nil {
-		t.Fatal(err)
-	}
-	return record.Commit
+	return lockedEntry(t, options, "skills").Commit
 }
 
 // headCommit returns the commit f's served repository has checked out.

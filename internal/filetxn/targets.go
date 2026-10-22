@@ -30,6 +30,11 @@ const (
 // so its pins and exclusions and the output they select are installed or recovered together.
 const Config Target = "config.yaml"
 
+// Lock is the project's lockfile, which records the revision, rule versions, and file digests each source resolved
+// to. Sync and update replace it together with vendor and generated output, so recovery restores or finishes the
+// lock and the files it describes together.
+const Lock Target = "lock.json"
+
 // LocalGroupMetadata is the metadata file of the authored group with ID group, rules/<group>/_group.yaml; group must
 // be a valid group ID. Sync and update create it together with vendor and generated output when the project's
 // authored rules in the group lose the only imported copy of its metadata, so recovery keeps the two consistent. Its
@@ -141,7 +146,7 @@ func localTarget(target Target) bool {
 
 // fileTarget reports whether target is a single file rather than a directory tree.
 func fileTarget(target Target) bool {
-	return guideTarget(target) || target == Config || target == AgentsFile || localGroupMetadataTarget(target) || localRuleTarget(target)
+	return guideTarget(target) || target == Config || target == Lock || target == AgentsFile || localGroupMetadataTarget(target) || localRuleTarget(target)
 }
 
 func validTarget(target Target) bool {

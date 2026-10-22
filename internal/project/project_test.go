@@ -4,7 +4,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -53,13 +52,14 @@ func importedProject(t *testing.T) (*os.Root, Options) {
 	imported := snapshot{Repository: config.Sources[0].Repository, Ref: gitRef(t, "v1.0.0"), Commit: commit, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{},
 		Rules: map[string]library.ImportedRule{"techs/go/errors": {Commit: commit}},
 		Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{}}`), "techs/go/_group.yaml": []byte(projectMetadata), "techs/go/errors.md": []byte(projectRule)}}
-	vendor, err := encodeSnapshots(config, map[string]snapshot{"team": imported})
+	vendor, lock, err := encodeSnapshots(config, map[string]snapshot{"team": imported}, sourceRecords{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for name, data := range vendor {
 		writeFixture(t, root, filepath.Join("vendor", name), string(data))
 	}
+	writeFixture(t, root, lockFile, string(lock))
 	return root, options
 }
 
@@ -186,20 +186,9 @@ func TestOfflineFailuresPreserveOutput(t *testing.T) {
 func TestOfflineRejectsSemanticCorruptionBeyondDigests(t *testing.T) {
 	root, options := importedProject(t)
 	writeFixture(t, root, "vendor/team/rules/techs/go/errors.md", "invalid but rehashed")
-	data, err := root.ReadFile("vendor/team/_source.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var record sourceRecord
-	if err := json.Unmarshal(data, &record); err != nil {
-		t.Fatal(err)
-	}
-	record.Files["techs/go/errors.md"] = digest([]byte("invalid but rehashed"))
-	encoded, err := json.Marshal(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, root, "vendor/team/_source.json", string(encoded))
+	rewriteEntry(t, root, "team", func(record *sourceRecord) {
+		record.Files["techs/go/errors.md"] = digest([]byte("invalid but rehashed"))
+	})
 	if _, err := Check(context.Background(), options); err == nil {
 		t.Fatal("accepted invalid content with valid digest")
 	}
@@ -213,38 +202,18 @@ func TestOfflineRejectsRuleFilesTheRecordDoesntDescribe(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			root, options := importedProject(t)
-			data, err := root.ReadFile("vendor/team/_source.json")
-			if err != nil {
-				t.Fatal(err)
-			}
-			var record map[string]any
-			if err := json.Unmarshal(data, &record); err != nil {
-				t.Fatal(err)
-			}
-			files := record["files"].(map[string]any)
-			if move[0] != "" {
-				delete(files, move[0])
-				if err := root.Remove("vendor/team/rules/" + move[0]); err != nil {
-					t.Fatal(err)
+			// The tampering also recomputes the entry's integrity, so only the catalog can catch it.
+			rewriteEntry(t, root, "team", func(record *sourceRecord) {
+				if move[0] != "" {
+					delete(record.Files, move[0])
+					if err := root.Remove("vendor/team/rules/" + move[0]); err != nil {
+						t.Fatal(err)
+					}
 				}
-			}
-			files[move[1]] = digest([]byte(projectRule))
+				record.Files[move[1]] = digest([]byte(projectRule))
+			})
 			writeFixture(t, root, "vendor/team/rules/"+move[1], projectRule)
-			encoded, err := json.Marshal(record)
-			if err != nil {
-				t.Fatal(err)
-			}
-			// The tampering also recomputes the record's checksum, so only the catalog can catch it.
-			var typed sourceRecord
-			if err := json.Unmarshal(encoded, &typed); err != nil {
-				t.Fatal(err)
-			}
-			typed.Checksum = recordChecksum(typed)
-			if encoded, err = json.Marshal(typed); err != nil {
-				t.Fatal(err)
-			}
-			writeFixture(t, root, "vendor/team/_source.json", string(encoded))
-			_, err = Check(context.Background(), options)
+			_, err := Check(context.Background(), options)
 			projectCode(t, err, "invalid-snapshot")
 		})
 	}

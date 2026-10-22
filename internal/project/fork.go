@@ -213,15 +213,11 @@ func (p *ForkPlan) groupFiles(ctx context.Context, root *os.Root, config rules.C
 // importedGroup reports whether the synced record of a configured source imports group, as a selected group or
 // the group of an imported rule; either supplies the group's metadata.
 func importedGroup(ctx context.Context, root *os.Root, config rules.Configuration, group string) (bool, error) {
-	vendor, err := filetxn.ReadTree(ctx, root, "vendor")
+	stored, _, _, err := readStored(ctx, root, config)
 	if err != nil {
 		return false, err
 	}
-	recorded, err := recordedSnapshots(config, treeFiles(vendor))
-	if err != nil {
-		return false, err
-	}
-	for _, snapshot := range recorded {
+	for _, snapshot := range recordedSnapshots(config, stored) {
 		if slices.Contains(snapshot.Groups, group) {
 			return true, nil
 		}
@@ -282,17 +278,13 @@ func forkLibrary(config rules.Configuration, name, id, group string) (rules.Sour
 // a ref, for example, can name a revision without the rule. It fails, asking to sync, when the source has no
 // record or its record doesn't match its configuration.
 func importsRule(ctx context.Context, root *os.Root, source rules.Source, id string) (bool, error) {
-	location := source.Name + "/_source.json"
-	data, err := filetxn.ReadOptional(ctx, root, path.Join("vendor", location))
+	stored, _, _, err := readStored(ctx, root, rules.Configuration{Sources: []rules.Source{source}})
 	if err != nil {
 		return false, err
 	}
-	if data == nil {
-		return false, invalidSnapshot(location, "missing source record, so whether the source imports "+id+" isn't known; run trailguide project sync, then fork the rule")
-	}
-	record, err := parseSourceRecord(data, source.Name)
-	if err != nil {
-		return false, err
+	record, ok := stored.records[source.Name]
+	if !ok {
+		return false, invalidSnapshot(entryLocation(source.Name), "missing lock entry, so whether the source imports "+id+" isn't known; run trailguide project sync, then fork the rule")
 	}
 	if err := matchSnapshotSource(source, record); err != nil {
 		return false, err
