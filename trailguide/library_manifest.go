@@ -18,15 +18,15 @@ import (
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
-// LibraryFormat is the library format this version of Trail Guide reads and writes, which every library declares in
-// its manifest's library.formatVersion. The format covers everything a library publishes: the manifest, the
-// repository and ref of each source it curates skills from, rule files, group metadata, and the library's layout.
-// Release records have their own format, ReleaseRecordFormat.
+// LibrarySchemaVersion is the library schema version this version of Trail Guide reads and writes, which every
+// library declares in its manifest's library.schemaVersion. The library schema covers everything a library publishes:
+// the manifest, the repository and ref of each source it curates skills from, rule files, group metadata, and the
+// library's layout. Release records have their own format, ReleaseRecordFormat.
 //
 // Consumers ignore fields they don't know in the manifest, so a later Trail Guide can add a field without a new
-// format when ignoring it keeps every reader correct. A change that readers must interpret, even an optional field,
-// needs a new format.
-const LibraryFormat = 1
+// schema version when ignoring it keeps every reader correct. A change that readers must interpret, even an optional
+// field, needs a new schema version.
+const LibrarySchemaVersion = 1
 
 // Library is a library's manifest: the library section of its configuration, which makes the repository a library,
 // and the sources its skills curate from.
@@ -59,25 +59,25 @@ type LicenseDeclaration struct {
 	AttributionFiles []string `json:"attributionFiles"`
 }
 
-// UnsupportedLibraryFormatError reports a library whose library.formatVersion is a format this version of Trail
-// Guide doesn't read. Check for it with errors.As. A missing or malformed formatVersion is a *ValidationError
+// UnsupportedLibrarySchemaError reports a library whose library.schemaVersion is a schema version this version of
+// Trail Guide doesn't read. Check for it with errors.As. A missing or malformed schemaVersion is a *ValidationError
 // instead.
-type UnsupportedLibraryFormatError struct {
-	// Location is the manifest's formatVersion field, such as acme/rules/.trailguide/config.yaml: library.formatVersion.
+type UnsupportedLibrarySchemaError struct {
+	// Location is the manifest's schemaVersion field, such as acme/rules/.trailguide/config.yaml: library.schemaVersion.
 	Location string
-	// FormatVersion is the format the library declares.
-	FormatVersion int
-	// Supported is the format this version reads, LibraryFormat.
+	// SchemaVersion is the schema version the library declares.
+	SchemaVersion int
+	// Supported is the schema version this version reads, LibrarySchemaVersion.
 	Supported int
 }
 
-// Error names both formats and says what to upgrade.
-func (e *UnsupportedLibraryFormatError) Error() string {
-	advice := "upgrade Trail Guide, or the tool that reads the library, to a version that reads format " + strconv.Itoa(e.FormatVersion)
-	if e.FormatVersion < e.Supported {
-		advice = "the library must move to format " + strconv.Itoa(e.Supported) + " and publish a new library release"
+// Error names both schema versions and says what to upgrade.
+func (e *UnsupportedLibrarySchemaError) Error() string {
+	advice := "upgrade Trail Guide, or the tool that reads the library, to a version that reads library schema version " + strconv.Itoa(e.SchemaVersion)
+	if e.SchemaVersion < e.Supported {
+		advice = "the library must move to library schema version " + strconv.Itoa(e.Supported) + " and publish a new library release"
 	}
-	return e.Location + ": the library uses library format " + strconv.Itoa(e.FormatVersion) + ", but this version reads only format " + strconv.Itoa(e.Supported) + "; " + advice
+	return e.Location + ": the library uses library schema version " + strconv.Itoa(e.SchemaVersion) + ", but this version reads only library schema version " + strconv.Itoa(e.Supported) + "; " + advice
 }
 
 // ParseLibraryManifest parses text, a library's whole .trailguide/config.yaml at the location that names it in
@@ -85,8 +85,8 @@ func (e *UnsupportedLibraryFormatError) Error() string {
 // publishes, or nil when the configuration has no library section, which means the repository isn't a library.
 //
 // It reads only the library's published contract. The text must be one YAML mapping, without anchors, aliases,
-// explicit tags, or duplicate keys. The library section must declare formatVersion first: a missing or malformed
-// one is a *ValidationError, and a format other than LibraryFormat is an *UnsupportedLibraryFormatError. The section
+// explicit tags, or duplicate keys. The library section must declare schemaVersion first: a missing or malformed
+// one is a *ValidationError, and a version other than LibrarySchemaVersion is an *UnsupportedLibrarySchemaError. The section
 // must then be valid, as ParseLibrarySection requires, except that fields it doesn't know are ignored. For each
 // source its skills curate from, sources must declare a valid repository and, optionally, a valid ref; two curated
 // sources can't name one repository. It ignores schemaVersion, the other sources, the curated sources' other fields,
@@ -118,7 +118,7 @@ func parseManifest(text []byte, location string) (*Library, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := libraryFormat(sections, location+": library", false); err != nil {
+	if err := librarySchema(sections, location+": library", false); err != nil {
 		return nil, err
 	}
 	sources, err := curatedSourceFields(fields["sources"], section, location+": sources")
@@ -140,8 +140,8 @@ func parseManifest(text []byte, location string) (*Library, error) {
 // errors, such as acme/rules/.trailguide/config.yaml: library, and sources are the names of the configuration's
 // sources, which curated skills must come from. The section holds:
 //
-//   - formatVersion: the library format, which must be LibraryFormat; a missing or malformed one is a
-//     *ValidationError, and another format an *UnsupportedLibraryFormatError;
+//   - schemaVersion: the library schema version, which must be LibrarySchemaVersion; a missing or malformed one is
+//     a *ValidationError, and another version an *UnsupportedLibrarySchemaError;
 //   - license: the SPDX expression of the library's terms, its license file, and its notice files, at paths
 //     relative to the repository root that must hold library-wide files, outside rules and their asset
 //     directories; and
@@ -154,7 +154,7 @@ func parseManifest(text []byte, location string) (*Library, error) {
 func ParseLibrarySection(section json.RawMessage, sources []string, location string) (*Library, error) {
 	fields, err := decode.Object(section, location)
 	if err == nil {
-		err = libraryFormat(fields, location, true)
+		err = librarySchema(fields, location, true)
 	}
 	if err != nil {
 		return nil, translate(err)
@@ -163,23 +163,23 @@ func ParseLibrarySection(section json.RawMessage, sources []string, location str
 	return library, translate(err)
 }
 
-// libraryFormat checks the formatVersion of a library section's fields at location: a whole number that is
-// LibraryFormat. A missing one is explained to the library's author, or to its consumers.
-func libraryFormat(fields map[string]json.RawMessage, location string, author bool) error {
-	location += ".formatVersion"
-	raw, ok := fields["formatVersion"]
+// librarySchema checks the schemaVersion of a library section's fields at location: a whole number that is
+// LibrarySchemaVersion. A missing one is explained to the library's author, or to its consumers.
+func librarySchema(fields map[string]json.RawMessage, location string, author bool) error {
+	location += ".schemaVersion"
+	raw, ok := fields["schemaVersion"]
 	switch {
 	case !ok && author:
-		return invalid(location, "missing; add formatVersion: "+strconv.Itoa(LibraryFormat)+", the library format this library publishes")
+		return invalid(location, "missing; add schemaVersion: "+strconv.Itoa(LibrarySchemaVersion)+", the library schema version this library publishes")
 	case !ok:
-		return invalid(location, "missing; the library doesn't declare the library format it publishes, so this version can't read it. Its maintainer must add formatVersion: "+strconv.Itoa(LibraryFormat)+" and publish a library release")
+		return invalid(location, "missing; the library doesn't declare the library schema version it publishes, so this version can't read it. Its maintainer must add schemaVersion: "+strconv.Itoa(LibrarySchemaVersion)+" to the library section and publish a library release")
 	}
-	format, err := strconv.Atoi(string(raw))
-	if err != nil || format < 1 {
-		return invalid(location, "expected the library format, a whole number such as "+strconv.Itoa(LibraryFormat))
+	version, err := strconv.Atoi(string(raw))
+	if err != nil || version < 1 {
+		return invalid(location, "expected the library schema version, a whole number such as "+strconv.Itoa(LibrarySchemaVersion))
 	}
-	if format != LibraryFormat {
-		return &UnsupportedLibraryFormatError{Location: location, FormatVersion: format, Supported: LibraryFormat}
+	if version != LibrarySchemaVersion {
+		return &UnsupportedLibrarySchemaError{Location: location, SchemaVersion: version, Supported: LibrarySchemaVersion}
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func curatedSourceFields(sources, section json.RawMessage, location string) (map
 }
 
 // curatedNames returns the names of the sources that the raw library section's skill lists name, without validating
-// the section. It reads only the lists this format defines, since consumers ignore any other field.
+// the section. It reads only the lists this schema version defines, since consumers ignore any other field.
 func curatedNames(section json.RawMessage) []string {
 	var library struct {
 		Skills map[string]json.RawMessage `json:"skills"`
@@ -270,7 +270,7 @@ func parseCuratedSources(sources map[string]json.RawMessage, curated []string, l
 }
 
 // parseLibrary validates a library section at location, whose curated skills must curate from sources, after its
-// format: with strict, as its author's tools do, fields it doesn't know fail, and otherwise, as its consumers do,
+// schema version: with strict, as its author's tools do, fields it doesn't know fail, and otherwise, as its consumers do,
 // they're ignored.
 func parseLibrary(input json.RawMessage, sources []string, location string, strict bool) (*Library, error) {
 	fields, err := decode.Object(input, location)
@@ -278,7 +278,7 @@ func parseLibrary(input json.RawMessage, sources []string, location string, stri
 		return nil, err
 	}
 	if strict {
-		if err := decode.KnownFields(fields, []string{"formatVersion", "license", "skills"}, location); err != nil {
+		if err := decode.KnownFields(fields, []string{"license", "schemaVersion", "skills"}, location); err != nil {
 			return nil, err
 		}
 	}

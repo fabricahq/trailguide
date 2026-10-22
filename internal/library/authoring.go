@@ -225,19 +225,23 @@ func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVe
 		}
 		planned := map[string][]byte{}
 		if declared == nil {
-			section := map[string]any{"formatVersion": trailguide.LibraryFormat}
+			// A struct keeps schemaVersion first in the section, where a map would sort it after license.
+			section := struct {
+				SchemaVersion int            `yaml:"schemaVersion"`
+				License       map[string]any `yaml:"license,omitempty"`
+			}{SchemaVersion: trailguide.LibrarySchemaVersion}
 			if terms != nil {
 				notices := []string{}
 				if terms.Notice != nil {
 					notices = append(notices, "NOTICE.md")
 				}
-				section["license"] = map[string]any{"spdxExpression": terms.SPDXExpression, "file": "LICENSE.md", "notices": notices}
+				section.License = map[string]any{"spdxExpression": terms.SPDXExpression, "file": "LICENSE.md", "notices": notices}
 			}
 			if existing == nil {
 				manifest, err = yamlText(struct {
 					SchemaVersion int            `yaml:"schemaVersion"`
 					Sources       map[string]any `yaml:"sources"`
-					Library       map[string]any `yaml:"library"`
+					Library       any            `yaml:"library"`
 				}{2, map[string]any{}, section})
 			} else {
 				manifest, err = rules.AppendConfigurationLibrary(existing, section)

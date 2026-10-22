@@ -104,7 +104,7 @@ sources:
     repository: https://github.com/anthropics/skills.git
     ref: main
 library:
-  formatVersion: 1
+  schemaVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -115,9 +115,9 @@ library:
 `
 	location := "acme/rules/" + trailguide.RepositoryPath(trailguide.Manifest)
 	library, err := trailguide.ParseLibraryManifest([]byte(config), location)
-	var unsupported *trailguide.UnsupportedLibraryFormatError
+	var unsupported *trailguide.UnsupportedLibrarySchemaError
 	if errors.As(err, &unsupported) {
-		fmt.Println("needs a newer reader for format", unsupported.FormatVersion)
+		fmt.Println("needs a newer reader for library schema version", unsupported.SchemaVersion)
 		return
 	}
 	if err != nil {
