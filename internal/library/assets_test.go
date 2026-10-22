@@ -138,7 +138,7 @@ func TestLoadRejectsRuleLinks(t *testing.T) {
 // not an invalid rule.
 func TestLoadAllowsDeclaredGroupTerms(t *testing.T) {
 	files := validFiles()
-	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"license":{"file":".trailguide/rules/techs/go/LICENSE.md","notices":[]}}}`
+	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":".trailguide/rules/techs/go/LICENSE.md","notices":[]}}}`
 	files["techs/go/LICENSE.md"] = "License terms."
 	files["techs/go/errors.md"] += "\n[terms](LICENSE.md)\n"
 	_, root := fixture(t, files)
@@ -158,7 +158,7 @@ func TestLoadRejectsTermsInsideRuleContent(t *testing.T) {
 		for _, groups := range [][]string{{}, {"techs/go"}} {
 			t.Run(term+strings.Join(groups, ","), func(t *testing.T) {
 				files := validFiles()
-				manifest, err := json.Marshal(map[string]any{"schemaVersion": 2, "sources": map[string]any{}, "library": map[string]any{"formatVersion": 1, "license": map[string]any{"file": "LICENSE", "notices": []string{librarytree.RepositoryPath(term)}}}})
+				manifest, err := json.Marshal(map[string]any{"schemaVersion": 2, "sources": map[string]any{}, "library": map[string]any{"schemaVersion": 1, "license": map[string]any{"file": "LICENSE", "notices": []string{librarytree.RepositoryPath(term)}}}})
 				if err != nil {
 					t.Fatal(err)
 				}

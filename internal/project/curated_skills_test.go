@@ -83,7 +83,7 @@ func newCurated(t *testing.T, ref, listed string, authored map[string][]byte, co
 		t.Fatal(err)
 	}
 	files := map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: " + ref + "\nlibrary:\n  formatVersion: 1\n  skills:\n" + listed),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: " + ref + "\nlibrary:\n  schemaVersion: 1\n  skills:\n" + listed),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
 	}
@@ -441,7 +441,7 @@ func TestSync_AProjectSourceForTheSameRepositoryOverridesTheLibrarysRef(t *testi
 
 func TestSync_ALibraryRepositoryInstallsTheSkillsItRequiresFromItsSources(t *testing.T) {
 	ctx := context.Background()
-	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable"}},"library":{"formatVersion":1,"skills":{"required":["pocock:skills/ops/deploy"],"offered":["pocock:skills/productivity/grilling"]}}}`)
+	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable"}},"library":{"schemaVersion":1,"skills":{"required":["pocock:skills/ops/deploy"],"offered":["pocock:skills/productivity/grilling"]}}}`)
 	if _, err := Sync(ctx, b.options, b.git); err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +457,7 @@ func TestSync_ALibraryRepositoryInstallsTheSkillsItRequiresFromItsSources(t *tes
 }
 
 func TestSync_ALibraryRepositoryNeedsNoSkillsFromASourceItOnlyOffers(t *testing.T) {
-	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable"}},"library":{"formatVersion":1,"skills":{"offered":["pocock:skills/productivity/grilling"]}}}`)
+	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable"}},"library":{"schemaVersion":1,"skills":{"offered":["pocock:skills/productivity/grilling"]}}}`)
 	if _, err := Sync(context.Background(), b.options, b.git); err != nil {
 		t.Fatal(err)
 	}
@@ -511,9 +511,9 @@ func TestSync_UsesOfAnOverridingSourcesCopyReachTheCuratedSkill(t *testing.T) {
 func (b *curating) releaseTeam(t *testing.T, listed string) {
 	t.Helper()
 	ctx := context.Background()
-	config := "schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n"
+	config := "schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n"
 	if listed != "" {
-		config = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  formatVersion: 1\n  skills:\n" + listed
+		config = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 1\n  skills:\n" + listed
 	}
 	files := gitfixture.Library(map[string][]byte{"config.yaml": []byte(config), "techs/go/errors.md": []byte(projectRule + "\nWrap them with context.\n")})
 	if _, err := b.team.Commit(ctx, b.team.Worktree(), "Release 2", files); err != nil {
@@ -596,7 +596,7 @@ func TestUpdate_PreviewsTheCuratedSkillsAnOverridingSourceMoves(t *testing.T) {
 func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 	ctx := context.Background()
 	kit, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                        []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  skills:\n    offered: [skills/deploy]\n"),
+		"config.yaml":                        []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  skills:\n    offered: [skills/deploy]\n"),
 		"techs/go/_group.yaml":               []byte(projectMetadata),
 		"techs/go/errors.md":                 []byte(projectRule),
 		".trailguide/skills/deploy/SKILL.md": []byte(deploySkill),
@@ -609,7 +609,7 @@ func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 		t.Fatal(err)
 	}
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  kit:\n    repository: git@fixture.invalid:kit\nlibrary:\n  formatVersion: 1\n  skills:\n    required: [kit:skills/deploy]\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  kit:\n    repository: git@fixture.invalid:kit\nlibrary:\n  schemaVersion: 1\n  skills:\n    required: [kit:skills/deploy]\n"),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
 	}))
@@ -672,7 +672,7 @@ func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 }
 
 func TestSync_ALibraryRepositoryCannotExcludeASkillItRequires(t *testing.T) {
-	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable","skills":{"include":["skills/productivity/grilling"],"exclude":[{"id":"skills/ops/deploy","reason":"Not here."}]}}},"library":{"formatVersion":1,"skills":{"required":["pocock:skills/ops/deploy"]}}}`)
+	b := newCurating(t, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"pocock":{"repository":POCOCK,"ref":"stable","skills":{"include":["skills/productivity/grilling"],"exclude":[{"id":"skills/ops/deploy","reason":"Not here."}]}}},"library":{"schemaVersion":1,"skills":{"required":["pocock:skills/ops/deploy"]}}}`)
 	_, err := Sync(context.Background(), b.options, b.git)
 	var validation errs.ValidationError
 	if !errors.As(err, &validation) || validation.ValidationLocation() != "sources.pocock.skills.exclude.skills/ops/deploy" || !strings.Contains(validation.ValidationProblem(), "library.skills.required lists pocock:skills/ops/deploy") {

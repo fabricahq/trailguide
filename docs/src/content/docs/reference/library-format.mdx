@@ -79,7 +79,7 @@ sources:
     repository: https://github.com/mattpocock/skills.git
     ref: main
 library:
-  formatVersion: 1
+  schemaVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -93,37 +93,39 @@ library:
       - mattpocock:skills/productivity/grilling
 ```
 
-The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository; it writes `formatVersion: 1`.
+The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository; it writes `schemaVersion: 1` in the `library` section.
 
-### Library format
+### Schema version
 
-`library.formatVersion` is required. It names the version of everything the library publishes, which this page and [Rule and rule group format](/reference/rule-format/) describe:
+`library.schemaVersion` is required. It names the version of the library schema: everything the library publishes, which this page and [Rule and rule group format](/reference/rule-format/) describe:
 
-- the `library` section: its format, license, and skill levels;
+- the `library` section: its schema version, license, and skill levels;
 - the `repository` and `ref` of each source the library's skills [curate](#curated-skills) from;
 - rule files and rule group metadata;
 - the library layout: where the manifest, rules, skills, and shared assets live.
 
 [Release records](/reference/rule-versions/#release-record) have their own `formatVersion`, which changes independently.
 
-This version of Trail Guide reads and writes library format `1`. A library without `formatVersion`, or with one that isn't a whole number, fails with a validation error at `library.formatVersion`. A library in another format fails with `unsupported-library-format`, which names both formats: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier format. It adds support for one when libraries still publish in it.
+The configuration's top-level `schemaVersion` is a different version: it describes the project configuration, which the library's own Trail Guide reads. `library.schemaVersion` describes what the library publishes, which its consumers read.
+
+This version of Trail Guide reads and writes library schema version `1`. A library without `library.schemaVersion`, or with one that isn't a whole number, fails with a validation error at `library.schemaVersion`. A library in another library schema version fails with `unsupported-library-schema`, which names both versions: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier library schema version. It adds support for one when libraries still publish in it.
 
 #### What a library's consumers read
 
-A project that imports a library, and a catalog that lists it, reads only what the library publishes. It ignores the configuration's `schemaVersion` and every project setting, such as `skillTargets`, the sources the library doesn't curate from, and a curated source's own `rules` and `skills`, so a library in a project schema the consumer's Trail Guide doesn't know is still readable. It validates everything it reads, including each curated source's `repository` and `ref`. The project's [vendor snapshot](/reference/files/) keeps only that published manifest, and offline builds read it the same way.
+A project that imports a library, and a catalog that lists it, reads only what the library publishes. It ignores the configuration's top-level `schemaVersion` and every project setting, such as `skillTargets`, the sources the library doesn't curate from, and a curated source's own `rules` and `skills`, so a library in a project schema the consumer's Trail Guide doesn't know is still readable. It validates everything it reads, including each curated source's `repository` and `ref`. The project's [vendor snapshot](/reference/files/) keeps only that published manifest, and offline builds read it the same way.
 
-Within a format, consumers ignore fields of the `library` section they don't know, at any level, so a later Trail Guide can add a field without a new format when ignoring it keeps every reader correct, such as a description. A change that consumers must interpret, such as a new skill level that projects must install, needs a new format, even if the new field is optional. `trailguide library check` is stricter: it validates the author's whole configuration, and fails on any field this version doesn't know.
+Within a library schema version, consumers ignore fields of the `library` section they don't know, at any level, so a later Trail Guide can add a field without a new library schema version when ignoring it keeps every reader correct, such as a description. A change that consumers must interpret, such as a new skill level that projects must install, needs a new library schema version, even if the new field is optional. `trailguide library check` is stricter: it validates the author's whole configuration, and fails on any field this version doesn't know.
 
 #### What project configuration changes keep
 
-Project configuration has its own [`schemaVersion`](/reference/configuration/#version-boundaries), which can change without a new library format, as long as it keeps what a library's consumers read:
+Project configuration has its own top-level [`schemaVersion`](/reference/configuration/#version-boundaries), which can change without a new library schema version, as long as it keeps what a library's consumers read:
 
 - the manifest at `.trailguide/config.yaml`;
 - one YAML document holding a mapping, without anchors, aliases, explicit tags, or duplicate keys;
 - the `library` section, at the top level;
 - under the top-level `sources` mapping, keyed by source name, the `repository` and `ref` of each curated source.
 
-A change to any of these is a change to the library format.
+A change to any of these needs a new library schema version.
 
 The manifest replaces `rule-library.yaml`, and the Trail Guide directory replaces root-level `techs/`, `practices/`, `skills/`, `assets/`, and `changes/` folders. A repository with a `rule-library.yaml` fails to load with a message that shows the new shape; see [No backward compatibility](/reference/configuration/#no-backward-compatibility). Rule IDs don't change when you move a library's rules into `.trailguide/rules/`.
 
@@ -155,7 +157,7 @@ List a skill in `library.skills.dependencies` when the library has it only becau
 
 ```yaml
 library:
-  formatVersion: 1
+  schemaVersion: 1
   skills:
     recommended: [skills/add-skill]
     dependencies: [anthropic:skills/skill-creator]
@@ -225,7 +227,7 @@ Earlier versions of Trail Guide read a library's manifest from `rule-library.yam
 | `assets/` | `.trailguide/assets/` |
 | `changes/` | `.trailguide/changes/` |
 
-Move the files with `git mv`, then delete `rule-library.yaml` and write its `license` fields, without `formatVersion`, in the `library` section of `.trailguide/config.yaml`, beside the `sources` the repository uses as a project, if any. License and notice paths stay relative to the repository root, so they don't change.
+Move the files with `git mv`, then delete `rule-library.yaml` and write its `license` fields, without its `formatVersion`, in the `library` section of `.trailguide/config.yaml`, after `schemaVersion: 1`, beside the `sources` the repository uses as a project, if any. License and notice paths stay relative to the repository root, so they don't change.
 
 Rule IDs and versions don't change. A moved rule sits two folders deeper, so its relative links to shared assets need one more `../`, such as `../../../assets/retry-lifecycle.svg`, and its links to license files at the repository root need two more. Links that start with `/assets/` still work, because a link that starts with `/` resolves from `.trailguide/`. Once the library has a library release, record each rule whose links changed with `trailguide library change RULE_ID --bump patch`, then run `trailguide library check`. A rule whose bytes didn't change needs no note, and moving the manifest isn't a library-wide change unless its license fields changed.
 
@@ -233,7 +235,7 @@ Projects can't import a library release in the earlier layout; sync and update f
 
 ## Read libraries from other tools
 
-Tools written in Go, such as a catalog of libraries, can read library release tags, release records, the library's manifest, rule files, rule group metadata, and the [canonical rule group list](/concepts/groups/#canonical-rule-group-ids), and place each library file in its repository, with the `github.com/fabricahq/trailguide/trailguide` package, whose Go documentation describes its API. Trail Guide reads libraries through the same package, so both read them the same way. The package only parses text the tool has already read, such as with a Git library; it has no Git, filesystem, or network access. Of a library's `.trailguide/config.yaml`, it reads only what the library publishes: the schema version, the names of its sources, and its library section, not the settings that configure the repository as a project. It follows Trail Guide's version, and its API may change before Trail Guide 1.0.0.
+Tools written in Go, such as a catalog of libraries, can read library release tags, release records, the library's manifest, rule files, rule group metadata, and the [canonical rule group list](/concepts/groups/#canonical-rule-group-ids), and place each library file in its repository, with the `github.com/fabricahq/trailguide/trailguide` package, whose Go documentation describes its API. Trail Guide reads libraries through the same package, so both read them the same way. The package only parses text the tool has already read, such as with a Git library; it has no Git, filesystem, or network access. Of a library's `.trailguide/config.yaml`, it reads only what the library publishes: its `library` section, including `library.schemaVersion`, and the repository and ref of each source its skills curate from, not the settings that configure the repository as a project. It follows Trail Guide's version, and its API may change before Trail Guide 1.0.0.
 
 ## Related guides
 

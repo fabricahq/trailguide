@@ -23,7 +23,7 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                          []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
+		"config.yaml":                                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
 		"techs/go/_group.yaml":                                 []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":                                   updateRule("errors 1.0.0"),
 		".trailguide/skills/build-feature/SKILL.md":            []byte("---\nname: build-feature\ndescription: Build a feature from a spec.\n---\n# Build a feature\n"),
@@ -165,7 +165,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
+		"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
 		"techs/go/_group.yaml":                      []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":                        updateRule("errors 1.0.0"),
 		"techs/go/naming.md":                        updateRule("naming 1.0.0"),

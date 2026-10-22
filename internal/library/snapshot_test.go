@@ -20,7 +20,7 @@ func ruleDocument(body string) string {
 // selectionFiles is a library with two groups, each with two rules, one of them with assets.
 func selectionFiles() map[string][]byte {
 	return map[string][]byte{
-		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
+		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
 		"techs/go/_group.yaml":               []byte(metadata),
 		"techs/go/errors.md":                 []byte(ruleDocument("Errors.")),
 		"techs/go/assets/errors/diagram.bin": {0, 1},

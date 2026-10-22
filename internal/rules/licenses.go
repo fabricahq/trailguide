@@ -42,9 +42,9 @@ func ParseLibraryManifest(text []byte, location string) (*Library, error) {
 	if errors.As(err, &validation) {
 		return nil, invalid(location+": "+validation.ValidationLocation(), validation.ValidationProblem())
 	}
-	var unsupported *trailguide.UnsupportedLibraryFormatError
+	var unsupported *trailguide.UnsupportedLibrarySchemaError
 	if errors.As(err, &unsupported) {
-		return nil, &trailguide.UnsupportedLibraryFormatError{Location: location + ": " + unsupported.Location, FormatVersion: unsupported.FormatVersion, Supported: unsupported.Supported}
+		return nil, &trailguide.UnsupportedLibrarySchemaError{Location: location + ": " + unsupported.Location, SchemaVersion: unsupported.SchemaVersion, Supported: unsupported.Supported}
 	}
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func ParseLibraryManifest(text []byte, location string) (*Library, error) {
 // at location, as the library's consumers do, with trailguide.ParseLibraryManifest: only the library section and the
 // repository and ref of each source it curates from, ignoring the configuration's schemaVersion and project
 // settings. It returns nil for a configuration without a library section, and fails with a validation error or a
-// *trailguide.UnsupportedLibraryFormatError.
+// *trailguide.UnsupportedLibrarySchemaError.
 func ParsePublishedManifest(text []byte, location string) (*Library, error) {
 	parsed, err := trailguide.ParseLibraryManifest(text, location)
 	if err != nil || parsed == nil {

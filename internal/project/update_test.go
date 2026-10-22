@@ -333,7 +333,7 @@ func twoLibraryProject(t *testing.T) (Options, imports.Options) {
 	fixtures := map[string]*gitfixture.Fixture{}
 	for _, name := range []string{"alpha", "beta"} {
 		f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
+			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
 			"techs/go/_group.yaml": []byte(projectMetadata),
 			"techs/go/errors.md":   []byte(strings.Replace(projectRule, "# Return errors", "# Return errors, from "+name, 1)),
 			"techs/go/retry.md":    []byte(projectRule),

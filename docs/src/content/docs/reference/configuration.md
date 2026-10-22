@@ -407,7 +407,7 @@ sources:
     repository: https://github.com/mattpocock/skills.git
     ref: main
 library:
-  formatVersion: 1
+  schemaVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -423,14 +423,14 @@ library:
 
 | Field | Meaning |
 | --- | --- |
-| `library.formatVersion` | Required. `1`, the [library format](/reference/library-format/#library-format) the library publishes. |
+| `library.schemaVersion` | Required. `1`, the [library schema version](/reference/library-format/#schema-version) the library publishes. Unrelated to the top-level `schemaVersion`. |
 | `library.license` | Optional. The terms that cover everything the library publishes. See [License metadata](/reference/library-format/#license-metadata). |
 | `library.skills.required` | Skills every project that uses the library installs. |
 | `library.skills.recommended` | Skills a project installs when it includes `recommended`. |
 | `library.skills.offered` | Skills a project installs when it names them or includes `"*"`. |
 | `library.skills.dependencies` | Skills a project installs only with the library's skills that call them; see [Dependencies](#dependencies). |
 
-A `library` section with only `formatVersion: 1` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
+A `library` section with only `schemaVersion: 1` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
 
 `trailguide library check` validates the manifest, and fails when two listed skills, authored or curated, have the same install name, so projects never inherit a clash from one library. See [Library format](/reference/library-format/).
 
@@ -462,7 +462,7 @@ sources:
     skills:
       include: [skills/skill-creator] # installs it in this repository
 library:
-  formatVersion: 1
+  schemaVersion: 1
   skills:
     recommended: [skills/add-skill]
     dependencies: [anthropic:skills/skill-creator] # installs only with add-skill
@@ -650,7 +650,7 @@ There's no upgrade command. Rewrite the file by hand:
 
 ## Version boundaries
 
-`schemaVersion` describes this configuration. A library's [`library.formatVersion`](/reference/library-format/#library-format) describes what it publishes, and projects that import the library ignore its `schemaVersion`, so this schema can change without breaking a library's consumers.
+The top-level `schemaVersion` describes this configuration. A library's [`library.schemaVersion`](/reference/library-format/#schema-version) describes what it publishes, and projects that import the library ignore its top-level `schemaVersion`, so this schema can change without breaking a library's consumers.
 The caller-supplied `toolVersion` identifies the tool that generated the output.
 
 Each source's `ref` and pins state which versions the project wants: `ref` names the library release or revision, and every rule without a pin follows the source's lock, which `trailguide project update` moves together with `ref`.

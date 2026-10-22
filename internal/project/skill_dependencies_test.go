@@ -19,7 +19,7 @@ func dependencyLibrary(t *testing.T) *gitfixture.Fixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                              []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"skills":{"offered":["skills/add-skill","skills/deploy"],"dependencies":["skills/format-skill"]}}}`),
+		"config.yaml":                              []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"offered":["skills/add-skill","skills/deploy"],"dependencies":["skills/format-skill"]}}}`),
 		"techs/go/_group.yaml":                     []byte(projectMetadata),
 		"techs/go/errors.md":                       []byte(projectRule),
 		".trailguide/skills/add-skill/SKILL.md":    usingSkill("add-skill", "skills/format-skill"),

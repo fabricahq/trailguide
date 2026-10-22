@@ -1,5 +1,5 @@
 // Check that projects consume a library through its published contract, whatever its project settings, and that
-// the library format decides whether they can.
+// the library schema version decides whether they can.
 
 package cli
 
@@ -64,7 +64,7 @@ sources:
     repository: not a repository address
     rules: {include: [nothing/valid/*], newSelector: true}
 library:
-  formatVersion: 1
+  schemaVersion: 1
   description: A field a later Trail Guide may add, which consumers can ignore.
 `)
 	directory, run := consumingProject(t, f)
@@ -78,25 +78,25 @@ library:
 		t.Fatalf("generated guidance lacks the library's group: %v\n%s", err, rules)
 	}
 	manifest, err := os.ReadFile(filepath.Join(directory, ".trailguide", "vendor", "team", "config.yaml"))
-	want := `{"library":{"description":"A field a later Trail Guide may add, which consumers can ignore.","formatVersion":1},"sources":{}}` + "\n"
+	want := `{"library":{"description":"A field a later Trail Guide may add, which consumers can ignore.","schemaVersion":1},"sources":{}}` + "\n"
 	if err != nil || string(manifest) != want {
 		t.Fatalf("vendored manifest %s, %v; want only the published contract: %s", manifest, err, want)
 	}
 }
 
-// TestSync_ReportsAnInvalidOrUnsupportedLibraryFormat refuses a library without a format, with a malformed one, or
-// with invalid published fields as a validation error at the field, and one in another format with
-// unsupported-library-format.
-func TestSync_ReportsAnInvalidOrUnsupportedLibraryFormat(t *testing.T) {
+// TestSync_ReportsAnInvalidOrUnsupportedLibrarySchema refuses a library without a schema version, with a malformed
+// one, or with invalid published fields as a validation error at the field, and one in another schema version with
+// unsupported-library-schema.
+func TestSync_ReportsAnInvalidOrUnsupportedLibrarySchema(t *testing.T) {
 	const manifest = "team/.trailguide/config.yaml: "
 	for _, test := range []struct {
 		name, library, kind, code, location string
 	}{
-		{"no format", "library: {}\n", "validation", "", manifest + "library.formatVersion"},
-		{"a malformed format", "library: {formatVersion: latest}\n", "validation", "", manifest + "library.formatVersion"},
-		{"another format", "library: {formatVersion: 2, skills: {required: skills/everything}}\n", "operation", "unsupported-library-format", ""},
-		{"invalid skill levels", "library: {formatVersion: 1, skills: {required: skills/everything}}\n", "validation", "", manifest + "library.skills.required"},
-		{"an invalid curated ref", "sources:\n  helper: {repository: https://example.invalid/helper.git, ref: 'refs/remotes/origin/main'}\nlibrary: {formatVersion: 1, skills: {offered: [helper:skills/help]}}\n", "validation", "", manifest + "sources.helper.ref"},
+		{"no schema version", "library: {}\n", "validation", "", manifest + "library.schemaVersion"},
+		{"a malformed schema version", "library: {schemaVersion: latest}\n", "validation", "", manifest + "library.schemaVersion"},
+		{"another schema version", "library: {schemaVersion: 2, skills: {required: skills/everything}}\n", "operation", "unsupported-library-schema", ""},
+		{"invalid skill levels", "library: {schemaVersion: 1, skills: {required: skills/everything}}\n", "validation", "", manifest + "library.skills.required"},
+		{"an invalid curated ref", "sources:\n  helper: {repository: https://example.invalid/helper.git, ref: 'refs/remotes/origin/main'}\nlibrary: {schemaVersion: 1, skills: {offered: [helper:skills/help]}}\n", "validation", "", manifest + "sources.helper.ref"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, run := consumingProject(t, formattedLibrary(t, "schemaVersion: 2\n"+test.library))
@@ -108,8 +108,8 @@ func TestSync_ReportsAnInvalidOrUnsupportedLibraryFormat(t *testing.T) {
 			if code != 1 || result.Error == nil || result.Error.Kind != test.kind || result.Error.Code != test.code || result.Error.Location != test.location {
 				t.Fatalf("exit %d, response %s", code, out)
 			}
-			if test.code != "" && (!strings.Contains(result.Error.Message, "format 2") || !strings.Contains(result.Error.Message, "upgrade Trail Guide")) {
-				t.Fatalf("message %q doesn't name the formats and the upgrade", result.Error.Message)
+			if test.code != "" && (!strings.Contains(result.Error.Message, "library schema version 2") || !strings.Contains(result.Error.Message, "upgrade Trail Guide")) {
+				t.Fatalf("message %q doesn't name the schema versions and the upgrade", result.Error.Message)
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestLibraryCheck_RejectsWhatConsumersIgnore(t *testing.T) {
 		}
 	}
 	config := filepath.Join(dir, ".trailguide", "config.yaml")
-	if err := os.WriteFile(config, []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  description: Shared rules.\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  description: Shared rules.\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	out, _, code := runCLI(t, binary, dir, "library", "check", "--json")
