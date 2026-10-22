@@ -255,10 +255,6 @@ Levels are library-wide settings, like rule group metadata: changing one needs n
 
 ## Record a change note
 
-:::note[Preview]
-Skill versions and skill change notes aren't implemented yet, so `trailguide library change` records rule changes only. This section describes the planned workflow.
-:::
-
 Skills are versioned like rules. Before your library's first library release, skills need no change notes; the first library release gives every skill version `1.0.0`. After it, record every new or changed skill with `trailguide library change`, in the same pull request as the change.
 
 For a new skill, leave out `--bump`:

@@ -77,7 +77,7 @@ func createProjectSkill(cmd *cobra.Command, sf *authoringFlags, name string, out
 	if err != nil {
 		return err
 	}
-	output.report = skillCreatedReport(result.Added, result.Changed, result.Warnings, name, authoringScope{workdir: sf.directory})
+	output.report = skillCreatedReport(result.Added, result.Changed, result.Warnings, name, authoringScope{workdir: sf.directory}, false)
 	return nil
 }
 

@@ -10,7 +10,7 @@ This guide starts with a full update and what it does to your [skills](#update-s
 You need a project that already takes rules or skills from at least one source; if yours doesn't yet, start with [Select rules](/guides/select-rules/) or [Install skills](/guides/install-skills/). If you're publishing new rule versions from a library you maintain, see [Version your rules](/guides/version-rules/). If you're looking for exactly which files each command writes, see [Sync and recovery](/reference/sync/).
 
 :::note[Preview]
-Skill versions and skill change notes aren't implemented yet: an update lists a library skill as changed or added, with its changed files, but without a version or summary.
+Projects don't read skill versions yet: libraries publish them, but an update lists a library skill as changed or added, with its changed files, without a version or summary.
 :::
 
 ## Sync and update
@@ -27,6 +27,25 @@ The split exists so that changes arrive only when someone chooses them. A teamma
 For a library, `.trailguide/config.yaml` also says which library release the project takes, as the source's `ref`, such as `ref: release/4`. A reviewer sees an update as a one-line change from `release/4` to `release/5`, next to the new lock.
 
 Sync does take something new in two cases. A source that's new to the project, or whose repository you changed, is taken as an update would take it. So is a source whose `ref` you changed to a branch, tag, or commit. A source whose `ref` you changed to another library release isn't: sync fails and names `trailguide project update SOURCE`, which takes it. When you include a rule or skill that the recorded revision doesn't have, sync fails and names `trailguide project update SOURCE`.
+
+### A source without a ref
+
+Every source needs a `ref`. A project synced with an earlier Trail Guide may have library sources without one, and then sync, update, build, and check all fail, naming the release your project records:
+
+```text
+Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest-release to take the newest release at each update, then run the command again. No files were written.
+```
+
+Add the line the error names to the source:
+
+```yaml
+sources:
+  fabrica:
+    repository: https://github.com/fabricahq/.trailguide.git
+    ref: release/4
+```
+
+Nothing else changes: the release is the one your lock already records, so check passes and sync writes nothing.
 
 ### A source without a ref
 

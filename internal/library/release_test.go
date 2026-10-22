@@ -151,7 +151,7 @@ func TestRelease_FirstLibraryReleaseGivesEveryRuleOneAndPushesOnlyItsTag(t *test
 	if remote, err := fixture.Command(ctx, "rev-parse", "refs/tags/release/1"); err != nil || remote != local {
 		t.Fatalf("the clone's release/1 is %s, the remote's %s: %v", local, remote, err)
 	}
-	want := ReleaseResult{Repository: fixture.Repository, Remote: "origin", Branch: "main", Commit: fixture.LatestCommit, Release: 1, Tag: "release/1", Rules: result.Rules, LibraryFiles: []string{"config.yaml", "practices/testing/_group.yaml"}, Notes: notes, TagCreated: true, Warnings: []string{"License is undeclared. Decide terms before sharing this library."}, ForkedSkills: []ForkedSkill{}}
+	want := ReleaseResult{Repository: fixture.Repository, Remote: "origin", Branch: "main", Commit: fixture.LatestCommit, Release: 1, Tag: "release/1", Rules: result.Rules, Skills: []PendingSkill{}, LibraryFiles: []string{"config.yaml", "practices/testing/_group.yaml"}, Notes: notes, TagCreated: true, Warnings: []string{"License is undeclared. Decide terms before sharing this library."}, ForkedSkills: []ForkedSkill{}}
 	if !reflect.DeepEqual(result, want) || !slices.Equal(previewRows(PendingRelease{Rules: result.Rules}), []string{"practices/testing/a new - 1.0.0", "practices/testing/b new - 1.0.0"}) {
 		t.Fatalf("result %+v\nwant %+v", result, want)
 	}
@@ -296,7 +296,7 @@ func TestRelease_RefusesBeforeChangingAnything(t *testing.T) {
 		{name: "uncommitted skill changes", code: "uncommitted-changes", message: "these library files differ from it:\n  - .trailguide/skills/fix/SKILL.md differs from its committed copy\n  - .trailguide/skills/review/SKILL.md isn't committed\n  - .trailguide/skills/tdd/SKILL.md was deleted, and the deletion isn't committed\nCommit and push your changes",
 			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
 				// The committed fix skill's name doesn't match its folder; only the working tree corrects it.
-				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fixer\ndescription: Fix a bug.\n---\n"), ".trailguide/skills/tdd/SKILL.md": []byte("---\nname: tdd\ndescription: Test first.\n---\n")})
+				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fixer\ndescription: Fix a bug.\n---\n"), ".trailguide/skills/tdd/SKILL.md": []byte("---\nname: tdd\ndescription: Test first.\n---\n"), "changes/skills.yaml": []byte("summary: Add skills.\nskills:\n  skills/fix: new\n  skills/review: new\n")})
 				edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\ndescription: Fix a bug.\n---\n", ".trailguide/skills/review/SKILL.md": "---\nname: review\ndescription: Review a change.\n---\n", ".trailguide/skills/tdd": ""})
 			}},
 		{name: "file a Git filter changes", code: "uncommitted-changes", message: "  - .trailguide/assets/note.txt differs from its committed copy\n",

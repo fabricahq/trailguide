@@ -76,9 +76,13 @@ func TestUpdate_TakesTheEditedReleaseWithANewRuleAndNoFurther(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), "    ref: release/2\n") {
 		t.Fatalf("config.yaml, %v:\n%s", err, config)
 	}
-	record, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "vendor", "team", "_source.json"))
-	if err != nil || !strings.Contains(string(record), `"release": 2,`) {
-		t.Fatalf("_source.json, %v:\n%s", err, record)
+	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "lock.json"))
+	var lock struct{ Sources map[string]struct{ Release int } }
+	if err == nil {
+		err = json.Unmarshal(data, &lock)
+	}
+	if err != nil || lock.Sources["team"].Release != 2 {
+		t.Fatalf("lock.json, %v:\n%s", err, data)
 	}
 	if out, diagnostic, code := u.run(t, "project", "check"); code != 0 {
 		t.Fatalf("check: exit %d\n%s%s", code, out, diagnostic)

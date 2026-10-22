@@ -133,19 +133,37 @@ func checkNewRule(ctx context.Context, root *os.Root, id string, options Options
 // SkillPlan identifies a new skill in the library's .trailguide/skills/; Commit rechecks that its folder is still
 // absent.
 type SkillPlan struct {
-	name    string
-	options Options
+	name     string
+	options  Options
+	released bool
 }
 
 // PlanSkill checks the skill's name and that the library has no skill folder by that name before collecting the
-// skill's description.
+// skill's description. In a Git repository, it also finds whether the library has a library release, so the new
+// skill needs a change note; it fails in a shallow clone, where that can't be known.
 func PlanSkill(ctx context.Context, name string, options Options) (*SkillPlan, error) {
-	options, err := planAuthoring(ctx, options, func(root *os.Root, _ Options) error { return checkNewSkill(ctx, root, name) })
+	released := false
+	options, err := planAuthoring(ctx, options, func(root *os.Root, options Options) error {
+		if err := checkNewSkill(ctx, root, name); err != nil {
+			return err
+		}
+		git, err := openLibraryGit(ctx, root.Name(), options.Git)
+		if err != nil {
+			return err
+		}
+		tags, err := git.releaseTags(ctx)
+		released = len(tags) > 0
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &SkillPlan{name, options}, nil
+	return &SkillPlan{name, options, released}, nil
 }
+
+// NeedsChangeNote reports that the library had a library release when planning, so the new skill needs a change
+// note before library check passes.
+func (p *SkillPlan) NeedsChangeNote() bool { return p != nil && p.released }
 
 // Commit revalidates live state before creating the skill's SKILL.md, a marked draft with description and kind, a
 // trailguide-skill-type or empty, in its frontmatter.

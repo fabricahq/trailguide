@@ -225,7 +225,11 @@ func projectChangesReport(action string, result project.FileChanges, root, workd
 
 func libraryCheckedReport(result library.CheckResult) commandReport {
 	var out strings.Builder
-	fmt.Fprintf(&out, "Library is valid: %d group(s), %d rule(s).\n", result.GroupCount, result.RuleCount)
+	if result.SkillCount > 0 {
+		fmt.Fprintf(&out, "Library is valid: %d group(s), %d rule(s), %d skill(s).\n", result.GroupCount, result.RuleCount, result.SkillCount)
+	} else {
+		fmt.Fprintf(&out, "Library is valid: %d group(s), %d rule(s).\n", result.GroupCount, result.RuleCount)
+	}
 	for _, warning := range result.Warnings {
 		fmt.Fprintf(&out, "Warning: %s\n", warning)
 	}
@@ -233,18 +237,18 @@ func libraryCheckedReport(result library.CheckResult) commandReport {
 	// With nothing pending, check says what library release would, rather than describe an empty release. The first
 	// library release always publishes the library-wide files, which check doesn't list before it.
 	first := result.PendingRelease.Release == 1
-	if len(result.PendingRelease.Rules)+len(result.PendingRelease.LibraryFiles) == 0 && !first {
+	if len(result.PendingRelease.Rules)+len(result.PendingRelease.Skills)+len(result.PendingRelease.LibraryFiles) == 0 && !first {
 		fmt.Fprintf(&out, "\nNothing to publish: no pending change notes and no library-wide changes since release/%d.\n", result.PendingRelease.Release-1)
 		return commandReport{value: result, human: out.String()}
 	}
 	fmt.Fprintf(&out, "\nPending library release %d\n", result.PendingRelease.Release)
-	if len(result.PendingRelease.Rules) == 0 {
+	if len(result.PendingRelease.Rules)+len(result.PendingRelease.Skills) == 0 {
 		out.WriteString("  No rule changes are pending.\n")
 		if first {
 			out.WriteString("  The first library release publishes the library-wide files, such as group metadata and shared assets.\n")
 		}
 	}
-	formatPendingRules(&out, result.PendingRelease.Rules)
+	formatPendingRows(&out, result.PendingRelease.Rules, result.PendingRelease.Skills)
 	if files := result.PendingRelease.LibraryFiles; len(files) > 0 {
 		fmt.Fprintf(&out, "Library-wide files changed since release/%d:\n  %s\n", result.PendingRelease.Release-1, strings.Join(files, "\n  "))
 	}
