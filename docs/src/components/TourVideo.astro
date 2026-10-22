@@ -2,12 +2,14 @@
 /** @fileoverview Plays the narrated Trail Guide tour on the homepage at 1.1x by default, with a large play button and buttons to change the speed. */
 const SPEEDS = [1, 1.1, 1.25, 1.5, 2] as const;
 const DEFAULT_SPEED = 1.1;
+// Versioned URLs prevent browsers from reusing a cached export after replacement.
+const TOUR_SRC = '/video/trailguide-tour.mp4?v=55d06b55bf4a';
 ---
 <figure class="mx-auto my-0 max-w-[60rem] py-6 max-md:py-4" aria-label="Trail Guide tour video" data-tour-video data-default-speed={DEFAULT_SPEED}>
   <div class="relative">
     <video class="block w-full h-auto aspect-video rounded-panel border border-border bg-[#151515]" controls preload="metadata" playsinline poster="/video/trailguide-tour-poster.svg" width="1920" height="1080">
-      <source src="/video/trailguide-tour.mp4" type="video/mp4" />
-      <a href="/video/trailguide-tour.mp4">Download the Trail Guide tour</a>.
+      <source src={TOUR_SRC} type="video/mp4" />
+      <a href={TOUR_SRC}>Download the Trail Guide tour</a>.
     </video>
     <!-- The poster is dark, so the browser's own play control is hard to see until the video starts. -->
     <button type="button" class="absolute inset-0 m-auto grid [&[hidden]]:hidden place-items-center size-20 rounded-full border-0 bg-white text-[#151515] shadow-[0_8px_30px_#0008] cursor-pointer motion-safe:transition-transform hover:scale-105 focus-visible:outline-3 focus-visible:outline-white focus-visible:outline-offset-4 max-sm:size-14" aria-label="Play the Trail Guide tour" hidden data-tour-play>
