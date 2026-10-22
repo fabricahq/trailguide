@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/decode"
 	"github.com/fabricahq/trailguide/internal/gitsource"
 	"github.com/fabricahq/trailguide/internal/librarytree"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // LibraryFormat is the library format this version of Trail Guide reads and writes, which every library declares in
@@ -205,7 +206,7 @@ func curatedSourceFields(sources, section json.RawMessage, location string) (map
 }
 
 // curatedNames returns the names of the sources that the raw library section's skill lists name, without validating
-// the section.
+// the section. It reads only the lists this format defines, since consumers ignore any other field.
 func curatedNames(section json.RawMessage) []string {
 	var library struct {
 		Skills map[string]json.RawMessage `json:"skills"`
@@ -214,9 +215,9 @@ func curatedNames(section json.RawMessage) []string {
 		return nil
 	}
 	names := map[string]bool{}
-	for _, raw := range library.Skills {
+	for _, list := range skills.Lists {
 		var ids []string
-		if json.Unmarshal(raw, &ids) != nil {
+		if json.Unmarshal(library.Skills[list], &ids) != nil {
 			continue
 		}
 		for _, id := range ids {

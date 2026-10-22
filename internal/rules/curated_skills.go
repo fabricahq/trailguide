@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -35,17 +36,22 @@ func curatedSources(levels trailguide.SkillLevels, sources []Source) map[string]
 }
 
 // curatedNames returns, sorted, the names of the sources the raw library section's skills curate from, without
-// validating anything else, so the published manifest can carry those sources.
+// validating anything else, so the published manifest can carry those sources. It reads only the lists the library
+// format defines, which are all that consumers read.
 func curatedNames(section json.RawMessage) []string {
 	var library struct {
-		Skills map[string][]string `json:"skills"`
+		Skills map[string]json.RawMessage `json:"skills"`
 	}
 	if json.Unmarshal(section, &library) != nil {
 		return []string{}
 	}
 	names := map[string]bool{}
-	for _, list := range library.Skills {
-		for _, id := range list {
+	for _, list := range skills.Lists {
+		var ids []string
+		if json.Unmarshal(library.Skills[list], &ids) != nil {
+			continue
+		}
+		for _, id := range ids {
 			if name, _, curated := strings.Cut(id, ":"); curated {
 				names[name] = true
 			}

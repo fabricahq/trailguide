@@ -125,6 +125,11 @@ library:
 	if !reflect.DeepEqual(library.Skills.Required, []string{"skills/ship"}) || library.License == nil || *library.License.SPDXExpression != "MIT" {
 		t.Fatalf("got %+v; want the known fields", library)
 	}
+	// An unknown list doesn't make the sources it names published, so their project-only fields stay unvalidated.
+	unknownList := "schemaVersion: 2\nsources:\n  helper: {repository: not an address}\nlibrary:\n  formatVersion: 1\n  skills: {featured: [helper:skills/help, {any: shape}]}\n"
+	if library, err := trailguide.ParseLibraryManifest([]byte(unknownList), "config.yaml"); err != nil || library.Curated != nil {
+		t.Fatalf("got %+v, %v; want no curated sources", library, err)
+	}
 	section := []byte(`{"formatVersion":1,"description":"Shared rules.","skills":{"required":["skills/ship"],"featured":["skills/ship"]}}`)
 	for _, test := range []struct{ section, location string }{
 		{`{"formatVersion":1,"description":"Shared rules."}`, "library"},

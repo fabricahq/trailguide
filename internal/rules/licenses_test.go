@@ -144,6 +144,11 @@ func TestPublishedManifest_IgnoresProjectSettingsAndTheSchemaVersion(t *testing.
 			t.Errorf("%s: got %s, %v; want %s", name, got, err, want)
 		}
 	}
+	// An unknown skill list stays in the section as written, but the sources it names aren't published.
+	unknownList := "schemaVersion: 2\nsources:\n" + curated + "  helper: {repository: not an address}\n" + strings.Replace(section, "  skills:\n", "  skills:\n    featured: [helper:skills/help]\n    shape: {any: shape}\n", 1)
+	if got, err := rules.PublishedManifestOf(sectionAndSources(t, unknownList)); err != nil || !strings.Contains(string(got), `"sources":{"mattpocock":`) || strings.Contains(string(got), "not an address") {
+		t.Errorf("an unknown skill list: got %s, %v; want only mattpocock among the sources", got, err)
+	}
 	for name, text := range map[string]string{
 		"another curated ref": "schemaVersion: 2\nsources:\n" + strings.Replace(curated, "main", "v2.0.0", 1) + section,
 		"another skill level": "schemaVersion: 2\nsources:\n" + curated + strings.Replace(section, "recommended", "required", 1),
