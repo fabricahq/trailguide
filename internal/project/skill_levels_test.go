@@ -111,42 +111,6 @@ func TestSync_RecordsWhichLibrarySetEachLevel(t *testing.T) {
 	if _, err := Sync(context.Background(), options, git); err != nil {
 		t.Fatal(err)
 	}
-	type setter struct {
-		Library string
-		Release *int
-	}
-	var provenance struct {
-		Skills []struct {
-			ID                                   string
-			Level                                *string
-			RequiredBy, RecommendedBy, OfferedBy *setter
-		}
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/generated/provenance.json")), &provenance); err != nil {
-		t.Fatal(err)
-	}
-	// deploy is named by ID, so no level brought it in, and its record names no library.
-	levels, setBy := map[string]string{}, map[string]string{}
-	for _, skill := range provenance.Skills {
-		if skill.Level != nil {
-			levels[skill.ID] = *skill.Level
-		}
-		for level, by := range map[string]*setter{"required": skill.RequiredBy, "recommended": skill.RecommendedBy, "offered": skill.OfferedBy} {
-			if by == nil {
-				continue
-			}
-			if _, set := setBy[skill.ID]; set || by.Library != "team" || by.Release == nil || *by.Release != 1 {
-				t.Fatalf("%s: %s by %+v", skill.ID, level, by)
-			}
-			setBy[skill.ID] = level
-		}
-	}
-	if want := map[string]string{"team:skills/ship": "required", "team:skills/review": "recommended", "team:skills/deploy": "offered"}; !mapsEqual(levels, want) {
-		t.Fatalf("provenance levels = %v; want %v", levels, want)
-	}
-	if want := map[string]string{"team:skills/ship": "required", "team:skills/review": "recommended"}; !mapsEqual(setBy, want) {
-		t.Fatalf("provenance set by = %v; want %v", setBy, want)
-	}
 	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
 	for _, want := range []string{"**Level:** required by `team`, release 1", "**Level:** recommended by `team`, release 1", "**Level:** offered by `team`, release 1", "every project that uses the library installs its required skills"} {
 		if !strings.Contains(index, want) {
@@ -157,19 +121,6 @@ func TestSync_RecordsWhichLibrarySetEachLevel(t *testing.T) {
 	if len(record.AvailableSkills) != 4 || *record.AvailableSkills["skills/build-feature"].Level != "offered" || *record.AvailableSkills["skills/ship"].Level != "required" {
 		t.Fatalf("availableSkills = %v", record.AvailableSkills)
 	}
-}
-
-// mapsEqual reports whether two string maps hold the same entries.
-func mapsEqual(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for key, value := range a {
-		if b[key] != value {
-			return false
-		}
-	}
-	return true
 }
 
 func TestSyncAndBuild_RefuseToExcludeOrForkARequiredSkill(t *testing.T) {

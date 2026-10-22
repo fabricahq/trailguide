@@ -22,7 +22,7 @@ func TestPrepareInlineBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolved.Groups[0].Rules[0].Rule.Document += "\nUnicode: 日本語\n"
-	options := Options{ToolVersion: "test", IndexMaxLines: defaultIndexMaxLines}
+	options := Options{IndexMaxLines: defaultIndexMaxLines}
 	whole, err := prepare(resolved, options)
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestPrepareInlineLinks(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, _ := renderRules(resolved)
-			got, err := prepare(resolved, Options{ToolVersion: "test", IndexMaxLines: 16000})
+			got, err := prepare(resolved, Options{IndexMaxLines: 16000})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -160,7 +160,7 @@ func TestPrepareInlineFallbackNeverHidesInvalidRules(t *testing.T) {
 	second.Rule.ID = "team:techs/go/later"
 	second.Rule.Document = document + "\n[missing](/assets/missing.txt)"
 	resolved.Groups[0].Rules = append(resolved.Groups[0].Rules, second)
-	if got, err := prepare(resolved, Options{ToolVersion: "test", IndexMaxLines: defaultIndexMaxLines}); err == nil || got.Files != nil {
+	if got, err := prepare(resolved, Options{IndexMaxLines: defaultIndexMaxLines}); err == nil || got.Files != nil {
 		t.Fatal("inline fallback concealed invalid later rule")
 	}
 }
@@ -174,7 +174,7 @@ func TestInlineMultilineHeadingReference(t *testing.T) {
 			t.Fatal(err)
 		}
 		resolved.Groups[0].Rules[0].Rule.Document += "\n" + heading + "\n\n[multi line]: https://example.com\n"
-		got, err := prepare(resolved, Options{ToolVersion: "test", IndexMaxLines: defaultIndexMaxLines})
+		got, err := prepare(resolved, Options{IndexMaxLines: defaultIndexMaxLines})
 		if err != nil {
 			t.Fatal(err)
 		}

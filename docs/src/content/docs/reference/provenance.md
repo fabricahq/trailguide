@@ -3,146 +3,98 @@ title: "Provenance"
 description: "Where to find a rule's or skill's source, version, level, replacement reason, and declared license."
 ---
 
-**Provenance** records where your project's rules and skills came from. The main file is `generated/provenance.json` in the **Trail Guide directory**, so its path from the project root is `.trailguide/generated/provenance.json`. It identifies the sources and versions your project uses, the source of each active rule and installed skill, the library that set each skill's level, and any replacements.
+**Provenance** is where your project's rules and skills came from. Trail Guide records it in three places in the **Trail Guide directory**, `.trailguide/`: the lockfile, `lock.json`, records what the project took from each source; `config.yaml` records what you asked for, with your pins, exclusions, replacements, and their reasons; and the generated pages your agents read show each rule's and skill's source beside its guidance.
 
-Read it when you want to understand why a rule or skill is present, investigate a library update, or find out why your project replaced a rule or skill. Tools can also read the JSON to report this information. To find and follow the rules themselves, agents start with [the generated rule index](/reference/files/#where-agents-start).
+Read them when you want to understand why a rule or skill is present, investigate a library update, or find out why your project replaced a rule or skill. To find and follow the rules themselves, agents start with [the generated rule index](/reference/files/#where-agents-start).
 
 This page shows where the records live, how Trail Guide creates them, and how to trace a rule or skill back to its source.
 
 ## Where to look
 
-Trail Guide keeps these related records:
-
 | File | What it tells you |
 | --- | --- |
-| `generated/provenance.json` | Where active rules and installed skills came from, which versions are in use, which library set each skill's level, and why rules and skills were replaced. |
-| `lock.json` | Which revision, rule and skill versions, and original files each source's vendor snapshot holds: the project's **lockfile**. |
-| `generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule and skill versions and levels, and declared license terms. |
+| `lock.json` | Which revision, rule and skill versions, and original files each source's vendor snapshot holds: the project's **lockfile**. See [Inspect the lockfile](#inspect-the-lockfile). |
+| `config.yaml` | Which sources, rules, and skills you include, and your pins, exclusions, replacements, renames, and the reason for each. See [Configuration](/reference/configuration/). |
+| `generated/rules/<source-name>/…` and `generated/rules/local/…` | Each active rule's ID, version, the rule it replaces and why, a link to its original file, and its declared license and credits. |
+| `generated/SKILLS.md` | Each installed skill's source, release and commit, level and the library that set it, why it's installed, the skill it replaces and why, and where it's installed. |
+| `generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule versions and pins, skills, and declared license terms. |
 | `generated/installed-skills.json` | Which skill folders Trail Guide installed in the target folders. See [Installed skills](/reference/files/#installed-skills). |
 
-These paths are relative to the Trail Guide directory, `.trailguide/`. The **source name** is the name you gave a source in your configuration, such as `team`.
+These paths are relative to the Trail Guide directory. The **source name** is the name you gave a source in your configuration, such as `team`.
 
-Trail Guide writes these files. To change the information they describe, edit your configuration or authored rules and skills and run the appropriate [sync or build command](/reference/sync/).
+Trail Guide writes the lockfile and the generated files. To change what they describe, edit your configuration or authored rules and skills and run the appropriate [sync or build command](/reference/sync/).
 
 ## How the records are created
 
 1. **You include rules and skills.** Configuration records the sources, the rules and skills you include from each, pins, exclusions, replacements, and renames.
 2. **Sync and update record what they take.** `trailguide project update` moves each source along its `ref` and writes its entry in `lock.json` with the exact Git commit, rule versions, skill levels, and file digests. `trailguide project sync` restores exactly what that entry says, and never moves a source.
-3. **Generation records the result.** Sync, update, or build combines the vendored and authored rules and skills, then writes `generated/provenance.json` alongside the guidance your agents read.
+3. **Generation shows the result.** Sync, update, or build combines the vendored and authored rules and skills, then writes the guidance your agents read, with each rule's and skill's source on its page.
 
-An **active rule** is one included in that generated guidance. An excluded rule has no active rule entry. A replacement has an entry that also identifies the rule it replaced. A rule taken only because an installed skill cites it has an entry marked `referenceOnly`. Skills work the same way, in their own list.
+An **active rule** is one included in that generated guidance. An excluded rule has no page. A replacement's page also names the rule it replaced.
 
 These files describe the current result, rather than a running history of every update. They contain no changing timestamps or machine-specific paths.
 
+Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report that repeated these facts. Trail Guide no longer writes it, and the next sync or build removes it.
+
 ## Trace a rule to its source
 
-Open `generated/provenance.json` and find the rule's ID in the `rules` array. A rule from a source has a project ID that starts with its source name, such as `team:practices/testing/check-retries`; an authored rule's ID has no source name.
+Open the rule's page in `generated/rules/`. A rule from a source is at `generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`; an authored rule is under `generated/rules/local/`, and its ID has no source name.
 
-Each rule entry includes:
+Below its title, the page shows:
 
-| Field | What to look for |
+| Line | What it tells you |
 | --- | --- |
-| `id` and `group` | The active rule's identity and rule group. |
-| `citedBy` | The project IDs of the installed skills whose `trailguide-rules-used` list names this rule, sorted, and empty when none does. |
-| `referenceOnly` | `true` when the rule is taken only because installed skills cite it, so `RULES.md` and the rule group pages don't list it; otherwise `false`. |
-| `origin` | The source and file supplying the active rule. A source's origin also identifies the repository and the exact commit the rule came from. `version` records the rule's version, such as `"1.3.0"`, and `release` the library release that published it; both are `null` when the vendored file isn't a published version. |
-| `upstream` | The origin of the rule an authored rule replaces, including its `version`; otherwise `null`. |
-| `replacementReason` | Your configured reason for the replacement; otherwise `null`. |
-| `basedOn` | The library version of the replaced rule that the authored rule is based on, as the exclusion's [`basedOn`](/reference/configuration/#exclude-or-replace-a-rule) records it, such as the version a fork copied; otherwise `null`. It can differ from `upstream`'s `version`, which is the version the project's lock records. |
-| `license`, `licenseBasis`, and `attribution` | Declared terms and source credits, explained below. |
+| `Rule ID` | The rule's project ID. |
+| `Version` | The rule's version, such as `1.3.0`, for a rule from a source that's a published version. The rule's entry in `lock.json` also records the library release that published it. A rule with unreleased changes, and an authored rule, has no version. |
+| `Replaces` and `Reason` | For an authored rule that replaces a library rule, the replaced rule's ID, the library version your rule is based on, as the exclusion's [`basedOn`](/reference/configuration/#exclude-or-replace-a-rule) records it, and your configured reason. |
 
-An authored rule's origin has `source: null` and a `file` relative to the Trail Guide directory. Its `repository`, `resolvedCommit`, `version`, and `release` fields are `null` because the rule comes from your repository. A [fork](/reference/cli/#fork-a-library-rule) of a library rule records its source in `attribution` instead, when the library is on GitHub.com or GitLab.com or its repository address is an HTTPS URL.
+Under **Source and attribution**, the page links to the original rule: for a rule from a source, the file at the exact commit that supplied it, and for an authored rule, its file in `.trailguide/rules/`. The same section lists the declared license and source credits, explained [below](#find-declared-licenses-and-source-credits).
 
 ### Example: explain a replacement
 
 Suppose your project includes rules from the `team` library but replaces its `check-retries` rule with `.trailguide/rules/practices/testing/service-retries.md`. You record the reason in configuration: “Use the retry limits required by this service.”
 
-The replacement's entry contains these fields. This excerpt omits the other origin and license fields:
+The replacement's page, `generated/rules/local/practices/testing/service-retries.md`, starts like this:
 
-```json
-{
-  "id": "practices/testing/service-retries",
-  "group": "practices/testing",
-  "origin": {
-    "source": null,
-    "file": "rules/practices/testing/service-retries.md"
-  },
-  "upstream": {
-    "source": "team",
-    "file": "rules/practices/testing/check-retries.md",
-    "version": "2.1.0"
-  },
-  "replacementReason": "Use the retry limits required by this service.",
-  "basedOn": "2.0.0"
-}
+```md
+# Use the service's retry limits
+
+Rule ID: `local:practices/testing/service-retries`
+
+Replaces: `team:practices/testing/check-retries`, based on version 2.0.0.
+
+Reason: Use the retry limits required by this service.
 ```
 
-Read this as: agents receive your `service-retries` rule, it replaces version 2.1.0 of `team`'s `check-retries` rule, it is based on the library's version 2.0.0, and the reason comes from your project configuration. The replaced rule's full origin also records its repository and exact commit.
+Read this as: agents receive your `service-retries` rule, which replaces `team`'s `check-retries` rule, it's based on the library's version 2.0.0, and the reason comes from your project configuration. The version your lock records for `check-retries` is in its entry's `rules` in `lock.json`, and may be newer than 2.0.0.
 
 ## Trace a skill to its source
 
-Installed skills are in the top-level `skills` array, one entry per skill the project installs. Skills have no rule group.
+`generated/SKILLS.md` has one section per installed skill, named by its install name:
 
-```json
-{
-  "id": "fabrica:skills/tdd",
-  "name": "tdd",
-  "renamedFrom": null,
-  "type": "playbook",
-  "origin": {
-    "source": "fabrica",
-    "curatedFrom": null,
-    "repository": "https://github.com/fabricahq/public-library.git",
-    "resolvedCommit": "4f1c2a95…",
-    "folder": "skills/tdd",
-    "version": "1.1.0",
-    "release": 2
-  },
-  "level": "recommended",
-  "recommendedBy": { "library": "fabrica", "release": 7 },
-  "included": true,
-  "usedBy": ["fabrica:skills/build-feature"],
-  "uses": [],
-  "rulesUsed": ["fabrica:practices/testing/test-behavior-not-implementation"],
-  "targets": [".agents/skills/tdd", ".claude/skills/tdd"],
-  "upstream": null,
-  "replacementReason": null,
-  "basedOn": null,
-  "license": { "spdxExpression": "MIT", "…": "…" },
-  "licenseBasis": "library"
-}
+```md
+### tdd
+
+Write the test first.
+
+- **Skill:** `fabrica:skills/tdd`, from release/2, commit `4f1c2a95…`
+- **Level:** recommended by `fabrica`, release 7
+- **Installed because:** included, and used by `build-feature`
+- **Installed at:** [.agents/skills/tdd/SKILL.md](…), [.claude/skills/tdd/SKILL.md](…)
 ```
 
-| Field | What to look for |
+| Line | What it tells you |
 | --- | --- |
-| `id` and `name` | The skill's project ID and its install name, which names its installed folders. |
-| `renamedFrom` | The skill's own `name` when your configuration [renames](/reference/configuration/#rename-a-skill) it; otherwise `null`. |
-| `type` | Its `trailguide-skill-type`, `playbook` or `review`, or `null`. |
-| `origin` | The source and folder supplying the installed skill, with the repository and exact commit. `version` and `release` record the skill's version and the library release that published it; both are `null` for an authored skill, a skill from a non-library source, or one with unreleased changes. An authored skill's origin has `source: null` and `null` for `repository` and `resolvedCommit`. For a [curated skill](/reference/configuration/#curated-skills), `source` is the library that listed it, `curatedFrom` the curated source's name in that library's manifest, and `repository` and `resolvedCommit` the original repository and the commit your project resolved; otherwise `curatedFrom` is `null`. |
-| `level` | The skill's [level](/reference/configuration/#skill-levels), `required`, `recommended`, or `offered`, as the library that listed it sets it, or `dependency` for one the library lists as a [dependency](/reference/configuration/#dependencies), which installs only with the skills in `usedBy`; `null` for an authored skill or one from a non-library source. |
-| `requiredBy`, `recommendedBy`, or `offeredBy` | The library that set that level and the library release whose manifest set it, as `library` and `release`. Present when a level brought the skill in, including a curated skill; omitted when your project named the skill by ID in the source that holds it, the skill is a dependency, or the skill is authored or from a non-library source. |
-| `included` | `true` when your configuration or a level includes the skill; `false` when it's installed only because other skills use it. |
-| `usedBy` | The project IDs of the installed skills that use this one, sorted, and empty when none does. |
-| `uses` | The project IDs of the skills this one uses, from its `trailguide-skills-used` list and your configuration's `skills.uses`. When your project replaces one, the replacement's ID is listed. |
-| `rulesUsed` | The project IDs of the rules its `trailguide-rules-used` list names. Each of those rules' entries in `rules` lists this skill in `citedBy`. |
-| `targets` | The folders it's installed in, relative to the project root, as in `generated/installed-skills.json`. Empty when the project has no skill targets. |
-| `upstream`, `replacementReason`, and `basedOn` | For a [fork](/reference/configuration/#fork-a-skill), the forked skill's origin, your configured reason, and the commit your skill is based on; otherwise `null`. |
-| `license` and `licenseBasis` | Declared terms, explained [below](#find-declared-licenses-and-source-credits). |
+| `Skill` | The skill's project ID and where it came from: the library release and commit, the commit of a non-library source, the curating library and the original repository for a [curated skill](/reference/configuration/#curated-skills), or "authored in this project". |
+| `Renamed from` | The skill's own `name` when your configuration [renames](/reference/configuration/#rename-a-skill) it. |
+| `Replaces` and `Reason` | For a [fork](/reference/configuration/#fork-a-skill), the skill it replaces, the commit your copy is based on, and your configured reason. |
+| `Level` | The skill's [level](/reference/configuration/#skill-levels), the library that set it, and the library release whose manifest set it. A [dependency](/reference/configuration/#dependencies) installs only with the skills that use it. Authored skills and skills from non-library sources have no level. |
+| `Type` | Its `trailguide-skill-type`, `playbook` or `review`. |
+| `Applies` | The rules its `trailguide-rules-used` list names. |
+| `Uses` and `Installed because` | The skills it uses, and whether your configuration or a level includes it, or other skills use it. |
+| `Installed at` | The folders it's installed in, as in `generated/installed-skills.json`. |
 
-## Inspect library versions and rule group guidance
-
-Besides `rules` and `skills`, the same `generated/provenance.json` file contains four top-level fields:
-
-| Field | What it records |
-| --- | --- |
-| `generatedNotice` | A reminder that Trail Guide generates the file, and how to regenerate it. |
-| `toolVersion` | The Trail Guide version that generated the files. |
-| `sources` | Each named source, its `kind`, `library` or `non-library`, its repository, its `ref` and `pins`, the library release or commit that supplied its rule group metadata and terms, its rule and skill `include` selectors, the rule groups and skills they reached, its curated sources, and declared terms. |
-| `groups` | Each rule group's ID, descriptions and reading guidance, and which sources supply the effective guidance. |
-
-For each source, `ruleInclude` and `skillInclude` record the selectors you wrote, while `groups` and `skills` list what they reached. For example, `"practices/*"` asks for every practice rule; `groups` records which practice groups existed in the library release taken.
-
-Within each rule group record, `guidance` keeps the metadata labeled by source. `effectiveGuidanceSources` identifies which sources supply the guidance agents see. Authored rule group metadata takes precedence when present; otherwise the guidance from all contributing libraries remains effective.
+The skill's entry in `lock.json` records the same level and why it's installed; see [Skills in the lockfile](#skills-in-the-lockfile).
 
 ## Inspect the lockfile
 
@@ -203,7 +155,7 @@ Each source's entry has these fields:
 | --- | --- |
 | `kind` | `library` when the source's repository has a [manifest](/reference/library-format/#the-manifest) at the locked commit, and `non-library` otherwise. Trail Guide detects it; configuration never declares it. |
 | `repository` | The source's repository address. |
-| `ref` | The source's `ref` from configuration when the entry was written, such as `release/3`, `latest-release`, or `main`. Changing it to another spelling of the same revision, such as `refs/tags/release/3` for `release/3`, keeps the locked spelling, so the entry stays current. Changing it to another library release makes the entry out of date until `trailguide project update SOURCE` takes that release, and offline checks report it at `lock.json.sources.<source-name>.ref`; changing it to a branch, tag, or commit makes the entry out of date until `trailguide project sync` takes that revision. Pins and exclusions aren't locked: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. Generated guidance and `generated/provenance.json` show the configured pins and their reasons. |
+| `ref` | The source's `ref` from configuration when the entry was written, such as `release/3`, `latest-release`, or `main`. Changing it to another spelling of the same revision, such as `refs/tags/release/3` for `release/3`, keeps the locked spelling, so the entry stays current. Changing it to another library release makes the entry out of date until `trailguide project update SOURCE` takes that release, and offline checks report it at `lock.json.sources.<source-name>.ref`; changing it to a branch, tag, or commit makes the entry out of date until `trailguide project sync` takes that revision. Pins and exclusions aren't locked: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. The library's README in `generated/libraries/` shows the configured pins and their reasons. |
 | `release` | The library release that supplied the library-wide files: the manifest, rule group metadata, shared assets, and license files. Every skill from the source, and every skill level, comes from it too. It is the newest library release when the source was added or last updated, or the library release your `ref` names, and never older than the `release` of any locked rule. `trailguide project sync` keeps it, including when you include more rules or skills: those come from this library release too. It's omitted when the source isn't a library, or its `ref` is a branch, tag, or commit rather than a library release. |
 | `commit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to. Every file in the snapshot that isn't a rule from an older release comes from it. |
 | `releaseCommits` | For a library, each library release that a locked rule comes from, and `release`, mapped to the full commit SHA of its `release/<number>` tag. Offline checks require it to list exactly those releases. |
@@ -361,31 +313,16 @@ trailguide project sync --retake fabrica
 | Library releases, the default | Each pinned rule records its pinned version. Other rules may record any version the recorded `release` or an earlier one published. `release` is at least as new as every rule's `release`. |
 | One revision, with `ref` | For a commit SHA, `commit` equals it. For a library release `release/N`, the source records release N, and every rule records a published version from library release N or earlier. A branch's or tag's recorded commit is used without checking where it points now. |
 
-For every source, offline checks first verify the entry's [`integrity`](#integrity), so an entry changed outside Trail Guide fails until you restore the entry Trail Guide wrote or take the source again. They also verify that `rules` and `skills` list exactly the rules and skills your selectors, the levels, and the skills' dependencies reach, that each skill's dependencies and cited rules match its recorded version's metadata, and that generated provenance, guidance, and installed skills show the same versions and levels. Each exclusion must name a rule in `rules` or `retiredRules`; any other exclusion could be a typo that leaves the rule you meant active, so the check reports that it names no rule the library supplies and asks you to run `trailguide project sync`, which checks it against the library.
+For every source, offline checks first verify the entry's [`integrity`](#integrity), so an entry changed outside Trail Guide fails until you restore the entry Trail Guide wrote or take the source again. They also verify that `rules` and `skills` list exactly the rules and skills your selectors, the levels, and the skills' dependencies reach, that each skill's dependencies and cited rules match its recorded version's metadata, and that generated guidance and installed skills show the same versions and levels. Each exclusion must name a rule in `rules` or `retiredRules`; any other exclusion could be a typo that leaves the rule you meant active, so the check reports that it names no rule the library supplies and asks you to run `trailguide project sync`, which checks it against the library.
 
 Offline checks cannot prove that a recorded version was the newest available, or that recorded versions match the library's release tags; `trailguide project update` checks the latter against the release records before it records anything. These records also cannot authenticate files against the remote repository if someone changed both the local files and their records.
 
 ## Find declared licenses and source credits
 
-Provenance keeps license declarations and attribution alongside rule origins. Each source and rule has one `license` object, or `null` when no license was declared.
+A library declares its license and notice files in its manifest; see [License metadata](/reference/library-format/#license-metadata). Trail Guide keeps byte-for-byte copies of them in `generated/libraries/<source-name>/licenses/`, with notice copies numbered, such as `licenses/notices/001.md`, and the library's README in `generated/libraries/<source-name>/` lists them with the declared license expression, such as `MIT`.
 
-A rule or skill from a library with a declared license records that declaration and `licenseBasis: "library"`. A skill's own `license` field in `SKILL.md` is informational and doesn't change it. Within the license object, `spdxExpression` records a declared license expression, such as `MIT`. The rule's `attribution` field preserves source credits as URLs and descriptions.
+Each page of a rule from that library repeats the declared license and links to those copies, under **Source and attribution**. The original files stay in the source's vendor snapshot, `vendor/<source-name>/`. A rule's own source credits, from its [attribution](/reference/rule-format/#rule-attribution), are listed there too, as links.
 
-The license record distinguishes original files from the copies retained with generated guidance:
+An authored rule's page has no declared license, including a replacement: replacing a library rule doesn't give your replacement the library's license.
 
-| Field inside `license` | Paths in a source record | Paths in a rule record |
-| --- | --- | --- |
-| `files` | Original license files, relative to the repository root. | Original license files under `vendor/<source-name>/`, relative to the Trail Guide directory. |
-| `attributionFiles` | Original notice files, relative to the repository root. | Original notice files under `vendor/<source-name>/`, relative to the Trail Guide directory. |
-| `generatedFiles` | Retained license copies, relative to `generated/`. | The same generated license copies. |
-| `generatedAttributionFiles` | Retained notice copies, relative to `generated/`. | The same generated notice copies. |
-
-For example, a rule's `files` entry might be `vendor/team/LICENSE.md`, with `libraries/team/licenses/LICENSE.md` at the same position in `generatedFiles`. Generated rule links point to the retained copy. Notice paths correspond in the same way, by position in `attributionFiles` and `generatedAttributionFiles`; generated notice copies are numbered, such as `libraries/team/licenses/notices/001.md`.
-
-The source record also has a `licenseFiles` list of the files belonging to its declaration, relative to the repository root. These lists describe files for one library-wide license declaration.
-
-A skill from a [non-library source](/reference/imports/#non-library-sources), including a curated skill from one, records the terms Trail Guide found for it. `licenseBasis` says where they came from: `"skill"` for the `license` field in its `SKILL.md`, `"skill-folder"` for a `LICENSE*` file in its folder, or `"repository"` for `LICENSE*` and `NOTICE*` files at the repository root. `spdxExpression` holds the `license` field when that's a valid SPDX expression, and is otherwise `null`; `files` and `attributionFiles` list the license and notice files found, and the root files' retained copies are in `generatedFiles` and `generatedAttributionFiles`. A curated skill keeps its own repository's terms, never the curating library's.
-
-Authored rules and skills, including replacements, have `license: null` and `licenseBasis: "undeclared"`. Replacing a library rule does not automatically assign its library's license to your replacement. The library's declaration remains in its source record.
-
-These fields preserve declarations; they are not a legal verification status. `"undeclared"` does not mean public domain or permission to redistribute. For how authors declare terms and credits, see [License metadata](/reference/library-format/#license-metadata) and [Rule attribution](/reference/rule-format/#rule-attribution).
+These records preserve declarations; they are not a legal verification status. A rule with no declared license isn't public domain, and has no permission to be redistributed.

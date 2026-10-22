@@ -45,9 +45,8 @@ type RenamedSkill struct {
 	From, To string
 }
 
-// Options provides the declared tool version and Markdown line limit and inline byte limit.
+// Options provides the Markdown line limit and inline byte limit, and the project's authored skills.
 type Options struct {
-	ToolVersion string
 	// IndexMaxLines defaults to 750 when zero; negative limits are invalid.
 	IndexMaxLines int
 	// GroupInlineMaxBytes defaults to 8 KiB when nil; zero forces summary-only group pages.

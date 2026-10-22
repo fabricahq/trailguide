@@ -37,7 +37,9 @@ type resolvedRule struct {
 	Rule     trailguide.Rule `json:"rule"`
 	Origin   ruleOrigin      `json:"origin"`
 	Upstream *ruleOrigin     `json:"upstream"`
-	Reason   string          `json:"replacementReason,omitempty"`
+	// UpstreamID is the project ID of the rule a replacement replaces, such as fabrica:techs/go/errors.
+	UpstreamID string `json:"upstreamId,omitempty"`
+	Reason     string `json:"replacementReason,omitempty"`
 	// BasedOn is the library version a replacement incorporates, as its exclusion records it, or nil.
 	BasedOn *trailguide.RuleVersion        `json:"basedOn,omitempty"`
 	License *trailguide.LicenseDeclaration `json:"license"`
@@ -49,7 +51,7 @@ type groupGuidance struct {
 	Metadata trailguide.GroupMetadata `json:"metadata"`
 }
 
-// resolvedGroup contains effective rules and guidance chosen by resolve, plus original guidance for provenance.
+// resolvedGroup contains effective rules and guidance chosen by resolve, plus all the guidance it was chosen from.
 type resolvedGroup struct {
 	ID                string          `json:"id"`
 	EffectiveGuidance []groupGuidance `json:"effectiveGuidance"`
@@ -215,7 +217,7 @@ func resolve(config rules.Configuration, libraries map[string]Library, localFile
 				}
 				retained[parsed.Path] = []byte(parsed.Document)
 				used[file] = true
-				active = resolvedRule{Rule: replacementRule, Origin: ruleOrigin{Source: "local", File: file}, Upstream: &origin, Reason: exclusion.Reason, BasedOn: exclusion.BasedOn, License: nil}
+				active = resolvedRule{Rule: replacementRule, Origin: ruleOrigin{Source: "local", File: file}, Upstream: &origin, UpstreamID: parsed.ID, Reason: exclusion.Reason, BasedOn: exclusion.BasedOn, License: nil}
 			}
 			group := ensureGroup(groups, parsed.Group)
 			group.Rules = append(group.Rules, active)

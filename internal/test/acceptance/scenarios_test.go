@@ -221,14 +221,14 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 			return report, fmt.Errorf("original bytes not preserved: %s", name)
 		}
 	}
-	provenance := string(files.Files[".trailguide/generated/provenance.json"])
-	if !strings.Contains(provenance, fixture.LatestCommit) || !strings.Contains(provenance, `"release": 1,`) || !strings.Contains(provenance, `"version": "1.0.0"`) {
-		return report, fmt.Errorf("library release or rule versions missing from provenance")
+	lock := string(files.Files[".trailguide/lock.json"])
+	if !strings.Contains(lock, fixture.LatestCommit) || !strings.Contains(lock, `"release": 1,`) || !strings.Contains(lock, `"version": "1.0.0"`) {
+		return report, fmt.Errorf("library release or rule versions missing from lock.json")
 	}
 	if !strings.Contains(string(files.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") {
 		return report, fmt.Errorf("rule version missing from generated guidance")
 	}
-	report.Verified = append(report.Verified, "Library release release/1 imported at its commit, with each rule's version in provenance and guidance", "License, notice, and binary asset bytes preserved exactly")
+	report.Verified = append(report.Verified, "Library release release/1 imported at its commit, with each rule's version in lock.json and guidance", "License, notice, and binary asset bytes preserved exactly")
 	if err := invoke("Local group overrides imported guidance", consumer, offline, 0, "project", "add", "group", "techs/go", "--name", "Project Go", "--description", "Project-specific Go guidance.", "--when-to-read", "When changing this project."); err != nil {
 		return report, err
 	}

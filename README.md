@@ -126,12 +126,11 @@ Build the guidance your agent reads:
 
 ```console
 $ trailguide project build
-Build complete: 6 added, 0 changed, 0 removed.
+Build complete: 5 added, 0 changed, 0 removed.
 Paths relative to .trailguide/generated:
   Add: RULES.md
   Add: groups/README.md
   Add: groups/practices/testing.md
-  Add: provenance.json
   Add: rules/README.md
   Add: rules/local/practices/testing/test-changed-behavior.md
 ```

@@ -127,7 +127,7 @@ To start from the library's text instead of writing your own, [fork the rule](/r
 
 The resolved rule uses your complete definition, including its ID, title, reading cue, impact, body, attribution, and asset references.
 In this example, the generated ID is `techs/typescript/prefer-interfaces`.
-Configuration and provenance record what it replaced and why; generated rule guidance does not display that history.
+Configuration records what it replaced and why, and the generated rule shows both below its rule ID.
 Its file stays in the target rule group and does not also become an additional rule.
 
 Replacing “prefer type aliases” with “prefer interfaces” leaves only your definition in the effective output.

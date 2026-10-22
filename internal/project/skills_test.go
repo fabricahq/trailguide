@@ -4,7 +4,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -131,35 +130,6 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 	record := lockedEntry(t, options, "team")
 	if record.Kind != "library" || !slices.Equal(record.Selectors.Skills, []string{"*"}) || len(record.Skills) != 2 || *record.Skills["skills/review"].Level != "offered" || !slices.Equal(record.Executable, []string{"skills/build-feature/scripts/run.sh"}) || record.Files["skills/build-feature/SKILL.md"] == "" {
 		t.Errorf("source record = %+v", record)
-	}
-	var provenance struct {
-		Skills []struct {
-			ID     string `json:"id"`
-			Origin struct {
-				Source *string `json:"source"`
-				Commit *string `json:"resolvedCommit"`
-				Folder string  `json:"folder"`
-			} `json:"origin"`
-			Targets []string `json:"targets"`
-		} `json:"skills"`
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/generated/provenance.json")), &provenance); err != nil {
-		t.Fatal(err)
-	}
-	if len(provenance.Skills) != 3 {
-		t.Fatalf("provenance skills = %+v", provenance.Skills)
-	}
-	for _, skill := range provenance.Skills {
-		switch skill.ID {
-		case "team:skills/build-feature":
-			if *skill.Origin.Source != "team" || *skill.Origin.Commit != commit || skill.Origin.Folder != "skills/build-feature" || !slices.Equal(skill.Targets, []string{".agents/skills/build-feature", ".claude/skills/build-feature"}) {
-				t.Errorf("provenance of %s = %+v", skill.ID, skill)
-			}
-		case "skills/check-release":
-			if skill.Origin.Source != nil || skill.Origin.Commit != nil {
-				t.Errorf("provenance of %s = %+v", skill.ID, skill)
-			}
-		}
 	}
 	again, err := Build(ctx, options)
 	if err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {
@@ -371,9 +341,6 @@ func TestSync_RenamesAClashingSkillAndWarnsThatMentionsKeepTheOldName(t *testing
 	}
 	if index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md"); !strings.Contains(index, "### team-review\n\nReview a change.\n\n- **Skill:** `team:skills/review`, from release/1") || !strings.Contains(index, "- **Renamed from:** `review`, by the project's configuration. Its own text and other skills from `team` may still call it `review`; they mean this skill.") {
 		t.Fatalf("SKILLS.md:\n%s", index)
-	}
-	if provenance := readRepositoryFile(t, options, ".trailguide/generated/provenance.json"); !strings.Contains(provenance, `"renamedFrom": "review"`) {
-		t.Fatalf("provenance.json:\n%s", provenance)
 	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
 		t.Fatalf("check = %+v, %v", result, err)

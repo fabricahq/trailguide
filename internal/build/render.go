@@ -80,6 +80,13 @@ func renderRule(active resolvedRule, paths []string, outputPath string) (string,
 	if version := active.Origin.Version; version != nil {
 		lines = append(lines, "Version: "+version.String(), "")
 	}
+	if active.Upstream != nil {
+		replaces := "Replaces: `" + active.UpstreamID + "`"
+		if active.BasedOn != nil {
+			replaces += ", based on version " + active.BasedOn.String()
+		}
+		lines = append(lines, replaces+".", "", "Reason: "+escapeText(active.Reason), "")
+	}
 	lines = append(lines, "**When to read:** "+escapeText(r.WhenToRead), "", "**Impact:** "+escapeText(string(r.Impact)), "", "**Why it matters:** "+escapeText(r.ImpactDescription), "", sectionHeading+" Guidance", "", body, "", sectionHeading+" Source and attribution", "", "**Rule source:** [Original rule]("+source+")")
 	if outputPath != rulePath(r) {
 		lines = append(lines, "", "**Separate rule file:** ["+escapeText(r.Title)+"]("+rules.RelativeLink(outputPath, rulePath(r))+")")

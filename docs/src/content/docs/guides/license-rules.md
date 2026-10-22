@@ -72,7 +72,6 @@ The consuming project retains them alongside the vendored rules:
       rules/practices/testing/...
   generated/
     RULES.md
-    provenance.json
     libraries/fabrica/
       README.md
       licenses/LICENSE.md
@@ -100,8 +99,8 @@ The repository and commit in this example are illustrative.
 ```
 
 Guidance precedes this footer; preserved source metadata follows it. Every rule from a source displays its library's declaration; explicit attribution citations also appear in the footer.
-Generated rule files link to these standardized license and notice copies. Provenance records both original source paths and generated paths.
-The index links to provenance, which records source libraries, declared license expressions, retained files, and explicit attribution.
+Generated rule files link to these standardized license and notice copies, and the originals stay in the source's vendor snapshot.
+The library summary in `generated/libraries/<source-name>/README.md` lists the declared license expression and the retained files.
 When a rule group includes rules from multiple libraries, retain each rule's licensing information instead of assigning one library's license to the rule group.
 Copied rule text remains subject to its applicable terms even when the project changes its wording or replaces a library's rule with an adaptation.
 Maintain third-party adaptations in a compatible library with the applicable library-wide declaration. A project's own rules and replacements are for original project guidance; an ID alone cannot establish licensing.
@@ -159,7 +158,7 @@ Private libraries can document internal permissions without adopting a public li
 
 ## What the tool can check
 
-The builder validates declared paths, preserves text and notices, records provenance, and constructs links to the retained files.
+The builder validates declared paths, preserves text and notices, and constructs links to the retained files.
 It rejects unsafe or unresolved local Markdown references, but does not check whether external URLs are reachable.
 It cannot establish ownership, decide legal compatibility, or certify that the chosen terms permit a consumer's intended use.
 Vendor snapshots preserve original files. Sync applies changes safely, reports changed files, and persists digests for offline integrity checks.

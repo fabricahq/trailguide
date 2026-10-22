@@ -330,7 +330,6 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	if err := ctx.Err(); err != nil {
 		return build.Output{}, err
 	}
-	version := toolVersion(options)
 	authored, err := authoredFiles(state)
 	if err != nil {
 		return build.Output{}, err
@@ -339,7 +338,7 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	if err != nil {
 		return build.Output{}, err
 	}
-	output, err := build.Generate(state.config, libraries, authored, build.Options{ToolVersion: version, IndexMaxLines: options.IndexMaxLines, GroupInlineMaxBytes: options.GroupInlineMaxBytes, LocalSkills: local})
+	output, err := build.Generate(state.config, libraries, authored, build.Options{IndexMaxLines: options.IndexMaxLines, GroupInlineMaxBytes: options.GroupInlineMaxBytes, LocalSkills: local})
 	if err != nil {
 		return build.Output{}, clashFailure(err)
 	}

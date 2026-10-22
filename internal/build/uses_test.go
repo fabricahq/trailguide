@@ -3,9 +3,7 @@
 package build
 
 import (
-	"encoding/json"
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -37,7 +35,7 @@ func generateUsing(t *testing.T, snapshot map[string]library.ImportedSkill, file
 		team.Snapshot.Files[id+"/SKILL.md"] = data
 	}
 	libraries["team"] = team
-	return Generate(config, libraries, nil, Options{ToolVersion: "test", LocalSkills: local})
+	return Generate(config, libraries, nil, Options{LocalSkills: local})
 }
 
 func TestGenerateShowsWhichSkillsEachSkillUsesAndWhyItIsInstalled(t *testing.T) {
@@ -62,34 +60,6 @@ func TestGenerateShowsWhichSkillsEachSkillUsesAndWhyItIsInstalled(t *testing.T) 
 		if !strings.Contains(index, want) {
 			t.Errorf("SKILLS.md lacks\n%s\nin\n%s", want, index)
 		}
-	}
-	var provenance struct {
-		Skills []struct {
-			ID       string   `json:"id"`
-			Included bool     `json:"included"`
-			UsedBy   []string `json:"usedBy"`
-			Uses     []string `json:"uses"`
-		} `json:"skills"`
-	}
-	if err := json.Unmarshal(output.Files["provenance.json"], &provenance); err != nil {
-		t.Fatal(err)
-	}
-	type entry struct {
-		Included     bool
-		UsedBy, Uses []string
-	}
-	got := map[string]entry{}
-	for _, skill := range provenance.Skills {
-		got[skill.ID] = entry{skill.Included, skill.UsedBy, skill.Uses}
-	}
-	want := map[string]entry{
-		"skills/release":    {true, []string{}, []string{"team:skills/build"}},
-		"team:skills/build": {true, []string{"skills/release"}, []string{"team:skills/how", "team:skills/tdd"}},
-		"team:skills/how":   {true, []string{"team:skills/build"}, []string{}},
-		"team:skills/tdd":   {false, []string{"team:skills/build"}, []string{}},
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("provenance skills = %+v, want %+v", got, want)
 	}
 }
 
@@ -155,7 +125,7 @@ func TestGenerateRedirectsAUseOfAnExcludedSkillToItsReplacement(t *testing.T) {
 	}
 	libraries["team"] = team
 	local := map[string]SkillFiles{"skills/our-tdd": {Files: map[string][]byte{"SKILL.md": skillFile("our-tdd")}, Executable: []string{}}}
-	output, err := Generate(config, libraries, nil, Options{ToolVersion: "test", LocalSkills: local})
+	output, err := Generate(config, libraries, nil, Options{LocalSkills: local})
 	if err != nil {
 		t.Fatal(err)
 	}

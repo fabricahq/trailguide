@@ -5,6 +5,10 @@
 
 Rule ID: `local:techs/typescript/comment-role-result-and-constraints`
 
+Replaces: `fabrica:techs/typescript/comment-role-result-and-constraints`, based on version 1.0.0.
+
+Reason: This repository's comment policy also covers its website's Astro components and private helpers, as its ESLint configuration enforces.
+
 **When to read:** Before writing, changing, or reviewing TypeScript, JavaScript, or Astro files in this repository's website and tools, their exported functions, types, and components, or code whose purpose, behavior, or constraints are not obvious from names and types.
 
 **Impact:** MEDIUM

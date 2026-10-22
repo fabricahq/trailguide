@@ -66,7 +66,7 @@ Other supporting files, including `_README.md`, must live in an asset directory.
 Rules and [rule group metadata](/reference/rule-format/#rule-group-metadata) must use valid paths; a prefix selector also rejects rules whose rule group metadata is missing.
 The builder does not inspect the contents of rule groups a project doesn't include.
 
-`config.yaml`, change notes, and rule group metadata use one YAML document per file. Duplicate keys, anchors, aliases, and explicit tags are rejected. Generated snapshot and provenance files remain JSON.
+`config.yaml`, change notes, and rule group metadata use one YAML document per file. Duplicate keys, anchors, aliases, and explicit tags are rejected. The lockfile and generated data files remain JSON.
 
 ## The manifest
 
@@ -164,7 +164,7 @@ Declared license and notice files are [library-wide files](/reference/rule-versi
 A project's [vendor snapshot](/reference/files/) of the library stores a declared file from outside `.trailguide/` at its path from the repository root, beside the files from `.trailguide/`, so that path can't start with a name the snapshot uses for those files, or that Trail Guide 0.5 used for its records, in any letter case: `_source.json`, `config.yaml`, `assets/`, `curated/`, `changes/`, `rules/`, or `skills/`.
 Unknown fields in the license declaration are rejected so misspellings cannot silently discard intended metadata.
 Trail Guide retains the declared files from the resolved source commit and links generated rules to unchanged copies. Offline builds require those files in the stored snapshot.
-If the declaration is absent, provenance records `license: null`. Trail Guide never infers an identifier from a filename. It validates supplied SPDX expressions and identifiers using its bundled license list, while allowing `LicenseRef-` identifiers for custom terms. This validates the declaration format, not ownership, permissions, or agreement between the declaration and the retained text.
+If the declaration is absent, generated rules show no declared license. Trail Guide never infers an identifier from a filename. It validates supplied SPDX expressions and identifiers using its bundled license list, while allowing `LicenseRef-` identifiers for custom terms. This validates the declaration format, not ownership, permissions, or agreement between the declaration and the retained text.
 
 Every library a project uses has a generated `libraries/<source-name>/README.md` with its repository, library release, requested `ref` or pins, each included rule's and installed skill's version and level and whether the project excludes or replaces it, or still includes it after the library retired it, a notice when it was taken from unreleased changes, declared SPDX expression when supplied, and links to retained terms and provenance. Libraries without a license declaration omit the `licenses/` directory. [Provenance](/reference/provenance/) documents the machine-readable records.
 

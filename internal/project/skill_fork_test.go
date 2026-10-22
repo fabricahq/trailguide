@@ -5,7 +5,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -124,37 +123,8 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
 		}
 	}
-	var provenance struct {
-		Skills []struct {
-			ID       string `json:"id"`
-			Upstream *struct {
-				Source string `json:"source"`
-				Commit string `json:"resolvedCommit"`
-				Folder string `json:"folder"`
-			} `json:"upstream"`
-			Reason  *string `json:"replacementReason"`
-			BasedOn *string `json:"basedOn"`
-		} `json:"skills"`
-	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/generated/provenance.json")), &provenance); err != nil {
-		t.Fatal(err)
-	}
-	if len(provenance.Skills) != 2 {
-		t.Fatalf("provenance skills = %+v", provenance.Skills)
-	}
-	for _, skill := range provenance.Skills {
-		switch skill.ID {
-		case "skills/build-feature":
-			if skill.Upstream == nil || skill.Upstream.Source != "team" || skill.Upstream.Commit != commit || skill.Upstream.Folder != "skills/build-feature" || *skill.Reason != "We build with make." || *skill.BasedOn != commit {
-				t.Errorf("provenance of the fork = %+v", skill)
-			}
-		case "team:skills/review":
-			if skill.Upstream != nil || skill.Reason != nil || skill.BasedOn != nil {
-				t.Errorf("provenance of %s = %+v", skill.ID, skill)
-			}
-		default:
-			t.Errorf("unexpected skill %s in provenance", skill.ID)
-		}
+	if strings.Count(index, "**Replaces:**") != 1 {
+		t.Errorf("SKILLS.md names a replacement for a skill the project doesn't fork:\n%s", index)
 	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
 		t.Fatalf("check after build = %+v, %v", result, err)
