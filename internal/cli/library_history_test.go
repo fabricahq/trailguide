@@ -91,7 +91,7 @@ func TestLibraryCheck_PreviewsThePendingLibraryRelease(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &response); err != nil || code != 0 || diagnostic != "" || !response.OK {
 		t.Fatal(err, code, out, diagnostic)
 	}
-	wantJSON := `{"release":2,"rules":[{"id":"practices/testing/a","change":"minor","from":"1.0.0","to":"1.1.0","summaries":["Test one past the limit."]},{"id":"practices/testing/retries","change":"new","to":"1.0.0","summaries":["Add a rule about testing retries."]}],"libraryFiles":["practices/testing/_group.yaml"]}`
+	wantJSON := `{"release":2,"rules":[{"id":"practices/testing/a","change":"minor","from":"1.0.0","to":"1.1.0","summaries":["Test one past the limit."]},{"id":"practices/testing/retries","change":"new","to":"1.0.0","summaries":["Add a rule about testing retries."]}],"skills":[],"libraryFiles":["practices/testing/_group.yaml"]}`
 	if compact := compactJSON(t, response.Value["pendingRelease"]); compact != wantJSON {
 		t.Fatalf("pendingRelease %s, want %s", compact, wantJSON)
 	}
@@ -175,7 +175,7 @@ func TestLibraryChange_RecordsNotesThatCheckAccepts(t *testing.T) {
 		t.Fatal(code, out, diagnostic, notes)
 	}
 	note := libraryFile(dir, "changes/"+notes[0])
-	want := "Change note created.\nAdded:\n  .trailguide/changes/" + notes[0] + "\n\nNext: Commit the note with the rule change, then validate the library:\n  trailguide library check\n"
+	want := "Change note created.\nAdded:\n  .trailguide/changes/" + notes[0] + "\n\nNext: Commit the note with the change it records, then validate the library:\n  trailguide library check\n"
 	if out != want {
 		t.Fatalf("stdout:\n%s\nwant:\n%s", out, want)
 	}

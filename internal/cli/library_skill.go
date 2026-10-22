@@ -79,7 +79,7 @@ func createLibrarySkill(cmd *cobra.Command, f *authoringFlags, name string, outp
 	if err != nil {
 		return err
 	}
-	output.report = skillCreatedReport(result.Added, result.Changed, result.Warnings, name, authoringScope{library: true, directory: f.value("directory"), workdir: f.directory})
+	output.report = skillCreatedReport(result.Added, result.Changed, result.Warnings, name, authoringScope{library: true, directory: f.value("directory"), workdir: f.directory}, plan.NeedsChangeNote())
 	return nil
 }
 

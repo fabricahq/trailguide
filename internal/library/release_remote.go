@@ -345,8 +345,8 @@ func commits(count uint64) string {
 }
 
 // requireCommitted refuses unless head commits exactly the bytes check read, as regular files, including the
-// library's skills, so the library release publishes what check validated, even where a Git filter such as Git LFS
-// stores other content.
+// library's tracked skill files with their executable bits, so the library release publishes what check validated,
+// even where a Git filter such as Git LFS stores other content.
 func (g *libraryGit) requireCommitted(ctx context.Context, head string, input checkInput) error {
 	library, err := g.libraryEntries(ctx, head, libraryPaths(rules.LicensePaths(input.license)))
 	if err != nil {
@@ -370,9 +370,14 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 			captured[librarytree.RepositoryPath(name)] = data
 		}
 	}
+	// Check dropped the skill files Git ignores, such as a cache a script wrote, which aren't part of a skill.
+	executable := map[string]bool{}
 	if input.skills != nil {
 		for name, data := range input.skills.Files {
 			captured[skillsDirectory+"/"+name] = data
+		}
+		for _, name := range input.skills.Executable {
+			executable[skillsDirectory+"/"+name] = true
 		}
 	}
 	var problems []string
@@ -385,6 +390,9 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 			problems = append(problems, location+" is committed as a symbolic link or submodule, not a file")
 		case entry.object != blobID(strings.TrimSpace(string(format)), data):
 			problems = append(problems, location+" differs from its committed copy")
+		case strings.HasPrefix(location, skillsDirectory+"/") && executable[location] != (entry.mode == "100755"):
+			// A skill's version covers its files' executable bits, so the commit must have them as check read them.
+			problems = append(problems, location+" has an executable bit that differs from its committed copy")
 		}
 	}
 	for location := range captured {
@@ -484,26 +492,14 @@ func (g *libraryGit) pendingLibraryFiles(ctx context.Context, latest *publishedR
 // declared. A library release made before the layout of version 2 kept its manifest in rule-library.yaml, whose
 // declared paths are library paths; its terms are read without validation, which that release passed.
 func (g *libraryGit) releasedTerms(ctx context.Context, latest *publishedRelease) ([]string, error) {
-	entries, err := g.treeEntries(ctx, latest.object, []string{librarytree.LegacyManifest, manifestPath})
+	manifest, legacy, err := g.releasedManifest(ctx, latest)
 	if err != nil {
-		return nil, fmt.Errorf("list the files of %s: %w", latest.tagName(), err)
+		return nil, err
 	}
-	if legacy, ok := entries[librarytree.LegacyManifest]; ok {
-		manifest, err := g.runner.Output(ctx, g.dir, []string{"cat-file", "blob", legacy.object}, maxFileBytes)
-		if err != nil {
-			return nil, fmt.Errorf("read %s:%s: %w", latest.tagName(), librarytree.LegacyManifest, err)
-		}
+	if legacy {
 		return LegacyTerms(manifest), nil
 	}
 	location := latest.tagName() + ":" + manifestPath
-	entry, ok := entries[manifestPath]
-	if !ok {
-		return nil, failure("invalid-library", location+": missing library manifest", nil)
-	}
-	manifest, err := g.runner.Output(ctx, g.dir, []string{"cat-file", "blob", entry.object}, maxFileBytes)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", location, err)
-	}
 	declaration, err := rules.ParseLibraryManifest(manifest, location)
 	if err != nil {
 		return nil, err
@@ -512,6 +508,28 @@ func (g *libraryGit) releasedTerms(ctx context.Context, latest *publishedRelease
 		return nil, failure("invalid-library", location+": the configuration has no library section", nil)
 	}
 	return rules.LicensePaths(declaration.License), nil
+}
+
+// releasedManifest returns the manifest of the latest library release, and whether it's a rule-library.yaml from
+// before the layout of version 2. It fails with invalid-library when that library release has no manifest.
+func (g *libraryGit) releasedManifest(ctx context.Context, latest *publishedRelease) ([]byte, bool, error) {
+	entries, err := g.treeEntries(ctx, latest.object, []string{librarytree.LegacyManifest, manifestPath})
+	if err != nil {
+		return nil, false, fmt.Errorf("list the files of %s: %w", latest.tagName(), err)
+	}
+	name, legacy := librarytree.LegacyManifest, true
+	entry, ok := entries[name]
+	if !ok {
+		name, legacy = manifestPath, false
+		if entry, ok = entries[name]; !ok {
+			return nil, false, failure("invalid-library", latest.tagName()+":"+manifestPath+": missing library manifest", nil)
+		}
+	}
+	manifest, err := g.runner.Output(ctx, g.dir, []string{"cat-file", "blob", entry.object}, maxFileBytes)
+	if err != nil {
+		return nil, false, fmt.Errorf("read %s:%s: %w", latest.tagName(), name, err)
+	}
+	return manifest, legacy, nil
 }
 
 // LegacyTerms returns the license and notice paths that a rule-library.yaml written before the layout of version 2

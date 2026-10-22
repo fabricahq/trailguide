@@ -7,11 +7,13 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 
 	"github.com/fabricahq/trailguide/internal/decode"
 	"github.com/fabricahq/trailguide/internal/librarytree"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // ReleaseRecord is the permanent record of one library release, read from its release/<number> tag's message. Rule
@@ -28,9 +30,24 @@ type ReleaseRecord struct {
 	Retired map[string]RetiredRule `json:"retired"`
 	// LibraryFiles lists changed library-wide files, such as group metadata and shared assets, in authored order.
 	LibraryFiles []string `json:"libraryFiles"`
+	// Skills records the library's skills, by skill ID, such as skills/build-feature. It is nil when the record has
+	// no skills field: the library never had a skill, or a Trail Guide without skill support published it.
+	Skills *SkillRecord `json:"skills,omitempty"`
 }
 
-// RecordedChange is one rule's change in a library release. From is nil exactly when Change is new.
+// SkillRecord is a release record's skills field: each skill's version, change, and retirement, in the same form as
+// the record's rule fields. A parsed record's maps are never nil.
+type SkillRecord struct {
+	// Versions maps every skill current after this library release to its version; it is empty when every skill is
+	// retired.
+	Versions map[string]RuleVersion `json:"versions"`
+	// Changes lists the skills this library release added or published new versions of; each is also in Versions.
+	Changes map[string]RecordedChange `json:"changes"`
+	// Retired lists the skills this library release retired; none of them is in Versions, and each ReplacedBy is.
+	Retired map[string]RetiredRule `json:"retired"`
+}
+
+// RecordedChange is one rule's or skill's change in a library release. From is nil exactly when Change is new.
 type RecordedChange struct {
 	Change Change       `json:"change"`
 	From   *RuleVersion `json:"from,omitempty"`
@@ -39,7 +56,7 @@ type RecordedChange struct {
 	Summaries []string `json:"summaries"`
 }
 
-// RetiredRule is a rule a library release retired. ReplacedBy is empty when nothing replaces it. Summaries is
+// RetiredRule is a rule or skill a library release retired. ReplacedBy is empty when nothing replaces it. Summaries is
 // as in RecordedChange.
 type RetiredRule struct {
 	LastVersion RuleVersion `json:"lastVersion"`
@@ -98,8 +115,8 @@ func thousands(count int) string {
 // format. It ignores fields it doesn't know, at any level and whatever their values, so later formats can add
 // fields that older readers skip; the record must still be one YAML document without anchors, aliases, explicit
 // tags, or duplicate keys. It validates every field it knows, including that each change leads to the version in
-// rules and that the first library release lists every rule as new, and it refuses more than 10,000 entries in
-// rules, changes, or retired, and more than 20,000 in libraryFiles.
+// rules and that the first library release lists every rule and skill as new, and it refuses more than 10,000
+// entries in rules, changes, retired, or any map of skills, and more than 20,000 in libraryFiles.
 func ParseReleaseRecord(input []byte, location string) (ReleaseRecord, error) {
 	record, err := parseReleaseRecord(input, location)
 	return record, translate(err)
@@ -131,21 +148,26 @@ func parseReleaseRecord(input []byte, location string) (ReleaseRecord, error) {
 	if record.Release, err = releaseNumber(fields["release"], location+".release"); err != nil {
 		return ReleaseRecord{}, err
 	}
-	if record.Rules, err = recordedVersions(fields["rules"], location+".rules"); err != nil {
+	if record.Rules, err = recordedVersions(fields["rules"], ruleIDs, location+".rules"); err != nil {
 		return ReleaseRecord{}, err
 	}
 	if raw, ok := fields["changes"]; ok {
-		if record.Changes, err = recordedChanges(raw, record.Rules, location+".changes"); err != nil {
+		if record.Changes, err = recordedChanges(raw, record.Rules, ruleIDs, location+".changes"); err != nil {
 			return ReleaseRecord{}, err
 		}
 	}
 	if raw, ok := fields["retired"]; ok {
-		if record.Retired, err = retiredRules(raw, record.Rules, location+".retired"); err != nil {
+		if record.Retired, err = retiredRules(raw, record.Rules, ruleIDs, location+".retired"); err != nil {
 			return ReleaseRecord{}, err
 		}
 	}
 	if raw, ok := fields["libraryFiles"]; ok {
 		if record.LibraryFiles, err = libraryFiles(raw, location+".libraryFiles"); err != nil {
+			return ReleaseRecord{}, err
+		}
+	}
+	if node := field(root, "skills"); node != nil {
+		if record.Skills, err = skillRecord(node, location+".skills"); err != nil {
 			return ReleaseRecord{}, err
 		}
 	}
@@ -222,15 +244,77 @@ func knownEntries(mapping *yaml.Node, location string, names []string) (json.Raw
 	return json.Marshal(entries)
 }
 
-// requireFirstRelease requires the first library release to publish every rule as new, so each rule's history
-// starts with a changes entry for 1.0.0, and to retire nothing, since no rule had a version before it.
-func requireFirstRelease(record ReleaseRecord, location string) error {
-	if len(record.Retired) > 0 {
-		return invalid(location+".retired", "the first library release can't retire rules")
+// skillRecord reads a record's skills field, an object whose versions are required, ignoring fields it doesn't know
+// as the record does.
+func skillRecord(node *yaml.Node, location string) (*SkillRecord, error) {
+	if node.Kind != yaml.MappingNode {
+		return nil, invalid(location, "expected an object with the skills' versions")
 	}
-	for _, id := range slices.Sorted(maps.Keys(record.Rules)) {
-		if change, ok := record.Changes[id]; !ok || change.Change != ChangeNew {
-			return invalid(location+".changes."+id, "the first library release must list every rule as new")
+	fields, err := knownFields(node, location, map[string][]string{"versions": nil, "changes": {"change", "from", "summaries"}, "retired": {"lastVersion", "replacedBy", "summaries"}})
+	if err != nil {
+		return nil, err
+	}
+	raw, ok := fields["versions"]
+	if !ok {
+		return nil, invalid(location+".versions", "expected every current skill's version")
+	}
+	record := &SkillRecord{Changes: map[string]RecordedChange{}, Retired: map[string]RetiredRule{}}
+	if record.Versions, err = recordedVersions(raw, skillIDs, location+".versions"); err != nil {
+		return nil, err
+	}
+	if raw, ok := fields["changes"]; ok {
+		if record.Changes, err = recordedChanges(raw, record.Versions, skillIDs, location+".changes"); err != nil {
+			return nil, err
+		}
+	}
+	if raw, ok := fields["retired"]; ok {
+		if record.Retired, err = retiredRules(raw, record.Versions, skillIDs, location+".retired"); err != nil {
+			return nil, err
+		}
+	}
+	return record, nil
+}
+
+// recordedIDs is what a record's IDs of one kind, rules or skills, name, and how to check one.
+type recordedIDs struct {
+	// noun names one, such as rule; versions names the field that lists every current one, such as rules.
+	noun, versions string
+	validate       func(id, location string) error
+}
+
+var (
+	ruleIDs  = recordedIDs{noun: "rule", versions: "rules", validate: librarytree.ValidateRuleID}
+	skillIDs = recordedIDs{noun: "skill", versions: "skills.versions", validate: validateSkillID}
+)
+
+// validateSkillID accepts the ID of a library's own skill, skills/<name>, whose name follows the skill name grammar.
+func validateSkillID(id, location string) error {
+	if name, found := strings.CutPrefix(id, skills.Directory+"/"); found && skills.ValidName(name) {
+		return nil
+	}
+	return invalid(location, "expected a skill ID, such as skills/build-feature, got "+decode.Quote(id))
+}
+
+// requireFirstRelease requires the first library release to publish every rule and skill as new, so each one's
+// history starts with a changes entry for 1.0.0, and to retire nothing, since nothing had a version before it.
+func requireFirstRelease(record ReleaseRecord, location string) error {
+	if err := requireAllNew(record.Rules, record.Changes, record.Retired, "rule", location+".changes", location+".retired"); err != nil {
+		return err
+	}
+	if record.Skills != nil {
+		return requireAllNew(record.Skills.Versions, record.Skills.Changes, record.Skills.Retired, "skill", location+".skills.changes", location+".skills.retired")
+	}
+	return nil
+}
+
+// requireAllNew requires every one of versions to be new in changes, and retired to be empty.
+func requireAllNew(versions map[string]RuleVersion, changes map[string]RecordedChange, retired map[string]RetiredRule, noun, changesLocation, retiredLocation string) error {
+	if len(retired) > 0 {
+		return invalid(retiredLocation, "the first library release can't retire "+noun+"s")
+	}
+	for _, id := range slices.Sorted(maps.Keys(versions)) {
+		if change, ok := changes[id]; !ok || change.Change != ChangeNew {
+			return invalid(changesLocation+"."+id, "the first library release must list every "+noun+" as new")
 		}
 	}
 	return nil
@@ -257,8 +341,8 @@ func releaseNumber(input json.RawMessage, location string) (int, error) {
 	return number, nil
 }
 
-// recordedVersions reads the required map of every current rule to its version; it may be empty.
-func recordedVersions(input json.RawMessage, location string) (map[string]RuleVersion, error) {
+// recordedVersions reads the required map of every current rule, or skill, to its version; it may be empty.
+func recordedVersions(input json.RawMessage, kind recordedIDs, location string) (map[string]RuleVersion, error) {
 	entries, err := decode.Object(input, location)
 	if err != nil {
 		return nil, err
@@ -268,7 +352,7 @@ func recordedVersions(input json.RawMessage, location string) (map[string]RuleVe
 	}
 	versions := map[string]RuleVersion{}
 	for _, id := range slices.Sorted(maps.Keys(entries)) {
-		if err := librarytree.ValidateRuleID(id, location+"."+id); err != nil {
+		if err := kind.validate(id, location+"."+id); err != nil {
 			return nil, err
 		}
 		version, err := versionField(entries[id], location+"."+id)
@@ -280,8 +364,9 @@ func recordedVersions(input json.RawMessage, location string) (map[string]RuleVe
 	return versions, nil
 }
 
-// recordedChanges requires each changed rule's version in rules to follow from its change and previous version.
-func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, location string) (map[string]RecordedChange, error) {
+// recordedChanges requires each changed rule's, or skill's, version in versions to follow from its change and
+// previous version.
+func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, kind recordedIDs, location string) (map[string]RecordedChange, error) {
 	entries, err := decode.Object(input, location)
 	if err != nil {
 		return nil, err
@@ -292,7 +377,7 @@ func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, loc
 	changes := map[string]RecordedChange{}
 	for _, id := range slices.Sorted(maps.Keys(entries)) {
 		entryLocation := location + "." + id
-		if err := librarytree.ValidateRuleID(id, entryLocation); err != nil {
+		if err := kind.validate(id, entryLocation); err != nil {
 			return nil, err
 		}
 		fields, err := decode.Object(entries[id], entryLocation)
@@ -310,20 +395,20 @@ func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, loc
 		}
 		current, ok := versions[id]
 		if !ok {
-			return nil, invalid(entryLocation, "changed rule is missing from rules")
+			return nil, invalid(entryLocation, "changed "+kind.noun+" is missing from "+kind.versions)
 		}
 		raw, hasFrom := fields["from"]
 		switch change.Change {
 		case ChangeNew:
 			if hasFrom {
-				return nil, invalid(entryLocation+".from", "a new rule has no previous version")
+				return nil, invalid(entryLocation+".from", "a new "+kind.noun+" has no previous version")
 			}
 			if current != FirstRuleVersion {
-				return nil, invalid(entryLocation, "a new rule must be version 1.0.0 in rules, got "+current.String())
+				return nil, invalid(entryLocation, "a new "+kind.noun+" must be version 1.0.0 in "+kind.versions+", got "+current.String())
 			}
 		case ChangeMajor, ChangeMinor, ChangePatch:
 			if !hasFrom {
-				return nil, invalid(entryLocation+".from", "expected the rule's previous version")
+				return nil, invalid(entryLocation+".from", "expected the "+kind.noun+"'s previous version")
 			}
 			from, err := versionField(raw, entryLocation+".from")
 			if err != nil {
@@ -334,7 +419,7 @@ func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, loc
 				return nil, invalid(entryLocation, err.Error())
 			}
 			if next != current {
-				return nil, invalid(entryLocation, "a "+name+" change from "+from.String()+" leads to "+next.String()+", but rules records "+current.String())
+				return nil, invalid(entryLocation, "a "+name+" change from "+from.String()+" leads to "+next.String()+", but "+kind.versions+" records "+current.String())
 			}
 			change.From = &from
 		default:
@@ -345,8 +430,8 @@ func recordedChanges(input json.RawMessage, versions map[string]RuleVersion, loc
 	return changes, nil
 }
 
-// retiredRules requires each retired rule to be absent from rules and any replacement to be present.
-func retiredRules(input json.RawMessage, versions map[string]RuleVersion, location string) (map[string]RetiredRule, error) {
+// retiredRules requires each retired rule, or skill, to be absent from versions and any replacement to be present.
+func retiredRules(input json.RawMessage, versions map[string]RuleVersion, kind recordedIDs, location string) (map[string]RetiredRule, error) {
 	entries, err := decode.Object(input, location)
 	if err != nil {
 		return nil, err
@@ -357,11 +442,11 @@ func retiredRules(input json.RawMessage, versions map[string]RuleVersion, locati
 	retired := map[string]RetiredRule{}
 	for _, id := range slices.Sorted(maps.Keys(entries)) {
 		entryLocation := location + "." + id
-		if err := librarytree.ValidateRuleID(id, entryLocation); err != nil {
+		if err := kind.validate(id, entryLocation); err != nil {
 			return nil, err
 		}
 		if _, current := versions[id]; current {
-			return nil, invalid(entryLocation, "a retired rule can't also be in rules")
+			return nil, invalid(entryLocation, "a retired "+kind.noun+" can't also be in "+kind.versions)
 		}
 		fields, err := decode.Object(entries[id], entryLocation)
 		if err != nil {
@@ -376,10 +461,10 @@ func retiredRules(input json.RawMessage, versions map[string]RuleVersion, locati
 		}
 		if raw, ok := fields["replacedBy"]; ok {
 			if json.Unmarshal(raw, &rule.ReplacedBy) != nil {
-				return nil, invalid(entryLocation+".replacedBy", "expected a rule ID")
+				return nil, invalid(entryLocation+".replacedBy", "expected a "+kind.noun+" ID")
 			}
 			if _, current := versions[rule.ReplacedBy]; !current {
-				return nil, invalid(entryLocation+".replacedBy", "replacement "+decode.Quote(rule.ReplacedBy)+" is missing from rules")
+				return nil, invalid(entryLocation+".replacedBy", "replacement "+decode.Quote(rule.ReplacedBy)+" is missing from "+kind.versions)
 			}
 		}
 		retired[id] = rule

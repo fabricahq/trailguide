@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/gitexec"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/releasetag"
@@ -65,7 +66,26 @@ type releaseHistory struct {
 	// each of those that named a replacement to it.
 	retired    map[string]int
 	replacedBy map[string]string
+	// skills is the newest reachable library release whose record has a skills field, which skill versions and
+	// skill changes are compared with, or nil when none has. It is older than latest when a Trail Guide without skill
+	// support published the library releases after it.
+	skills *skillRelease
+	// retiredSkills and skillReplacedBy are retired and replacedBy for skills.
+	retiredSkills   map[string]int
+	skillReplacedBy map[string]string
 }
+
+// skillRelease is the library release that skill versions come from.
+type skillRelease struct {
+	number int
+	record trailguide.SkillRecord
+	// files maps the path of each entry in the skills/ folder at the release's commit, such as
+	// build-feature/SKILL.md, to its mode, kind, and object.
+	files map[string]treeEntry
+}
+
+// tagName returns the release tag's short name, such as release/4.
+func (r *skillRelease) tagName() string { return "release/" + strconv.Itoa(r.number) }
 
 // publishedRelease is the latest library release reachable from HEAD.
 type publishedRelease struct {
@@ -175,21 +195,20 @@ func (g *libraryGit) requireFullHistory(ctx context.Context) error {
 
 // history reads every reachable release record and lists the latest release's rule and note files.
 func (g *libraryGit) history(ctx context.Context) (releaseHistory, error) {
-	history := releaseHistory{retired: map[string]int{}, replacedBy: map[string]string{}}
+	history := releaseHistory{retired: map[string]int{}, replacedBy: map[string]string{}, retiredSkills: map[string]int{}, skillReplacedBy: map[string]string{}}
 	tags, err := g.releaseTags(ctx)
 	if err != nil || len(tags) == 0 {
 		return history, err
 	}
-	// Only the latest library release's notes and record are kept; the others contribute their retirements.
+	// Only the latest library release's notes and record, and the newest skills field, are kept; the others
+	// contribute their retirements.
 	var latestRelease releasetag.Release
+	skillsIndex := -1
 	err = releasetag.Read(ctx, g.runner, g.dir, tags, func(i int, release releasetag.Release) error {
-		for id, retired := range release.Record.Retired {
-			if _, ok := history.retired[id]; !ok {
-				history.retired[id] = tags[i].Number
-				if retired.ReplacedBy != "" {
-					history.replacedBy[id] = retired.ReplacedBy
-				}
-			}
+		addRetirements(history.retired, history.replacedBy, release.Record.Retired, tags[i].Number)
+		if skills := release.Record.Skills; skills != nil {
+			addRetirements(history.retiredSkills, history.skillReplacedBy, skills.Retired, tags[i].Number)
+			history.skills, skillsIndex = &skillRelease{number: tags[i].Number, record: *skills}, i
 		}
 		if i == len(tags)-1 {
 			latestRelease = release
@@ -213,7 +232,41 @@ func (g *libraryGit) history(ctx context.Context) (releaseHistory, error) {
 		return releaseHistory{}, err
 	}
 	history.latest = &publishedRelease{number: latest.Number, object: latest.Object, commit: latest.Target, notes: latestRelease.Notes, record: latestRelease.Record, files: files}
+	if history.skills != nil {
+		if history.skills.files, err = g.skillFiles(ctx, tags[skillsIndex].Object); err != nil {
+			return releaseHistory{}, fmt.Errorf("list the skills of %s: %w", history.skills.tagName(), err)
+		}
+	}
 	return history, nil
+}
+
+// addRetirements records in retired, and in replacedBy for each that names a replacement, the rules or skills that
+// record, release number's retirements, retired, unless an earlier library release retired them.
+func addRetirements(retired map[string]int, replacedBy map[string]string, record map[string]trailguide.RetiredRule, number int) {
+	for id, rule := range record {
+		if _, ok := retired[id]; !ok {
+			retired[id] = number
+			if rule.ReplacedBy != "" {
+				replacedBy[id] = rule.ReplacedBy
+			}
+		}
+	}
+}
+
+// skillFiles maps the path of each entry in the library's skills/ folder in a commit's tree, or a tag's, such as
+// build-feature/SKILL.md, to its mode, kind, and object.
+func (g *libraryGit) skillFiles(ctx context.Context, treeish string) (map[string]treeEntry, error) {
+	entries, err := g.treeEntries(ctx, treeish, []string{skillsDirectory})
+	if err != nil {
+		return nil, err
+	}
+	files := map[string]treeEntry{}
+	for name, entry := range entries {
+		if inside, found := strings.CutPrefix(name, skillsDirectory+"/"); found {
+			files[inside] = entry
+		}
+	}
+	return files, nil
 }
 
 // unsupportedRecord fails with unsupported-release-record for release tag tag, whose record a newer Trail Guide
@@ -257,8 +310,8 @@ func (g *libraryGit) libraryFiles(ctx context.Context, treeish string, paths []s
 
 // manifestDigest identifies what a library publishes of its manifest, data, which is a .trailguide/config.yaml or,
 // in a library release made before the layout of version 2, a rule-library.yaml: its library section, as
-// rules.PublishedManifest gives it, so a change to only the sources the repository uses as a project, or to a
-// comment, isn't a library-wide change. A manifest that doesn't parse, which library check reports, is identified
+// rules.PublishedManifest gives it, and the skill forks its release notes report, so a change to only the rest of
+// the sources the repository uses as a project, or to a comment, isn't a library-wide change. A manifest that doesn't parse, which library check reports, is identified
 // by its bytes.
 func manifestDigest(data []byte) string {
 	published := data
@@ -273,13 +326,41 @@ func manifestDigest(data []byte) string {
 			}
 			if section != nil {
 				if manifest, err := rules.PublishedManifestOf(section, fields["sources"]); err == nil {
-					published = manifest
+					published = append(manifest, skillForks(fields["sources"])...)
 				}
 			}
 		}
 	}
 	sum := sha256.Sum256(published)
 	return "manifest:" + hex.EncodeToString(sum[:])
+}
+
+// skillForks returns, as JSON with sorted keys, what release notes report of each skill fork that sources, a
+// configuration's sources given as JSON, records: the skill installed in its place and the commit it's based on. It
+// returns nothing when no source records a fork.
+func skillForks(sources json.RawMessage) []byte {
+	type fork struct {
+		As      string `json:"as"`
+		BasedOn string `json:"basedOn,omitempty"`
+	}
+	var declared map[string]json.RawMessage
+	_ = json.Unmarshal(sources, &declared)
+	forks := map[string]map[string]fork{}
+	for name, data := range declared {
+		var source struct {
+			Skills struct {
+				Forks map[string]fork `json:"forks"`
+			} `json:"skills"`
+		}
+		if json.Unmarshal(data, &source) == nil && len(source.Skills.Forks) > 0 {
+			forks[name] = source.Skills.Forks
+		}
+	}
+	if len(forks) == 0 {
+		return nil
+	}
+	encoded, _ := json.Marshal(forks)
+	return encoded
 }
 
 // treeEntry is one entry of a recursive tree listing: a blob, including a symbolic link, or a submodule.
@@ -394,15 +475,28 @@ func (g *libraryGit) changedRules(ctx context.Context, latest *publishedRelease,
 // hashFiles returns the blob ID Git would store for each working-tree file, by its library path among paths,
 // applying the repository's line-ending and filter attributes, so content compares equal to a committed copy.
 func (g *libraryGit) hashFiles(ctx context.Context, paths []string) (map[string]string, error) {
-	hashes := map[string]string{}
-	if len(paths) == 0 {
-		return hashes, nil
-	}
 	repository := make([]string, len(paths))
 	for i, name := range paths {
 		repository[i] = librarytree.RepositoryPath(name)
 	}
-	input := strings.Join(repository, "\n") + "\n"
+	hashes, err := g.hashRepositoryFiles(ctx, repository)
+	if err != nil {
+		return nil, err
+	}
+	byLibraryPath := make(map[string]string, len(paths))
+	for i, name := range paths {
+		byLibraryPath[name] = hashes[repository[i]]
+	}
+	return byLibraryPath, nil
+}
+
+// hashRepositoryFiles is hashFiles for files named by their paths in the repository, such as the files of skills.
+func (g *libraryGit) hashRepositoryFiles(ctx context.Context, paths []string) (map[string]string, error) {
+	hashes := map[string]string{}
+	if len(paths) == 0 {
+		return hashes, nil
+	}
+	input := strings.Join(paths, "\n") + "\n"
 	output, err := g.runner.Run(ctx, g.dir, []string{"hash-object", "--stdin-paths"}, len(paths)*65+4096, []byte(input))
 	if err != nil {
 		return nil, fmt.Errorf("hash the library's files: %w", err)
@@ -418,4 +512,113 @@ func (g *libraryGit) hashFiles(ctx context.Context, paths []string) (map[string]
 		hashes[paths[i]] = line
 	}
 	return hashes, nil
+}
+
+// changedSkills reports, for each of names, the folders of skills in tree, the tracked files of the working tree's
+// skills/ folder, that base, the skills/ folder of the library release skill versions come from, also has, whether the
+// skill's files differ from base's: in which files it has, in their content as Git would store it, or in their
+// executable bit.
+func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntry, tree *filetxn.Tree, names []string) (map[string]bool, error) {
+	working := map[string][]string{}
+	paths := []string{}
+	if tree != nil {
+		for name := range tree.Files {
+			folder, _, _ := strings.Cut(name, "/")
+			if slices.Contains(names, folder) {
+				paths = append(paths, skillsDirectory+"/"+name)
+				working[folder] = append(working[folder], name)
+			}
+		}
+	}
+	hashes, err := g.hashRepositoryFiles(ctx, paths)
+	if err != nil {
+		return nil, err
+	}
+	released := map[string][]string{}
+	for name := range base {
+		folder, _, _ := strings.Cut(name, "/")
+		released[folder] = append(released[folder], name)
+	}
+	changed := map[string]bool{}
+	for _, folder := range names {
+		files := working[folder]
+		slices.Sort(files)
+		previous := released[folder]
+		slices.Sort(previous)
+		changed[folder] = !slices.Equal(files, previous) || slices.ContainsFunc(files, func(name string) bool {
+			entry := base[name]
+			mode := "100644"
+			if slices.Contains(tree.Executable, name) {
+				mode = "100755"
+			}
+			return entry.kind != "blob" || entry.mode != mode || entry.object != hashes[skillsDirectory+"/"+name]
+		})
+	}
+	return changed, nil
+}
+
+// trackedSkills returns tree, the working tree's skills/ folder, without the files Git ignores and doesn't track,
+// which no commit holds, and without the folders that held only such files, so that a library release records
+// exactly the skills its commit delivers. A nil g, a library outside Git, keeps every file.
+func (g *libraryGit) trackedSkills(ctx context.Context, tree *filetxn.Tree) (*filetxn.Tree, error) {
+	if g == nil || tree == nil {
+		return tree, nil
+	}
+	paths := make([]string, 0, len(tree.Files))
+	for name := range tree.Files {
+		paths = append(paths, skillsDirectory+"/"+name)
+	}
+	ignored, err := g.ignoredFiles(ctx, paths)
+	if err != nil || len(ignored) == 0 {
+		return tree, err
+	}
+	tracked := &filetxn.Tree{Files: map[string][]byte{}, Directories: []string{}}
+	for name, data := range tree.Files {
+		if !ignored[skillsDirectory+"/"+name] {
+			tracked.Files[name] = data
+		}
+	}
+	for _, name := range tree.Executable {
+		if _, ok := tracked.Files[name]; ok {
+			tracked.Executable = append(tracked.Executable, name)
+		}
+	}
+	for _, directory := range tree.Directories {
+		if !holdsFiles(tree.Files, directory) || holdsFiles(tracked.Files, directory) {
+			tracked.Directories = append(tracked.Directories, directory)
+		}
+	}
+	return tracked, nil
+}
+
+// holdsFiles reports whether files, by path, has one in directory or a folder in it.
+func holdsFiles(files map[string][]byte, directory string) bool {
+	for name := range files {
+		if strings.HasPrefix(name, directory+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// ignoredFiles reports which of paths, repository paths of files in the working tree, Git ignores and doesn't track.
+func (g *libraryGit) ignoredFiles(ctx context.Context, paths []string) (map[string]bool, error) {
+	ignored := map[string]bool{}
+	if len(paths) == 0 {
+		return ignored, nil
+	}
+	output, err := g.runner.Run(ctx, g.dir, []string{"check-ignore", "-z", "--stdin"}, len(paths)*(4096+1), []byte(strings.Join(paths, "\x00")+"\x00"))
+	if err != nil {
+		return nil, fmt.Errorf("find the library's ignored files: %w", err)
+	}
+	// check-ignore exits with 1 when it ignores none of the paths.
+	if output.Status != 0 && output.Status != 1 {
+		return nil, failure("git-failed", "Git could not tell which of the library's files it ignores", nil)
+	}
+	for name := range bytes.SplitSeq(bytes.TrimSuffix(output.Output, []byte{0}), []byte{0}) {
+		if len(name) > 0 {
+			ignored[string(name)] = true
+		}
+	}
+	return ignored, nil
 }

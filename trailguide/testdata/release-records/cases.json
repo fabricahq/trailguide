@@ -745,5 +745,180 @@
         "message": "release/2.changes.practices/testing/verify-retry-limits.reviewedAt: anchors, aliases, and explicit tags are not supported"
       }
     }
+  },
+  {
+    "id": "documented-skills-example",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions:\n    skills/build-feature: 2.0.0\n    skills/fix-bug: 1.0.0\n    skills/review-tests: 1.1.0\n  changes:\n    skills/build-feature:\n      change: major\n      from: 1.3.0\n      summaries:\n        - Require an agreed design before the first slice.\n    skills/fix-bug:\n      change: new\n      summaries:\n        - Add a playbook for fixing a reported bug with a regression test.\n  retired:\n    skills/triage-bug:\n      lastVersion: 1.2.0\n      replacedBy: skills/fix-bug\n      summaries:\n        - Covered by the fix-bug playbook, which also writes the regression test.\n  pinned: ignored\n",
+    "expected": {
+      "ok": true,
+      "notes": "Notes.",
+      "value": {
+        "release": 5,
+        "rules": {
+          "practices/testing/verify-retries": "1.0.0"
+        },
+        "changes": {},
+        "retired": {},
+        "libraryFiles": [],
+        "skills": {
+          "versions": {
+            "skills/build-feature": "2.0.0",
+            "skills/fix-bug": "1.0.0",
+            "skills/review-tests": "1.1.0"
+          },
+          "changes": {
+            "skills/build-feature": {
+              "change": "major",
+              "from": "1.3.0",
+              "summaries": [
+                "Require an agreed design before the first slice."
+              ]
+            },
+            "skills/fix-bug": {
+              "change": "new",
+              "summaries": [
+                "Add a playbook for fixing a reported bug with a regression test."
+              ]
+            }
+          },
+          "retired": {
+            "skills/triage-bug": {
+              "lastVersion": "1.2.0",
+              "replacedBy": "skills/fix-bug",
+              "summaries": [
+                "Covered by the fix-bug playbook, which also writes the regression test."
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "skills-with-every-skill-retired",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions: {}\n  retired:\n    skills/fix-bug:\n      lastVersion: 1.0.0\n      summaries:\n        - No longer needed.\n",
+    "expected": {
+      "ok": true,
+      "notes": "Notes.",
+      "value": {
+        "release": 5,
+        "rules": {
+          "practices/testing/verify-retries": "1.0.0"
+        },
+        "changes": {},
+        "retired": {},
+        "libraryFiles": [],
+        "skills": {
+          "versions": {},
+          "changes": {},
+          "retired": {
+            "skills/fix-bug": {
+              "lastVersion": "1.0.0",
+              "summaries": [
+                "No longer needed."
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "skills-without-versions",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  changes: {}\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.versions",
+        "message": "release/5.skills.versions: expected every current skill's version"
+      }
+    }
+  },
+  {
+    "id": "skills-not-an-object",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills: [skills/fix-bug]\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills",
+        "message": "release/5.skills: expected an object with the skills' versions"
+      }
+    }
+  },
+  {
+    "id": "skill-id-without-skills-prefix",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions:\n    fix-bug: 1.0.0\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.versions.fix-bug",
+        "message": "release/5.skills.versions.fix-bug: expected a skill ID, such as skills/build-feature, got \"fix-bug\""
+      }
+    }
+  },
+  {
+    "id": "skill-id-with-invalid-name",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions:\n    skills/Fix_Bug: 1.0.0\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.versions.skills/Fix_Bug",
+        "message": "release/5.skills.versions.skills/Fix_Bug: expected a skill ID, such as skills/build-feature, got \"skills/Fix_Bug\""
+      }
+    }
+  },
+  {
+    "id": "changed-skill-missing-from-versions",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions: {}\n  changes:\n    skills/fix-bug:\n      change: new\n      summaries:\n        - Add it.\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.changes.skills/fix-bug",
+        "message": "release/5.skills.changes.skills/fix-bug: changed skill is missing from skills.versions"
+      }
+    }
+  },
+  {
+    "id": "inconsistent-skill-change",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions:\n    skills/fix-bug: 1.2.0\n  changes:\n    skills/fix-bug:\n      change: minor\n      from: 1.0.0\n      summaries:\n        - Add a step.\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.changes.skills/fix-bug",
+        "message": "release/5.skills.changes.skills/fix-bug: a minor change from 1.0.0 leads to 1.1.0, but skills.versions records 1.2.0"
+      }
+    }
+  },
+  {
+    "id": "skill-replaced-by-a-rule",
+    "tag": "release/5",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 5\nrules:\n  practices/testing/verify-retries: 1.0.0\nskills:\n  versions: {}\n  retired:\n    skills/fix-bug:\n      lastVersion: 1.0.0\n      replacedBy: practices/testing/verify-retries\n      summaries:\n        - Covered by a rule.\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/5.skills.retired.skills/fix-bug.replacedBy",
+        "message": "release/5.skills.retired.skills/fix-bug.replacedBy: replacement \"practices/testing/verify-retries\" is missing from skills.versions"
+      }
+    }
+  },
+  {
+    "id": "first-release-skill-not-new",
+    "tag": "release/1",
+    "message": "Notes.\n---\nformatVersion: 1\nrelease: 1\nrules: {}\nskills:\n  versions:\n    skills/fix-bug: 1.0.0\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "release/1.skills.changes.skills/fix-bug",
+        "message": "release/1.skills.changes.skills/fix-bug: the first library release must list every skill as new"
+      }
+    }
   }
 ]

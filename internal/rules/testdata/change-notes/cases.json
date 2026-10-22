@@ -11,7 +11,8 @@
           "practices/testing/verify-retry-limits": {
             "change": "major"
           }
-        }
+        },
+        "skills": {}
       }
     }
   },
@@ -40,7 +41,8 @@
           "techs/react/prefer-hooks": {
             "change": "minor"
           }
-        }
+        },
+        "skills": {}
       }
     }
   },
@@ -56,7 +58,8 @@
           "practices/comments/explain-each-line": {
             "change": "retired"
           }
-        }
+        },
+        "skills": {}
       }
     }
   },
@@ -85,14 +88,14 @@
     }
   },
   {
-    "id": "missing-rules",
+    "id": "missing-rules-and-skills",
     "location": "changes/2026-09-29-verify-retry-limits.yaml",
     "input": "summary: Change.\n",
     "expected": {
       "ok": false,
       "error": {
-        "location": "changes/2026-09-29-verify-retry-limits.yaml.rules",
-        "message": "changes/2026-09-29-verify-retry-limits.yaml.rules: expected an object"
+        "location": "changes/2026-09-29-verify-retry-limits.yaml",
+        "message": "changes/2026-09-29-verify-retry-limits.yaml: expected rules or skills, naming what the note changes"
       }
     }
   },
@@ -156,7 +159,8 @@
           "practices/testing/example.md": {
             "change": "patch"
           }
-        }
+        },
+        "skills": {}
       }
     }
   },
@@ -280,7 +284,8 @@
           "practices/testing/verify-retry-limits": {
             "change": "major"
           }
-        }
+        },
+        "skills": {}
       }
     }
   },
@@ -317,6 +322,101 @@
       "error": {
         "location": "changes/2026-09-29-verify-retry-limits.yaml.summary",
         "message": "changes/2026-09-29-verify-retry-limits.yaml.summary: expected text without control characters, such as tabs or escape sequences"
+      }
+    }
+  },
+  {
+    "id": "skill-changes",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Require an agreed design before the first slice.\nskills:\n  skills/build-feature: major\n  skills/fix-bug: new\n",
+    "expected": {
+      "ok": true,
+      "value": {
+        "summary": "Require an agreed design before the first slice.",
+        "rules": {},
+        "skills": {
+          "skills/build-feature": {
+            "change": "major"
+          },
+          "skills/fix-bug": {
+            "change": "new"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "rule-and-skill-in-one-note",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Verify retries.\nrules:\n  practices/testing/verify-retries: minor\nskills:\n  skills/build-feature: minor\n",
+    "expected": {
+      "ok": true,
+      "value": {
+        "summary": "Verify retries.",
+        "rules": {
+          "practices/testing/verify-retries": {
+            "change": "minor"
+          }
+        },
+        "skills": {
+          "skills/build-feature": {
+            "change": "minor"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "retired-skill-with-replacement",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Covered by fix-bug.\nskills:\n  skills/triage-bug:\n    change: retired\n    replacedBy: skills/fix-bug\n",
+    "expected": {
+      "ok": true,
+      "value": {
+        "summary": "Covered by fix-bug.",
+        "rules": {},
+        "skills": {
+          "skills/triage-bug": {
+            "change": "retired",
+            "replacedBy": "skills/fix-bug"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "skill-replaced-by-rule",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Covered by a rule.\nskills:\n  skills/triage-bug:\n    change: retired\n    replacedBy: practices/testing/verify-retries\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills.skills/triage-bug.replacedBy",
+        "message": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills.skills/triage-bug.replacedBy: expected a skill ID, such as skills/build-feature, got \"practices/testing/verify-retries\""
+      }
+    }
+  },
+  {
+    "id": "rule-id-under-skills",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Change.\nskills:\n  practices/testing/verify-retries: minor\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills.practices/testing/verify-retries",
+        "message": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills.practices/testing/verify-retries: expected a skill ID, such as skills/build-feature, got \"practices/testing/verify-retries\""
+      }
+    }
+  },
+  {
+    "id": "empty-skills",
+    "location": "changes/2026-10-21-build-feature-7f3a9c.yaml",
+    "input": "summary: Change.\nskills: {}\n",
+    "expected": {
+      "ok": false,
+      "error": {
+        "location": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills",
+        "message": "changes/2026-10-21-build-feature-7f3a9c.yaml.skills: expected at least one skill"
       }
     }
   }

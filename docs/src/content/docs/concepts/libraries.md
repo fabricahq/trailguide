@@ -50,7 +50,7 @@ A project records the library release it took from each library, and the version
 ## How a library publishes rules
 
 :::note[Preview]
-Skill versions and skill change notes aren't implemented yet: a library release versions rules only, and skills ship at the release's commit.
+Projects don't read skill versions yet: a library release records each skill's version, but a project installs a library's skills at the release's commit without showing their versions.
 :::
 
 A library doesn't have one version for all of its rules and skills. Each rule and skill has its own version ([rules](/concepts/rule/#how-a-rule-is-versioned), [skills](/concepts/skill/#how-a-skill-is-versioned)), so a project can see exactly which rules changed in a library release and whether work that complied with the previous version could fail the new one.
