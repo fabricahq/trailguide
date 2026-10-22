@@ -79,7 +79,7 @@ func TestProjectUsesOnlyRootTrailGuideDirectory(t *testing.T) {
 			t.Fatal(command, code, out, diagnostic)
 		}
 	}
-	for _, name := range []string{"config.yaml", "README.md", "generated/RULES.md"} {
+	for _, name := range []string{"config.yaml", "README.md", "_managed/generated/RULES.md"} {
 		if _, err := os.Stat(filepath.Join(directory, ".trailguide", name)); err != nil {
 			t.Fatal(err)
 		}

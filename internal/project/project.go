@@ -101,8 +101,8 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		defer agents.close()
 		changes = compareFiles(treeFiles(before.generated), output.Files)
 		changes.Warnings = append(retiredCitationWarnings(output), output.ExcludedUses...)
-		// Build reports paths relative to generated/, two folders below the repository root.
-		mergeChanges(&changes, prefixChanges(installs.changes, "../../"))
+		// Build reports paths relative to _managed/generated/, three folders below the repository root.
+		mergeChanges(&changes, prefixChanges(installs.changes, "../../../"))
 		changes.Warnings = append(changes.Warnings, renameWarnings(output)...)
 		targets := map[filetxn.Target]map[string][]byte{filetxn.Generated: output.Files}
 		maps.Copy(targets, installs.targets)
@@ -229,18 +229,25 @@ func requireCheckUnchanged(ctx context.Context, root *os.Root, before projectSta
 
 // projectState holds original bytes and inventories for optimistic change detection before writing. local is the
 // rules/ folder, with files keyed by their path in it, and assets the assets/ folder, with files keyed by their path
-// in it; authoredFiles combines them. skills is the skills/ folder of authored skills. lock is the lockfile, or nil
-// when the project has none.
+// in it; authoredFiles combines them. skills is the skills/ folder of authored skills. lock is the
+// lockfile, or nil when the project has none. vendor and generated are the managed trees where layout says the
+// project keeps them.
 type projectState struct {
 	config                                   rules.Configuration
 	configBytes                              []byte
 	lock                                     []byte
+	layout                                   managedLayout
 	local, assets, skills, vendor, generated *filetxn.Tree
 }
 
-// records returns the project's records, as readRecords reads them for every command but sync.
+// records returns the project's records, as readRecords reads them for every command but sync, which alone moves a
+// project in the legacy layout: for one, every other command fails with layout-migration-needed.
 func (s projectState) records() (sourceRecords, error) {
-	return readRecords(s.config, s.lock, treeFiles(s.vendor), false, nil)
+	stored, err := readRecords(s.config, s.lock, treeFiles(s.vendor), s.layout, false, nil)
+	if err == nil && s.layout.legacy {
+		return sourceRecords{}, layoutMigrationNeeded()
+	}
+	return stored, err
 }
 
 // readProject validates configuration and retains every authored and managed byte used for change detection. It
@@ -257,11 +264,15 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 	if err != nil {
 		return projectState{}, err
 	}
-	state := projectState{config: config, configBytes: data, lock: lock}
+	layout, err := readLayout(root)
+	if err != nil {
+		return projectState{}, err
+	}
+	state := projectState{config: config, configBytes: data, lock: lock, layout: layout}
 	for _, item := range []struct {
 		name  string
 		value **filetxn.Tree
-	}{{"rules", &state.local}, {"assets", &state.assets}, {skills.Directory, &state.skills}, {"vendor", &state.vendor}, {"generated", &state.generated}} {
+	}{{"rules", &state.local}, {"assets", &state.assets}, {skills.Directory, &state.skills}, {string(layout.vendor), &state.vendor}, {string(layout.generated), &state.generated}} {
 		tree, err := filetxn.ReadTree(ctx, root, item.name)
 		if err != nil {
 			return projectState{}, err
@@ -360,10 +371,10 @@ func requireUnchanged(ctx context.Context, root *os.Root, before projectState) e
 	return nil
 }
 
-// sameProject reports whether two reads hold the same configuration and lockfile bytes and rules, assets, skills,
-// vendor, and generated trees.
+// sameProject reports whether two reads hold the same layout, configuration and lockfile bytes, and rules, assets,
+// skills, vendor, and generated trees.
 func sameProject(a, b projectState) bool {
-	return bytes.Equal(a.configBytes, b.configBytes) && (a.lock == nil) == (b.lock == nil) && bytes.Equal(a.lock, b.lock) && a.local.Digest() == b.local.Digest() && a.assets.Digest() == b.assets.Digest() && a.skills.Digest() == b.skills.Digest() && a.vendor.Digest() == b.vendor.Digest() && a.generated.Digest() == b.generated.Digest()
+	return a.layout == b.layout && bytes.Equal(a.configBytes, b.configBytes) && (a.lock == nil) == (b.lock == nil) && bytes.Equal(a.lock, b.lock) && a.local.Digest() == b.local.Digest() && a.assets.Digest() == b.assets.Digest() && a.skills.Digest() == b.skills.Digest() && a.vendor.Digest() == b.vendor.Digest() && a.generated.Digest() == b.generated.Digest()
 }
 
 // authoredFiles returns the project's authored files keyed as build.Generate takes them: each file in rules/ by its

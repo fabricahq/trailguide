@@ -20,8 +20,10 @@ my-project/
     rules/
     skills/
     assets/
-    vendor/
-    generated/
+    lock.json
+    _managed/
+      vendor/
+      generated/
   .claude/skills/
   .agents/skills/
 ```
@@ -30,8 +32,9 @@ Inside `.trailguide/`:
 
 - **Configuration** in `config.yaml` names the project's sources and the rules and skills it includes from each, plus versions, renames, and any rules or skills to exclude or replace.
 - **Authored content** in `rules/`, `skills/`, and `assets/` holds the rule groups, rules, skills, and shared files you write for this project.
-- **Vendor snapshots** in `vendor/` keep a copy of what the project takes from each source, with a record of the library release or commit it came from.
-- **Generated guidance** in `generated/` combines your included rules into `RULES.md`, rule group pages, and rule files that agents can read, and lists installed skills in `SKILLS.md`.
+- **The lockfile**, `lock.json`, records the revision the project took from each source and the version of every rule and skill.
+- **Vendor snapshots** in `_managed/vendor/` keep a copy of what the project takes from each source, with a record of the library release or commit it came from.
+- **Generated guidance** in `_managed/generated/` combines your included rules into `RULES.md`, rule group pages, and rule files that agents can read, and lists installed skills in `SKILLS.md`.
 
 Outside `.trailguide/`, Trail Guide writes **installed skills** into `.claude/skills/` and `.agents/skills/`, the targets your configuration names. It manages only the skill folders it installed there; other tools' skills in the same folders stay untouched.
 

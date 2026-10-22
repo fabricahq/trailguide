@@ -128,9 +128,9 @@ func escapeText(value string) string {
 // file, where the source's snapshot in vendor/ stores it.
 func workspaceLink(outputPath, source, file string) string {
 	if source == "local" {
-		return rules.RelativeLink("generated/"+outputPath, authoredLocation(file))
+		return rules.RelativeLink(librarytree.Generated+"/"+outputPath, authoredLocation(file))
 	}
-	return rules.RelativeLink("generated/"+outputPath, "vendor/"+source+"/"+librarytree.SnapshotPath(file))
+	return rules.RelativeLink(librarytree.Generated+"/"+outputPath, librarytree.Vendor+"/"+source+"/"+librarytree.SnapshotPath(file))
 }
 
 // sourceLink prefers a recognized repository's immutable commit URL and falls back to retained source.

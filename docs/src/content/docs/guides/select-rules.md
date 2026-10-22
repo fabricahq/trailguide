@@ -146,7 +146,7 @@ If one of your rules or another source contradicts an obligation from a source, 
 Source order never resolves the conflict.
 Use [Resolve conflicting rules](/guides/conflicting-guidance/) to review the combined rules and resolve competing instructions.
 
-Review `generated/RULES.md`, each relevant rule group index, and the full resolved definitions. Check exclusions and replacements against configuration and provenance.
+Review `_managed/generated/RULES.md`, each relevant rule group index, and the full resolved definitions. Check exclusions and replacements against configuration and provenance.
 Commit configuration, your rules, vendor snapshots, and generated files together.
 Use [Update rules and skills](/guides/update/) when you take new library releases or change what you include later.
 To add procedures that apply these rules step by step, see [Install skills](/guides/install-skills/).

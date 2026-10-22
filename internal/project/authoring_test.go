@@ -20,9 +20,12 @@ func TestProjectAuthoringLifecycle(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), ".trailguide")
 	options := Options{Directory: filepath.Dir(directory)}
 	result, err := Initialize(ctx, options)
-	// config.yaml, rules/README.md, README.md, and AGENTS.md.
-	if err != nil || len(result.Written()) != 4 {
+	// config.yaml, rules/README.md, README.md, skills/README.md, and AGENTS.md.
+	if err != nil || len(result.Written()) != 5 {
 		t.Fatal(result, err)
+	}
+	if guide, err := os.ReadFile(filepath.Join(directory, "skills", "README.md")); err != nil || !bytes.Equal(guide, []byte(skillsGuide)) {
+		t.Fatalf("skills/README.md: %q, %v", guide, err)
 	}
 	original, err := os.ReadFile(filepath.Join(directory, "config.yaml"))
 	if err != nil {
@@ -87,7 +90,7 @@ func TestProjectAuthoringLifecycle(t *testing.T) {
 	if _, err = AddSource(ctx, "team", source, options); err == nil {
 		t.Fatal("duplicate alias accepted")
 	}
-	if _, err = os.Stat(filepath.Join(directory, "vendor")); !os.IsNotExist(err) {
+	if _, err = os.Stat(filepath.Join(directory, "_managed/vendor")); !os.IsNotExist(err) {
 		t.Fatal("source authoring fetched files", err)
 	}
 }
@@ -192,7 +195,7 @@ func TestRuleUsesImportedGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, data := range vendor {
-		target := filepath.Join(directory, "vendor", name)
+		target := filepath.Join(directory, "_managed/vendor", name)
 		if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
 			t.Fatal(err)
 		}

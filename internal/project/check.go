@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
@@ -89,7 +90,7 @@ func Check(ctx context.Context, options Options) (CheckResult, error) {
 		{MissingFile, changes.Added}, {StaleContents, changes.Changed}, {UnexpectedFile, changes.Removed},
 	} {
 		for _, name := range group.paths {
-			result.Problems = append(result.Problems, Problem{Kind: group.kind, Path: path.Join("generated", name), Repair: Rebuild})
+			result.Problems = append(result.Problems, Problem{Kind: group.kind, Path: path.Join(librarytree.Generated, name), Repair: Rebuild})
 		}
 	}
 	for _, folder := range checked.skills {

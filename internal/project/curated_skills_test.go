@@ -143,7 +143,7 @@ func TestSync_InstallsCuratedSkillsFromTheRepositoryTheyComeFrom(t *testing.T) {
 	if info, err := os.Stat(filepath.Join(b.options.Directory, ".claude/skills/deploy/scripts/deploy.sh")); err != nil || info.Mode().Perm()&0o100 != 0 {
 		t.Errorf("deploy.sh: %v, %v; the fixture commits it without its executable bit", info, err)
 	}
-	if !exists(t, b.options, ".trailguide/vendor/team/curated/pocock/skills/ops/deploy/SKILL.md") {
+	if !exists(t, b.options, ".trailguide/_managed/vendor/team/curated/pocock/skills/ops/deploy/SKILL.md") {
 		t.Error("didn't vendor the curated skill under curated/<source>/")
 	}
 	curated, _ := b.teamRecord(t)["curated"].(map[string]any)
@@ -167,7 +167,7 @@ func TestSync_InstallsCuratedSkillsFromTheRepositoryTheyComeFrom(t *testing.T) {
 			t.Errorf("the library's own files record the curated file %s", file)
 		}
 	}
-	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/generated/SKILLS.md")
+	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/_managed/generated/SKILLS.md")
 	for _, want := range []string{"`team:pocock:skills/ops/deploy`, curated by `team` from git@fixture.invalid:pocock, commit `" + b.pocock.FirstCommit + "`", "**Level:** required by `team`, release 1", "**Level:** offered by `team`, release 1"} {
 		if !strings.Contains(skillsIndex, want) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, skillsIndex)
@@ -229,7 +229,7 @@ func TestSync_InstallsTheCuratedSkillsALibrarysSkillUses(t *testing.T) {
 	if grilling["level"] != "offered" || grilling["included"] != false || len(grilling["usedBy"].([]any)) != 0 || !reflect.DeepEqual(grilling["usedByLibrary"], []any{"skills/add-skill"}) {
 		t.Fatalf("grilling's record = %v; want a skill installed because the library's add-skill uses it", grilling)
 	}
-	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/generated/SKILLS.md")
+	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/_managed/generated/SKILLS.md")
 	if !strings.Contains(skillsIndex, "**Uses:** `grilling`") {
 		t.Errorf("SKILLS.md doesn't say add-skill uses grilling:\n%s", skillsIndex)
 	}
@@ -494,7 +494,7 @@ func TestSync_UsesOfAnOverridingSourcesCopyReachTheCuratedSkill(t *testing.T) {
 	if _, err := Sync(ctx, b.options, b.git); err != nil {
 		t.Fatal(err)
 	}
-	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/generated/SKILLS.md")
+	skillsIndex := readRepositoryFile(t, b.options, ".trailguide/_managed/generated/SKILLS.md")
 	if !strings.Contains(skillsIndex, "`team:pocock:skills/ops/deploy`") || strings.Contains(skillsIndex, "`mine:skills/ops/deploy`") {
 		t.Fatalf("SKILLS.md:\n%s\nwant deploy once, as the curated skill", skillsIndex)
 	}

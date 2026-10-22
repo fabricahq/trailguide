@@ -67,7 +67,7 @@ func TestProjectGuideRefreshesTheCodeRulesGuide(t *testing.T) {
 	if err != nil || !slices.Equal(result.Written(), []string{filepath.Join(directory, "README.md"), filepath.Join(root, "AGENTS.md")}) {
 		t.Fatal(result, err)
 	}
-	if got, err := os.ReadFile(filepath.Join(root, "AGENTS.md")); err != nil || !bytes.Contains(got, []byte("Read `.code-rules/generated/RULES.md`")) {
+	if got, err := os.ReadFile(filepath.Join(root, "AGENTS.md")); err != nil || !bytes.Contains(got, []byte("Read `.code-rules/_managed/generated/RULES.md`")) {
 		t.Fatal(string(got), err)
 	}
 	if got, err := os.ReadFile(filepath.Join(directory, "README.md")); err != nil || !bytes.Equal(got, renderProjectGuide()) {

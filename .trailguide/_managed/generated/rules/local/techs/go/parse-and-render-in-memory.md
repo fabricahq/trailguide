@@ -54,7 +54,7 @@ Not a violation: `io/fs` used only for path validation, such as `fs.ValidPath`.
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/parse-and-render-in-memory.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/parse-and-render-in-memory.md)
 
 ### Source metadata
 

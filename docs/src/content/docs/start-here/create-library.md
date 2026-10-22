@@ -196,7 +196,7 @@ trailguide project sync
 trailguide project check
 ```
 
-Open `.trailguide/generated/RULES.md` and follow its "Error handling" rule group to your shared rule, which shows version `1.0.0`. `trailguide project sync` records that version, so the project keeps the same rules until someone runs `trailguide project update`.
+Open `.trailguide/_managed/generated/RULES.md` and follow its "Error handling" rule group to your shared rule, which shows version `1.0.0`. `trailguide project sync` records that version, so the project keeps the same rules until someone runs `trailguide project update`.
 
 The rules are now in the project, but its agent needs instructions to read them. If you haven't already, [connect the rules to your agent and try a task](/start-here/set-up-project/#6-give-the-rules-to-your-agent). Then commit the project's configuration, vendored rules, generated guidance, and agent instructions together.
 

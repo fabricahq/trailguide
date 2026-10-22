@@ -22,14 +22,14 @@ var configUpdate = map[Target]map[string][]byte{
 func writeConfigProject(t *testing.T, root *os.Root) {
 	t.Helper()
 	writeFixture(t, root, "config.yaml", "old config")
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 }
 
 // requireConfigProject checks that all three targets hold the previous or the new content, never a mixture.
 func requireConfigProject(t *testing.T, root *os.Root, state string) {
 	t.Helper()
-	for name, suffix := range map[string]string{"config.yaml": " config", "vendor/team/rule.md": " rule", "generated/RULES.md": " output"} {
+	for name, suffix := range map[string]string{"config.yaml": " config", "_managed/vendor/team/rule.md": " rule", "_managed/generated/RULES.md": " output"} {
 		data, err := root.ReadFile(name)
 		if err != nil || string(data) != state+suffix {
 			t.Fatalf("%s: got %q, want %q: %v", name, data, state+suffix, err)
@@ -84,7 +84,7 @@ func TestApply_RefusesAConfigurationEditedDuringStaging(t *testing.T) {
 	if data, _ := root.ReadFile("config.yaml"); string(data) != "user edit" {
 		t.Fatalf("lost the user's edit: %q", data)
 	}
-	if data, _ := root.ReadFile("generated/RULES.md"); string(data) != "old output" {
+	if data, _ := root.ReadFile("_managed/generated/RULES.md"); string(data) != "old output" {
 		t.Fatalf("replaced output: %q", data)
 	}
 }
@@ -113,8 +113,8 @@ func TestKilledConfigWriterRecovers(t *testing.T) {
 	}
 	for stop, state := range map[string]string{
 		transactionName + "/rename-check/config.yaml": "old",
-		"vendor":                             "old",
-		"generated":                          "old",
+		"_managed/vendor":                    "old",
+		"_managed/generated":                 "old",
 		transactionName + "/old-config.yaml": "old",
 		"config.yaml":                        "old",
 		transactionName + "/committed.json":  "new",

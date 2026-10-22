@@ -104,7 +104,7 @@ func curateSkills(ctx context.Context, configuration rules.Configuration, source
 	if err != nil {
 		return err
 	}
-	used, err := curatedUses(imported.Snapshot.Skills, imported.Snapshot.Files, "vendor/"+source.Name)
+	used, err := curatedUses(imported.Snapshot.Skills, imported.Snapshot.Files, librarytree.Vendor+"/"+source.Name)
 	if err != nil {
 		return err
 	}

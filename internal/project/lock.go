@@ -43,14 +43,14 @@ type sourceRecords struct {
 }
 
 // readRecords returns the project's records from its lockfile, data, which is nil when the project has none, and
-// vendor, the vendor tree's files. Projects that sync last wrote with Trail Guide 0.5 keep a record in each source's
+// vendor, the files of the vendor tree, which is where layout says. Projects that sync last wrote with Trail Guide 0.5 keep a record in each source's
 // vendor folder instead; only sync, with migrate set, reads them, and it fails, without writing, for every state
 // a finished migration can't start from: a configured source whose vendor folder has files but no record, a record
 // changed outside sync or whose files don't match it, or a vendor folder of a source configuration no longer has.
 // The source names in retake are left out, so sync resolves them again. A project with no lockfile whose vendor/
 // has files, but no records, lost its lockfile; it fails rather than resolving sources again, which could move
 // them. A lockfile together with any legacy record is a mixed layout, which fails.
-func readRecords(config rules.Configuration, data []byte, vendor map[string][]byte, migrate bool, retake []string) (sourceRecords, error) {
+func readRecords(config rules.Configuration, data []byte, vendor map[string][]byte, layout managedLayout, migrate bool, retake []string) (sourceRecords, error) {
 	legacy := []string{}
 	for _, file := range slices.Sorted(maps.Keys(vendor)) {
 		if name, ok := strings.CutSuffix(file, "/"+legacyRecord); ok && !strings.Contains(name, "/") {
@@ -72,13 +72,13 @@ func readRecords(config rules.Configuration, data []byte, vendor map[string][]by
 			if recorded || slices.Contains(retake, source.Name) || !hasFolder(vendor, source.Name) {
 				continue
 			}
-			return sourceRecords{}, failure("lock-entry-missing", fmt.Sprintf(".trailguide/%s has no entry for sources.%s, though .trailguide/vendor/%s/ has files a sync wrote, so the entry was removed outside Trail Guide. Restore it, such as with git checkout -- .trailguide/%s, and run trailguide project sync; or %s", lockFile, source.Name, source.Name, lockFile, retakeAdvice(source.Name)), nil)
+			return sourceRecords{}, failure("lock-entry-missing", fmt.Sprintf(".trailguide/%s has no entry for sources.%s, though %s%s/ has files a sync wrote, so the entry was removed outside Trail Guide. Restore it, such as with git checkout -- .trailguide/%s, and run trailguide project sync; or %s", lockFile, source.Name, layout.vendorLocation(), source.Name, lockFile, retakeAdvice(source.Name)), nil)
 		}
 		return records, nil
 	}
 	if len(legacy) > 0 {
 		if !migrate {
-			return sourceRecords{}, failure("lock-migration-needed", "the project was last synced by Trail Guide 0.5, which kept a record in each source's vendor folder instead of .trailguide/"+lockFile+". Run trailguide project sync once to migrate it, which moves no source, and commit the result", nil)
+			return sourceRecords{}, failure("lock-migration-needed", "the project was last synced by Trail Guide 0.5, which kept a record in each source's vendor folder instead of .trailguide/"+lockFile+". Run trailguide project sync once to migrate it, which moves no source, and commit the result. Sync also moves .trailguide/"+librarytree.LegacyVendor+"/ and .trailguide/"+librarytree.LegacyGenerated+"/ under .trailguide/"+librarytree.Managed+"/", nil)
 		}
 		return legacyRecords(config, vendor, retake)
 	}
@@ -88,11 +88,11 @@ func readRecords(config rules.Configuration, data []byte, vendor map[string][]by
 	}
 	// Without a lock, vendor/ can't be checked or discarded safely, even when configuration names no source.
 	if len(config.Sources) == 0 {
-		return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though .trailguide/vendor/ has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", and run trailguide project sync; or, since configuration names no source, delete .trailguide/vendor/", nil)
+		return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though "+layout.vendorLocation()+" has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", and run trailguide project sync; or, since configuration names no source, delete "+layout.vendorLocation(), nil)
 	}
 	for _, source := range config.Sources {
 		if !slices.Contains(retake, source.Name) {
-			return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though .trailguide/vendor/ has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", or, for a project Trail Guide 0.5 last synced, restore each source's .trailguide/vendor/<source>/"+legacyRecord+", then run trailguide project sync. Sync never resolves a source again on its own, which could move it; to resolve every source again at its ref, run trailguide project sync with --retake for each source, such as trailguide project sync --retake "+config.Sources[0].Name, nil)
+			return sourceRecords{}, failure("lock-missing", ".trailguide/"+lockFile+" is missing, though "+layout.vendorLocation()+" has files a sync wrote. Restore it, such as with git checkout -- .trailguide/"+lockFile+", or, for a project Trail Guide 0.5 last synced, restore each source's .trailguide/vendor/<source>/"+legacyRecord+", then run trailguide project sync. Sync never resolves a source again on its own, which could move it; to resolve every source again at its ref, run trailguide project sync with --retake for each source, such as trailguide project sync --retake "+config.Sources[0].Name, nil)
 		}
 	}
 	return result, nil
@@ -101,7 +101,11 @@ func readRecords(config rules.Configuration, data []byte, vendor map[string][]by
 // readStored reads the vendor tree and lockfile under root and returns the records of a project whose configuration
 // is config, as projectState.records does, with the vendor tree and the lockfile's bytes.
 func readStored(ctx context.Context, root *os.Root, config rules.Configuration) (sourceRecords, *filetxn.Tree, []byte, error) {
-	vendor, err := filetxn.ReadTree(ctx, root, "vendor")
+	layout, err := readLayout(root)
+	if err != nil {
+		return sourceRecords{}, nil, nil, err
+	}
+	vendor, err := filetxn.ReadTree(ctx, root, string(layout.vendor))
 	if err != nil {
 		return sourceRecords{}, nil, nil, err
 	}
@@ -109,7 +113,10 @@ func readStored(ctx context.Context, root *os.Root, config rules.Configuration) 
 	if err != nil {
 		return sourceRecords{}, nil, nil, err
 	}
-	stored, err := readRecords(config, lock, treeFiles(vendor), false, nil)
+	stored, err := readRecords(config, lock, treeFiles(vendor), layout, false, nil)
+	if err == nil && layout.legacy {
+		return sourceRecords{}, nil, nil, layoutMigrationNeeded()
+	}
 	return stored, vendor, lock, err
 }
 

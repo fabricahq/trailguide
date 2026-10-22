@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/project"
 	"github.com/fabricahq/trailguide/internal/rules"
 )
@@ -204,7 +205,7 @@ func projectChangesReport(action string, result project.FileChanges, root, workd
 	fmt.Fprintf(&out, "%s complete: %d added, %d changed, %d removed.\n", strings.ToUpper(action[:1])+action[1:], len(result.Added), len(result.Changed), len(result.Removed))
 	if len(result.Added)+len(result.Changed)+len(result.Removed) > 0 {
 		if action == "build" {
-			fmt.Fprintf(&out, "Paths relative to %s:\n", filepath.Join(trailguide, "generated"))
+			fmt.Fprintf(&out, "Paths relative to %s:\n", filepath.Join(trailguide, filepath.FromSlash(librarytree.Generated)))
 		} else {
 			fmt.Fprintf(&out, "Paths relative to %s:\n", trailguide)
 		}

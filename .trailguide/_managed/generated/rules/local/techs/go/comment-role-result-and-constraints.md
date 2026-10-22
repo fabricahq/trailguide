@@ -58,7 +58,7 @@ Not a violation: an unexported helper without a comment whose name and signature
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/comment-role-result-and-constraints.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/comment-role-result-and-constraints.md)
 
 ### Source metadata
 

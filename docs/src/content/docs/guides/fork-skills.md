@@ -102,7 +102,7 @@ fabrica
 
 `--merge-fork` refuses such a skill and writes nothing. To bring the changes in yourself:
 
-1. Compare the source's copy with yours. The source's copy at the new commit is in `.trailguide/vendor/fabrica/` after you apply the rest of the update, or in the source's repository at that commit.
+1. Compare the source's copy with yours. The source's copy at the new commit is in `.trailguide/_managed/vendor/fabrica/` after you apply the rest of the update, or in the source's repository at that commit.
 2. Edit your fork to take the changes you want.
 3. Set `basedOn` to the commit the preview names, so later updates list only newer changes.
 4. Run `trailguide project build`.

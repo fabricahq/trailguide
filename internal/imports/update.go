@@ -13,6 +13,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/gitexec"
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/trailguide"
 )
@@ -618,7 +619,7 @@ func planOverriddenCurating(ctx context.Context, configuration rules.Configurati
 	if err != nil || manifest == nil {
 		return []CuratedUpdate{}, err
 	}
-	used, err := curatedUses(recorded.Skills, recorded.Files, "vendor/"+source.Name)
+	used, err := curatedUses(recorded.Skills, recorded.Files, librarytree.Vendor+"/"+source.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -674,7 +675,7 @@ func sourceError(source string, err error) error {
 	var validation errs.ValidationError
 	if errors.As(err, &validation) && err == error(validation) {
 		location := validation.ValidationLocation()
-		if location == "sources."+source || strings.HasPrefix(location, "sources."+source+".") || strings.HasPrefix(location, source+":") || strings.HasPrefix(location, "vendor/"+source+"/") {
+		if location == "sources."+source || strings.HasPrefix(location, "sources."+source+".") || strings.HasPrefix(location, source+":") || strings.HasPrefix(location, librarytree.Vendor+"/"+source+"/") {
 			return err
 		}
 	}

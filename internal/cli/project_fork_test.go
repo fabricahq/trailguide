@@ -96,7 +96,7 @@ func TestForkRule_ReplacesTheImportedRuleInTheBuild(t *testing.T) {
 			t.Fatalf("%v: exit %d:\n%s%s", command, code, out, diagnostic)
 		}
 	}
-	if f.read(t, "generated/rules/local/techs/go/errors.md") == nil || f.read(t, "generated/rules/team/techs/go/errors.md") != nil {
+	if f.read(t, "_managed/generated/rules/local/techs/go/errors.md") == nil || f.read(t, "_managed/generated/rules/team/techs/go/errors.md") != nil {
 		t.Fatal("the build doesn't replace the imported rule with the fork")
 	}
 }

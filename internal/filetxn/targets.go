@@ -151,13 +151,24 @@ func fileTarget(target Target) bool {
 
 func validTarget(target Target) bool {
 	_, skill := skillFolderTarget(target)
-	return target == Vendor || target == Generated || fileTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) || skill
+	return managedTarget(target) || fileTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) || skill
 }
 
-// removable reports whether a nil file map may remove target: a local rule's asset directory or a skill folder.
+// managedTarget reports whether target is a managed tree, in the current layout or the legacy one.
+func managedTarget(target Target) bool {
+	return target == Vendor || target == Generated || legacyManagedTarget(target)
+}
+
+// legacyManagedTarget reports whether target is a managed tree where Trail Guide 0.7 and earlier kept it.
+func legacyManagedTarget(target Target) bool {
+	return target == LegacyVendor || target == LegacyGenerated
+}
+
+// removable reports whether a nil file map may remove target: a local rule's asset directory, a skill folder, or a
+// managed tree in the legacy layout.
 func removable(target Target) bool {
 	_, skill := skillFolderTarget(target)
-	return localRuleAssetsTarget(target) || skill
+	return localRuleAssetsTarget(target) || skill || legacyManagedTarget(target)
 }
 
 // place is where a target and its transaction entries are: the root that holds them, the target's path in it, and

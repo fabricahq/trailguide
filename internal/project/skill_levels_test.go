@@ -61,7 +61,7 @@ func installedSkills(t *testing.T, options Options) []string {
 	var record struct {
 		Skills []struct{ Name string } `json:"skills"`
 	}
-	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/generated/installed-skills.json")), &record); err != nil {
+	if err := json.Unmarshal([]byte(readRepositoryFile(t, options, ".trailguide/_managed/generated/installed-skills.json")), &record); err != nil {
 		t.Fatal(err)
 	}
 	names := []string{}
@@ -111,7 +111,7 @@ func TestSync_RecordsWhichLibrarySetEachLevel(t *testing.T) {
 	if _, err := Sync(context.Background(), options, git); err != nil {
 		t.Fatal(err)
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 	for _, want := range []string{"**Level:** required by `team`, release 1", "**Level:** recommended by `team`, release 1", "**Level:** offered by `team`, release 1", "every project that uses the library installs its required skills"} {
 		if !strings.Contains(index, want) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)

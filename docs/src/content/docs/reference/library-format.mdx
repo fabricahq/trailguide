@@ -11,7 +11,7 @@ Libraries live in Git repositories. This page covers what makes a repository a l
 
 ## Library layout
 
-A library uses the same Trail Guide directory as every other repository. The tree below shows a library repository named **`engineering-rules/`**; the name is an example. A project that uses it stores a vendor snapshot of this content under `.trailguide/vendor/<source-name>/`; see [Project files](/reference/files/).
+A library uses the same Trail Guide directory as every other repository. The tree below shows a library repository named **`engineering-rules/`**; the name is an example. A project that uses it stores a vendor snapshot of this content under `.trailguide/_managed/vendor/<source-name>/`; see [Project files](/reference/files/).
 
 <FileTree>
 
@@ -35,6 +35,7 @@ A library uses the same Trail Guide directory as every other repository. The tre
           - README.md
           - verify-retry-limits.md
     - skills/
+      - README.md
       - build-feature/
         - SKILL.md
         - references/
@@ -43,10 +44,12 @@ A library uses the same Trail Guide directory as every other repository. The tre
           - verify.sh
       - review-tests/
         - SKILL.md
-    - vendor/
-      - ...
-    - generated/
-      - ...
+    - lock.json
+    - _managed/
+      - vendor/
+        - ...
+      - generated/
+        - ...
 
 </FileTree>
 
@@ -56,7 +59,7 @@ A library publishes exactly its **authored content**:
 - **Skills** under `skills/`, one folder per skill.
 - **Library-wide files**: the manifest in `config.yaml`, rule group metadata, shared files in `assets/`, and the declared license and notice files.
 
-`vendor/` and `generated/` are the library's own project files, for the sources it takes from and the guidance its own agents read. Projects never take them from the library.
+`lock.json` and everything under `_managed/` are the library's own project files, for the sources it takes from and the guidance its own agents read. Projects never take them from the library.
 
 Trail Guide discovers rule groups only under `rules/techs/` and `rules/practices/`, and skills only as `skills/<name>/SKILL.md`. A rule's ID is its path in `rules/` without `.md`, such as `practices/testing/verify-retry-limits`, and a skill's ID is `skills/<name>`.
 Within a rule group, Markdown files outside reserved asset directories are rules. The `README.md` at the rule group's root and declared license and notice files, which can't use a rule's path, are exempt. Rule group READMEs are authoring documentation, not generated rule guidance.
@@ -205,9 +208,9 @@ Every library a project uses has a generated `libraries/<source-name>/README.md`
 The manifest paths select **source files**, not output locations. For declared terms, Trail Guide uses these fixed destinations:
 
 ```text
-generated/libraries/<source-name>/licenses/LICENSE.md
-generated/libraries/<source-name>/licenses/notices/001.md
-generated/libraries/<source-name>/licenses/notices/002.md
+_managed/generated/libraries/<source-name>/licenses/LICENSE.md
+_managed/generated/libraries/<source-name>/licenses/notices/001.md
+_managed/generated/libraries/<source-name>/licenses/notices/002.md
 ```
 
 `<source-name>` is the name the project gave the source. Unique notice files are numbered in declaration order; repeated paths and a notice path identical to the license path are copied only once. No notice files are generated when none are declared. Contents, including whitespace and line endings, are preserved. Output paths are not configurable. Vendor snapshots retain the original names for traceability. Declared terms are retained even when exclusions or replacements leave no active rules from that library.

@@ -24,7 +24,7 @@ func TestProjectInitGuidance(t *testing.T) {
 			t.Fatal("init led with internal file changes", out)
 		}
 		// Like other authoring commands, init lists the files it added, relative to the working directory.
-		if !strings.Contains(out, "Added:\n  .trailguide/config.yaml\n  .trailguide/rules/README.md\n  .trailguide/README.md\n  AGENTS.md\n") || strings.Contains(out, "Project configuration:") {
+		if !strings.Contains(out, "Added:\n  .trailguide/config.yaml\n  .trailguide/rules/README.md\n  .trailguide/README.md\n  .trailguide/skills/README.md\n  AGENTS.md\n") || strings.Contains(out, "Project configuration:") {
 			t.Fatal("init doesn't list the files it added", out)
 		}
 		if !strings.Contains(out, "Or use a shared library or skills repository") || !strings.Contains(out, "trailguide project sync") {
@@ -34,7 +34,7 @@ func TestProjectInitGuidance(t *testing.T) {
 		if !strings.Contains(out, "AGENTS.md tells your coding agent to read the rules. If your agent reads another file, such as CLAUDE.md, import or link AGENTS.md there") {
 			t.Fatal("missing agent connection step", out)
 		}
-		if agents, err := os.ReadFile(filepath.Join(directory, "AGENTS.md")); err != nil || !strings.HasPrefix(string(agents), "<!-- trailguide:begin ") || !strings.Contains(string(agents), "Read `.trailguide/generated/RULES.md`") {
+		if agents, err := os.ReadFile(filepath.Join(directory, "AGENTS.md")); err != nil || !strings.HasPrefix(string(agents), "<!-- trailguide:begin ") || !strings.Contains(string(agents), "Read `.trailguide/_managed/generated/RULES.md`") {
 			t.Fatal("init didn't add the AGENTS.md section", string(agents), err)
 		}
 		// Execute the displayed project-only examples, supplying metadata to avoid terminal prompts.

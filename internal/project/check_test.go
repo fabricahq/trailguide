@@ -39,7 +39,7 @@ func TestCheckOwnsGuideAndGeneratedFreshness(t *testing.T) {
 				t.Fatal(err)
 			}
 			if state == "both-stale" {
-				if err := root.WriteFile("generated/RULES.md", []byte("Stale output.\n"), 0600); err != nil {
+				if err := root.WriteFile("_managed/generated/RULES.md", []byte("Stale output.\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -53,7 +53,7 @@ func TestCheckOwnsGuideAndGeneratedFreshness(t *testing.T) {
 			}
 			want := []project.Problem{}
 			if state == "both-stale" {
-				want = append(want, project.Problem{Kind: project.StaleContents, Path: "generated/RULES.md", Repair: project.Rebuild})
+				want = append(want, project.Problem{Kind: project.StaleContents, Path: "_managed/generated/RULES.md", Repair: project.Rebuild})
 			}
 			if state != "current" {
 				want = append(want, project.Problem{Kind: project.OutdatedGuide, Path: "README.md", Repair: project.RefreshGuide})

@@ -134,12 +134,12 @@ func TestProjectGuideExamples(t *testing.T) {
 					t.Fatalf("%s does not link to the managed guide: %v", file, err)
 				}
 			}
-			for _, path := range []string{"rules/techs/go/return-errors.md", "vendor/team/rules/techs/go/shared.md", "generated/RULES.md", "generated/groups/techs/go.md", "generated/SKILLS.md", "../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/SKILL.md"} {
+			for _, path := range []string{"rules/techs/go/return-errors.md", "_managed/vendor/team/rules/techs/go/shared.md", "_managed/generated/RULES.md", "_managed/generated/groups/techs/go.md", "_managed/generated/SKILLS.md", "../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/SKILL.md"} {
 				if _, err := os.Stat(filepath.Join(directory, ".trailguide", path)); err != nil {
 					t.Fatalf("README did not produce %s: %v", path, err)
 				}
 			}
-			if shared, err := os.ReadFile(filepath.Join(directory, ".trailguide", "vendor/team/rules/techs/go/shared.md")); err != nil || !updated || !strings.Contains(string(shared), "Wrap them with context.") {
+			if shared, err := os.ReadFile(filepath.Join(directory, ".trailguide", "_managed/vendor/team/rules/techs/go/shared.md")); err != nil || !updated || !strings.Contains(string(shared), "Wrap them with context.") {
 				t.Fatalf("the update example didn't apply the newer version: %v", err)
 			}
 		})
@@ -175,7 +175,7 @@ func TestCheckVerifiesGuideAndGeneratedOutput(t *testing.T) {
 					}
 				}
 				if stale {
-					if err := os.WriteFile(filepath.Join(root, "generated", "RULES.md"), []byte("Stale output."), 0600); err != nil {
+					if err := os.WriteFile(filepath.Join(root, "_managed/generated", "RULES.md"), []byte("Stale output."), 0600); err != nil {
 						t.Fatal(err)
 					}
 				}

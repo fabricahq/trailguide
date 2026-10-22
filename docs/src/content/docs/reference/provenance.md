@@ -15,10 +15,10 @@ This page shows where the records live, how Trail Guide creates them, and how to
 | --- | --- |
 | `lock.json` | Which revision, rule and skill versions, and original files each source's vendor snapshot holds: the project's **lockfile**. See [Inspect the lockfile](#inspect-the-lockfile). |
 | `config.yaml` | Which sources, rules, and skills you include, and your pins, exclusions, replacements, renames, and the reason for each. See [Configuration](/reference/configuration/). |
-| `generated/rules/<source-name>/…` and `generated/rules/local/…` | Each active rule's ID, version, the rule it replaces and why, a link to its original file, and its declared license and credits. |
-| `generated/SKILLS.md` | Each installed skill's source, release and commit, level and the library that set it, why it's installed, the skill it replaces and why, and where it's installed. |
-| `generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule versions and pins, skills, and declared license terms. |
-| `generated/installed-skills.json` | Which skill folders Trail Guide installed in the target folders. See [Installed skills](/reference/files/#installed-skills). |
+| `_managed/generated/rules/<source-name>/…` and `_managed/generated/rules/local/…` | Each active rule's ID, version, the rule it replaces and why, a link to its original file, and its declared license and credits. |
+| `_managed/generated/SKILLS.md` | Each installed skill's source, release and commit, level and the library that set it, why it's installed, the skill it replaces and why, and where it's installed. |
+| `_managed/generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule versions and pins, skills, and declared license terms. |
+| `_managed/generated/installed-skills.json` | Which skill folders Trail Guide installed in the target folders. See [Installed skills](/reference/files/#installed-skills). |
 
 These paths are relative to the Trail Guide directory. The **source name** is the name you gave a source in your configuration, such as `team`.
 
@@ -34,11 +34,11 @@ An **active rule** is one included in that generated guidance. An excluded rule 
 
 These files describe the current result, rather than a running history of every update. They contain no changing timestamps or machine-specific paths.
 
-Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report that repeated these facts. Trail Guide no longer writes it, and the next sync or build removes it.
+Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report that repeated these facts. Trail Guide no longer writes it, and the sync that [moves the project to the new layout](#migrate-from-trail-guide-07) removes it.
 
 ## Trace a rule to its source
 
-Open the rule's page in `generated/rules/`. A rule from a source is at `generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`. An authored rule is under `generated/rules/local/`, and its page shows its ID with the `local:` prefix, such as `local:practices/testing/service-retries`; in configuration, such as an exclusion's `replacedBy`, you write it without the prefix.
+Open the rule's page in `_managed/generated/rules/`. A rule from a source is at `_managed/generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`. An authored rule is under `_managed/generated/rules/local/`, and its page shows its ID with the `local:` prefix, such as `local:practices/testing/service-retries`; in configuration, such as an exclusion's `replacedBy`, you write it without the prefix.
 
 Below its title, the page shows:
 
@@ -54,7 +54,7 @@ Under **Source and attribution**, the page links to the original rule: for a rul
 
 Suppose your project includes rules from the `team` library but replaces its `check-retries` rule with `.trailguide/rules/practices/testing/service-retries.md`. You record the reason in configuration: “Use the retry limits required by this service.”
 
-The replacement's page, `generated/rules/local/practices/testing/service-retries.md`, starts like this:
+The replacement's page, `_managed/generated/rules/local/practices/testing/service-retries.md`, starts like this:
 
 ```md
 # Use the service's retry limits
@@ -70,7 +70,7 @@ Read this as: agents receive your `service-retries` rule, which replaces `team`'
 
 ## Trace a skill to its source
 
-`generated/SKILLS.md` has one section per installed skill, named by its install name:
+`_managed/generated/SKILLS.md` has one section per installed skill, named by its install name:
 
 ```md
 ### tdd
@@ -92,13 +92,13 @@ Write the test first.
 | `Type` | Its `trailguide-skill-type`, `playbook` or `review`. |
 | `Applies` | The rules its `trailguide-rules-used` list names. |
 | `Uses` and `Installed because` | The skills it uses, and whether your configuration or a level includes it, or other skills use it. |
-| `Installed at` | The folders it's installed in, as in `generated/installed-skills.json`. |
+| `Installed at` | The folders it's installed in, as in `_managed/generated/installed-skills.json`. |
 
 The skill's entry in `lock.json` records the same level and why it's installed; see [Skills in the lockfile](#skills-in-the-lockfile).
 
 ## Inspect the lockfile
 
-`lock.json` in the Trail Guide directory is the project's **lockfile**. It has one entry per source, keyed by source name, that records exactly what the project took from that source: the revision, the version of every rule, every skill, and a digest of every file in the source's **vendor snapshot**, `vendor/<source-name>/`. `trailguide project sync` restores exactly what the lockfile records, and never moves a source. Only `trailguide project update`, a new source, or a changed repository changes what an entry records.
+`lock.json` in the Trail Guide directory is the project's **lockfile**. It has one entry per source, keyed by source name, that records exactly what the project took from that source: the revision, the version of every rule, every skill, and a digest of every file in the source's **vendor snapshot**, `_managed/vendor/<source-name>/`. `trailguide project sync` restores exactly what the lockfile records, and never moves a source. Only `trailguide project update`, a new source, or a changed repository changes what an entry records.
 
 A library's snapshot mirrors its Trail Guide directory, so its files keep their paths relative to the library's `.trailguide/`, such as `rules/practices/testing/verify-retry-limits.md` and `config.yaml` for the manifest. Declared license and notice files outside that directory, such as `LICENSE.md` at the repository root, keep their repository paths. A non-library source's files keep their repository paths.
 
@@ -155,7 +155,7 @@ Each source's entry has these fields:
 | --- | --- |
 | `kind` | `library` when the source's repository has a [manifest](/reference/library-format/#the-manifest) at the locked commit, and `non-library` otherwise. Trail Guide detects it; configuration never declares it. |
 | `repository` | The source's repository address. |
-| `ref` | The source's `ref` from configuration when the entry was written, such as `release/3`, `latest-release`, or `main`. Changing it to another spelling of the same revision, such as `refs/tags/release/3` for `release/3`, keeps the locked spelling, so the entry stays current. Changing it to another library release makes the entry out of date until `trailguide project update SOURCE` takes that release, and offline checks report it at `lock.json.sources.<source-name>.ref`; changing it to a branch, tag, or commit makes the entry out of date until `trailguide project sync` takes that revision. Pins and exclusions aren't locked: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. The library's README in `generated/libraries/` shows the configured pins and their reasons. |
+| `ref` | The source's `ref` from configuration when the entry was written, such as `release/3`, `latest-release`, or `main`. Changing it to another spelling of the same revision, such as `refs/tags/release/3` for `release/3`, keeps the locked spelling, so the entry stays current. Changing it to another library release makes the entry out of date until `trailguide project update SOURCE` takes that release, and offline checks report it at `lock.json.sources.<source-name>.ref`; changing it to a branch, tag, or commit makes the entry out of date until `trailguide project sync` takes that revision. Pins and exclusions aren't locked: configuration owns them, and a pinned rule's `version` in `rules` is the pinned version. The library's README in `_managed/generated/libraries/` shows the configured pins and their reasons. |
 | `release` | The library release that supplied the library-wide files: the manifest, rule group metadata, shared assets, and license files. Every skill from the source, and every skill level, comes from it too. It is the newest library release when the source was added or last updated, or the library release your `ref` names, and never older than the `release` of any locked rule. `trailguide project sync` keeps it, including when you include more rules or skills: those come from this library release too. It's omitted when the source isn't a library, or its `ref` is a branch, tag, or commit rather than a library release. |
 | `commit` | The full Git commit SHA of that library release, or of the commit your `ref` resolved to. Every file in the snapshot that isn't a rule from an older release comes from it. |
 | `releaseCommits` | For a library, each library release that a locked rule comes from, and `release`, mapped to the full commit SHA of its `release/<number>` tag. Offline checks require it to list exactly those releases. |
@@ -226,7 +226,7 @@ A library skill's files and version come from the entry's `release`. A non-libra
 
 ### Curated sources in the lockfile
 
-When a library's manifest lists [curated skills](/reference/configuration/#curated-skills), the library's entry holds a `curated` object with one entry per curated source the project installs skills from. The files are stored under `vendor/<source-name>/curated/<curated-source>/`, at their paths in the curated repository:
+When a library's manifest lists [curated skills](/reference/configuration/#curated-skills), the library's entry holds a `curated` object with one entry per curated source the project installs skills from. The files are stored under `_managed/vendor/<source-name>/curated/<curated-source>/`, at their paths in the curated repository:
 
 ```json
 {
@@ -294,9 +294,23 @@ Sync reads each record, checks it and the vendored files as 0.5 did, writes `loc
 
 A record changed outside Trail Guide 0.5 is refused as an edited lock entry is, and recovers the same way.
 
+### Migrate from Trail Guide 0.7
+
+Trail Guide 0.7 and earlier kept vendor snapshots and generated guidance in `.trailguide/vendor/` and `.trailguide/generated/`. They now live under `.trailguide/_managed/`, so every file Trail Guide writes for you is in one place. Init, build, check, update, and the other commands that read vendored files refuse a project in the old layout with `layout-migration-needed`. Move it once, and commit the result:
+
+```sh
+trailguide project sync
+```
+
+Sync checks the vendored files, writes them and freshly generated guidance under `_managed/`, and removes the old folders, in one step. It moves no source. A Trail Guide 0.5 project migrates its records to `lock.json` in the same sync.
+
+If both `_managed/` and either old folder are present, usually because a merge combined a migrated branch with one that wasn't, commands fail with `mixed-layout`. Take one branch's `_managed/`, `vendor/`, and `generated/` folders and `lock.json`, then sync.
+
+Update any text of your own that points to the old paths. A pointer to `.trailguide/_managed/generated/RULES.md` in `AGENTS.md`, outside the Trail Guide section, fails with [`agents-pointer-outdated`](/reference/files/#where-agents-start).
+
 ### When the lockfile is missing
 
-When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. The same applies when `lock.json` exists but doesn't read at all, such as a truncated file: every command fails, and only a restore, or a sync that retakes every configured source, recovers it. When configuration names no source, delete `.trailguide/vendor/` instead.
+When `lock.json` is missing but `_managed/vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. The same applies when `lock.json` exists but doesn't read at all, such as a truncated file: every command fails, and only a restore, or a sync that retakes every configured source, recovers it. When configuration names no source, delete `.trailguide/_managed/vendor/` instead.
 
 When `lock.json` exists but has no entry for a configured source whose vendor folder holds files, such as after a merge resolution dropped the entry, every command fails with `lock-entry-missing`. Sync doesn't treat the source as new, since that could move it. Restore the entry from Git and sync, or take the source again at its `ref`:
 
@@ -319,9 +333,9 @@ Offline checks cannot prove that a recorded version was the newest available, or
 
 ## Find declared licenses and source credits
 
-A library declares its license and notice files in its manifest; see [License metadata](/reference/library-format/#license-metadata). Trail Guide keeps byte-for-byte copies of them in `generated/libraries/<source-name>/licenses/`, with notice copies numbered, such as `licenses/notices/001.md`, and the library's README in `generated/libraries/<source-name>/` lists them with the declared license expression, such as `MIT`.
+A library declares its license and notice files in its manifest; see [License metadata](/reference/library-format/#license-metadata). Trail Guide keeps byte-for-byte copies of them in `_managed/generated/libraries/<source-name>/licenses/`, with notice copies numbered, such as `licenses/notices/001.md`, and the library's README in `_managed/generated/libraries/<source-name>/` lists them with the declared license expression, such as `MIT`.
 
-Each page of a rule from that library repeats the declared license and links to those copies, under **Source and attribution**. The original files stay in the source's vendor snapshot, `vendor/<source-name>/`. A rule's own source credits, from its [attribution](/reference/rule-format/#rule-attribution), are listed there too, as links.
+Each page of a rule from that library repeats the declared license and links to those copies, under **Source and attribution**. The original files stay in the source's vendor snapshot, `_managed/vendor/<source-name>/`. A rule's own source credits, from its [attribution](/reference/rule-format/#rule-attribution), are listed there too, as links.
 
 An authored rule's page has no declared license, including a replacement: replacing a library rule doesn't give your replacement the library's license.
 

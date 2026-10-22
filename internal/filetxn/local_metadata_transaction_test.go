@@ -25,14 +25,14 @@ var metadataUpdate = map[Target]map[string][]byte{
 func writeMetadataProject(t *testing.T, root *os.Root) {
 	t.Helper()
 	writeFixture(t, root, "rules/techs/go/fork.md", "local rule")
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 }
 
 // requireMetadataProject checks that the metadata exists exactly when the managed trees hold the new output.
 func requireMetadataProject(t *testing.T, root *os.Root, state string) {
 	t.Helper()
-	for name, suffix := range map[string]string{"vendor/team/rule.md": " rule", "generated/RULES.md": " output"} {
+	for name, suffix := range map[string]string{"_managed/vendor/team/rule.md": " rule", "_managed/generated/RULES.md": " output"} {
 		data, err := root.ReadFile(name)
 		if err != nil || string(data) != state+suffix {
 			t.Fatalf("%s: got %q, want %q: %v", name, data, state+suffix, err)
@@ -78,7 +78,7 @@ func TestApply_KeepsLocalGroupMetadataCreatedDuringStaging(t *testing.T) {
 	if data, _ := root.ReadFile(localMetadata); string(data) != "user metadata" {
 		t.Fatalf("lost the user's metadata: %q", data)
 	}
-	if data, _ := root.ReadFile("generated/RULES.md"); string(data) != "old output" {
+	if data, _ := root.ReadFile("_managed/generated/RULES.md"); string(data) != "old output" {
 		t.Fatalf("replaced output: %q", data)
 	}
 }
@@ -120,8 +120,8 @@ func TestKilledMetadataWriterRecovers(t *testing.T) {
 	}
 	for stop, state := range map[string]string{
 		renameCheck + "/rules+techs+go+_group.yaml": "old",
-		"vendor":                            "old",
-		"generated":                         "old",
+		"_managed/vendor":                   "old",
+		"_managed/generated":                "old",
 		localMetadata:                       "old",
 		transactionName + "/committed.json": "new",
 	} {

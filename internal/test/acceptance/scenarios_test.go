@@ -216,7 +216,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 	if err != nil {
 		return report, err
 	}
-	for name, want := range map[string][]byte{".trailguide/vendor/team/LICENSE.md": terms, ".trailguide/vendor/team/NOTICE.md": notice, ".trailguide/vendor/team/rules/techs/go/assets/errors/diagram.bin": asset} {
+	for name, want := range map[string][]byte{".trailguide/_managed/vendor/team/LICENSE.md": terms, ".trailguide/_managed/vendor/team/NOTICE.md": notice, ".trailguide/_managed/vendor/team/rules/techs/go/assets/errors/diagram.bin": asset} {
 		if !bytes.Equal(files.Files[name], want) {
 			return report, fmt.Errorf("original bytes not preserved: %s", name)
 		}
@@ -225,7 +225,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 	if !strings.Contains(lock, fixture.LatestCommit) || !strings.Contains(lock, `"release": 1,`) || !strings.Contains(lock, `"version": "1.0.0"`) {
 		return report, fmt.Errorf("library release or rule versions missing from lock.json")
 	}
-	if !strings.Contains(string(files.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") {
+	if !strings.Contains(string(files.Files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") {
 		return report, fmt.Errorf("rule version missing from generated guidance")
 	}
 	report.Verified = append(report.Verified, "Library release release/1 imported at its commit, with each rule's version in lock.json and guidance", "License, notice, and binary asset bytes preserved exactly")
@@ -242,7 +242,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 	if err != nil {
 		return report, err
 	}
-	if !strings.Contains(string(before.Files[".trailguide/generated/RULES.md"]), "Project-specific Go guidance.") {
+	if !strings.Contains(string(before.Files[".trailguide/_managed/generated/RULES.md"]), "Project-specific Go guidance.") {
 		return report, fmt.Errorf("local group guidance missing")
 	}
 	if err := invoke("Repeat build", consumer, offline, 0, "project", "build"); err != nil {
@@ -258,7 +258,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 	report.Verified = append(report.Verified, "Local group guidance wins", "Offline build/check work with no runtimes on PATH", "Repeated build is byte-for-byte stable")
 	switch scenario {
 	case "stale-output":
-		name := ".trailguide/generated/RULES.md"
+		name := ".trailguide/_managed/generated/RULES.md"
 		if err := os.WriteFile(filepath.Join(consumer, name), []byte("Stale output"), 0600); err != nil {
 			return report, err
 		}
@@ -274,7 +274,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		}
 		report.Verified = append(report.Verified, "Check reports stale output without changing it; rebuild repairs it")
 	case "changed-vendor":
-		name := filepath.Join(consumer, ".trailguide/vendor/team/LICENSE.md")
+		name := filepath.Join(consumer, ".trailguide/_managed/vendor/team/LICENSE.md")
 		if err := os.WriteFile(name, []byte("Manual edit"), 0600); err != nil {
 			return report, err
 		}
@@ -373,10 +373,10 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err != nil {
 			return report, err
 		}
-		if !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) || !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/naming.md"], libraryTree.Files[".trailguide/rules/techs/go/naming.md"]) {
+		if !bytes.Equal(after.Files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) || !bytes.Equal(after.Files[".trailguide/_managed/vendor/team/rules/techs/go/naming.md"], libraryTree.Files[".trailguide/rules/techs/go/naming.md"]) {
 			return report, fmt.Errorf("update did not keep the pinned rule at 1.0.0 beside the release's other rule")
 		}
-		if !strings.Contains(string(after.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") || !strings.Contains(string(after.Files[".trailguide/lock.json"]), `"release": 2,`) {
+		if !strings.Contains(string(after.Files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") || !strings.Contains(string(after.Files[".trailguide/lock.json"]), `"release": 2,`) {
 			return report, fmt.Errorf("the pinned version or the new release is missing")
 		}
 		if err := invoke("Check the pinned version offline", consumer, offline, 0, "project", "check"); err != nil {
@@ -393,7 +393,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err != nil {
 			return report, err
 		}
-		if !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) {
+		if !bytes.Equal(after.Files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], libraryTree.Files[".trailguide/rules/techs/go/errors.md"]) {
 			return report, fmt.Errorf("sync moved a rule the record locks")
 		}
 		if err := invoke("Update moves the formerly pinned rule", consumer, online, 0, "project", "update", "--yes"); err != nil {
@@ -403,7 +403,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err != nil {
 			return report, err
 		}
-		if !bytes.Equal(after.Files[".trailguide/vendor/team/rules/techs/go/errors.md"], document) || !strings.Contains(string(after.Files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.1.0") {
+		if !bytes.Equal(after.Files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], document) || !strings.Contains(string(after.Files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"]), "Version: 1.1.0") {
 			return report, fmt.Errorf("update did not move the formerly pinned rule to 1.1.0")
 		}
 		report.Verified = append(report.Verified, "Removing a pin leaves the rule at its recorded version, and update moves it to the version its release publishes")
@@ -425,7 +425,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if err != nil {
 			return report, err
 		}
-		if !strings.Contains(string(after.Files[".trailguide/generated/libraries/team/README.md"]), "Imported from unreleased changes.") {
+		if !strings.Contains(string(after.Files[".trailguide/_managed/generated/libraries/team/README.md"]), "Imported from unreleased changes.") {
 			return report, fmt.Errorf("library summary does not mention unreleased changes")
 		}
 		if err := invoke("Check the unreleased import offline", consumer, offline, 0, "project", "check"); err != nil {

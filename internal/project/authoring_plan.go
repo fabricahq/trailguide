@@ -180,7 +180,11 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 		if err := checkLocalSkill(ctx, root, p.name); err != nil {
 			return nil, err
 		}
-		record, err := filetxn.ReadOptional(ctx, root, path.Join("generated", build.InstalledSkillsFile))
+		layout, err := readLayout(root)
+		if err != nil {
+			return nil, err
+		}
+		record, err := filetxn.ReadOptional(ctx, root, path.Join(string(layout.generated), build.InstalledSkillsFile))
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +195,7 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 				break
 			}
 		}
-		return []filetxn.File{{Path: path.Join(skills.AuthoredID(p.name), skills.File), Content: data}}, nil
+		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(skills.AuthoredID(p.name), skills.File), Content: data}})
 	})
 	if err == nil && clash != "" {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("The project installs %s as %s too, so trailguide project sync and build fail with skill-name-clash until you rename this skill's folder and name, or exclude %s.", clash, p.name, clash))

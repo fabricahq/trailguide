@@ -152,12 +152,12 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot, 
 	output := map[string][]byte{}
 	records := map[string]sourceRecord{}
 	if len(snapshots) != len(config.Sources) {
-		return nil, nil, invalidSnapshot("vendor", "source inventory differs from configuration; run trailguide project sync")
+		return nil, nil, invalidSnapshot(librarytree.Vendor, "source inventory differs from configuration; run trailguide project sync")
 	}
 	for _, source := range config.Sources {
 		snapshot, ok := snapshots[source.Name]
 		if !ok {
-			return nil, nil, invalidSnapshot("vendor/"+source.Name, "missing source snapshot; run trailguide project sync")
+			return nil, nil, invalidSnapshot(librarytree.Vendor+"/"+source.Name, "missing source snapshot; run trailguide project sync")
 		}
 		selection, err := json.Marshal(snapshot.Selection)
 		if err != nil {
@@ -191,7 +191,7 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot, 
 			}
 			origin, ok := record.Curated[name]
 			if !ok {
-				return nil, nil, invalidSnapshot("vendor/"+source.Name, "the curated skill "+id+" has no recorded curated source")
+				return nil, nil, invalidSnapshot(librarytree.Vendor+"/"+source.Name, "the curated skill "+id+" has no recorded curated source")
 			}
 			entry.UsedBy = []string{}
 			for _, user := range skill.UsedBy {
@@ -228,11 +228,11 @@ func encodeSnapshots(config rules.Configuration, snapshots map[string]snapshot, 
 		placed := map[string]string{}
 		for _, file := range slices.Sorted(maps.Keys(snapshot.Files)) {
 			if first, _, _ := strings.Cut(file, "/"); strings.EqualFold(first, legacyRecord) {
-				return nil, nil, invalidSnapshot("vendor/"+source.Name, "_source.json is reserved for the source record of Trail Guide 0.5")
+				return nil, nil, invalidSnapshot(librarytree.Vendor+"/"+source.Name, "_source.json is reserved for the source record of Trail Guide 0.5")
 			}
 			stored := source.Name + "/" + librarytree.SnapshotPath(file)
 			if other, taken := placed[stored]; taken {
-				return nil, nil, invalidSnapshot("vendor/"+stored, "the library files "+other+" and "+file+" would both be stored here")
+				return nil, nil, invalidSnapshot(librarytree.Vendor+"/"+stored, "the library files "+other+" and "+file+" would both be stored here")
 			}
 			placed[stored] = file
 			if name, relative, curated := curatedFile(file); curated && record.Curated[name].Files != nil {
@@ -316,7 +316,7 @@ func verifyExecutable(snapshots map[string]snapshot, vendor *filetxn.Tree) error
 	if expected := vendorExecutable(snapshots); !slices.Equal(actual, expected) {
 		for _, file := range slices.Concat(actual, expected) {
 			if !slices.Contains(actual, file) || !slices.Contains(expected, file) {
-				return invalidSnapshot("vendor/"+file, "its executable bit differs from what the source record lists; run trailguide project sync")
+				return invalidSnapshot(librarytree.Vendor+"/"+file, "its executable bit differs from what the source record lists; run trailguide project sync")
 			}
 		}
 	}
@@ -348,7 +348,7 @@ func decodeSnapshots(config rules.Configuration, stored sourceRecords, vendor ma
 			full := source.Name + "/" + librarytree.SnapshotPath(file)
 			data, ok := vendor[full]
 			if !ok || digest(data) != record.digests[file] {
-				return nil, invalidSnapshot("vendor/"+full, "missing or modified imported content; run trailguide project sync")
+				return nil, invalidSnapshot(librarytree.Vendor+"/"+full, "missing or modified imported content; run trailguide project sync")
 			}
 			record.Files[file] = bytes.Clone(data)
 			expected[full] = true
@@ -368,7 +368,7 @@ func decodeSnapshots(config rules.Configuration, stored sourceRecords, vendor ma
 	}
 	for _, file := range slices.Sorted(maps.Keys(vendor)) {
 		if !expected[file] {
-			return nil, invalidSnapshot("vendor/"+file, "unexpected imported file or removed source; run trailguide project sync")
+			return nil, invalidSnapshot(librarytree.Vendor+"/"+file, "unexpected imported file or removed source; run trailguide project sync")
 		}
 	}
 	return result, nil
@@ -861,7 +861,7 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 	included := []string{}
 	for _, id := range slices.Sorted(maps.Keys(snapshot.Skills)) {
 		file := library.SkillFolder(id) + "/" + skills.File
-		metadata, err := skills.ReadMetadata(snapshot.Files[file], "vendor/"+source.Name+"/"+file)
+		metadata, err := skills.ReadMetadata(snapshot.Files[file], librarytree.Vendor+"/"+source.Name+"/"+file)
 		if err != nil {
 			return err
 		}

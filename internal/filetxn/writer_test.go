@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -56,12 +57,12 @@ func TestWriterReplacesOnlyManagedTrees(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	writeFixture(t, root, "generated/stale.md", "stale")
+	writeFixture(t, root, "_managed/generated/stale.md", "stale")
 	output[Generated] = map[string][]byte{"RULES.md": []byte("second")}
 	if err := WithWriter(context.Background(), root, func(w *Writer) error { return w.Apply(output, nil) }); err != nil {
 		t.Fatal(err)
 	}
-	got, err := ReadTree(context.Background(), root, "generated")
+	got, err := ReadTree(context.Background(), root, "_managed/generated")
 	if err != nil || len(got.Files) != 1 || string(got.Files["RULES.md"]) != "second" {
 		t.Fatalf("generated: %v %v", got, err)
 	}
@@ -92,26 +93,26 @@ func TestWriterBusyAndExpiredHandle(t *testing.T) {
 // TestWriterConcurrentEditAndRenameFailure preserves a later edit and rolls back both targets on rename failure.
 func TestWriterConcurrentEditAndRenameFailure(t *testing.T) {
 	root := openProject(t)
-	writeFixture(t, root, "vendor/old", "vendor")
-	writeFixture(t, root, "generated/old", "generated")
+	writeFixture(t, root, "_managed/vendor/old", "_managed/vendor")
+	writeFixture(t, root, "_managed/generated/old", "_managed/generated")
 	output := map[Target]map[string][]byte{Vendor: {"new": []byte("v")}, Generated: {"new": []byte("g")}}
 	err := WithWriter(context.Background(), root, func(w *Writer) error {
-		return w.Apply(output, func() error { writeFixture(t, root, "generated/old", "user edit"); return nil })
+		return w.Apply(output, func() error { writeFixture(t, root, "_managed/generated/old", "user edit"); return nil })
 	})
 	projectCode(t, err, "concurrent-change")
-	if b, _ := root.ReadFile("generated/old"); string(b) != "user edit" {
+	if b, _ := root.ReadFile("_managed/generated/old"); string(b) != "user edit" {
 		t.Fatal("concurrent edit lost")
 	}
 	err = WithWriter(context.Background(), root, func(w *Writer) error {
-		return w.Apply(output, func() error { return root.RemoveAll(transactionName + "/new-generated") })
+		return w.Apply(output, func() error { return root.RemoveAll(transactionName + "/new-_managed+generated") })
 	})
 	if err == nil {
 		t.Fatal("missing staging tree did not fail")
 	}
-	if b, _ := root.ReadFile("vendor/old"); string(b) != "vendor" {
+	if b, _ := root.ReadFile("_managed/vendor/old"); string(b) != "_managed/vendor" {
 		t.Fatal("first target not restored")
 	}
-	if b, _ := root.ReadFile("generated/old"); string(b) != "user edit" {
+	if b, _ := root.ReadFile("_managed/generated/old"); string(b) != "user edit" {
 		t.Fatal("second target not restored")
 	}
 	if err := RequireIdle(root); err != nil {
@@ -138,7 +139,7 @@ func stageInterruption(t *testing.T, root *os.Root, committed bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := durableJSON(root, transactionName+"/journal.json", journalRecord{FormatVersion: 1, Entries: []journalEntry{{Generated, treeDigest(before), treeDigest(after), true}}}); err != nil {
+	if err := durableJSON(root, transactionName+"/journal.json", journalRecord{FormatVersion: 1, Entries: []journalEntry{{LegacyGenerated, treeDigest(before), treeDigest(after), true}}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := root.Rename("generated", transactionName+"/old-generated"); err != nil {
@@ -187,7 +188,7 @@ func TestWriterRecoveryPreservesLaterEdits(t *testing.T) {
 // TestWriterCancellation preserves existing output and keeps errors.Is usable.
 func TestWriterCancellation(t *testing.T) {
 	root := openProject(t)
-	writeFixture(t, root, "generated/old", "before")
+	writeFixture(t, root, "_managed/generated/old", "before")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := WithWriter(ctx, root, func(w *Writer) error {
@@ -196,7 +197,7 @@ func TestWriterCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("lost cancellation: %v", err)
 	}
-	if b, _ := root.ReadFile("generated/old"); string(b) != "before" {
+	if b, _ := root.ReadFile("_managed/generated/old"); string(b) != "before" {
 		t.Fatal("changed output on cancellation")
 	}
 	if err := RequireIdle(root); err != nil {
@@ -259,14 +260,14 @@ func TestKilledWriterReclaimsLock(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer root.Close()
-		writeFixture(t, root, "generated/old", "before")
+		writeFixture(t, root, "_managed/generated/old", "before")
 		err = WithWriter(context.Background(), root, func(w *Writer) error {
 			rename := w.rename
 			w.rename = func(old, new string) error {
 				if err := rename(old, new); err != nil {
 					return err
 				}
-				if old == "generated" {
+				if old == "_managed/generated" {
 					if err := root.WriteFile("ready", []byte("ready"), 0600); err != nil {
 						return err
 					}
@@ -305,7 +306,7 @@ func TestKilledWriterReclaimsLock(t *testing.T) {
 	if err := WithWriter(context.Background(), root, func(*Writer) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if b, _ := root.ReadFile("generated/old"); string(b) != "before" {
+	if b, _ := root.ReadFile("_managed/generated/old"); string(b) != "before" {
 		t.Fatal("killed writer not rolled back")
 	}
 	if err := RequireIdle(root); err != nil {
@@ -352,7 +353,7 @@ func TestRecoveryRejectsContradictoryExistence(t *testing.T) {
 	if err := root.Mkdir(transactionName, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := durableJSON(root, transactionName+"/journal.json", journalRecord{FormatVersion: 1, Entries: []journalEntry{{Generated, treeDigest(before), digest([]byte("after")), false}}}); err != nil {
+	if err := durableJSON(root, transactionName+"/journal.json", journalRecord{FormatVersion: 1, Entries: []journalEntry{{LegacyGenerated, treeDigest(before), digest([]byte("after")), false}}}); err != nil {
 		t.Fatal(err)
 	}
 	projectCode(t, WithWriter(context.Background(), root, func(*Writer) error { return nil }), "recovery-required")
@@ -367,11 +368,11 @@ func TestRecoveryRejectsContradictoryExistence(t *testing.T) {
 // TestWriterPreservesEditAtBackupRename reproduces an edit after staging validation through the real writer.
 func TestWriterPreservesEditAtBackupRename(t *testing.T) {
 	root := openProject(t)
-	writeFixture(t, root, "generated/old", "before")
+	writeFixture(t, root, "_managed/generated/old", "before")
 	err := WithWriter(context.Background(), root, func(w *Writer) error {
 		w.rename = func(from, to string) error {
-			if from == "generated" {
-				writeFixture(t, root, "generated/old", "late edit")
+			if from == "_managed/generated" {
+				writeFixture(t, root, "_managed/generated/old", "late edit")
 			}
 			return root.Rename(from, to)
 		}
@@ -381,7 +382,7 @@ func TestWriterPreservesEditAtBackupRename(t *testing.T) {
 		t.Fatal("late edit was silently overwritten")
 	}
 	found := false
-	for _, name := range []string{"generated/old", transactionName + "/old-generated/old"} {
+	for _, name := range []string{"_managed/generated/old", transactionName + "/old-_managed+generated/old"} {
 		if data, _ := root.ReadFile(name); string(data) == "late edit" {
 			found = true
 		}
@@ -446,18 +447,18 @@ func TestWriterPreservesNewEmptyTarget(t *testing.T) {
 		t.Run(fmt.Sprint(existed), func(t *testing.T) {
 			root := openProject(t)
 			if existed {
-				writeFixture(t, root, "generated/old", "before")
+				writeFixture(t, root, "_managed/generated/old", "before")
 			}
 			var created os.FileInfo
 			err := WithWriter(context.Background(), root, func(w *Writer) error {
 				rename := w.rename
 				w.rename = func(from, to string) error {
-					if from == transactionName+"/new-generated" {
-						if err := root.Mkdir("generated", 0700); err != nil {
+					if from == transactionName+"/new-_managed+generated" {
+						if err := root.Mkdir("_managed/generated", 0700); err != nil {
 							t.Fatal(err)
 						}
 						var err error
-						created, err = root.Stat("generated")
+						created, err = root.Stat("_managed/generated")
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -469,12 +470,12 @@ func TestWriterPreservesNewEmptyTarget(t *testing.T) {
 			if err == nil {
 				t.Fatal("concurrent empty directory was overwritten")
 			}
-			current, statErr := root.Stat("generated")
+			current, statErr := root.Stat("_managed/generated")
 			if statErr != nil || !os.SameFile(created, current) {
 				t.Fatalf("lost concurrent directory: %v", statErr)
 			}
 			if existed {
-				data, err := root.ReadFile(transactionName + "/old-generated/old")
+				data, err := root.ReadFile(transactionName + "/old-_managed+generated/old")
 				if err != nil || string(data) != "before" {
 					t.Fatalf("lost backup: %v", err)
 				}
@@ -486,15 +487,15 @@ func TestWriterPreservesNewEmptyTarget(t *testing.T) {
 // TestWriterCancellationDuringReplacement completes rollback before returning cancellation.
 func TestWriterCancellationDuringReplacement(t *testing.T) {
 	root := openProject(t)
-	writeFixture(t, root, "vendor/old", "vendor before")
-	writeFixture(t, root, "generated/old", "generated before")
+	writeFixture(t, root, "_managed/vendor/old", "vendor before")
+	writeFixture(t, root, "_managed/generated/old", "generated before")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := WithWriter(ctx, root, func(w *Writer) error {
 		rename := w.rename
 		w.rename = func(from, to string) error {
 			err := rename(from, to)
-			if err == nil && from == transactionName+"/new-vendor" {
+			if err == nil && from == transactionName+"/new-_managed+vendor" {
 				cancel()
 			}
 			return err
@@ -504,9 +505,9 @@ func TestWriterCancellationDuringReplacement(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("lost cancellation: %v", err)
 	}
-	for _, target := range []string{"vendor", "generated"} {
+	for _, target := range []string{"_managed/vendor", "_managed/generated"} {
 		data, err := root.ReadFile(target + "/old")
-		if err != nil || string(data) != target+" before" {
+		if err != nil || string(data) != path.Base(target)+" before" {
 			t.Fatalf("did not restore %s: %v", target, err)
 		}
 		if _, err := root.Stat(target + "/new"); !errors.Is(err, os.ErrNotExist) {

@@ -367,7 +367,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 				return nil, err
 			}
 		}
-		return append(slices.Clone(p.files), filetxn.File{Path: manifestPath, Content: edited, Previous: original}), nil
+		return withSkillsGuide(ctx, root, append(slices.Clone(p.files), filetxn.File{Path: manifestPath, Content: edited, Previous: original}))
 	})
 	return authoringResult(changes, err)
 }

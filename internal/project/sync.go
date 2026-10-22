@@ -55,7 +55,7 @@ func Sync(ctx context.Context, options Options, git imports.Options, retake ...s
 				return invalidArguments("--retake names " + name + ", which isn't a source in .trailguide/config.yaml")
 			}
 		}
-		stored, err := readRecords(before.config, before.lock, treeFiles(before.vendor), true, retake)
+		stored, err := readRecords(before.config, before.lock, treeFiles(before.vendor), before.layout, true, retake)
 		if err != nil {
 			return err
 		}
@@ -177,10 +177,14 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		return FileChanges{}, err
 	}
 	defer agents.close()
-	changes := compareFiles(managedFiles(before.lock, treeFiles(before.vendor), treeFiles(before.generated)), managedFiles(lock, vendor, output.Files))
+	changes := compareFiles(managedFiles(before.layout, before.lock, treeFiles(before.vendor), treeFiles(before.generated)), managedFiles(currentLayout, lock, vendor, output.Files))
 	// The report's paths are relative to the Trail Guide directory, one folder below the repository root.
 	mergeChanges(&changes, prefixChanges(installs.changes, "../"))
 	targets := map[filetxn.Target]map[string][]byte{filetxn.Vendor: vendor, filetxn.Generated: output.Files, filetxn.Lock: {lockFile: lock}}
+	if before.layout.legacy {
+		// Moving to the current layout removes the trees from their legacy places in the same transaction.
+		targets[before.layout.vendor], targets[before.layout.generated] = nil, nil
+	}
 	maps.Copy(targets, installs.targets)
 	executable := maps.Clone(installs.executable)
 	executable[filetxn.Vendor] = vendorExecutable(snapshots)
@@ -410,7 +414,7 @@ func keptGroupMetadata(config rules.Configuration, before projectState, stored s
 			file := name + "/" + librarytree.SnapshotPath(group+"/_group.yaml")
 			data, ok := vendored[file]
 			if !ok || digest(data) != recorded {
-				return nil, invalidSnapshot("vendor/"+file, fmt.Sprintf("missing or modified since sync imported it, so it can't become rules/%s/_group.yaml, the metadata your authored rules in the group need. Restore it: run trailguide project sync with the previous configuration, then change the configuration and sync again; or write rules/%s/_group.yaml yourself", group, group))
+				return nil, invalidSnapshot(string(before.layout.vendor)+"/"+file, fmt.Sprintf("missing or modified since sync imported it, so it can't become rules/%s/_group.yaml, the metadata your authored rules in the group need. Restore it: run trailguide project sync with the previous configuration, then change the configuration and sync again; or write rules/%s/_group.yaml yourself", group, group))
 			}
 			kept[group] = data
 			break
@@ -419,18 +423,18 @@ func keptGroupMetadata(config rules.Configuration, before projectState, stored s
 	return kept, nil
 }
 
-// managedFiles prefixes source-relative and generated-relative paths for an unambiguous combined change report, with
-// the lockfile, lock, when it isn't nil.
-func managedFiles(lock []byte, vendor, generated map[string][]byte) map[string][]byte {
+// managedFiles prefixes source-relative and generated-relative paths with their trees' places in layout for an
+// unambiguous combined change report, with the lockfile, lock, when it isn't nil.
+func managedFiles(layout managedLayout, lock []byte, vendor, generated map[string][]byte) map[string][]byte {
 	result := make(map[string][]byte, len(vendor)+len(generated)+1)
 	if lock != nil {
 		result[lockFile] = lock
 	}
 	for name, data := range vendor {
-		result["vendor/"+name] = data
+		result[string(layout.vendor)+"/"+name] = data
 	}
 	for name, data := range generated {
-		result["generated/"+name] = data
+		result[string(layout.generated)+"/"+name] = data
 	}
 	return result
 }

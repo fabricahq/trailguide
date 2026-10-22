@@ -10,11 +10,11 @@ This guide explains how to manage this project's [Fabrica Trail Guide](https://t
 
 ## Connect your coding agent
 
-Trail Guide generates the rules, but your coding agent reads them only when its instructions say to. So `trailguide project init`, `build`, `sync`, and `update` keep a section in the repository's `AGENTS.md`, between `<!-- trailguide:begin -->` and `<!-- trailguide:end -->` markers, that tells agents to read `.trailguide/generated/RULES.md` and use the skills `.trailguide/generated/SKILLS.md` lists. They create `AGENTS.md` when it's missing and never change your text outside the markers. Don't edit the section: those commands refuse to replace an edited one, and `trailguide project check` fails when it's missing or outdated.
+Trail Guide generates the rules, but your coding agent reads them only when its instructions say to. So `trailguide project init`, `build`, `sync`, and `update` keep a section in the repository's `AGENTS.md`, between `<!-- trailguide:begin -->` and `<!-- trailguide:end -->` markers, that tells agents to read `.trailguide/_managed/generated/RULES.md` and use the skills `.trailguide/_managed/generated/SKILLS.md` lists. They create `AGENTS.md` when it's missing and never change your text outside the markers. Don't edit the section: those commands refuse to replace an edited one, and `trailguide project check` fails when it's missing or outdated.
 
 If your agent reads another instruction file, such as Claude Code's `CLAUDE.md`, have that file import or link `AGENTS.md`. A `CLAUDE.md` containing the line `@AGENTS.md` imports it.
 
-If `AGENTS.md` already points to `.trailguide/generated/RULES.md` outside the markers, as the section earlier versions asked you to paste does, Trail Guide leaves the file alone. To have Trail Guide maintain it instead, delete that section and run `trailguide project build`.
+If `AGENTS.md` already points to `.trailguide/_managed/generated/RULES.md` outside the markers, Trail Guide leaves the file alone. To have Trail Guide maintain it instead, delete that section and run `trailguide project build`. A pointer to `.trailguide/generated/RULES.md`, where Trail Guide 0.7 and earlier kept the rules, makes commands fail until you change its path or delete that section.
 
 To manage `AGENTS.md` yourself, set `manageAgentsFile: false` in `.trailguide/config.yaml`; commands then neither write nor check it.
 
@@ -24,7 +24,7 @@ Commit `AGENTS.md` with `.trailguide/`, so everyone who checks out the project g
 
 ### Managing rules
 
-Use this guide to **manage rules**. Use `.trailguide/generated/RULES.md` to **read and apply adopted rules** when working on the project.
+Use this guide to **manage rules**. Use `.trailguide/_managed/generated/RULES.md` to **read and apply adopted rules** when working on the project.
 
 1. Identify the requested change: add a group or rule to this project, adopt a library, change an existing definition, or verify generated output.
 2. Run the corresponding commands below. Run `trailguide project init` **from the Git repository root**. Other project commands can run from any subdirectory and use the root's `.trailguide/config.yaml`. Outside Git, run commands from the project root, the parent of `.trailguide/`.
@@ -85,13 +85,13 @@ trailguide project sync
 trailguide project check
 ```
 
-`trailguide project add source` records the declaration without fetching. `trailguide project sync` imports each selected rule's newest version from the library's releases, and every selected skill from the same library release, validates them, and installs vendor and generated files and the skills' installed copies together. It records every rule's version and every skill in `.trailguide/lock.json`, and later syncs take everything from that same record: to take a skill a newer library release adds, run `trailguide project update`. If any source fails, the previous complete output stays in place. Inspect the rule versions and retained terms in `.trailguide/generated/libraries/team/README.md` and `.trailguide/vendor/team/`.
+`trailguide project add source` records the declaration without fetching. `trailguide project sync` imports each selected rule's newest version from the library's releases, and every selected skill from the same library release, validates them, and installs vendor and generated files and the skills' installed copies together. It records every rule's version and every skill in `.trailguide/lock.json`, and later syncs take everything from that same record: to take a skill a newer library release adds, run `trailguide project update`. If any source fails, the previous complete output stays in place. Inspect the rule versions and retained terms in `.trailguide/_managed/generated/libraries/team/README.md` and `.trailguide/_managed/vendor/team/`.
 
 Repeat `--rules` for each rule selector: a group prefix such as `techs/go/*`, which also takes rules the library adds to the group later, on `trailguide project update`, a single rule ID such as `techs/go/shared`, or a wildcard. Quote wildcards: `--rules 'techs/*'` or `--rules '*'`. Repeat `--skills` for each skill ID, such as `skills/build-feature`, or pass `--skills '*'` for every skill the source offers; supply at least one `--rules` or `--skills`. `--ref` takes the source at a tag, such as a library release tag `release/5`, a full commit SHA, or a branch such as `main`; a repository without library releases needs it. Sync keeps the commit it recorded for a branch, and `trailguide project update` moves it to the branch's newest commit. A library source on a branch takes changes the library hasn't released, without change notes, and sync and update warn about it; leave `--ref` out to follow the library's releases. Abbreviated commits aren't supported.
 
 #### Install skills
 
-Sync and build install each included skill, and each skill you author in `.trailguide/skills/<name>/SKILL.md`, into every skill target that `skillTargets` in `.trailguide/config.yaml` names: `claude` for `.claude/skills/` and `agents` for `.agents/skills/`. Commit the installed copies with the rest of the project. Don't edit them: sync and build replace them, and they never replace a folder in a skill target that Trail Guide didn't install. `.trailguide/generated/SKILLS.md` lists every skill, what it does, and where it's installed.
+Sync and build install each included skill, and each skill you author in `.trailguide/skills/<name>/SKILL.md`, into every skill target that `skillTargets` in `.trailguide/config.yaml` names: `claude` for `.claude/skills/` and `agents` for `.agents/skills/`. Commit the installed copies with the rest of the project. Don't edit them: sync and build replace them, and they never replace a folder in a skill target that Trail Guide didn't install. `.trailguide/_managed/generated/SKILLS.md` lists every skill, what it does, and where it's installed.
 
 #### Keep a rule at its current version
 

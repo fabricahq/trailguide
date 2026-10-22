@@ -34,7 +34,7 @@ func TestRenderRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := output["rules/local/techs/go/local.md"]
-	for _, want := range []string{"A  sentence.\r\n", "../../../../../rules/techs/go/assets/local/a%20b.png#part", "[self](../../../../../rules/techs/go/local.md)", "`[code](missing)`", "Keep trailing spaces.  \nNext line.", "### Source metadata", "**Rule source:**"} {
+	for _, want := range []string{"A  sentence.\r\n", "../../../../../../rules/techs/go/assets/local/a%20b.png#part", "[self](../../../../../../rules/techs/go/local.md)", "`[code](missing)`", "Keep trailing spaces.  \nNext line.", "### Source metadata", "**Rule source:**"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %s", want, got)
 		}
@@ -51,7 +51,7 @@ func TestRenderLinksSharedAuthoredAssets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := output["rules/local/techs/go/local.md"]; !strings.Contains(got, "[diagram](../../../../../assets/diagram.svg)") {
+	if got := output["rules/local/techs/go/local.md"]; !strings.Contains(got, "[diagram](../../../../../../assets/diagram.svg)") {
 		t.Fatal(got)
 	}
 }

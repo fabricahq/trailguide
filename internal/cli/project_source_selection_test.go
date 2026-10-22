@@ -70,7 +70,7 @@ func TestSourceSelectionFlags(t *testing.T) {
 			if err := yaml.Unmarshal(data, &config); err != nil || !reflect.DeepEqual(config.Sources["team"], tc.want) {
 				t.Fatal(string(data), err)
 			}
-			if _, err := os.Stat(filepath.Join(dir, ".trailguide/vendor")); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(dir, ".trailguide/_managed/vendor")); !os.IsNotExist(err) {
 				t.Fatal("add source fetched files", err)
 			}
 		})

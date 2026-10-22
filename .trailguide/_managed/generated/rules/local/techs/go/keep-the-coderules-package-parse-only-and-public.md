@@ -97,7 +97,7 @@ Not a violation: formats `coderules` doesn't parse, such as project configuratio
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/keep-the-coderules-package-parse-only-and-public.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/keep-the-coderules-package-parse-only-and-public.md)
 
 ### Source metadata
 

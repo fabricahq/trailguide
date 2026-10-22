@@ -140,7 +140,7 @@ func parseTree(data []byte) (map[string]treeEntry, error) {
 }
 
 // libraryTree places a commit's files, given by repository path, at their library paths, as librarytree.LibraryPath
-// does, leaving out the files outside the library, such as the repository's vendor/ and generated/ folders. It also
+// does, leaving out the files outside the library, such as the repository's _managed/ folder. It also
 // reports whether the commit keeps its library in the layout before version 2, with rule-library.yaml at the
 // repository root: such a commit's files keep their paths, including rule-library.yaml, which is read only for the
 // license and notice files it declares, except its .trailguide/, which held only a project's files.
