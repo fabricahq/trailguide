@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -32,14 +33,33 @@ type Result struct {
 	AnswersSent int    `json:"answersSent"`
 }
 
-// Run owns a child terminal, bounded output, and cancellation, without executing a shell or changing parent streams.
-// The child inherits the test's environment with a PATH that holds no executables.
-func Run(ctx context.Context, binary, directory string, args []string, steps []Step) (Result, error) {
-	return RunWithEnvironment(ctx, binary, directory, append(os.Environ(), "PATH="+directory+"/no-runtime"), args, steps)
+// Terminal is what the child's terminal declares through TERM and NO_COLOR. The fixture sets both from it in place of
+// any values in the child's environment, so a developer's terminal can't change what a test sees. The zero value
+// declares no terminal type and no color preference, as in CI.
+type Terminal struct {
+	Type    string
+	NoColor bool
 }
 
-// RunWithEnvironment is Run with exactly the given child environment, such as one that puts Git on PATH.
+// Run is Terminal{}.Run.
+func Run(ctx context.Context, binary, directory string, args []string, steps []Step) (Result, error) {
+	return Terminal{}.Run(ctx, binary, directory, args, steps)
+}
+
+// RunWithEnvironment is Terminal{}.RunWithEnvironment.
 func RunWithEnvironment(ctx context.Context, binary, directory string, environment, args []string, steps []Step) (Result, error) {
+	return Terminal{}.RunWithEnvironment(ctx, binary, directory, environment, args, steps)
+}
+
+// Run owns a child terminal, bounded output, and cancellation, without executing a shell or changing parent streams.
+// The child inherits the test's environment with a PATH that holds no executables.
+func (terminal Terminal) Run(ctx context.Context, binary, directory string, args []string, steps []Step) (Result, error) {
+	return terminal.RunWithEnvironment(ctx, binary, directory, append(os.Environ(), "PATH="+directory+"/no-runtime"), args, steps)
+}
+
+// RunWithEnvironment is Run with the given child environment, such as one that puts Git on PATH, apart from the
+// terminal's settings.
+func (terminal Terminal) RunWithEnvironment(ctx context.Context, binary, directory string, environment, args []string, steps []Step) (Result, error) {
 	if len(steps) > 20 {
 		return Result{}, fmt.Errorf("at most 20 prompt answers are allowed")
 	}
@@ -61,7 +81,7 @@ func RunWithEnvironment(ctx context.Context, binary, directory string, environme
 	}
 	command := exec.CommandContext(ctx, binary, args...)
 	command.Dir = directory
-	command.Env = environment
+	command.Env = terminal.environment(environment)
 	command.Stdin, command.Stderr = slave, slave
 	var stdout bytes.Buffer
 	command.Stdout = &stdout
@@ -106,6 +126,21 @@ func RunWithEnvironment(ctx context.Context, binary, directory string, environme
 		return result, fmt.Errorf("process ended before prompt %q", steps[sent].Prompt)
 	}
 	return result, nil
+}
+
+// environment returns base with its TERM and NO_COLOR replaced by the terminal's.
+func (terminal Terminal) environment(base []string) []string {
+	environment := slices.DeleteFunc(slices.Clone(base), func(item string) bool {
+		key, _, _ := strings.Cut(item, "=")
+		return key == "TERM" || key == "NO_COLOR"
+	})
+	if terminal.Type != "" {
+		environment = append(environment, "TERM="+terminal.Type)
+	}
+	if terminal.NoColor {
+		environment = append(environment, "NO_COLOR=1")
+	}
+	return environment
 }
 
 // capture drains terminal bytes and sends a step only after its expected prompt appears.

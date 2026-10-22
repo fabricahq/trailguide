@@ -18,7 +18,6 @@ import (
 
 // TestInteractiveImpactRetry retains previous answers and validates impact before asking why it matters.
 func TestInteractiveImpactRetry(t *testing.T) {
-	t.Setenv("NO_COLOR", "1")
 	binary := buildCLI(t)
 	for _, scope := range []string{"project", "library"} {
 		t.Run(scope, func(t *testing.T) {
@@ -63,7 +62,6 @@ func TestInteractiveImpactRetry(t *testing.T) {
 // TestSourceAnswerRetry corrects constrained source inputs, including skill selectors that name no skill, before the
 // declaration is saved.
 func TestSourceAnswerRetry(t *testing.T) {
-	t.Setenv("NO_COLOR", "1")
 	binary := buildCLI(t)
 	dir := t.TempDir()
 	if _, stderr, code := runCLI(t, binary, dir, "project", "init"); code != 0 {
@@ -98,8 +96,6 @@ func TestSourceAnswerRetry(t *testing.T) {
 
 // TestInvalidExplicitImpact never substitutes a prompt for an invalid flag, even with a terminal.
 func TestInvalidExplicitImpact(t *testing.T) {
-	t.Setenv("TERM", "xterm-256color")
-	t.Setenv("NO_COLOR", "")
 	binary := buildCLI(t)
 	dir := t.TempDir()
 	for _, args := range [][]string{{"project", "init"}, {"project", "add", "group", "practices/testing", "--name", "Testing", "--description", "Testing guidance", "--when-to-read", "When testing"}} {
@@ -113,7 +109,7 @@ func TestInvalidExplicitImpact(t *testing.T) {
 		if structured {
 			command = append(command, "--json")
 		}
-		result, err := terminalfixture.Run(context.Background(), binary, dir, command, nil)
+		result, err := terminalfixture.Terminal{Type: "xterm-256color"}.Run(context.Background(), binary, dir, command, nil)
 		if err != nil || result.ExitCode != 1 || strings.Contains(result.Transcript, "Please try again.") {
 			t.Fatal(err, result)
 		}
