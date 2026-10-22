@@ -601,7 +601,7 @@ func TestLibraryReadme_MentionsRetainedTermsOnlyWhenTheLibraryDeclaresThem(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "copies of declared library license and notice files") || !strings.Contains(string(data), "No library license declaration was supplied.") {
+	if strings.Contains(string(data), "copies of the license and notice files") || !strings.Contains(string(data), "No license declaration was supplied.") {
 		t.Fatalf("README:\n%s", data)
 	}
 }

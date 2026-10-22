@@ -121,7 +121,7 @@ Warning: skills/build-feature/SKILL.md: license is Apache-2.0, but the library d
 
 Make the field match the library's expression, or leave it out. A skill whose material needs different terms belongs in a separate library, as a rule's would. A license or notice file inside a skill folder is part of the skill's content, not a declared library file; a library can't declare a file in a skill folder as its license or notice file.
 
-Sync retains the library's license and notice files for skills exactly as it does for rules, at the same generated paths, and `_managed/generated/libraries/<source-name>/README.md` lists the source's installed skills with its declared terms. Forking a skill with `trailguide project add skill --from` copies its text into `.trailguide/skills/`, where the library's license still applies to it.
+Sync retains the library's license and notice files for skills exactly as it does for rules, at the same generated paths, and `_managed/generated/libraries/<source-name>/README.md` lists its declared terms. Forking a skill with `trailguide project add skill --from` copies its text into `.trailguide/skills/`, where the library's license still applies to it.
 
 A skill a library [curates](/reference/configuration/#curated-skills) from another repository keeps that repository's terms, not the curating library's: Trail Guide finds them from that repository's own declaration when it's a library, and otherwise as it does for a non-library source, below.
 
