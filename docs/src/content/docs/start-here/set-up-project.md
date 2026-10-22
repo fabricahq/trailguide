@@ -121,9 +121,9 @@ trailguide project add source fabrica \
   --rules 'practices/code-design/*'
 ```
 
-This adds the library's repository to `.trailguide/config.yaml` under the source name `fabrica`, and includes every rule in its code design practice group with the selector `practices/code-design/*`.
+This adds the library's repository to `.trailguide/config.yaml` under the source name `fabrica`, and includes every rule in its code design practice group with the selector `practices/code-design/*`. It also records the library's newest release as the source's `ref`, such as `ref: release/4`, so the configuration says which release the project takes.
 
-Each rule in Fabrica's library has its own version. The project follows each rule's newest version whenever you run `trailguide project update`.
+Each rule in Fabrica's library has its own version. When you run `trailguide project update`, the project moves to the newest release, and each rule to its newest version, and `ref` changes with it.
 
 Now run `trailguide project sync` to download the included rules and build the agent guidance. You don't need to run `trailguide project build` separately. `trailguide project sync` records the library release and the version of each rule it took, so your project keeps the same rules until you choose to [update them](/guides/update/).
 
@@ -146,6 +146,7 @@ skillTargets: [claude, agents]
 sources:
   fabrica:
     repository: https://github.com/fabricahq/public-library.git
+    ref: release/4
     rules:
       include: [practices/code-design/*]
     skills:

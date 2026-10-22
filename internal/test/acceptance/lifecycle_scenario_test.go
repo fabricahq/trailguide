@@ -21,8 +21,8 @@ type invocation func(label, dir string, env []string, want int, args ...string) 
 // library's checkout, the author publishes release/2: techs/go/errors becomes a major change, techs/go/naming
 // retires in favor of the new techs/go/wrapping, and techs/go/panics is new. The project keeps errors at 1.0.0 with
 // --keep, excludes panics with --exclude, and applies the rest. After release/3 changes wrapping, the project deletes
-// the pin and adopts errors 2.0.0 alone with a scoped update, then forks errors into its local rules. It imports
-// release/2 with ref, which update doesn't move, then release/3, and removes ref. After it pins wrapping,
+// the pin and adopts errors 2.0.0 alone with a scoped update, then forks errors into its local rules. It edits its
+// ref from release/2 to release/3, which sync refuses and update takes, and removes ref. After it pins wrapping,
 // release/4 retires wrapping and changes errors upstream: the pin keeps wrapping and the fork stays as it was.
 // project check passes after every step that changes the project.
 func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, fixture *gitfixture.Fixture, author, directory, consumer string, online, offline []string) error {
@@ -257,7 +257,6 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	report.Verified = append(report.Verified, "A fork copies one published rule version and its asset into local rules and replaces the imported rule, which checks offline")
 	fork := files[".trailguide/rules/techs/go/errors.md"]
 
-	// The project imports exactly library release 2 with ref: update doesn't move it, and changing ref does.
 	configFile := filepath.Join(consumer, ".trailguide/config.yaml")
 	configure := func(label string, change func(string) string) error {
 		data, err := os.ReadFile(configFile)
@@ -285,55 +284,74 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 		}
 		return nil
 	}
-	if err := configure("import library release 2 with ref", func(config string) string { return config + "    ref: release/2\n" }); err != nil {
+	// The update to library release 2 wrote that release to the source's ref. Sync refuses a ref edited to name
+	// another release; update takes exactly the release the edited ref names, and refuses one older than the record's.
+	if err := contains("configuration", string(files[".trailguide/config.yaml"]), "    ref: release/2\n"); err != nil {
 		return err
 	}
-	if files, err = sync("Sync library release 2"); err != nil {
-		return err
-	}
-	if err := wrappingAt(files, wrappingV1, "1.0.0"); err != nil {
-		return err
-	}
-	if err := contains("_source.json", string(files[".trailguide/vendor/team/_source.json"]), `"ref": "release/2"`, `"release": 2,`); err != nil {
-		return err
-	}
-	before, err = readTree(ctx, consumer)
-	if err != nil {
-		return err
-	}
-	if err := invoke("Update a source that uses ref", consumer, online, 0, "project", "update", "--yes"); err != nil {
-		return err
-	}
-	if err := contains("update of a ref source", last().Stdout, "  Imports release/2 with ref, so update doesn't move it.\n"); err != nil {
-		return err
-	}
-	if after, err = readTree(ctx, consumer); err != nil {
-		return err
-	}
-	if !equalTrees(before, after) {
-		return fmt.Errorf("update moved a source that uses ref")
-	}
-	if err := configure("import library release 3 with ref", func(config string) string {
+	if err := configure("ask for library release 3", func(config string) string {
 		return strings.Replace(config, "ref: release/2", "ref: release/3", 1)
 	}); err != nil {
 		return err
 	}
-	if files, err = sync("Sync library release 3"); err != nil {
+	if err := invoke("Sync the edited ref", consumer, online, 1, "project", "sync"); err != nil {
+		return err
+	}
+	if err := contains("sync error", last().Stderr, "sources.team.ref names release/3, but the project records library release 2, and sync doesn't move a source to another release. Run trailguide project update team"); err != nil {
+		return err
+	}
+	if err := invoke("Update to the edited ref", consumer, online, 0, "project", "update", "--yes"); err != nil {
+		return err
+	}
+	if strings.Contains(last().Stdout, "Sets sources.team.ref") {
+		return fmt.Errorf("update rewrote a ref it took as written:\n%s", last().Stdout)
+	}
+	if files, err = project(); err != nil {
 		return err
 	}
 	if err := wrappingAt(files, wrappingV2, "1.1.0"); err != nil {
+		return err
+	}
+	if err := contains("_source.json", string(files[".trailguide/vendor/team/_source.json"]), `"release": 3,`); err != nil {
+		return err
+	}
+	if err := check("Check the update"); err != nil {
+		return err
+	}
+	if err := configure("go back to library release 2", func(config string) string {
+		return strings.Replace(config, "ref: release/3", "ref: release/2", 1)
+	}); err != nil {
+		return err
+	}
+	if err := invoke("Update to an older release", consumer, online, 1, "project", "update", "--yes"); err != nil {
+		return err
+	}
+	if err := contains("update error", last().Stderr, "older than library release 3, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward"); err != nil {
+		return err
+	}
+	if err := configure("return to library release 3", func(config string) string {
+		return strings.Replace(config, "ref: release/2", "ref: release/3", 1)
+	}); err != nil {
 		return err
 	}
 	if err := configure("remove ref", func(config string) string { return strings.Replace(config, "    ref: release/3\n", "", 1) }); err != nil {
 		return err
 	}
-	if files, err = sync("Sync without ref"); err != nil {
+	if err := invoke("Sync without ref", consumer, online, 1, "project", "sync"); err != nil {
 		return err
 	}
-	if err := wrappingAt(files, wrappingV2, "1.1.0"); err != nil {
+	if err := contains("sync error", last().Stderr, "Add ref: release/3 to sources.team, the release this project records, or ref: latest-release"); err != nil {
 		return err
 	}
-	report.Verified = append(report.Verified, "A ref to a library release imports what it published, update doesn't move it, and changing or removing ref and syncing does")
+	if err := configure("restore ref", func(config string) string {
+		return strings.Replace(config, "    repository: ", "    ref: release/3\n    repository: ", 1)
+	}); err != nil {
+		return err
+	}
+	if err := check("Check the restored ref"); err != nil {
+		return err
+	}
+	report.Verified = append(report.Verified, "A ref names the library release a source takes: sync refuses a ref edited to name another release, update takes exactly the release it names and refuses an older one, and a source without a ref fails, naming the release to write")
 
 	// The project pins wrapping; library release 4 retires it and changes the forked rule.
 	pinReason := "Our reviews still cite it."

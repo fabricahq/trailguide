@@ -3,11 +3,13 @@
 package rules
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // GitRefKind distinguishes a complete commit SHA, a tag name, and a branch name.
@@ -67,6 +69,41 @@ func (r GitRef) String() string { return r.text }
 // commit SHA equals its uppercase spelling, while main never equals refs/heads/main. Two zero values are equal.
 func (r GitRef) Equal(other GitRef) bool {
 	return r.kind == other.kind && r.canonical == other.canonical
+}
+
+// LatestReleaseRef is the ref of a library source that takes the library's newest library release, at its first
+// sync and at each update.
+const LatestReleaseRef = "latest-release"
+
+// LatestRelease reports whether the ref is the word latest-release, which names a library's newest library release
+// rather than a branch or tag; refs/heads/latest-release and refs/tags/latest-release name those.
+func (r GitRef) LatestRelease() bool { return r.text == LatestReleaseRef }
+
+// Release returns the number of the library release the ref names, such as 5 for release/5 or
+// refs/tags/release/5, or 0 when it names no library release.
+func (r GitRef) Release() int {
+	if r.kind != GitRefTag {
+		return 0
+	}
+	number, err := trailguide.ParseReleaseTag(r.Name())
+	if err != nil {
+		return 0
+	}
+	return number
+}
+
+// FollowsReleases reports whether the ref chooses a library release, one by number or latest-release, so a library source
+// with it imports rule versions and can pin rules.
+func (r GitRef) FollowsReleases() bool { return r.LatestRelease() || r.Release() > 0 }
+
+// WithRelease returns a ref naming library release number, spelled as r is, with or without refs/tags/.
+func (r GitRef) WithRelease(number int) GitRef {
+	prefix := ""
+	if strings.HasPrefix(r.text, "refs/tags/") {
+		prefix = "refs/tags/"
+	}
+	name := "release/" + strconv.Itoa(number)
+	return GitRef{kind: GitRefTag, canonical: "refs/tags/" + name, text: prefix + name}
 }
 
 // MarshalText returns the ref as authored, or empty text for the zero value.
@@ -156,4 +193,18 @@ func TagVersion(tag, location string) (string, error) {
 		}
 	}
 	return version, nil
+}
+
+// RefRequiredProblem explains that source has no ref, which every source needs. release is the library release
+// that names the fix: the one the project records, when recorded is true, or else the library's newest. A release
+// of 0 means the source isn't a library or has no library release, so only a branch, tag, or commit fits.
+func RefRequiredProblem(source string, release int, recorded bool) string {
+	if release == 0 {
+		return fmt.Sprintf("sources.%s has no ref, and its repository has no library release to take, so the project must say which revision it takes: set sources.%s.ref in .trailguide/config.yaml to a branch, tag, or full commit SHA", source, source)
+	}
+	which := "the library's newest release"
+	if recorded {
+		which = "the release this project records"
+	}
+	return fmt.Sprintf("sources.%s has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/%d to sources.%s, %s, or ref: latest-release to take the newest release at each update, then run the command again", source, release, source, which)
 }

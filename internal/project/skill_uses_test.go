@@ -35,7 +35,7 @@ func usingRepository(t *testing.T, files map[string][]byte) *gitfixture.Fixture 
 }
 
 // setConfiguration replaces the project's configuration with config, JSON with the fixture's repository in place of
-// REPOSITORY.
+// REPOSITORY, given the newest library release's ref when it has none.
 func setConfiguration(t *testing.T, options Options, f *gitfixture.Fixture, config string) {
 	t.Helper()
 	root, err := openProject(context.Background(), options, false)
@@ -43,6 +43,7 @@ func setConfiguration(t *testing.T, options Options, f *gitfixture.Fixture, conf
 		t.Fatal(err)
 	}
 	defer root.Close()
+	config = withNewestRef(t, config, "REPOSITORY", f.Repository, imports.Options{GitPath: f.GitPath, Environment: f.Environment})
 	writeFixture(t, root, configurationFile, strings.ReplaceAll(config, "REPOSITORY", quoteJSON(f.Repository)))
 }
 

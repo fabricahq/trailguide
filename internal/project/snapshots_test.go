@@ -24,9 +24,13 @@ var (
 	releaseTwo = strings.Repeat("2", 40)
 )
 
-// snapshotConfig parses one source named team from its JSON fields.
+// snapshotConfig parses one source named team from its JSON fields, adding ref release/2, the fixture's library
+// release, when they have no ref.
 func snapshotConfig(t *testing.T, fields string) rules.Configuration {
 	t.Helper()
+	if !strings.Contains(fields, `"ref":`) {
+		fields = `"ref":"release/2",` + fields
+	}
 	config, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"sources":{"team":{"repository":"https://github.com/acme/rules",` + fields + `}}}`))
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +173,7 @@ func TestSnapshotChangedSelectionOrRefRequiresSync(t *testing.T) {
 		"added group":            `"rules":{"include":["techs/go/*","techs/rust/*"]}`,
 		"wildcard":               `"rules":{"include":["*"]}`,
 		"individual rule":        `"rules":{"include":["techs/go/*","practices/testing/limits"]}`,
-		"ref":                    `"rules":{"include":["techs/go/*"]},"ref":"release/2"`,
+		"branch":                 `"rules":{"include":["techs/go/*"]},"ref":"main"`,
 		"pin to another version": `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.0.0","reason":"Not ready."}]}`,
 		"pin of a rule it lacks": `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/other","version":"1.0.0","reason":"Keep."}]}`,
 	} {
@@ -182,6 +186,21 @@ func TestSnapshotChangedSelectionOrRefRequiresSync(t *testing.T) {
 			got, err := decodeSnapshots(snapshotConfig(t, fields), vendor)
 			requireSync(t, got, err)
 		})
+	}
+}
+
+// TestSnapshotAnotherReleaseRequiresUpdate rejects a ref edited to name another library release than the record's,
+// which only an update takes.
+func TestSnapshotAnotherReleaseRequiresUpdate(t *testing.T) {
+	config, snapshots := snapshotFixture(t)
+	vendor, err := encodeSnapshots(config, snapshots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := decodeSnapshots(snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`), vendor)
+	var validation errs.ValidationError
+	if got != nil || !errors.As(err, &validation) || validation.ValidationLocation() != "vendor/team/_source.json.release" || !strings.Contains(validation.ValidationProblem(), "not release/1, which sources.team.ref names; run trailguide project update team") {
+		t.Fatalf("got %v, %v; want a failure that asks for an update", got, err)
 	}
 }
 
@@ -563,7 +582,7 @@ func TestSnapshotWildcardScope(t *testing.T) {
 func skillSnapshots(t *testing.T) (rules.Configuration, map[string]snapshot) {
 	t.Helper()
 	_, snapshots := snapshotFixture(t)
-	config, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"sources":{"team":{"repository":"https://github.com/acme/rules","rules":{"include":["techs/go/*"]},"skills":{"include":["skills/build"]}},"tools":{"repository":"https://github.com/acme/tools","ref":"` + releaseOne + `","skills":{"include":["*"]}}}}`))
+	config, err := rules.ParseConfiguration([]byte(`{"schemaVersion":2,"sources":{"team":{"repository":"https://github.com/acme/rules","ref":"release/2","rules":{"include":["techs/go/*"]},"skills":{"include":["skills/build"]}},"tools":{"repository":"https://github.com/acme/tools","ref":"` + releaseOne + `","skills":{"include":["*"]}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}

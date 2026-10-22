@@ -197,3 +197,28 @@ func TestGitRefErrorLocation(t *testing.T) {
 		t.Fatalf("unexpected error location: %v", err)
 	}
 }
+
+// TestGitRef_ReleaseAndLatestReleaseNameLibraryReleases reads the library release a ref names, in either tag spelling, and
+// latest-release, and names none for a branch, another tag, latest, refs/heads/latest-release, or a commit.
+func TestGitRef_ReleaseAndLatestReleaseNameLibraryReleases(t *testing.T) {
+	for text, want := range map[string]int{"release/4": 4, "refs/tags/release/12": 12, "latest-release": 0, "latest": 0, "refs/heads/release/4": 0, "release/04": 0, "v1.0.0": 0, "main": 0, "refs/heads/latest-release": 0, strings.Repeat("a", 40): 0} {
+		got := ref(t, text)
+		if got.Release() != want || got.LatestRelease() != (text == "latest-release") || got.FollowsReleases() != (want > 0 || text == "latest-release") {
+			t.Errorf("%s: release %d, latest %t, follows releases %t", text, got.Release(), got.LatestRelease(), got.FollowsReleases())
+		}
+	}
+	if (rules.GitRef{}).FollowsReleases() {
+		t.Fatal("no ref follows releases")
+	}
+}
+
+// TestGitRef_WithReleaseKeepsTheSpelling names another library release with or without refs/tags/, as the ref was
+// written.
+func TestGitRef_WithReleaseKeepsTheSpelling(t *testing.T) {
+	for text, want := range map[string]string{"release/4": "release/5", "refs/tags/release/4": "refs/tags/release/5"} {
+		got := ref(t, text).WithRelease(5)
+		if got.String() != want || !got.Equal(ref(t, want)) || got.Release() != 5 {
+			t.Errorf("%s: got %q", text, got)
+		}
+	}
+}

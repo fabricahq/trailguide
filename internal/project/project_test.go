@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/filetxn"
+	"github.com/fabricahq/trailguide/internal/imports"
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/rules"
 )
@@ -376,5 +378,75 @@ func TestOfflineRendersOnlyVerifiedSnapshotBytes(t *testing.T) {
 			}
 			projectCode(t, requireUnchanged(context.Background(), root, state), "concurrent-change")
 		})
+	}
+}
+
+// withNewestRef returns config, a configuration in JSON or YAML, with ref: release/<number> for the newest library
+// release of repository, as trailguide project add source records it, added after the repository that placeholder
+// stands for, unless that source already has a ref or the repository has no library release.
+func withNewestRef(t *testing.T, config, placeholder, repository string, git imports.Options) string {
+	t.Helper()
+	inJSON := `"repository":` + placeholder
+	inYAML := "repository: " + placeholder + "\n"
+	at := strings.Index(config, inYAML)
+	needed := strings.Contains(config, inJSON) && !strings.Contains(sourceObject(config, inJSON), `"ref":`) || at >= 0 && !strings.HasPrefix(strings.TrimLeft(config[at+len(inYAML):], " "), "ref:")
+	if !needed {
+		return config
+	}
+	newest, err := imports.NewestRelease(context.Background(), repository, git)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newest == 0 {
+		return config
+	}
+	ref := fmt.Sprintf("release/%d", newest)
+	if strings.Contains(config, inJSON) {
+		return strings.ReplaceAll(config, inJSON, inJSON+`,"ref":"`+ref+`"`)
+	}
+	line := strings.LastIndex(config[:at], "\n") + 1
+	indent := config[line:at]
+	return config[:at+len(inYAML)] + indent + "ref: " + ref + "\n" + config[at+len(inYAML):]
+}
+
+// updateProject applies an update of every source with no decisions, as a project whose ref was edited to name a
+// newer library release takes it.
+func updateProject(ctx context.Context, options Options, git imports.Options) (FileChanges, error) {
+	plan, err := PlanUpdate(ctx, options, git, nil, nil)
+	if err != nil {
+		return FileChanges{}, err
+	}
+	result, err := plan.Apply(ctx, nil)
+	return result.FileChanges, err
+}
+
+// sourceObject returns the rest of the JSON object in config that contains key, from key to the brace that closes
+// the object.
+func sourceObject(config, key string) string {
+	start := strings.Index(config, key)
+	if start < 0 {
+		return ""
+	}
+	depth := 0
+	for i := start; i < len(config); i++ {
+		switch config[i] {
+		case '{', '[':
+			depth++
+		case '}', ']':
+			if depth == 0 {
+				return config[start:i]
+			}
+			depth--
+		}
+	}
+	return config[start:]
+}
+
+// requireRefRequired fails unless err is the project's ref-required failure and mentions text.
+func requireRefRequired(t *testing.T, err error, text string) {
+	t.Helper()
+	var failure *filetxn.Error
+	if !errors.As(err, &failure) || failure.Code != "ref-required" || !strings.Contains(err.Error(), text) {
+		t.Fatalf("got %v; want ref-required mentioning %q", err, text)
 	}
 }

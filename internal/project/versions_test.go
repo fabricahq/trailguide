@@ -36,16 +36,17 @@ func secondRelease(t *testing.T, f *gitfixture.Fixture) {
 }
 
 // configure replaces the sync fixture's source with one named team that has the fixture's repository and the given
-// JSON fields, such as "rules":{"include":["techs/go/*"]}.
+// JSON fields, such as "rules":{"include":["techs/go/*"]}, and the newest library release's ref when they have none.
 func configure(t *testing.T, options Options, f *gitfixture.Fixture, fields string) {
 	t.Helper()
-	raw := `{"schemaVersion":2,"sources":{"team":{"repository":` + quoteJSON(f.Repository) + `,` + fields + `}}}`
+	raw := withNewestRef(t, `{"schemaVersion":2,"sources":{"team":{"repository":REPOSITORY,`+fields+`}}}`, "REPOSITORY", f.Repository, imports.Options{GitPath: f.GitPath, Environment: f.Environment})
+	raw = strings.ReplaceAll(raw, "REPOSITORY", quoteJSON(f.Repository))
 	root, err := openProject(context.Background(), options, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, string(raw))
+	writeFixture(t, root, configurationFile, raw)
 }
 
 // quoteJSON returns text as a JSON string.
@@ -90,7 +91,8 @@ func requireCurrent(t *testing.T, options Options) {
 	}
 }
 
-// TestSync_RestoresRecordedVersionsAndMovesOnlyPinnedRules follows the lockfile across a new library release.
+// TestSync_RestoresRecordedVersionsAndMovesOnlyPinnedRules follows the lockfile across a new library release, refuses
+// a pin past the release the ref names, and holds a pinned rule back when the ref moves to the newer release.
 func TestSync_RestoresRecordedVersionsAndMovesOnlyPinnedRules(t *testing.T) {
 	f, options, git := syncProject(t)
 	ctx := context.Background()
@@ -102,15 +104,11 @@ func TestSync_RestoresRecordedVersionsAndMovesOnlyPinnedRules(t *testing.T) {
 	if err != nil || len(restored.Added)+len(restored.Changed)+len(restored.Removed) != 0 {
 		t.Fatalf("sync after a new library release changed %+v, %v", restored, err)
 	}
-	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.1.0","reason":"Adopt wrapping."}]}`)
-	if _, err := Sync(ctx, options, git); err != nil {
-		t.Fatal(err)
-	}
-	if _, got := recordedVersions(t, options); len(got) != 1 || got["techs/go/errors"] != "1.1.0@2" {
-		t.Fatalf("pinned up: %v", got)
-	}
+	configure(t, options, f, `"ref":"release/1","rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.1.0","reason":"Adopt wrapping."}]}`)
+	_, err = Sync(ctx, options, git)
+	requireFailure(t, err, "version-not-found", "comes from library release 2, after release/1")
 	configure(t, options, f, `"rules":{"include":["techs/go/*","techs/go/extra"],"pins":[{"id":"techs/go/errors","version":"1.0.0","reason":"Not ready."}]}`)
-	if _, err := Sync(ctx, options, git); err != nil {
+	if _, err := updateProject(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
 	record, got := recordedVersions(t, options)
@@ -156,8 +154,8 @@ func TestSync_AnExclusionSelectorHidesEveryRuleItMatches(t *testing.T) {
 }
 
 // TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked imports the rules of a group that a library
-// release added after a wildcard sync, once the selection names it explicitly, while recorded rules keep their
-// versions, and offline check agrees with the result.
+// release added after a wildcard sync, once the selection names it explicitly and the ref names that release, and
+// offline check agrees with the result.
 func TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked(t *testing.T) {
 	for _, test := range []struct {
 		name    string
@@ -166,7 +164,7 @@ func TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked(t *testing
 		want    map[string]string
 	}{
 		{"only the new group", `["practices/testing/*"]`, []string{"practices/testing"}, map[string]string{"practices/testing/verify": "1.0.0@2"}},
-		{"the new group and a recorded one", `["practices/testing/*","techs/go/*"]`, []string{"practices/testing", "techs/go"}, map[string]string{"techs/go/errors": "1.0.0@1", "practices/testing/verify": "1.0.0@2"}},
+		{"the new group and a recorded one", `["practices/testing/*","techs/go/*"]`, []string{"practices/testing", "techs/go"}, map[string]string{"techs/go/errors": "1.1.0@2", "practices/testing/verify": "1.0.0@2"}},
 		{"every practice", `["practices/*"]`, []string{"practices/testing"}, map[string]string{"practices/testing/verify": "1.0.0@2"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -188,7 +186,7 @@ func TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked(t *testing
 				t.Fatal(err)
 			}
 			configure(t, options, f, `"rules":{"include":`+test.include+`}`)
-			if _, err := Sync(ctx, options, git); err != nil {
+			if _, err := updateProject(ctx, options, git); err != nil {
 				t.Fatal(err)
 			}
 			record, got := recordedVersions(t, options)
@@ -285,8 +283,8 @@ func TestBuild_PinsThatMoveNothingLeaveTheSourceRecordUnchanged(t *testing.T) {
 }
 
 // TestSync_RecordsTheRetirementOfANewlyPinnedRule the record didn't list, as it does for an exclusion: release/2
-// adds extra and release/3 retires it after the project synced release/1; pinning extra warns, and sync records
-// the retirement so offline checks accept the pin, and a second sync changes nothing.
+// adds extra and release/3 retires it after the project synced release/1; moving the ref to release/3 and pinning
+// extra warns, and sync records the retirement so offline checks accept the pin, and a second sync changes nothing.
 func TestSync_RecordsTheRetirementOfANewlyPinnedRule(t *testing.T) {
 	f, options, git := syncProject(t)
 	ctx := context.Background()
@@ -301,11 +299,11 @@ func TestSync_RecordsTheRetirementOfANewlyPinnedRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/extra","version":"1.0.0","reason":"Keep it."}]}`)
-	changes, err := Sync(ctx, options, git)
+	changes, err := updateProject(ctx, options, git)
 	if err != nil || len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "techs/go/extra") {
 		t.Fatalf("sync: %+v, %v", changes, err)
 	}
-	if record, _ := recordedVersions(t, options); !slices.Equal(record.RetiredRules, []string{"techs/go/extra"}) || record.Release != 1 {
+	if record, _ := recordedVersions(t, options); !slices.Equal(record.RetiredRules, []string{"techs/go/extra"}) || record.Release != 3 {
 		t.Fatalf("retired %v, shared files from release %d", record.RetiredRules, record.Release)
 	}
 	requireCurrent(t, options)
@@ -318,12 +316,14 @@ func TestSync_RecordsTheRetirementOfANewlyPinnedRule(t *testing.T) {
 	}
 }
 
-// TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion: the project imports errors 1.1.0, the library then retires it,
-// and a pin at 1.1.0 keeps it installed through sync, build, and an offline check, without changing the record.
+// TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion: the project imports errors 1.1.0 from release/2, the library
+// then retires it, and a pin at 1.1.0 keeps it installed when the ref moves to release/3, through sync, build, and
+// an offline check, and a second sync leaves the record unchanged.
 func TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion(t *testing.T) {
 	f, options, git := syncProject(t)
 	ctx := context.Background()
 	secondRelease(t, f)
+	configure(t, options, f, `"rules":{"include":["techs/go/*"]}`)
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -333,22 +333,24 @@ func TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion(t *testing.T) {
 	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/extra: 1.0.0\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [Covered by extra.]}\n"); err != nil {
 		t.Fatal(err)
 	}
-	recorded := projectTree(t, options).Files["vendor/team/_source.json"]
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.1.0","reason":"Keep it."}]}`)
+	if _, err := updateProject(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if record, versions := recordedVersions(t, options); versions["techs/go/errors"] != "1.1.0@2" || record.Release != 3 {
+		t.Fatalf("versions %v, release %d", versions, record.Release)
+	}
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
 	requireCurrent(t, options)
+	recorded := projectTree(t, options).Files["vendor/team/_source.json"]
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	if _, versions := recordedVersions(t, options); versions["techs/go/errors"] != "1.1.0@2" {
-		t.Fatalf("versions %v", versions)
-	}
 	if after := projectTree(t, options).Files["vendor/team/_source.json"]; !bytes.Equal(after, recorded) {
-		t.Fatalf("pinning the retired rule rewrote _source.json:\n%s\nwas:\n%s", after, recorded)
+		t.Fatalf("a second sync rewrote _source.json:\n%s\nwas:\n%s", after, recorded)
 	}
-	requireCurrent(t, options)
 }
 
 // TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged: the record lists retired errors and imports extra;
@@ -373,6 +375,7 @@ func TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged(t *testing.T) {
 	if err := root.RemoveAll("vendor"); err != nil {
 		t.Fatal(err)
 	}
+	configure(t, options, f, `"rules":{"include":["techs/go/*"]}`)
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +389,7 @@ func TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	recorded := projectTree(t, options).Files["vendor/team/_source.json"]
-	configure(t, options, f, `"rules":{"include":["techs/go/*"],"exclude":[{"id":"techs/go/errors","reason":"Retired upstream."}]}`)
+	configure(t, options, f, `"ref":"release/3","rules":{"include":["techs/go/*"],"exclude":[{"id":"techs/go/errors","reason":"Retired upstream."}]}`)
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
@@ -400,8 +403,8 @@ func TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged(t *testing.T) {
 }
 
 // TestSync_RecordsTheRetirementOfANewlyExcludedRule the record didn't list: release/2 adds extra and release/3
-// retires it after the project synced release/1; excluding extra without updating warns, and sync records the
-// retirement so offline checks accept the exclusion, and a second sync changes nothing.
+// retires it after the project synced release/1; moving the ref to release/3 and excluding extra warns, and sync
+// records the retirement so offline checks accept the exclusion, and a second sync changes nothing.
 func TestSync_RecordsTheRetirementOfANewlyExcludedRule(t *testing.T) {
 	f, options, git := syncProject(t)
 	ctx := context.Background()
@@ -416,11 +419,11 @@ func TestSync_RecordsTheRetirementOfANewlyExcludedRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"exclude":[{"id":"techs/go/extra","reason":"Retired upstream."}]}`)
-	changes, err := Sync(ctx, options, git)
+	changes, err := updateProject(ctx, options, git)
 	if err != nil || len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "techs/go/extra") {
 		t.Fatalf("sync: %+v, %v", changes, err)
 	}
-	if record, _ := recordedVersions(t, options); !slices.Equal(record.RetiredRules, []string{"techs/go/extra"}) || record.Release != 1 {
+	if record, _ := recordedVersions(t, options); !slices.Equal(record.RetiredRules, []string{"techs/go/extra"}) || record.Release != 3 {
 		t.Fatalf("retired %v, shared files from release %d", record.RetiredRules, record.Release)
 	}
 	requireCurrent(t, options)
@@ -446,6 +449,7 @@ func TestBuild_HandEditedExclusionsKeepTheSourceRecordCurrent(t *testing.T) {
 	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nchanges: {}\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [Covered by errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
+	configure(t, options, f, `"rules":{"include":["techs/go/*"]}`)
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -580,10 +584,7 @@ func TestSync_ReportsCodesForMissingLibraryReleases(t *testing.T) {
 	_, options, _ := syncProject(t)
 	configure(t, options, f, `"rules":{"include":["*"]}`)
 	_, err = Sync(context.Background(), options, imports.Options{GitPath: f.GitPath, Environment: f.Environment})
-	var failure *imports.Error
-	if !errors.As(err, &failure) || failure.Code != "ref-required" {
-		t.Fatalf("got %v", err)
-	}
+	requireRefRequired(t, err, "sources.team has no ref, and its repository has no library release to take")
 }
 
 // TestSync_StoresOlderRulesAtTheirLibraryPaths keeps an older rule's attachment beside the shared files it links

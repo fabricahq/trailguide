@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/imports"
+	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
@@ -51,6 +52,9 @@ func Sync(ctx context.Context, options Options, git imports.Options) (FileChange
 		if err != nil {
 			return err
 		}
+		if err := requireRefs(ctx, before.config, recorded, git); err != nil {
+			return err
+		}
 		git.GroupMetadata = groupsWithoutLocalMetadata(before)
 		imported, err := imports.ImportLibraries(ctx, before.config, recorded, git)
 		if err != nil {
@@ -64,6 +68,30 @@ func Sync(ctx context.Context, options Options, git imports.Options) (FileChange
 	}
 	changes.Recovered = recovered
 	return changes, nil
+}
+
+// requireRefs fails with code ref-required when a source of config has no ref, which every source needs, naming the
+// library release to write: the one its record in recorded holds, or else the library's newest, which it lists the
+// repository's tags for.
+func requireRefs(ctx context.Context, config rules.Configuration, recorded map[string]library.Snapshot, git imports.Options) error {
+	for _, source := range config.Sources {
+		if !source.Ref.IsZero() {
+			continue
+		}
+		if snapshot, ok := recorded[source.Name]; ok && snapshot.Repository == source.Repository {
+			release := snapshot.Release
+			if snapshot.NonLibrary {
+				release = 0
+			}
+			return failure("ref-required", rules.RefRequiredProblem(source.Name, release, true), nil)
+		}
+		newest, err := imports.NewestRelease(ctx, source.Repository, git)
+		if err != nil {
+			return fmt.Errorf("source %s: %w", source.Name, err)
+		}
+		return failure("ref-required", rules.RefRequiredProblem(source.Name, newest, false), nil)
+	}
+	return nil
 }
 
 // installation is what install writes. guide is the managed guide as planned under the writer. edited is nil unless

@@ -474,6 +474,12 @@ func formatUpdatePreview(out *strings.Builder, sources []imports.SourceUpdate) {
 		formatCuratedRows(out, source.Name, source.Curated, levels)
 		if shared := source.SharedFiles; shared != nil {
 			fmt.Fprintf(out, "  Shared files: release %d -> %d\n", shared.From, shared.To)
+			if source.SetsRef != "" {
+				fmt.Fprintf(out, "  Sets sources.%s.ref to %s in .trailguide/config.yaml.\n", source.Name, source.SetsRef)
+			}
+		}
+		if source.Available != 0 {
+			fmt.Fprintf(out, "  Release %d is available; run trailguide project update %s again to move to it.\n", source.Available, source.Name)
 		}
 	}
 }

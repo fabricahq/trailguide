@@ -53,7 +53,7 @@ func skillLibrary(t *testing.T) (*gitfixture.Fixture, string) {
 }
 
 // skillProject initializes a project whose configuration is config, JSON with the fixture's repository in place of
-// REPOSITORY, and returns its options and Git settings.
+// REPOSITORY, given the newest library release's ref when it has none, and returns its options and Git settings.
 func skillProject(t *testing.T, f *gitfixture.Fixture, config string) (Options, imports.Options) {
 	t.Helper()
 	root := openTestProject(t)
@@ -61,8 +61,9 @@ func skillProject(t *testing.T, f *gitfixture.Fixture, config string) (Options, 
 	if _, err := Initialize(context.Background(), options); err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(config, "REPOSITORY", quoteJSON(f.Repository)))
-	return options, imports.Options{GitPath: f.GitPath, Environment: f.Environment}
+	git := imports.Options{GitPath: f.GitPath, Environment: f.Environment}
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(withNewestRef(t, config, "REPOSITORY", f.Repository, git), "REPOSITORY", quoteJSON(f.Repository)))
+	return options, git
 }
 
 // readRepositoryFile returns the file at name, a path from the project's repository root.
@@ -191,7 +192,7 @@ func TestSync_RemovesTheFoldersOfSkillsNoLongerIncluded(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/review"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"release/1","skills":{"include":["skills/review"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
 	changes, err := Sync(ctx, options, git)
 	if err != nil {
 		t.Fatal(err)
@@ -202,7 +203,7 @@ func TestSync_RemovesTheFoldersOfSkillsNoLongerIncluded(t *testing.T) {
 	if exists(t, options, ".claude/skills/build-feature") || !exists(t, options, ".claude/skills/review/SKILL.md") {
 		t.Fatal("sync kept the removed skill's folder or removed the kept one")
 	}
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"rules":{"include":["techs/go/*"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"release/1","rules":{"include":["techs/go/*"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -246,10 +247,7 @@ func TestSync_InstallsSkillsFromARepositoryThatIsNotALibrary(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["agents"],"sources":{"skills":{"repository":REPOSITORY,"skills":{"include":["*"]}}}}`)
 	_, err = Sync(ctx, options, git)
-	var failure *imports.Error
-	if !errors.As(err, &failure) || failure.Code != "ref-required" || !strings.Contains(err.Error(), "Set sources.skills.ref to the branch, tag, or full commit SHA") {
-		t.Fatalf("got %v; want ref-required", err)
-	}
+	requireRefRequired(t, err, "set sources.skills.ref in .trailguide/config.yaml to a branch, tag, or full commit SHA")
 	root, err := openProject(ctx, options, false)
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +299,7 @@ func TestSync_FailsForANewlyIncludedSkillTheLockedRevisionLacks(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/plan","skills/review"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"release/1","skills":{"include":["skills/plan","skills/review"]}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
 	_, err = Sync(ctx, options, git)
 	var failure *imports.Error
 	if !errors.As(err, &failure) || failure.Code != "skill-not-in-revision" || !strings.Contains(err.Error(), "sources.team.skills.include names skills/plan, which isn't in release/1") || !strings.Contains(err.Error(), "Run trailguide project update team") {
@@ -363,7 +361,7 @@ func TestSync_RenamesAClashingSkillAndWarnsThatMentionsKeepTheOldName(t *testing
 	if !strings.Contains(err.Error(), "skills/review and team:skills/review both install as review. Rename one with skills.rename, or exclude one.") {
 		t.Fatalf("clash error = %v", err)
 	}
-	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/review"],"rename":{"skills/review":"team-review"}}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
+	writeFixture(t, root, configurationFile, strings.ReplaceAll(`{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"ref":"release/1","skills":{"include":["skills/review"],"rename":{"skills/review":"team-review"}}}}}`, "REPOSITORY", quoteJSON(f.Repository)))
 	const warning = "team:skills/review is installed as team-review. Mentions of review in skill text aren't rewritten; check the skills that call it by that name."
 	changes, err := Sync(ctx, options, git)
 	if err != nil {

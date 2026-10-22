@@ -3,11 +3,16 @@
 package cli
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/filetxn"
+	"github.com/fabricahq/trailguide/internal/imports"
 	"github.com/fabricahq/trailguide/internal/project"
+	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/spf13/cobra"
 )
 
@@ -116,7 +121,7 @@ func parseSkillTargetFlags(values []string, passed bool) ([]string, error) {
 
 func projectSourceCommand(options Options, output *commandOutput) *cobra.Command {
 	source, sf := newAuthoringCommand("source NAME", "Configure a source of rules and skills (without fetching)", requiredArgument("source name", "team", "The name identifies this source in your project configuration."), options.Directory)
-	for name, description := range map[string]string{"repository": "Git repository URL", "ref": "Tag or full commit SHA to take the source from; required for a repository without library releases"} {
+	for name, description := range map[string]string{"repository": "Git repository URL", "ref": "Library release (release/N), latest-release, branch, tag, or full commit SHA to take the source from; defaults to the newest library release"} {
 		sf.add(source, name, description)
 	}
 	source.Long = sourceSelectionHelp + documentationHelp
@@ -137,14 +142,39 @@ func projectSourceCommand(options Options, output *commandOutput) *cobra.Command
 		if err := sf.collectSource(&ruleSelectors, &skillSelectors); err != nil {
 			return err
 		}
-		result, err := plan.Commit(cmd.Context(), project.SourceInput{Repository: sf.value("repository"), Ref: sf.value("ref"), Rules: ruleSelectors, Skills: skillSelectors})
+		ref, chosen := sf.value("ref"), ""
+		if ref == "" {
+			if ref, err = newestReleaseRef(cmd.Context(), args[0], sf.value("repository"), options.Git); err != nil {
+				return err
+			}
+			chosen = ref
+		}
+		result, err := plan.Commit(cmd.Context(), project.SourceInput{Repository: sf.value("repository"), Ref: ref, Rules: ruleSelectors, Skills: skillSelectors})
 		if err != nil {
 			return err
 		}
-		output.report = sourceAddedReport(result, authoringScope{workdir: sf.directory})
+		output.report = sourceAddedReport(result, authoringScope{workdir: sf.directory}, args[0], chosen)
 		return nil
 	}
 	return source
+}
+
+// newestReleaseRef returns release/<number> for the newest library release of repository, the ref project add source
+// records without --ref, listing the repository's release tags. A repository without any fails with code
+// ref-required, asking for --ref.
+func newestReleaseRef(ctx context.Context, name, repository string, git imports.Options) (string, error) {
+	address, _ := json.Marshal(repository)
+	if _, err := rules.ParseRepository(address, "--repository"); err != nil {
+		return "", err
+	}
+	newest, err := imports.NewestRelease(ctx, repository, git)
+	if err != nil {
+		return "", fmt.Errorf("list the library releases of sources.%s: %w", name, err)
+	}
+	if newest == 0 {
+		return "", &filetxn.Error{Code: "ref-required", Problem: "the repository has no release/<number> tags, so it isn't a library or hasn't published its first library release; pass --ref with the branch, tag, or full commit SHA to take it from"}
+	}
+	return fmt.Sprintf("release/%d", newest), nil
 }
 
 func projectGroupCommand(options Options, output *commandOutput) *cobra.Command {

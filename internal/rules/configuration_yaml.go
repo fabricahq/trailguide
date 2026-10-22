@@ -144,8 +144,10 @@ func AppendConfigurationLibrary(input []byte, value any) ([]byte, error) {
 }
 
 // SourceEdit lists pins and exclusions to add to one source, pins to remove from it, basedOn versions to set, and
-// skill forks to add; each may be empty or nil.
+// skill forks to add, and the ref to set; each may be empty, nil, or zero.
 type SourceEdit struct {
+	// Ref, when nonzero, replaces the source's ref, or is added after its repository.
+	Ref     GitRef
 	Pins    map[string]Pin
 	Exclude map[string]Exclusion
 	// Unpin names rules whose existing pins the edit removes.
@@ -161,7 +163,8 @@ type SourceEdit struct {
 	SkillForkBasedOn map[string]GitRef
 }
 
-// EditConfigurationSource adds pins, exclusions, and skill forks to the existing source alias, removes the pins
+// EditConfigurationSource sets the ref of the existing source alias when edit.Ref is nonzero, adds pins, exclusions,
+// and skill forks to it, removes the pins
 // edit.Unpin names and the skill renames edit.SkillUnrename names, and sets the basedOn version of the existing
 // replacements edit.BasedOn names and the basedOn commit of the existing skill forks edit.SkillForkBasedOn names, keeping a replaced
 // value's comment, without dropping other comments or reordering entries. Setting basedOn of a rule the source
@@ -185,6 +188,9 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 		return nil, invalid("sources."+alias, "source doesn't exist")
 	}
 	source.Style = 0
+	if !edit.Ref.IsZero() {
+		setRef(source, edit.Ref)
+	}
 	if err := removeSkillRenames(source, edit.SkillUnrename, "sources."+alias+".skills"); err != nil {
 		return nil, err
 	}
@@ -196,8 +202,8 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 	}
 	where := "sources." + alias + ".rules"
 	ruleFields := mappingValue(source, "rules")
-	if ruleFields == nil {
-		if len(edit.Pins)+len(edit.Exclude)+len(edit.Unpin)+len(edit.BasedOn) > 0 {
+	if ruleEdits := len(edit.Pins) + len(edit.Exclude) + len(edit.Unpin) + len(edit.BasedOn); ruleFields == nil || ruleEdits == 0 {
+		if ruleEdits > 0 {
 			return nil, invalid(where, "the source includes no rules, so it has no rules to pin or exclude")
 		}
 		return encodeConfiguration(document)
@@ -226,6 +232,22 @@ func EditConfigurationSource(input []byte, alias string, edit SourceEdit) ([]byt
 		exclusion.Content = append(exclusion.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "basedOn"}, versionNode(version))
 	}
 	return encodeConfiguration(document)
+}
+
+// setRef sets the ref field of source to ref, keeping a replaced value's comment, or adds it after the repository
+// field.
+func setRef(source *yaml.Node, ref GitRef) {
+	if existing := mappingValue(source, "ref"); existing != nil {
+		existing.Kind, existing.Tag, existing.Value = yaml.ScalarNode, "!!str", ref.String()
+		return
+	}
+	at := len(source.Content)
+	for i := 0; i+1 < len(source.Content); i += 2 {
+		if source.Content[i].Value == "repository" {
+			at = i + 2
+		}
+	}
+	source.Content = slices.Insert(source.Content, at, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ref"}, textNode(ref.String()))
 }
 
 // addSkillForks adds forks, in skill ID order, to the skills.forks mapping of source, creating the skills mapping and

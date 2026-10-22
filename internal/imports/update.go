@@ -42,8 +42,15 @@ var updateChangeOrder = []UpdateChange{UpdateMajor, UpdateMinor, UpdatePatch, Up
 // SourceUpdate is one source's part of the update preview.
 type SourceUpdate struct {
 	Name string `json:"name"`
-	// Ref is the source's ref, so Rules is empty; it is empty for other sources.
+	// Ref is the source's ref, so Rules is empty; it is empty for other sources, including those whose ref names a
+	// library release, such as release/4, or latest-release, which the update moves as it moves rule versions.
 	Ref string `json:"ref,omitempty"`
+	// SetsRef is the ref the update writes to the source's ref in config.yaml, release/<number> for the library
+	// release SharedFiles moves to, when the source's ref names a library release; it is empty otherwise.
+	SetsRef string `json:"setsRef,omitempty"`
+	// Available is the library's newest release when the update takes an older one, the release a ref edited away
+	// from the record's names, so a second update moves the source to it; it is 0 otherwise.
+	Available int `json:"available,omitempty"`
 	// FollowsRef reports that the update resolves Ref again, which it does for a branch, and for a tag of a
 	// repository that isn't a library. Any other source that uses ref stays at the commit sync keeps.
 	FollowsRef bool `json:"followsRef,omitempty"`
@@ -363,7 +370,7 @@ func (s plannedSource) skillRevisions(after sourcePlan) []sourcePlan {
 // and exclusions the project decided on: the moved rules, except that a rule source pins keeps its version from
 // before the update. A source that uses ref imports what sync would.
 func (s plannedSource) decided(source rules.Source) (sourcePlan, error) {
-	if !source.Ref.IsZero() {
+	if s.moved == nil {
 		return s.before, nil
 	}
 	plan := sourcePlan{rules: maps.Clone(s.moved), individual: []string{}, warnings: []string{}}
@@ -520,7 +527,7 @@ func PlanUpdate(ctx context.Context, configuration rules.Configuration, recorded
 			if at.manifest == nil || at.err != nil {
 				continue
 			}
-			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || !source.Ref.IsZero() && !planned.follows, overridden, nil, options)
+			at.revisions, at.curated, err = planCurated(ctx, configuration, source, at.manifest, at.used, recordedSnapshot(recorded, source.Name), planned.scoped || planned.moved == nil && !planned.follows, overridden, nil, options)
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return Update{}, gitexec.ContextFailure(ctxErr)
 			}
@@ -700,7 +707,7 @@ func updateScopes(configuration rules.Configuration, recorded map[string]library
 		source := configuration.Sources[index]
 		snapshot := recordedSnapshot(recorded, source.Name)
 		unrecorded := snapshot == nil && source.Ref.Kind() != rules.GitRefCommit
-		if !source.Ref.IsZero() && (target.Rule != "" || !unrecorded && !followsRef(source, snapshot)) {
+		if !source.Ref.IsZero() && !source.Ref.FollowsReleases() && (target.Rule != "" || !unrecorded && !followsRef(source, snapshot)) {
 			return nil, &ValidationError{Location: where, Problem: "the source imports one revision with ref, so update doesn't move it; change sources." + target.Source + ".ref and run trailguide project sync"}
 		}
 		if target.Rule == "" {
@@ -756,10 +763,39 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 		}
 	}()
 	p := newPlanner(ctx, repo, source, recorded)
-	p.again = followsRef(source, p.recorded)
+	p.again, p.updating = followsRef(source, p.recorded), true
+	// A ref edited to name another library release than the record's is decided against the record, since newly
+	// selected rules can raise the plan's own release to the one the ref names.
+	edited := 0
+	if number := source.Ref.Release(); number != 0 && p.recorded != nil && !p.recorded.NonLibrary && p.recorded.Release != 0 && p.recorded.Release != number {
+		edited = number
+	}
 	before, err := p.choose()
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
+	}
+	// Sync sees only the library release a ref such as release/4 names; the update looks past it, unless the ref
+	// was edited to name another release than the record's, which the update takes.
+	p.ceiling = 0
+	available := 0
+	if number := edited; number != 0 && before.followsReleases {
+		history, err := p.releases()
+		if err != nil {
+			return plannedSource{}, SourceUpdate{}, nil, err
+		}
+		if history.release(number) == nil {
+			problem := fmt.Sprintf("sources.%s.ref names release/%d, which the library doesn't have.", source.Name, number)
+			if newest := history.newest(); newest != nil {
+				problem += fmt.Sprintf(" Set sources.%s.ref to a library release it has, such as release/%d, its newest.", source.Name, newest.number)
+			} else {
+				problem += fmt.Sprintf(" The repository has no release/<number> tags now; ask the library's maintainer to restore them, or set sources.%s.ref to a branch, tag, or full commit SHA.", source.Name)
+			}
+			return plannedSource{}, SourceUpdate{}, nil, fail("version-not-found", problem, nil)
+		}
+		p.ceiling = number
+		if newest := p.history.newest().number; newest > number {
+			available = newest
+		}
 	}
 	// A library's bare name that names a tag, not a branch, holds one revision, like any library tag.
 	if p.again && !before.nonLibrary && before.resolved == rules.GitRefTag {
@@ -768,12 +804,13 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 			return plannedSource{}, SourceUpdate{}, nil, err
 		}
 	}
-	preview := SourceUpdate{Name: source.Name, Ref: source.Ref.String(), FollowsRef: p.again, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
+	preview := SourceUpdate{Name: source.Name, FollowsRef: p.again, Available: available, Rules: []RuleUpdate{}, Skills: []SkillUpdate{}, SkillLevels: []SkillLevelUpdate{}}
 	if p.again && before.commit != p.recorded.Commit {
 		preview.Commit = &CommitMove{From: p.recorded.Commit, To: before.commit}
 		preview.TagMoved = before.resolved == rules.GitRefTag && p.recorded.Ref.Equal(source.Ref)
 	}
-	if !source.Ref.IsZero() {
+	if !before.followsReleases {
+		preview.Ref = source.Ref.String()
 		planned := plannedSource{before: before, follows: p.again}
 		if planned.skills, err = repo.previewSkills(ctx, source, recorded, []sourcePlan{before}); err != nil {
 			return plannedSource{}, SourceUpdate{}, nil, err
@@ -796,7 +833,7 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
 	}
-	planned := plannedSource{before: before, moved: moved, scoped: scope != nil, recorded: p.recorded, history: *p.history}
+	planned := plannedSource{before: before, moved: moved, scoped: scope != nil, recorded: p.recorded, history: p.history.upTo(p.ceiling)}
 	if release, _ := planned.sharedFiles(moved); release != before.release {
 		preview.SharedFiles = &SharedFilesUpdate{From: before.release, To: release}
 	}

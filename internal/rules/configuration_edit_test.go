@@ -77,7 +77,7 @@ func TestEditConfigurationSource_RemovesPinsAndAnEmptiedPinsList(t *testing.T) {
 // TestEditConfigurationSource_RefusesEditsItCantApply leaves existing entries alone and rejects results that
 // wouldn't validate, returning no bytes.
 func TestEditConfigurationSource_RefusesEditsItCantApply(t *testing.T) {
-	input := []byte("schemaVersion: 2\nsources:\n  team:\n    repository: https://example.invalid/team.git\n    rules:\n      include: ['*']\n      exclude:\n        - id: practices/*\n          reason: Not ours.\n      pins:\n        - id: techs/go/a\n          version: \"1.0.0\"\n          reason: Kept.\n  by-ref:\n    repository: https://example.invalid/ref.git\n    ref: release/2\n    rules: {include: ['*']}\n")
+	input := []byte("schemaVersion: 2\nsources:\n  team:\n    repository: https://example.invalid/team.git\n    rules:\n      include: ['*']\n      exclude:\n        - id: practices/*\n          reason: Not ours.\n      pins:\n        - id: techs/go/a\n          version: \"1.0.0\"\n          reason: Kept.\n  by-ref:\n    repository: https://example.invalid/ref.git\n    ref: main\n    rules: {include: ['*']}\n")
 	version, err := trailguide.ParseRuleVersion("2.0.0", "version")
 	if err != nil {
 		t.Fatal(err)
@@ -152,6 +152,26 @@ sources:
 		var invalid errs.ValidationError
 		if _, err := rules.EditConfigurationSource(input, "team", rules.SourceEdit{BasedOn: map[string]trailguide.RuleVersion{id: version("1.0.0")}}); !errors.As(err, &invalid) || invalid.ValidationLocation() != "sources.team.rules.exclude."+id {
 			t.Errorf("%s: got %v", id, err)
+		}
+	}
+}
+
+// TestEditConfigurationSource_SetsTheRef replaces a ref in place, keeping its comment, and adds one after the
+// repository when the source has none.
+func TestEditConfigurationSource_SetsTheRef(t *testing.T) {
+	five, err := rules.ParseGitRef("release/5", "ref")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ input, want string }{
+		{"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/4 # reviewed\n    rules: {include: [techs/go/*]}\n",
+			"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/5 # reviewed\n    rules: {include: [techs/go/*]}\n"},
+		{"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    rules: {include: [techs/go/*]}\n",
+			"schemaVersion: 2\nsources:\n  team:\n    repository: https://github.com/acme/rules\n    ref: release/5\n    rules: {include: [techs/go/*]}\n"},
+	} {
+		got, err := rules.EditConfigurationSource([]byte(test.input), "team", rules.SourceEdit{Ref: five})
+		if err != nil || string(got) != test.want {
+			t.Errorf("got %v:\n%s\nwant:\n%s", err, got, test.want)
 		}
 	}
 }

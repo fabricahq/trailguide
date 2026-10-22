@@ -58,7 +58,7 @@ func newSkillForkFixtureWith(t *testing.T, extra map[string][]byte) (updateFixtu
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init", "--skill-targets", "claude"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    skills:\n      include: ['*']\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    skills:\n      include: ['*']\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}

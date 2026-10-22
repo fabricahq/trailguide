@@ -443,15 +443,15 @@ func TestPlanUpdate_SaysWhenARetiredRulesReplacementWasRetiredToo(t *testing.T) 
 	}
 }
 
-// TestPlanUpdate_RefSourcesDontMove plans a source that uses ref as sync does, with no rows.
+// TestPlanUpdate_RefSourcesDontMove plans a source whose ref names a commit as sync does, with no rows.
 func TestPlanUpdate_RefSourcesDontMove(t *testing.T) {
 	h := newHistory(t)
-	config := h.source(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`)
+	config := h.source(t, `"rules":{"include":["techs/go/*"]},"ref":"`+h.commits[1]+`"`)
 	update, err := h.plan(t, config, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(update.Sources) != 1 || update.Sources[0].Ref != "release/1" || len(update.Sources[0].Rules) != 0 {
+	if len(update.Sources) != 1 || update.Sources[0].Ref != h.commits[1] || len(update.Sources[0].Rules) != 0 {
 		t.Fatalf("sources %+v", update.Sources)
 	}
 	if want := map[string]string{"techs/go/a": "1.0.0@1", "techs/go/b": "1.0.0@1"}; !reflect.DeepEqual(versions(h.install(t, update, config).Snapshot), want) {
@@ -481,12 +481,12 @@ func TestPlanUpdate_NamesTheSourceWhoseLibraryHasAnInvalidReleaseRecord(t *testi
 	}
 }
 
-// TestPlanUpdate_RejectsTargetsItCantMove names the target in each failure. A library source that uses ref doesn't
-// move once sync has recorded it.
+// TestPlanUpdate_RejectsTargetsItCantMove names the target in each failure. A library source whose ref names a
+// commit doesn't move once sync has recorded it.
 func TestPlanUpdate_RejectsTargetsItCantMove(t *testing.T) {
 	h := newHistory(t)
 	config := h.source(t, `"rules":{"include":["techs/go/*"]}`)
-	refConfig := h.source(t, `"rules":{"include":["techs/go/*"]},"ref":"release/1"`)
+	refConfig := h.source(t, `"rules":{"include":["techs/go/*"]},"ref":"`+h.commits[1]+`"`)
 	synced, err := h.sync(t, refConfig, nil)
 	if err != nil {
 		t.Fatal(err)

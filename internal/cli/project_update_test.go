@@ -69,7 +69,7 @@ func newUpdateFixtureWith(t *testing.T, binary string) updateFixture {
 		t.Fatal(code, out, diagnostic)
 	}
 	u.write(t, "rules/techs/go/use-data-loaders.md", string(updateRule("Our loaders rule.")))
-	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+f.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n")
+	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
@@ -153,6 +153,7 @@ const updatePreview = `team
             Newest version: 2.0.0.
             Reason: Waiting on #45.
   Shared files: release 1 -> 2
+  Sets sources.team.ref to release/2 in .trailguide/config.yaml.
 `
 
 // TestUpdate_PreviewsWithoutATerminalAndWritesNothing exits 0 with the preview and how to apply it.
@@ -267,7 +268,12 @@ func TestUpdate_YesAppliesWithKeepAndExclude(t *testing.T) {
 
 // basedOnConfig is the fixture's configuration with the loaders replacement based on version.
 func (u updateFixture) basedOnConfig(version string) string {
-	return "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: " + u.fixture.Repository + "\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n          basedOn: \"" + version + "\" # forked\n"
+	return u.basedOnConfigAt("release/1", version)
+}
+
+// basedOnConfigAt is basedOnConfig with ref.
+func (u updateFixture) basedOnConfigAt(ref, version string) string {
+	return "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: " + u.fixture.Repository + "\n    ref: " + ref + "\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n          basedOn: \"" + version + "\" # forked\n"
 }
 
 // TestUpdate_ComparesAReplacementWithItsBasedOnVersion lists the library's changes after basedOn, in human and
@@ -323,7 +329,7 @@ func TestUpdate_ComparesAReplacementWithItsBasedOnVersion(t *testing.T) {
 	if out, _, code := u.run(t, "project", "update"); code != 0 || strings.Contains(out, "techs/go/loaders") {
 		t.Fatalf("exit %d, the next update still lists the replacement:\n%s", code, out)
 	}
-	u.write(t, "config.yaml", u.basedOnConfig("9.0.0"))
+	u.write(t, "config.yaml", u.basedOnConfigAt("release/2", "9.0.0"))
 	failure := struct {
 		OK    bool
 		Error responseError
@@ -352,7 +358,7 @@ func TestUpdate_ScopedToOneRuleMovesOnlyThatRule(t *testing.T) {
 	u := newUpdateFixture(t)
 	out, diagnostic, code := u.run(t, "project", "update", "team:techs/go/naming", "--yes")
 	// The rule's new version comes from release 2, so the shared files move with it, and no further.
-	if code != 0 || !strings.HasPrefix(out, "team\n  minor     techs/go/naming  1.0.0 -> 1.1.0\n            Add an example.\n  Shared files: release 1 -> 2\n\nUpdate complete: ") {
+	if code != 0 || !strings.HasPrefix(out, "team\n  minor     techs/go/naming  1.0.0 -> 1.1.0\n            Add an example.\n  Shared files: release 1 -> 2\n  Sets sources.team.ref to release/2 in .trailguide/config.yaml.\n\nUpdate complete: ") {
 		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
 	}
 	if want := map[string]string{"backoff": "1.0.0", "errors": "1.0.0", "format": "1.0.0", "loaders": "1.0.0", "naming": "1.1.0", "retry": "1.0.0"}; !reflect.DeepEqual(u.versions(t), want) {
@@ -422,7 +428,7 @@ func TestUpdate_RejectsInvalidRequestsWithoutWriting(t *testing.T) {
 func TestUpdate_RefusesToUpdateTheForkOfARetiredRule(t *testing.T) {
 	u := newUpdateFixture(t)
 	u.write(t, "rules/techs/go/our-retry.md", string(updateRule("Our retry rule.")))
-	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      exclude:\n        - id: techs/go/retry\n          reason: Ours.\n          replacedBy: techs/go/our-retry\n")
+	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      exclude:\n        - id: techs/go/retry\n          reason: Ours.\n          replacedBy: techs/go/our-retry\n")
 	before := projectFileContents(t, u.directory)
 	out, diagnostic, code := u.run(t, "project", "update", "--yes", "--json", "--update-fork", "team:techs/go/retry")
 	var response struct {
@@ -574,7 +580,7 @@ func TestUpdateDetails_LabelsSummariesWithTheirVersionsWhenARowSpansSeveral(t *t
 // TestBuildAndCheck_ReportAnUnknownExclusionTheSameWay, with the problem and its location on separate lines.
 func TestBuildAndCheck_ReportAnUnknownExclusionTheSameWay(t *testing.T) {
 	u := newUpdateFixture(t)
-	u.write(t, "config.yaml", "schemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n        - id: techs/go/missing\n          reason: Typo.\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n        - id: techs/go/missing\n          reason: Typo.\n")
 	want := "Error: names no rule the library supplies to this source; run trailguide project sync to check it against the library.\n\nLocation: sources.team.rules.exclude.techs/go/missing\n"
 	for _, command := range []string{"build", "check"} {
 		out, diagnostic, code := u.run(t, "project", command)
@@ -637,7 +643,7 @@ func TestUpdateDetails_ShowsAPinnedForksReplacementBesideThePin(t *testing.T) {
 // replace the fork with the newest version.
 func TestUpdate_AsksAboutAPinnedForkInATerminal(t *testing.T) {
 	u := newUpdateFixture(t)
-	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n        - id: techs/go/loaders\n          version: \"1.0.0\"\n          reason: Not yet.\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n")
+	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n        - id: techs/go/loaders\n          version: \"1.0.0\"\n          reason: Not yet.\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n")
 	steps := []terminalfixture.Step{
 		{Prompt: "[adopt/keep]:", Answer: "adopt"},
 		{Prompt: "[add/exclude]:", Answer: "add"},
@@ -756,7 +762,7 @@ func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    skills:\n      include: [recommended]\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: "+f.Repository+"\n    ref: release/1\n    skills:\n      include: [recommended]\n")
 	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}

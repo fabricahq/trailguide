@@ -114,7 +114,7 @@ func TestSync_WarnsWhenTheProjectExcludesACuratedSkillALibrarysSkillUses(t *test
 	if out, diagnostic, code := runCLI(t, u.binary, u.directory, "project", "init", "--skill-targets", "claude"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    skills:\n      include: [skills/add-skill]\n      exclude:\n        - id: pocock:skills/ops/deploy\n          reason: Not wanted.\n")
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: git@fixture.invalid:team\n    ref: release/1\n    skills:\n      include: [skills/add-skill]\n      exclude:\n        - id: pocock:skills/ops/deploy\n          reason: Not wanted.\n")
 	want := "team:skills/add-skill uses team:pocock:skills/ops/deploy, which the project excludes without a replacement, so the skill it uses isn't installed. Stop excluding the skill, or remove the use from the skill that uses it, which you can fork. A curated skill can't be replaced."
 	out, diagnostic, code := u.run(t, "project", "sync")
 	if code != 0 || !strings.Contains(out+diagnostic, "Warning: "+want) {

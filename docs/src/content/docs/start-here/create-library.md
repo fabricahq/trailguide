@@ -186,7 +186,7 @@ trailguide project add source acme-rules \
   --rules 'practices/error-handling/*'
 ```
 
-This adds the library's repository to `.trailguide/config.yaml` under the source name `acme-rules`, and includes every rule in its error handling practice group. The project moves to each rule's newest version whenever someone runs `trailguide project update`.
+This adds the library's repository to `.trailguide/config.yaml` under the source name `acme-rules`, with `ref: release/1`, the library release you just published, and includes every rule in its error handling practice group. The project moves to each newer release, and each rule's newest version, whenever someone runs `trailguide project update`.
 
 Download the rules and build the project's agent guidance:
 
