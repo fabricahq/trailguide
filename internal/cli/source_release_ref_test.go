@@ -77,7 +77,9 @@ func TestUpdate_TakesTheEditedReleaseWithANewRuleAndNoFurther(t *testing.T) {
 		t.Fatalf("config.yaml, %v:\n%s", err, config)
 	}
 	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "lock.json"))
-	var lock struct{ Sources map[string]struct{ Release int } }
+	var lock struct {
+		Sources map[string]struct{ Release int }
+	}
 	if err == nil {
 		err = json.Unmarshal(data, &lock)
 	}
