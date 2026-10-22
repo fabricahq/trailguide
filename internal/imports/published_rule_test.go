@@ -27,7 +27,7 @@ func forkLibrary(t *testing.T) (*gitfixture.Fixture, Options) {
 	t.Helper()
 	ctx := context.Background()
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"license":{"file":"LICENSE","notices":[".trailguide/assets/NOTICE.md"]}}}`),
+		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"license":{"file":"LICENSE","notices":[".trailguide/assets/NOTICE.md"]}}}`),
 		"LICENSE":                         []byte("Terms\n"),
 		"techs/go/_group.yaml":            []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When editing Go."}`),
 		"techs/go/errors.md":              forkRule("[Guide](../../../assets/guide.md) [Notes](assets/errors/notes.md) [Notice](../../../assets/NOTICE.md)"),

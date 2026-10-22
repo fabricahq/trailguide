@@ -126,6 +126,7 @@ For example, if you choose MIT for your own rules, add the complete MIT text wit
 schemaVersion: 2
 sources: {}
 library:
+  formatVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md

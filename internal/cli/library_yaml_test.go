@@ -21,7 +21,7 @@ func TestYAMLLibraryMetadataLifecycle(t *testing.T) {
 	}
 	run("library", "init")
 	run("library", "add", "group", "practices/testing", "--name", "Testing", "--description", "Test behavior.", "--when-to-read", "When writing tests.")
-	for name, prefix := range map[string]string{"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary: {}\n", "practices/testing/_group.yaml": "name: Testing\n"} {
+	for name, prefix := range map[string]string{"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n", "practices/testing/_group.yaml": "name: Testing\n"} {
 		data, err := os.ReadFile(libraryFile(dir, name))
 		if err != nil || !strings.HasPrefix(string(data), prefix) {
 			t.Fatal(name, string(data), err)

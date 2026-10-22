@@ -45,7 +45,7 @@ func newUpdateFixtureWith(t *testing.T, binary string) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	files := map[string][]byte{
-		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 	}
 	names := []string{"backoff", "errors", "format", "loaders", "naming", "retry"}
@@ -747,7 +747,7 @@ func skillLevelSkill(name string) []byte {
 func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
+		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
 		"techs/go/_group.yaml":               []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":                 updateRule("errors 1.0.0"),
 		".trailguide/skills/ship/SKILL.md":   skillLevelSkill("ship"),
@@ -770,7 +770,7 @@ func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 		t.Fatal(code, out, diagnostic)
 	}
 	second := map[string][]byte{
-		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"skills":{"required":["skills/audit"],"recommended":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`),
+		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"skills":{"required":["skills/audit"],"recommended":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`),
 		".trailguide/skills/audit/SKILL.md": skillLevelSkill("audit"),
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Change levels", gitfixture.Library(second)); err != nil {

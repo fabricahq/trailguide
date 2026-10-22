@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/decode"
+	"github.com/fabricahq/trailguide/internal/gitsource"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
@@ -303,14 +304,7 @@ func parseSource(name string, input json.RawMessage, repositories map[string]str
 	repositories[address.Identity] = name
 	result := Source{Name: name, Repository: repository}
 	if raw, ok := fields["ref"]; ok {
-		if first := strings.TrimSpace(string(raw)); first != "" && strings.ContainsRune("-0123456789", rune(first[0])) {
-			return Source{}, invalid(where+".ref", "expected a tag or full commit SHA in quotes; YAML reads an unquoted value of digits as a number")
-		}
-		text, err := decode.Text(raw, where+".ref")
-		if err != nil {
-			return Source{}, err
-		}
-		if result.Ref, err = ParseGitRef(text, where+".ref"); err != nil {
+		if result.Ref, err = gitsource.ParseRefField(raw, where+".ref"); err != nil {
 			return Source{}, err
 		}
 	}

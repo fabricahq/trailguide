@@ -1,6 +1,6 @@
 // Validate explicit Git addresses and derive links without fetching repositories.
 
-package rules
+package gitsource
 
 import (
 	"encoding/json"

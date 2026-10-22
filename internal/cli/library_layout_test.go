@@ -27,6 +27,7 @@ Then delete rule-library.yaml. Write its license fields, without formatVersion, 
   schemaVersion: 2
   sources: {}
   library:
+    formatVersion: 1
     license:
       spdxExpression: MIT
       file: LICENSE.md

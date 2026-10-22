@@ -79,6 +79,7 @@ sources:
     repository: https://github.com/mattpocock/skills.git
     ref: main
 library:
+  formatVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -92,7 +93,37 @@ library:
       - mattpocock:skills/productivity/grilling
 ```
 
-The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository.
+The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository; it writes `formatVersion: 1`.
+
+### Library format
+
+`library.formatVersion` is required. It names the version of everything the library publishes, which this page and [Rule and rule group format](/reference/rule-format/) describe:
+
+- the `library` section: its format, license, and skill levels;
+- the `repository` and `ref` of each source the library's skills [curate](#curated-skills) from;
+- rule files and rule group metadata;
+- the library layout: where the manifest, rules, skills, and shared assets live.
+
+[Release records](/reference/rule-versions/#release-record) have their own `formatVersion`, which changes independently.
+
+This version of Trail Guide reads and writes library format `1`. A library without `formatVersion`, or with one that isn't a whole number, fails with a validation error at `library.formatVersion`. A library in another format fails with `unsupported-library-format`, which names both formats: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier format. It adds support for one when libraries still publish in it.
+
+#### What a library's consumers read
+
+A project that imports a library, and a catalog that lists it, reads only what the library publishes. It ignores the configuration's `schemaVersion` and every project setting, such as `skillTargets`, the sources the library doesn't curate from, and a curated source's own `rules` and `skills`, so a library in a project schema the consumer's Trail Guide doesn't know is still readable. It validates everything it reads, including each curated source's `repository` and `ref`. The project's [vendor snapshot](/reference/files/) keeps only that published manifest, and offline builds read it the same way.
+
+Within a format, consumers ignore fields of the `library` section they don't know, at any level, so a later Trail Guide can add a field without a new format when ignoring it keeps every reader correct, such as a description. A change that consumers must interpret, such as a new skill level that projects must install, needs a new format, even if the new field is optional. `trailguide library check` is stricter: it validates the author's whole configuration, and fails on any field this version doesn't know.
+
+#### What project configuration changes keep
+
+Project configuration has its own [`schemaVersion`](/reference/configuration/#version-boundaries), which can change without a new library format, as long as it keeps what a library's consumers read:
+
+- the manifest at `.trailguide/config.yaml`;
+- one YAML document holding a mapping, without anchors, aliases, explicit tags, or duplicate keys;
+- the `library` section, at the top level;
+- under the top-level `sources` mapping, keyed by source name, the `repository` and `ref` of each curated source.
+
+A change to any of these is a change to the library format.
 
 The manifest replaces `rule-library.yaml`, and the Trail Guide directory replaces root-level `techs/`, `practices/`, `skills/`, `assets/`, and `changes/` folders. A repository with a `rule-library.yaml` fails to load with a message that shows the new shape; see [No backward compatibility](/reference/configuration/#no-backward-compatibility). Rule IDs don't change when you move a library's rules into `.trailguide/rules/`.
 
@@ -124,6 +155,7 @@ List a skill in `library.skills.dependencies` when the library has it only becau
 
 ```yaml
 library:
+  formatVersion: 1
   skills:
     recommended: [skills/add-skill]
     dependencies: [anthropic:skills/skill-creator]

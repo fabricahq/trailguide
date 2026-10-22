@@ -226,7 +226,7 @@ func (r *reader) read(path string) ([]byte, error) {
 // bytes stay unchanged. A configuration without a library section fails: the repository isn't a library.
 func (r *reader) license(source string) (*trailguide.LicenseDeclaration, error) {
 	location := source + "/" + manifestPath
-	declaration, err := rules.ParseLibraryManifest(r.files[librarytree.Manifest], location)
+	declaration, err := rules.ParsePublishedManifest(r.files[librarytree.Manifest], location)
 	if err != nil {
 		return nil, err
 	}

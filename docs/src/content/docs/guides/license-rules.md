@@ -36,6 +36,7 @@ The `library.license` section of the [manifest](/reference/library-format/#the-m
 
 ```yaml
 library:
+  formatVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
