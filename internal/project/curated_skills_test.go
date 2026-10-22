@@ -173,10 +173,6 @@ func TestSync_InstallsCuratedSkillsFromTheRepositoryTheyComeFrom(t *testing.T) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, skillsIndex)
 		}
 	}
-	provenance := readRepositoryFile(t, b.options, ".trailguide/generated/provenance.json")
-	if !strings.Contains(provenance, `"curatedFrom": "pocock"`) || !strings.Contains(provenance, `"folder": "skills/ops/deploy"`) {
-		t.Errorf("provenance doesn't name the curated source and the skill's folder there:\n%s", provenance)
-	}
 	if result, err := Check(ctx, b.options); err != nil || !result.Current() {
 		t.Fatalf("check = %+v, %v", result, err)
 	}
@@ -205,10 +201,6 @@ func TestSync_IncludesRecommendedCuratedSkillsWithTheSkillsTheyUse(t *testing.T)
 	}
 	if _, err := Check(ctx, b.options); err != nil {
 		t.Fatalf("check after sync: %v", err)
-	}
-	provenance := readRepositoryFile(t, b.options, ".trailguide/generated/provenance.json")
-	if !strings.Contains(provenance, `"team:pocock:skills/engineering/interview"`) {
-		t.Fatalf("provenance doesn't list the used curated skill:\n%s", provenance)
 	}
 	listing, err := ListSkills(ctx, b.options)
 	if err != nil {

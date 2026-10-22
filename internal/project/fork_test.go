@@ -4,7 +4,6 @@ package project
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"maps"
 	"path/filepath"
@@ -149,26 +148,9 @@ func TestFork_ReplacesAnImportedRuleWithAnOlderVersion(t *testing.T) {
 	if _, ok := generated["generated/rules/local/techs/go/errors.md"]; !ok {
 		t.Fatal("the build has no fork")
 	}
-	// Provenance names the version the fork is based on, beside the imported rule it replaces.
-	var provenance struct {
-		Rules []struct {
-			ID       string
-			BasedOn  *string `json:"basedOn"`
-			Upstream struct{ Version string }
-		}
-	}
-	if err := json.Unmarshal(generated["generated/provenance.json"], &provenance); err != nil {
-		t.Fatal(err)
-	}
-	index := slices.IndexFunc(provenance.Rules, func(rule struct {
-		ID       string
-		BasedOn  *string `json:"basedOn"`
-		Upstream struct{ Version string }
-	}) bool {
-		return rule.ID == "local:techs/go/errors"
-	})
-	if index < 0 || provenance.Rules[index].BasedOn == nil || *provenance.Rules[index].BasedOn != "1.0.0" || provenance.Rules[index].Upstream.Version != "1.0.0" {
-		t.Fatalf("provenance:\n%s", generated["generated/provenance.json"])
+	// The fork's page names the version it's based on and the imported rule it replaces.
+	if page := string(generated["generated/rules/local/techs/go/errors.md"]); !strings.Contains(page, "Replaces: `team:techs/go/errors`, based on version 1.0.0.\n\nReason: Our services need the original wording.\n") {
+		t.Fatalf("fork page:\n%s", page)
 	}
 	if _, ok := generated["generated/rules/team/techs/go/errors.md"]; ok {
 		t.Fatal("the build still has the imported rule")

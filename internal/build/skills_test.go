@@ -28,7 +28,7 @@ func skillConfig(t *testing.T, targets string) rules.Configuration {
 
 func TestGenerateInstallsAuthoredSkillsIntoEachTarget(t *testing.T) {
 	local := map[string]build.SkillFiles{"skills/tidy": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: tidy\ndescription: Tidy | code.\n---\n# Tidy\n"), "run.sh": []byte("#!/bin/sh\n")}, Executable: []string{"run.sh"}}}
-	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{ToolVersion: "test", LocalSkills: local})
+	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: local})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestGenerateInstallsAuthoredSkillsIntoEachTarget(t *testing.T) {
 }
 
 func TestGenerateWithoutSkillsAddsNoSkillFiles(t *testing.T) {
-	output, err := build.Generate(skillConfig(t, `["claude"]`), nil, nil, build.Options{ToolVersion: "test"})
+	output, err := build.Generate(skillConfig(t, `["claude"]`), nil, nil, build.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestGenerateRejectsASourceSkillAndAnAuthoredSkillWithOneInstallName(t *test
 		Catalog:  library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}},
 		Snapshot: library.Snapshot{NonLibrary: true, Commit: commit, Skills: map[string]library.ImportedSkill{"tools/shared": {}}, Files: map[string][]byte{"tools/shared/SKILL.md": skill}},
 	}
-	_, err = build.Generate(config, map[string]build.Library{"tools": tools}, nil, build.Options{ToolVersion: "test", LocalSkills: map[string]build.SkillFiles{"skills/shared": {Files: map[string][]byte{"SKILL.md": skill}}}})
+	_, err = build.Generate(config, map[string]build.Library{"tools": tools}, nil, build.Options{LocalSkills: map[string]build.SkillFiles{"skills/shared": {Files: map[string][]byte{"SKILL.md": skill}}}})
 	var clash *build.ClashError
 	if !errors.As(err, &clash) || clash.Name != "shared" || clash.IDs != [2]string{"skills/shared", "tools:tools/shared"} {
 		t.Fatalf("got %v; want a clash of skills/shared and tools:tools/shared", err)
@@ -126,7 +126,7 @@ func skillSnapshot() map[string]build.Library {
 func TestGenerateInstallsAForkInPlaceOfTheSkillItForks(t *testing.T) {
 	config := replacementConfig(t, `"exclude":[{"id":"skills/fix","reason":"We fix in CI."}],"forks":{"skills/review":{"as":"skills/our-review","reason":"Ours.","basedOn":"`+strings.Repeat("b", 40)+`"}}`)
 	local := map[string]build.SkillFiles{"skills/our-review": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: our-review\ndescription: Our review.\n---\n# Review\n")}}}
-	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{ToolVersion: "test", LocalSkills: local})
+	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: local})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestGenerateInstallsAForkInPlaceOfTheSkillItForks(t *testing.T) {
 func TestGenerateKeepsAForkOfASkillItsSourceDeleted(t *testing.T) {
 	config := replacementConfig(t, `"forks":{"skills/plan":{"as":"skills/plan","reason":"Ours."}}`)
 	local := map[string]build.SkillFiles{"skills/plan": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: plan\ndescription: Plan.\n---\n# Plan\n")}}}
-	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{ToolVersion: "test", LocalSkills: local})
+	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: local})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestGenerateRejectsInvalidForks(t *testing.T) {
 			if len(test.config.Sources) > 1 {
 				libraries["other"] = libraries["team"]
 			}
-			_, err := build.Generate(test.config, libraries, nil, build.Options{ToolVersion: "test", LocalSkills: local})
+			_, err := build.Generate(test.config, libraries, nil, build.Options{LocalSkills: local})
 			var validation errs.ValidationError
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location || !strings.Contains(validation.ValidationProblem(), test.problem) {
 				t.Fatalf("got %v; want %q at %s", err, test.problem, test.location)
@@ -209,7 +209,7 @@ func TestGenerateRenamesOnlyWhenTheNameDiffers(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			output, err := build.Generate(renameConfig(t, test.rename), skillSnapshot(), nil, build.Options{ToolVersion: "test"})
+			output, err := build.Generate(renameConfig(t, test.rename), skillSnapshot(), nil, build.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -221,7 +221,7 @@ func TestGenerateRenamesOnlyWhenTheNameDiffers(t *testing.T) {
 }
 
 func TestGenerateRejectsRenamesThatClash(t *testing.T) {
-	_, err := build.Generate(renameConfig(t, `{"skills/review":"fix"}`), skillSnapshot(), nil, build.Options{ToolVersion: "test"})
+	_, err := build.Generate(renameConfig(t, `{"skills/review":"fix"}`), skillSnapshot(), nil, build.Options{})
 	var clash *build.ClashError
 	if !errors.As(err, &clash) || clash.Name != "fix" || clash.IDs != [2]string{"team:skills/fix", "team:skills/review"} {
 		t.Fatalf("got %v; want a clash of team:skills/fix and team:skills/review", err)
@@ -236,10 +236,10 @@ func TestGenerateRenamesASkillWhoseOwnNameIsInvalid(t *testing.T) {
 	team.Snapshot.Skills = map[string]library.ImportedSkill{"tools/Review": {}}
 	team.Snapshot.Files = map[string][]byte{"tools/Review/SKILL.md": []byte("# Review\n")}
 	libraries["team"] = team
-	if _, err := build.Generate(renameConfig(t, `{}`), libraries, nil, build.Options{ToolVersion: "test"}); err == nil || !strings.Contains(err.Error(), `the skill's name "Review" doesn't follow`) {
+	if _, err := build.Generate(renameConfig(t, `{}`), libraries, nil, build.Options{}); err == nil || !strings.Contains(err.Error(), `the skill's name "Review" doesn't follow`) {
 		t.Fatalf("without a rename: %v; want the invalid name rejected", err)
 	}
-	output, err := build.Generate(renameConfig(t, `{"tools/Review":"team-review"}`), libraries, nil, build.Options{ToolVersion: "test"})
+	output, err := build.Generate(renameConfig(t, `{"tools/Review":"team-review"}`), libraries, nil, build.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestGenerateWritesTheCodexInterfaceFileOnlyIntoTheAgentsTarget(t *testing.T
 		"skills/add-skill": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  display-name: \"Add Skill\"\n  default-prompt: \"Use $add-skill.\"\n---\n# Add\n")}},
 		"skills/tidy":      {Files: map[string][]byte{"SKILL.md": []byte("---\nname: tidy\ndescription: Tidy code.\n---\n# Tidy\n")}},
 	}
-	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{ToolVersion: "test", LocalSkills: local})
+	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: local})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestGenerateKeepsTheCodexInterfaceFileASkillShips(t *testing.T) {
 	team.Snapshot.Files["skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review.\nmetadata:\n  display-name: Ours\n---\n# Review\n")
 	team.Snapshot.Files["skills/review/agents/openai.yaml"] = ships
 	team.Snapshot.Files["skills/fix/SKILL.md"] = []byte("---\nname: fix\ndescription: Fix.\nmetadata:\n  short-description: Fix a bug\n  default-prompt: Use $fix to fix this bug, not $fix-flaky.\n---\n# Fix\n")
-	output, err := build.Generate(config, libraries, nil, build.Options{ToolVersion: "test"})
+	output, err := build.Generate(config, libraries, nil, build.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

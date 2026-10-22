@@ -36,7 +36,7 @@ Review this project's resolved Trail Guide for conflicting guidance.
 Read .trailguide/generated/RULES.md, every part of each rule group index,
 and all linked resolved rules to assess conflicts across the complete
 adopted set.
-Use .trailguide/generated/provenance.json to identify the reviewed snapshot.
+Use .trailguide/lock.json to identify the reviewed snapshot.
 Compare active rules within and across rule groups, including the project's
 own rules and replacements. Excluded rules and replaced library text are context,
 not active obligations.

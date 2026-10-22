@@ -138,7 +138,7 @@ A library can also list a skill as a **dependency**, in `library.skills.dependen
 
 - **It installs only with the skills that call it.** A project installs a dependency when it installs a skill that names it in [`trailguide-skills-used`](/reference/skill-format/#skills-a-skill-uses), or in the project's [`skills.uses`](#declare-the-skills-a-skill-calls), and not otherwise.
 - **A project can't choose it.** `"*"` and `recommended` never include it, and naming it in `include` fails validation with a message that names the library's skills that call it, so the project can include one of those instead.
-- **It shows as a dependency.** `trailguide project list skills`, `SKILLS.md`, the source's entry in `lock.json`, and provenance give it the level `dependency`, with the skills that use it.
+- **It shows as a dependency.** `trailguide project list skills`, `SKILLS.md`, and the source's entry in `lock.json` give it the level `dependency`, with the skills that use it.
 - **A project diverges from it as from any skill a skill uses.** Excluding it by ID leaves it uninstalled, and sync warns that the skills that call it lose it. Forking it installs the fork in its place, for the skills that call it.
 
 A dependency can be the library's own skill or one it [curates](#curated-skills). `trailguide library check` fails when nothing calls a dependency, since no project would ever install it: no skill of the library names it in its `trailguide-skills-used`, and, for a curated dependency, no curated skill the library lists uses it in its own repository. It also fails when only other dependencies that nothing installs use it, such as two dependencies that use only each other.
@@ -441,7 +441,7 @@ The manifest replaces the separate `rule-library.yaml` that earlier versions use
 A library can list skills from another repository in `library.skills`, such as a third party's skill it wants its projects to use. The repository it takes them from is a **curated source**: an ordinary entry in the library's own `sources`, with the `ref` the library tracks. A library curates skills only; rules in its sources are for its own use, and it never publishes them.
 
 - **Every curated skill is listed.** A skill from a curated source reaches projects only when `library.skills` lists it, at a level or as a dependency.
-- **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and provenance records which library required, recommended, or offered it.
+- **Files come from the original repository.** A skill's identity is its repository plus its path. Projects fetch a curated skill's files from the curated source, not from the library, and `SKILLS.md` records which library required, recommended, or offered it.
 - **Refs resolve per project.** A library release doesn't lock a curated source's `ref`, which can name a branch, a tag, a commit, a library release of the curated repository, or `latest-release` for its newest library release. Each project resolves it when it first syncs and again when it runs `trailguide project update`, and locks the commit in the library source's entry in `lock.json`, so `ref: main` gives each project the newest commit at its own update, without a new library release. `trailguide project sync` keeps the locked commit. `trailguide library check` resolves the ref on every run to check the skills the library lists, and fails, naming the ref, when the repository has no such branch, tag, or commit.
 - **A project can fork a curated skill.** `trailguide project add skill --from fabrica:mattpocock:skills/to-spec` copies it into the project and replaces it, as for a library's own skill, recording the curated repository's commit as `basedOn`; see [Fork a skill](/reference/cli/#fork-a-skill). A library that wants its own version of a skill it curates forks it with [`trailguide library add skill --from`](/reference/cli/#fork-a-skill-into-the-library), which lists the fork in its place.
 - **A project can override the ref.** When a project declares a source with the same repository as a curated source, its own `ref` decides which commit the curated skills come from. Repository identity decides the match, not the source name; see [Repository addresses](#repository-addresses).
@@ -523,7 +523,7 @@ Repository addresses do not accept query strings, fragments, `git::` prefixes, g
 Local paths, `file:`, unauthenticated `git:`, plain HTTP, and remote-helper protocols are outside this format.
 The `owner/name` shorthand isn't accepted; use `https://github.com/owner/name.git` instead.
 
-Trail Guide preserves the supplied address in provenance and requires the snapshot to match it exactly.
+Trail Guide preserves the supplied address in `lock.json` and requires the snapshot to match it exactly.
 Two addresses name the same repository when they match after normalizing host spelling, standard GitHub.com and GitLab.com transport aliases, and optional `.git` suffixes. This decides duplicate sources, and which project source overrides a [curated source's](#curated-skills) ref.
 GitHub path matching ignores case; generic repository paths and GitLab paths retain case.
 Other hosts retain their transport, username, port, and path distinctions.
@@ -590,7 +590,7 @@ Source order never establishes precedence.
 Every valid authored rule in `rules/` joins its rule group, and needs no configuration entry.
 An authored rule with the same ID as an included rule doesn't replace it; name it in an exclusion's `replacedBy` to do that.
 An authored rule that an exclusion names as `replacedBy` appears once under its own ID; the excluded rule is removed from active output.
-The complete authored definition supplies the metadata, guidance, attribution, and assets. Configuration and provenance retain the replacement relationship.
+The complete authored definition supplies the metadata, guidance, attribution, and assets. Configuration retains the replacement relationship, and the generated rule names the rule it replaces.
 An authored `_group.yaml` defines a rule group, including an empty one, without any configuration entry.
 If authored metadata exists for an included rule group, its complete description and reading cues take precedence for discovery.
 Otherwise, descriptions from every contributing library remain source-labeled.
@@ -654,6 +654,6 @@ There's no upgrade command. Rewrite the file by hand:
 The caller-supplied `toolVersion` identifies the tool that generated the output.
 
 Each source's `ref` and pins state which versions the project wants: `ref` names the library release or revision, and every rule without a pin follows the source's lock, which `trailguide project update` moves together with `ref`.
-Vendored provenance records each included rule's and skill's version, library release, and commit, or a non-library source's commit, used by offline commands. It is output Trail Guide owns, not a second version the project chooses.
+The lockfile records each included rule's and skill's version, library release, and commit, or a non-library source's commit, used by offline commands. It is output Trail Guide owns, not a second version the project chooses.
 
 See [Library format](/reference/library-format/) for library contents and [Include rules](/guides/select-rules/#adapt-the-selection-to-your-project) for examples of exceptions.

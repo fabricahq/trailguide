@@ -372,7 +372,7 @@ There are three ways to add one:
 
 Pins are for rules only. To hold a skill back, see [Update skills](#update-skills).
 
-A pinned rule keeps its identity: it still appears as the library's rule, with its version, in your generated guidance and provenance. Every update preview lists it, with its newest version and your reason, so the decision isn't forgotten.
+A pinned rule keeps its identity: it still appears as the library's rule, with its version, in your generated guidance and `lock.json`. Every update preview lists it, with its newest version and your reason, so the decision isn't forgotten.
 
 When you're ready for the newer version, delete the pin and [update that rule](#update-one-rule-to-its-newest-version):
 

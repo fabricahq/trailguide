@@ -92,7 +92,7 @@ Trail Guide does not read rule text to detect contradictory instructions. Two so
 
 Trail Guide writes the active rules and reading indexes to `generated/`. Agents start at `generated/RULES.md`, open relevant rule groups, and read the applicable rules in full.
 
-The generated files also include library summaries, retained license files, and **provenance**: records of where rules and skills came from, which rules they replaced, and which library required, recommended, or offered each skill. Replacement targets and reasons stay in configuration and provenance, outside the rule guidance. Rule group descriptions remain labeled by source so you can see which library supplied them.
+The generated files also include library summaries, retained license files, and the [provenance](/reference/provenance/) of each rule and skill: where it came from, which rule it replaced and why, and which library required, recommended, or offered each skill. Rule group descriptions remain labeled by source so you can see which library supplied them.
 
 The same files support implementation and review. Your project chooses how to check that agents follow the rules; Trail Guide does not enforce compliance. Likewise, Trail Guide installs skills but doesn't run them, decide when agents use them, or check that agents followed them.
 
@@ -121,13 +121,13 @@ Skills aren't chosen one by one. Trail Guide copies every skill's whole folder f
 
 A rule or skill absent from a library release was retired, and the release record's `retired` entry records why. A rule the project pinned before its retirement keeps its pinned version. A retired skill is no longer installed once the project's library release moves past its retirement.
 
-To find versions, Trail Guide lists only `release/` tags, fetches their messages without the library's history, and fetches only the files it copies. It records each included rule's version and library release in `lock.json`, with the release's commit, and in generated provenance, and shows the version in generated guidance.
+To find versions, Trail Guide lists only `release/` tags, fetches their messages without the library's history, and fetches only the files it copies. It records each included rule's version and library release in `lock.json`, with the release's commit, and shows the version in generated guidance.
 
 ### Tracing rules to their source
 
 Trail Guide records the versions you requested, and each included rule's exact version and commit. See [Provenance](/reference/provenance/) for these records.
 
-Links to original files on GitHub.com and GitLab.com use the recorded commit, so moving a tag does not change their destination. For other Git hosts, links point to the stored files; provenance retains the repository address and commit.
+Links to original files on GitHub.com and GitLab.com use the recorded commit, so moving a tag does not change their destination. For other Git hosts, links point to the stored files; `lock.json` retains the repository address and commit.
 
 Trail Guide preserves rule attribution in both vendored and generated files and keeps attribution links valid. It verifies and retains the license and notice files declared in the library manifest, includes them in integrity checks, and reports their changes during updates.
 
@@ -141,7 +141,7 @@ A source whose repository has no library manifest at the revision Trail Guide re
 - **Skills.** Each folder in the repository that has a `SKILL.md` file is a skill, offered at no level, with its folder's path from the repository root as its ID. Trail Guide copies each installed skill's folder, as Git tracks it, to its path under `vendor/<source-name>/`, such as `vendor/pstack/skills/architect/`.
 - **Calls.** A skill's `trailguide-skills-used` list names skills in the same repository. Declare calls it leaves out with [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls). Its `trailguide-rules-used` list is ignored, because the repository has no rules.
 - **Validation.** Lenient: where a skill doesn't follow the Agent Skills format, such as a `name` that doesn't match its folder, a missing `description`, or a link outside the skill's folder, sync warns and installs the skill as it is. The checks that protect your project still fail: unsafe paths, symbolic links, submodules, Git LFS pointers, and the [source limits](#source-limits-and-version-errors).
-- **Licenses.** Trail Guide looks for terms in this order: the skill's `license` field in `SKILL.md`, a `LICENSE*` file in the skill's folder, and `LICENSE*` and `NOTICE*` files at the repository root. It records what it finds in provenance, and retains the root files, when present, under `generated/libraries/<source-name>/licenses/`, like a library's declared files. When a skill has none of these, sync fails with `license-not-found`.
+- **Licenses.** Trail Guide looks for terms in this order: the skill's `license` field in `SKILL.md`, a `LICENSE*` file in the skill's folder, and `LICENSE*` and `NOTICE*` files at the repository root. It retains the root files, when present, under `generated/libraries/<source-name>/licenses/`, like a library's declared files. When a skill has none of these, sync fails with `license-not-found`.
 
 `rules` is rejected on a non-library source.
 

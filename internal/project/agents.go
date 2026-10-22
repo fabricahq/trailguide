@@ -45,7 +45,7 @@ type AgentsChange struct {
 	Action string `json:"action"`
 }
 
-// toolVersion is the version generated output and the AGENTS.md section record, with a placeholder for development
+// toolVersion is the version the AGENTS.md section records, with a placeholder for development
 // builds that pass none.
 func toolVersion(options Options) string {
 	if options.ToolVersion == "" {

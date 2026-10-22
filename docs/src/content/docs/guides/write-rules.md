@@ -112,7 +112,7 @@ Omit `--bump` for a new rule. [Record changes to a library rule](/reference/rule
 
 Keep source attribution in the rule's metadata or Markdown body and preserve any required notices.
 Builds carry that attribution into the individual generated rule file; no separate attribution file is required.
-Unknown frontmatter fields, including `source:`, are rejected. Use `attribution` to record adaptation sources, and configuration to declare replacements. Generated provenance records the resolved origin.
+Unknown frontmatter fields, including `source:`, are rejected. Use `attribution` to record adaptation sources, and configuration to declare replacements. The generated rule links to its original file.
 When publishing or adapting rules, follow [License rules](/guides/license-rules/) to make permissions and attribution explicit.
 
 
@@ -128,7 +128,7 @@ For an existing compatible Trail Guide library, [include its rules](/guides/sele
 2. Create an adapted definition in a compatible library, which may contain just this one rule. Preserve the original separately when useful for reviewing future updates.
 3. Add the required metadata and an activity-based `whenToRead` cue. Preserve the obligation, important conditions, exceptions, and examples; explain deliberate changes. A detector's analysis limitations do not automatically become exceptions to a written rule.
 4. Declare the library-wide license and notice files in the library's [manifest](/reference/library-format/#the-manifest). Record per-rule [attribution](/reference/rule-format/#rule-attribution) with a commit-pinned source URL and describe the adaptation.
-5. Review the adaptation against the [authoring rubric](/reference/rule-authoring/), then generate and inspect the resolved rule, license links, and provenance. Commit the adapted source and retained notices together.
+5. Review the adaptation against the [authoring rubric](/reference/rule-authoring/), then generate and inspect the resolved rule, its license links, and its source link. Commit the adapted source and retained notices together.
 
 An agent can help prepare the adaptation, but Trail Guide does not currently convert arbitrary repositories automatically. Do not place modified material in `vendor/` and claim it is an unchanged snapshot of the original commit. The adapted library has its own repository and rule versions while retaining the earlier attribution chain. A project's own rules are for guidance you author for that project.
 

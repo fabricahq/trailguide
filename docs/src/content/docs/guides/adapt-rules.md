@@ -83,10 +83,9 @@ Sync fetches the included rules, generates resolved rules and license links, and
 See [Configuration](/reference/configuration/) for adding a source and choosing rules.
 
 After generating the files, confirm that the rule displays the MIT declaration and attribution to the original document.
-Its entry in `generated/provenance.json` should record `licenseBasis: "library"`.
 Open `generated/libraries/<source-name>/README.md` for the library summary.
 Follow the generated rule’s license and notice links into `generated/libraries/<source-name>/licenses/`.
-The copies preserve the original text; provenance maps their source and generated paths.
+The copies preserve the original text; the originals stay in `vendor/<source-name>/`.
 
 ## 5. Maintain the adaptation
 

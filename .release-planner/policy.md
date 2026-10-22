@@ -12,8 +12,8 @@ A change is breaking when it changes any of these in a way that forces users to 
 - The rule library format: rule, group, and library files, and the IDs other projects reference
 - Library releases: change notes in `changes/`, `release/<number>` tags, and the release record in their tag messages, which other Trail Guide versions read
 - The exported API of the `github.com/fabricahq/trailguide/trailguide` Go package, which other tools import to read libraries
-- Vendored source records (`vendor/<source>/_source.json`), which projects commit
-- Generated files, including `generated/provenance.json`
+- The lockfile (`lock.json`), which projects commit
+- Generated files
 - The managed project README format (`.trailguide/README.md`); see [Choosing a version](#choosing-a-version)
 - Supported platforms, and the release archive names, `SHA256SUMS`, and attestation signer that the standalone installer, the Homebrew tap, and generated library CI workflows depend on
 
