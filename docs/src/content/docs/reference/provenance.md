@@ -216,7 +216,7 @@ Each source's entry has these fields:
 | `files` | Each file in the source's snapshot and its SHA-256 digest, written as lowercase hexadecimal text. A rule's files come from the commit of its own `release`, because the snapshot holds one version of each rule. |
 | `executable` | The snapshot paths whose executable bit is set, sorted. A file's mode is part of its content, so offline checks compare it as they compare digests. |
 | `curated` | The sources a library curates skills from, as [Curated sources in the lockfile](#curated-sources-in-the-lockfile) describes. Omitted when the project installs no curated skill. |
-| `integrity` | The entry's digest, which proves that Trail Guide wrote it; see [Integrity](#integrity). |
+| `integrity` | A checksum of the entry, which detects an entry edited by hand or combined by a merge. Anyone can recompute it, so it doesn't prove who wrote the entry; see [Integrity](#integrity). |
 
 A rule's `version` and `release` are `null` when the vendored file isn't a published version, which can happen only when your `ref` names a revision other than a library release. Generated guidance shows no version for it.
 
@@ -226,7 +226,7 @@ For a prefix selector, the snapshot must contain every rule the prefix reaches i
 
 `integrity` is `sha256-` followed by the base64 SHA-256 of the entry's canonical form: the JSON object `{"entry": …, "name": …}`, holding the entry without `integrity` and the source's name, serialized as [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) specifies. Formatting and key order therefore don't matter, but any change to a field, an added or removed field, or moving the entry to another source's name does.
 
-Trail Guide trusts only an entry it wrote. Offline, `trailguide project build` and `trailguide project check` refuse an entry whose `integrity` doesn't match, or that has none, as changed outside Trail Guide, such as by hand or in a merge resolution, because its versions can't be trusted without the source. Sync, update, and a [fork](/reference/cli/#fork-a-library-rule) refuse it too and write nothing; no check of individual facts can establish that an edited entry is right. An entry for a source you removed from configuration is discarded with its snapshot, whatever it says, unless an authored rule needs the rule group metadata in that snapshot.
+Offline, `trailguide project build` and `trailguide project check` refuse an entry whose `integrity` doesn't match, or that has none, as changed outside Trail Guide, such as by hand or in a merge resolution, because its versions can't be trusted without the source. Sync, update, and a [fork](/reference/cli/#fork-a-library-rule) refuse it too and write nothing; no check of individual facts can establish that an edited entry is right. An entry for a source you removed from configuration is discarded with its snapshot, whatever it says, unless an authored rule needs the rule group metadata in that snapshot.
 
 When an entry was changed outside Trail Guide, restore the one Trail Guide wrote, then sync:
 
@@ -241,7 +241,7 @@ When the entry can't be restored, take the source again at its `ref`. This resol
 trailguide project sync --retake fabrica
 ```
 
-Strict parsing also refuses a key that appears twice in an object, and a field the format doesn't define. Integrity detects mistakes and stray edits; it doesn't authenticate files against the remote repository if someone changed both the files and the lockfile and recomputed the digest.
+Strict parsing also refuses a key that appears twice in an object, and a field the format doesn't define. `integrity` is an unkeyed checksum: it detects accidental edits and merge results that combine both sides, but anyone can recompute it, so it can't detect a deliberate change to both an entry and its checksum, or authenticate files against the remote repository.
 
 ### Skills in the lockfile
 
@@ -314,7 +314,15 @@ Resolve each conflicted source by keeping one side's whole entry, never lines fr
 trailguide project sync
 ```
 
-When the side you kept is behind the other, such as the older release, take the newer one with `trailguide project update SOURCE`. When an entry can't be resolved cleanly, run `trailguide project sync --retake SOURCE` instead.
+When the side you kept is behind the other, such as the older release, take the newer one with `trailguide project update SOURCE`.
+
+When you'd rather not choose a side, leave the conflict markers in place and retake each conflicted source. Sync keeps the entries both sides agree on, resolves each retaken source again at its `ref`, and writes `lock.json` without markers:
+
+```sh
+trailguide project sync --retake fabrica
+```
+
+This works only when both sides of the file are valid JSON and you retake every conflicted source; otherwise sync still fails with `lock-conflict`. In that case, restore valid JSON first, such as by taking one whole side with `git checkout --ours -- .trailguide/lock.json`, then sync, with `--retake` for any source whose entry you don't trust.
 
 ### Migrate from Trail Guide 0.5
 
@@ -336,7 +344,13 @@ A record changed outside Trail Guide 0.5 is refused as an edited lock entry is, 
 
 ### When the lockfile is missing
 
-When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. When configuration names no source, delete `.trailguide/vendor/` instead.
+When `lock.json` is missing but `vendor/` holds files a sync wrote, every command fails with `lock-missing`, because sync never resolves a source again on its own. Restore the file with `git checkout -- .trailguide/lock.json`, and sync. To take every source again at its `ref` instead, retake each one, such as `trailguide project sync --retake fabrica --retake tools`. The same applies when `lock.json` exists but doesn't read at all, such as a truncated file: every command fails, and only a restore, or a sync that retakes every configured source, recovers it. When configuration names no source, delete `.trailguide/vendor/` instead.
+
+When `lock.json` exists but has no entry for a configured source whose vendor folder holds files, such as after a merge resolution dropped the entry, every command fails with `lock-entry-missing`. Sync doesn't treat the source as new, since that could move it. Restore the entry from Git and sync, or take the source again at its `ref`:
+
+```sh
+trailguide project sync --retake fabrica
+```
 
 ### What offline checks can verify
 

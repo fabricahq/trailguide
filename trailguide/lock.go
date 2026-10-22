@@ -123,8 +123,11 @@ func (e *UnsupportedLockError) Error() string {
 
 // LockConflictError reports a lockfile with unresolved merge conflicts. Sources lists, by name, each source whose
 // entry differs between the two sides, with what each side locked, so the conflict can be resolved one entry at a time.
+// When both sides read as JSON, Ours is the lockfile with every conflict resolved to the first side, so a caller that
+// resolves each conflicted source again can still use the entries both sides agree on; otherwise it is nil.
 type LockConflictError struct {
 	Sources []ConflictedSource
+	Ours    []byte
 }
 
 // ConflictedSource is one source whose entry a merge conflict splits. Ours and Theirs are nil when that side has no
@@ -143,7 +146,7 @@ type LockedRevision struct {
 
 func (e *LockConflictError) Error() string {
 	var text strings.Builder
-	text.WriteString(LockFile + " has unresolved merge conflicts. Resolve each conflicted source by keeping one side's whole entry, never lines from both, and leave other sources as Git merged them; then run trailguide project sync, and trailguide project update SOURCE to take the other side's change too.")
+	text.WriteString(LockFile + " has unresolved merge conflicts. Resolve each conflicted source by keeping one side's whole entry, never lines from both, and leave other sources as Git merged them; then run trailguide project sync, and trailguide project update SOURCE to take the other side's change too. Or leave the markers and run trailguide project sync with --retake for each conflicted source, which resolves it again at its ref.")
 	for _, source := range e.Sources {
 		fmt.Fprintf(&text, " %s: ours %s, theirs %s.", source.Name, source.Ours.describe(), source.Theirs.describe())
 	}
@@ -183,7 +186,7 @@ func ParseLock(data []byte) (Lock, error) {
 // such as to resolve a refused source again. It fails only for a problem with the whole file.
 func ParseLockEntries(data []byte) (Lock, map[string]error, error) {
 	if conflicted := conflictedLines(data); conflicted {
-		return Lock{}, nil, &LockConflictError{Sources: lockConflicts(data)}
+		return Lock{}, nil, lockConflict(data)
 	}
 	value, err := decodeStrict(data, LockFile)
 	if err != nil {
@@ -1080,11 +1083,13 @@ func conflictMarker(line []byte) (byte, bool) {
 	return 0, false
 }
 
-// lockConflicts returns the sources whose entries differ between the two sides of data's merge conflicts, by name,
-// with what each side locked. A side that doesn't parse as JSON names no sources.
-func lockConflicts(data []byte) []ConflictedSource {
+// lockConflict returns the conflict error for data: the sources whose entries differ between the two sides of its
+// merge conflicts, by name, with what each side locked, and the first side when both sides read as JSON. A side that
+// doesn't parse as JSON names no sources.
+func lockConflict(data []byte) *LockConflictError {
 	ours, theirs := conflictSides(data)
-	oursSources, theirsSources := sideSources(ours), sideSources(theirs)
+	oursSources, oursRead := sideSources(ours)
+	theirsSources, theirsRead := sideSources(theirs)
 	names := slices.Sorted(maps.Keys(oursSources))
 	for name := range theirsSources {
 		if _, ok := oursSources[name]; !ok {
@@ -1092,12 +1097,15 @@ func lockConflicts(data []byte) []ConflictedSource {
 		}
 	}
 	slices.Sort(names)
-	result := []ConflictedSource{}
+	result := &LockConflictError{Sources: []ConflictedSource{}}
 	for _, name := range names {
 		a, b := oursSources[name], theirsSources[name]
 		if a.text != b.text {
-			result = append(result, ConflictedSource{Name: name, Ours: a.revision, Theirs: b.revision})
+			result.Sources = append(result.Sources, ConflictedSource{Name: name, Ours: a.revision, Theirs: b.revision})
 		}
+	}
+	if oursRead && theirsRead {
+		result.Ours = ours
 	}
 	return result
 }
@@ -1134,14 +1142,15 @@ type sideSource struct {
 	revision *LockedRevision
 }
 
-// sideSources reads one side of a conflicted lock without verifying it, returning each source's entry.
-func sideSources(data []byte) map[string]sideSource {
+// sideSources reads one side of a conflicted lock without verifying it, returning each source's entry and whether
+// the side reads as a JSON object of sources.
+func sideSources(data []byte) (map[string]sideSource, bool) {
 	value, err := decodeStrict(data, LockFile)
 	result := map[string]sideSource{}
 	top, _ := value.(map[string]any)
-	sources, _ := top["sources"].(map[string]any)
-	if err != nil {
-		return result
+	sources, ok := top["sources"].(map[string]any)
+	if err != nil || !ok {
+		return result, false
 	}
 	for name, raw := range sources {
 		var canonical bytes.Buffer
@@ -1155,5 +1164,5 @@ func sideSources(data []byte) map[string]sideSource {
 		}
 		result[name] = sideSource{text: canonical.String(), revision: revision}
 	}
-	return result
+	return result, true
 }

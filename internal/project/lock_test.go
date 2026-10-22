@@ -386,3 +386,119 @@ func TestProject_RefusesAMissingLockfile(t *testing.T) {
 	}
 	requireCurrent(t, options)
 }
+
+// lockedProject returns a project synced at library release 1 with ref latest-release, after the library publishes
+// release 2, so any sync that resolves the source again moves it.
+func lockedProject(t *testing.T) (Options, imports.Options) {
+	t.Helper()
+	f, options, git := syncProject(t)
+	configure(t, options, f, `"rules":{"include":["techs/go/*"]},"ref":"latest-release"`)
+	if _, err := Sync(context.Background(), options, git); err != nil {
+		t.Fatal(err)
+	}
+	secondRelease(t, f)
+	return options, git
+}
+
+// requireRefusal fails the test unless every command in errs failed with code, and the project is still before.
+func requireRefusal(t *testing.T, options Options, before *filetxn.Tree, code string, errs map[string]error) {
+	t.Helper()
+	for name, err := range errs {
+		var failure *filetxn.Error
+		if !errors.As(err, &failure) || failure.Code != code {
+			t.Errorf("%s: %v; want %s", name, err, code)
+		}
+	}
+	if projectTree(t, options).Digest() != before.Digest() {
+		t.Fatal("a refusal changed the project")
+	}
+}
+
+// TestSync_RefusesALockEntryRemovedOutsideTrailGuide: a configured source whose vendor folder has files but whose
+// lock entry is gone, such as after a merge resolution dropped it, isn't resolved again as a new source, which would
+// move it; sync and check refuse it, writing nothing, and --retake resolves it again.
+func TestSync_RefusesALockEntryRemovedOutsideTrailGuide(t *testing.T) {
+	ctx := context.Background()
+	options, git := lockedProject(t)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, lockFile, `{"lockVersion": 1, "sources": {}}`+"\n")
+	before := projectTree(t, options)
+	_, syncErr := Sync(ctx, options, git)
+	_, checkErr := Check(ctx, options)
+	requireRefusal(t, options, before, "lock-entry-missing", map[string]error{"sync": syncErr, "check": checkErr})
+	if !strings.Contains(syncErr.Error(), "sync --retake team") {
+		t.Fatalf("sync: %v", syncErr)
+	}
+	if _, err := Sync(ctx, options, git, "team"); err != nil {
+		t.Fatal(err)
+	}
+	if entry := lockedEntry(t, options, "team"); entry.Release != 2 {
+		t.Fatalf("retaken at release %d; want 2", entry.Release)
+	}
+	requireCurrent(t, options)
+}
+
+// TestSync_RetakesEachConflictedSourceThroughConflictMarkers: a lockfile with merge conflict markers fails every
+// command, naming the conflicted source, and sync with --retake for every conflicted source resolves each again at
+// its ref, keeping the entries both sides agree on, and writes a lockfile without markers.
+func TestSync_RetakesEachConflictedSourceThroughConflictMarkers(t *testing.T) {
+	ctx := context.Background()
+	options, git := lockedProject(t)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	ours := readRepositoryFile(t, options, ".trailguide/lock.json")
+	start := strings.Index(ours, `    "team": {`)
+	end := start + strings.Index(ours[start:], "\n    }") + len("\n    }")
+	block := ours[start:end]
+	theirs := strings.Replace(block, `"ref": "latest-release"`, `"ref": "release/2"`, 1)
+	writeFixture(t, root, lockFile, ours[:start]+"<<<<<<< HEAD\n"+block+"\n=======\n"+theirs+"\n>>>>>>> theirs"+ours[end:])
+	before := projectTree(t, options)
+	_, syncErr := Sync(ctx, options, git)
+	_, checkErr := Check(ctx, options)
+	requireRefusal(t, options, before, "lock-conflict", map[string]error{"sync": syncErr, "check": checkErr})
+	if !strings.Contains(syncErr.Error(), "team: ours ref latest-release") {
+		t.Fatalf("sync: %v", syncErr)
+	}
+	if _, err := Sync(ctx, options, git, "team"); err != nil {
+		t.Fatal(err)
+	}
+	if text := readRepositoryFile(t, options, ".trailguide/lock.json"); strings.Contains(text, "<<<<<<<") {
+		t.Fatalf("lock.json kept conflict markers:\n%s", text)
+	}
+	requireCurrent(t, options)
+}
+
+// TestSync_RetakingEverySourceRecoversAnUnreadableLockfile: a lockfile that doesn't read at all fails every command,
+// writing nothing, unless sync resolves every configured source again.
+func TestSync_RetakingEverySourceRecoversAnUnreadableLockfile(t *testing.T) {
+	ctx := context.Background()
+	options, git := lockedProject(t)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, lockFile, `{"lockVersion": 1, "sources": {`)
+	before := projectTree(t, options)
+	_, syncErr := Sync(ctx, options, git)
+	_, checkErr := Check(ctx, options)
+	for name, err := range map[string]error{"sync": syncErr, "check": checkErr} {
+		if err == nil || !strings.Contains(err.Error(), "--retake for every source") {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if projectTree(t, options).Digest() != before.Digest() {
+		t.Fatal("a refusal changed the project")
+	}
+	if _, err := Sync(ctx, options, git, "team"); err != nil {
+		t.Fatal(err)
+	}
+	requireCurrent(t, options)
+}

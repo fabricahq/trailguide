@@ -61,7 +61,20 @@ func readRecords(config rules.Configuration, data []byte, vendor map[string][]by
 		return sourceRecords{}, failure("mixed-layout", fmt.Sprintf(".trailguide/%s and per-source records from Trail Guide 0.5, such as .trailguide/vendor/%s/%s, are both present. Sync never writes both, so a merge combined a migrated branch with one that wasn't. Take one branch's whole .trailguide/vendor/ folder and %s, then run trailguide project sync", lockFile, legacy[0], legacyRecord, lockFile), nil)
 	}
 	if data != nil {
-		return lockRecords(config, data, retake)
+		records, err := lockRecords(config, data, retake)
+		if err != nil {
+			return sourceRecords{}, err
+		}
+		// An entry deleted from the lock, such as in a merge resolution, leaves the source's vendor folder behind;
+		// resolving the source again could move it, so only --retake does.
+		for _, source := range config.Sources {
+			_, recorded := records.records[source.Name]
+			if recorded || slices.Contains(retake, source.Name) || !hasFolder(vendor, source.Name) {
+				continue
+			}
+			return sourceRecords{}, failure("lock-entry-missing", fmt.Sprintf(".trailguide/%s has no entry for sources.%s, though .trailguide/vendor/%s/ has files a sync wrote, so the entry was removed outside Trail Guide. Restore it, such as with git checkout -- .trailguide/%s, and run trailguide project sync; or %s", lockFile, source.Name, source.Name, lockFile, retakeAdvice(source.Name)), nil)
+		}
+		return records, nil
 	}
 	if len(legacy) > 0 {
 		if !migrate {
@@ -108,12 +121,19 @@ func lockRecords(config rules.Configuration, data []byte, retake []string) (sour
 	var conflict *trailguide.LockConflictError
 	var newer *trailguide.UnsupportedLockError
 	switch {
+	case err != nil && !errors.As(err, &newer) && len(config.Sources) > 0 && retakesAll(config, retake):
+		// A lockfile that doesn't read, conflicted or not, holds nothing sync needs when it resolves every source
+		// again.
+		return sourceRecords{records: map[string]parsedRecord{}, refused: map[string]error{}}, nil
+	case errors.As(err, &conflict) && conflict.Ours != nil && len(conflict.Sources) > 0 && !slices.ContainsFunc(conflict.Sources, func(source trailguide.ConflictedSource) bool { return !slices.Contains(retake, source.Name) }):
+		// Every conflicted source is resolved again, so the entries both sides agree on are all that's needed.
+		return lockRecords(config, conflict.Ours, retake)
 	case errors.As(err, &conflict):
 		return sourceRecords{}, failure("lock-conflict", conflict.Error(), nil)
 	case errors.As(err, &newer):
 		return sourceRecords{}, failure("unsupported-lock", newer.Error(), nil)
 	case err != nil:
-		return sourceRecords{}, lockError(err, "restore .trailguide/"+lockFile+" from Git, such as with git checkout -- .trailguide/"+lockFile+", and run trailguide project sync")
+		return sourceRecords{}, lockError(err, "restore .trailguide/"+lockFile+" from Git, such as with git checkout -- .trailguide/"+lockFile+", and run trailguide project sync; or run trailguide project sync with --retake for every source, which resolves each again at its ref")
 	}
 	configured := func(name string) bool {
 		return slices.ContainsFunc(config.Sources, func(source rules.Source) bool { return source.Name == name })
@@ -341,4 +361,19 @@ func recordSkills(entries map[string]trailguide.LockedSkill) map[string]recordSk
 		result[id] = recordSkill{Level: skill.Level, Included: skill.Included, UsedBy: skill.UsedBy, UsedByLibrary: usedByLibrary}
 	}
 	return result
+}
+
+// hasFolder reports whether vendor, the vendor tree's files, has any under the folder name.
+func hasFolder(vendor map[string][]byte, name string) bool {
+	for file := range vendor {
+		if strings.HasPrefix(file, name+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// retakesAll reports whether retake names every source config has.
+func retakesAll(config rules.Configuration, retake []string) bool {
+	return !slices.ContainsFunc(config.Sources, func(source rules.Source) bool { return !slices.Contains(retake, source.Name) })
 }
