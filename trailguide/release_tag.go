@@ -6,9 +6,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strconv"
+
+	"github.com/fabricahq/trailguide/internal/gitsource"
 )
 
 // ErrNotReleaseTag identifies a tag name that isn't a library release tag, release/<number>. Trail Guide ignores
@@ -18,18 +19,15 @@ var ErrNotReleaseTag = errors.New("not a library release tag")
 // releaseSeparator divides a release tag's Markdown notes from its YAML record.
 const releaseSeparator = "---"
 
-var releaseTagPattern = regexp.MustCompile(`^release/([1-9][0-9]{0,8})$`)
-
 // ParseReleaseTag returns the library release number of a tag named release/<number>, such as release/4, from the
 // tag's short name, without refs/tags/. Numbers start at 1 and are below one billion. It rejects every other name,
 // including leading zeros, such as release/01, so each library release has exactly one tag name, with an error
 // that wraps ErrNotReleaseTag.
 func ParseReleaseTag(name string) (int, error) {
-	parts := releaseTagPattern.FindStringSubmatch(name)
-	if parts == nil {
+	number, ok := gitsource.ReleaseNumber(name)
+	if !ok {
 		return 0, fmt.Errorf("%s: %w: expected release/<number>, such as release/4", name, ErrNotReleaseTag)
 	}
-	number, _ := strconv.Atoi(parts[1])
 	return number, nil
 }
 

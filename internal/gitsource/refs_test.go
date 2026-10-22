@@ -1,6 +1,6 @@
 // Check exact ref classification and version-tag validation against shared expectations.
 
-package rules_test
+package gitsource_test
 
 import (
 	"encoding/json"
@@ -9,20 +9,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/gitsource"
 )
 
 // projectedRef is a ref's canonical form as the fixtures describe it: a commit's lowercase SHA, or a tag's or branch's
 // full name.
 type projectedRef struct {
-	Kind rules.GitRefKind `json:"kind"`
-	SHA  string           `json:"sha,omitempty"`
-	Name string           `json:"name,omitempty"`
+	Kind gitsource.GitRefKind `json:"kind"`
+	SHA  string               `json:"sha,omitempty"`
+	Name string               `json:"name,omitempty"`
 }
 
 // projection returns ref's canonical form for comparison with a fixture.
-func projection(ref rules.GitRef) projectedRef {
-	if ref.Kind() == rules.GitRefCommit {
+func projection(ref gitsource.GitRef) projectedRef {
+	if ref.Kind() == gitsource.GitRefCommit {
 		return projectedRef{Kind: ref.Kind(), SHA: ref.Canonical()}
 	}
 	return projectedRef{Kind: ref.Kind(), Name: ref.Canonical()}
@@ -50,9 +50,9 @@ func TestRefsSharedExpectations(t *testing.T) {
 		t.Run(test.ID, func(t *testing.T) {
 			switch test.Operation {
 			case "gitRef":
-				got, err := rules.ParseGitRef(test.Input, test.Location)
+				got, err := gitsource.ParseGitRef(test.Input, test.Location)
 				if !test.Expected.OK {
-					var validation *rules.ValidationError
+					var validation *gitsource.ValidationError
 					if !errors.As(err, &validation) || err.Error() != test.Expected.Error.Message || validation.Location != test.Expected.Error.Location {
 						t.Fatalf("got %v; want %s", err, test.Expected.Error.Message)
 					}
@@ -69,9 +69,9 @@ func TestRefsSharedExpectations(t *testing.T) {
 					t.Fatalf("got %#v, %v; want %#v spelled %q", got, err, expected, test.Input)
 				}
 			case "tagVersion":
-				got, err := rules.TagVersion(test.Input, test.Location)
+				got, err := gitsource.TagVersion(test.Input, test.Location)
 				if !test.Expected.OK {
-					var validation *rules.ValidationError
+					var validation *gitsource.ValidationError
 					if !errors.As(err, &validation) || err.Error() != test.Expected.Error.Message || validation.Location != test.Expected.Error.Location {
 						t.Fatalf("got %v; want %s", err, test.Expected.Error.Message)
 					}
@@ -95,9 +95,9 @@ func TestRefsSharedExpectations(t *testing.T) {
 }
 
 // ref parses text, failing the test when it isn't a valid ref.
-func ref(t *testing.T, text string) rules.GitRef {
+func ref(t *testing.T, text string) gitsource.GitRef {
 	t.Helper()
-	parsed, err := rules.ParseGitRef(text, "ref")
+	parsed, err := gitsource.ParseGitRef(text, "ref")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,8 +106,8 @@ func ref(t *testing.T, text string) rules.GitRef {
 
 // TestGitRef_ZeroValueMeansNoRef treats the zero value as no ref, empty in text and equal only to itself.
 func TestGitRef_ZeroValueMeansNoRef(t *testing.T) {
-	var none rules.GitRef
-	if !none.IsZero() || none.String() != "" || none.Kind() != "" || none.Canonical() != "" || !none.Equal(rules.GitRef{}) {
+	var none gitsource.GitRef
+	if !none.IsZero() || none.String() != "" || none.Kind() != "" || none.Canonical() != "" || !none.Equal(gitsource.GitRef{}) {
 		t.Fatalf("zero value %#v", none)
 	}
 	if tag := ref(t, "release/5"); tag.IsZero() || none.Equal(tag) || tag.Equal(none) {
@@ -143,24 +143,30 @@ func TestGitRef_EqualComparesCanonicalFormsAndStringKeepsTheSpelling(t *testing.
 	}
 }
 
+// source holds a ref the way a configuration's source does, so it is left out when absent.
+type source struct {
+	Name string           `json:"name"`
+	Ref  gitsource.GitRef `json:"ref,omitzero"`
+}
+
 // TestGitRef_JSONCarriesTheAuthoredText encodes a ref as its authored text, omits a source's absent ref, and decodes
 // the text back into an equal ref, refusing text that isn't a ref.
 func TestGitRef_JSONCarriesTheAuthoredText(t *testing.T) {
 	for _, text := range []string{"release/5", "refs/tags/release/5", "ABCDEF0123456789ABCDEF0123456789ABCDEF01"} {
-		encoded, err := json.Marshal(rules.Source{Name: "team", Ref: ref(t, text)})
+		encoded, err := json.Marshal(source{Name: "team", Ref: ref(t, text)})
 		if err != nil || !strings.Contains(string(encoded), `"ref":"`+text+`"`) {
 			t.Fatalf("encoded %s, %v", encoded, err)
 		}
-		var decoded rules.Source
+		var decoded source
 		if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Ref.String() != text || !decoded.Ref.Equal(ref(t, text)) {
 			t.Fatalf("decoded %#v, %v", decoded.Ref, err)
 		}
 	}
-	if encoded, err := json.Marshal(rules.Source{Name: "team"}); err != nil || strings.Contains(string(encoded), `"ref"`) {
+	if encoded, err := json.Marshal(source{Name: "team"}); err != nil || strings.Contains(string(encoded), `"ref"`) {
 		t.Fatalf("an absent ref was encoded: %s, %v", encoded, err)
 	}
-	var decoded rules.GitRef
-	var validation *rules.ValidationError
+	var decoded gitsource.GitRef
+	var validation *gitsource.ValidationError
 	if err := json.Unmarshal([]byte(`"refs/remotes/origin/main"`), &decoded); !errors.As(err, &validation) || !decoded.IsZero() {
 		t.Fatalf("decoded a remote-tracking ref: %#v, %v", decoded, err)
 	}
@@ -184,15 +190,15 @@ func TestGitRef_BareAndNameTellHowANameWasWritten(t *testing.T) {
 			t.Errorf("%q: bare %v, name %q; want %v, %q", test.text, got.Bare(), got.Name(), test.bare, test.name)
 		}
 	}
-	if none := (rules.GitRef{}); none.Bare() || none.Name() != "" {
+	if none := (gitsource.GitRef{}); none.Bare() || none.Name() != "" {
 		t.Errorf("zero value: bare %v, name %q", none.Bare(), none.Name())
 	}
 }
 
 // TestGitRefErrorLocation checks that the caller owns the diagnostic path.
 func TestGitRefErrorLocation(t *testing.T) {
-	_, err := rules.ParseGitRef("refs/remotes/origin/main", "config.sources.other.ref")
-	var validation *rules.ValidationError
+	_, err := gitsource.ParseGitRef("refs/remotes/origin/main", "config.sources.other.ref")
+	var validation *gitsource.ValidationError
 	if !errors.As(err, &validation) || validation.Location != "config.sources.other.ref" {
 		t.Fatalf("unexpected error location: %v", err)
 	}
@@ -207,7 +213,7 @@ func TestGitRef_ReleaseAndLatestReleaseNameLibraryReleases(t *testing.T) {
 			t.Errorf("%s: release %d, latest %t, follows releases %t", text, got.Release(), got.LatestRelease(), got.FollowsReleases())
 		}
 	}
-	if (rules.GitRef{}).FollowsReleases() {
+	if (gitsource.GitRef{}).FollowsReleases() {
 		t.Fatal("no ref follows releases")
 	}
 }

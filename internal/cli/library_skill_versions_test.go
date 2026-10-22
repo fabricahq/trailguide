@@ -19,7 +19,7 @@ func TestLibrarySkillVersions_ReportsANewRecommendedSkillInCheckAndRelease(t *te
 	ctx := context.Background()
 	fixture, dir := releasedLibrary(t)
 	if _, err := fixture.Commit(ctx, dir, "Add a skill", gitfixture.Library(map[string][]byte{
-		"config.yaml":                        []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  skills:\n    recommended: [skills/review]\n"),
+		"config.yaml":                        []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  skills:\n    recommended: [skills/review]\n"),
 		".trailguide/skills/review/SKILL.md": []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n"),
 	})); err != nil {
 		t.Fatal(err)

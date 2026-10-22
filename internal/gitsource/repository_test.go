@@ -1,6 +1,6 @@
 // Exercise repository identities, safe diagnostics, and file links through the public API.
 
-package rules_test
+package gitsource_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/gitsource"
 )
 
 // TestRepositorySharedExpectations checks exact outputs and typed, zero-result failures.
@@ -45,13 +45,13 @@ func TestRepositorySharedExpectations(t *testing.T) {
 				if err := json.Unmarshal(test.Input, &input); err != nil {
 					t.Fatal(err)
 				}
-				repository, err := rules.ParseRepository(input.Repository, test.Location)
+				repository, err := gitsource.ParseRepository(input.Repository, test.Location)
 				if !test.Expected.OK {
-					var validation *rules.ValidationError
+					var validation *gitsource.ValidationError
 					if !errors.As(err, &validation) || err.Error() != test.Expected.Error.Message || validation.Location != test.Expected.Error.Location {
 						t.Fatalf("got %v; want %s", err, test.Expected.Error.Message)
 					}
-					if !reflect.DeepEqual(repository, rules.Repository{}) {
+					if !reflect.DeepEqual(repository, gitsource.Repository{}) {
 						t.Fatalf("failure returned partial data: %#v", repository)
 					}
 					return
@@ -69,12 +69,12 @@ func TestRepositorySharedExpectations(t *testing.T) {
 				}
 				return
 			}
-			got, err := rules.ParseRepository(test.Input, test.Location)
+			got, err := gitsource.ParseRepository(test.Input, test.Location)
 			if !bytes.Equal(test.Input, original) {
 				t.Fatal("parser changed the caller's address")
 			}
 			if test.Expected.OK {
-				var expected rules.Repository
+				var expected gitsource.Repository
 				if decodeErr := json.Unmarshal(test.Expected.Value, &expected); decodeErr != nil {
 					t.Fatal(decodeErr)
 				}
@@ -83,11 +83,11 @@ func TestRepositorySharedExpectations(t *testing.T) {
 				}
 				return
 			}
-			var validation *rules.ValidationError
+			var validation *gitsource.ValidationError
 			if !errors.As(err, &validation) || err.Error() != test.Expected.Error.Message || validation.Location != test.Expected.Error.Location {
 				t.Fatalf("got %v; want %s", err, test.Expected.Error.Message)
 			}
-			if !reflect.DeepEqual(got, rules.Repository{}) {
+			if !reflect.DeepEqual(got, gitsource.Repository{}) {
 				t.Fatalf("failure returned partial data: %#v", got)
 			}
 		})
@@ -97,7 +97,7 @@ func TestRepositorySharedExpectations(t *testing.T) {
 // TestRepositoryMalformedJSON checks direct-call syntax failures outside the lab envelope.
 func TestRepositoryMalformedJSON(t *testing.T) {
 	for _, input := range []string{"", `"unterminated`, `"\u0"`, `true`, `"a" "b"`} {
-		_, err := rules.ParseRepository(json.RawMessage(input), "repo")
+		_, err := gitsource.ParseRepository(json.RawMessage(input), "repo")
 		if err == nil || err.Error() != "repo: expected nonempty text" {
 			t.Fatalf("got %v for %q", err, input)
 		}
@@ -111,10 +111,10 @@ func FuzzParseRepository(f *testing.F) {
 	}
 	// Arbitrary bytes must produce a complete repository or a typed validation failure.
 	f.Fuzz(func(t *testing.T, input string) {
-		got, err := rules.ParseRepository(json.RawMessage(input), "repo")
+		got, err := gitsource.ParseRepository(json.RawMessage(input), "repo")
 		if err != nil {
-			var validation *rules.ValidationError
-			if !errors.As(err, &validation) || !reflect.DeepEqual(got, rules.Repository{}) {
+			var validation *gitsource.ValidationError
+			if !errors.As(err, &validation) || !reflect.DeepEqual(got, gitsource.Repository{}) {
 				t.Fatalf("invalid failure result: %#v, %v", got, err)
 			}
 			if strings.Contains(err.Error(), "secret") {

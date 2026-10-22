@@ -64,8 +64,8 @@ func (l SkillLevels) Curated() []string {
 
 // parseSkillLevels validates library.skills at location: an object of required, recommended, offered, and dependencies
 // lists of skill IDs, each listed once, each curated one from one of sources, the names the configuration's sources
-// declare. A missing object lists none.
-func parseSkillLevels(input json.RawMessage, location string, sources []string) (SkillLevels, error) {
+// declare. A missing object lists none. With strict, unknown fields are rejected; otherwise they're ignored.
+func parseSkillLevels(input json.RawMessage, location string, sources []string, strict bool) (SkillLevels, error) {
 	result := SkillLevels{Required: []string{}, Recommended: []string{}, Offered: []string{}, Dependencies: []string{}}
 	if input == nil {
 		return result, nil
@@ -74,8 +74,10 @@ func parseSkillLevels(input json.RawMessage, location string, sources []string) 
 	if err != nil {
 		return SkillLevels{}, err
 	}
-	if err := decode.KnownFields(fields, skills.Lists, location); err != nil {
-		return SkillLevels{}, err
+	if strict {
+		if err := decode.KnownFields(fields, skills.Lists, location); err != nil {
+			return SkillLevels{}, err
+		}
 	}
 	seen := map[string]string{}
 	for _, level := range skills.Lists {

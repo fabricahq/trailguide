@@ -309,10 +309,10 @@ func (g *libraryGit) libraryFiles(ctx context.Context, treeish string, paths []s
 }
 
 // manifestDigest identifies what a library publishes of its manifest, data, which is a .trailguide/config.yaml or,
-// in a library release made before the layout of version 2, a rule-library.yaml: its library section, as
-// rules.PublishedManifest gives it, and the skill forks its release notes report, so a change to only the rest of
-// the sources the repository uses as a project, or to a comment, isn't a library-wide change. A manifest that doesn't parse, which library check reports, is identified
-// by its bytes.
+// in a library release made before the layout of version 2, a rule-library.yaml: its library section and the
+// repository and ref of each source it curates from, as rules.PublishedManifestOf gives them, and the skill forks its
+// release notes report, so a change to only the schema version, the project settings, or a comment isn't a
+// library-wide change. A manifest that doesn't parse, which library check reports, is identified by its bytes.
 func manifestDigest(data []byte) string {
 	published := data
 	if _, decoded, err := decode.YAML(data, librarytree.Manifest); err == nil {

@@ -210,12 +210,12 @@ func TestRelease_PublishesLibraryWideChangesWithoutRuleChanges(t *testing.T) {
 // declare, so a renamed license and a removed notice are listed under their old paths too.
 func TestRelease_ListsRenamedAndRemovedLicenseFiles(t *testing.T) {
 	files := libraryFiles()
-	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
 	files["LICENSE.md"] = []byte("MIT License\n")
 	files["NOTICE.md"] = []byte("Notice\n")
 	fixture, options := authorClone(t, files, releaseOne)
 	commitAndPush(t, fixture, options.Directory, map[string][]byte{
-		"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.txt\n    notices: []\n"),
+		"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.txt\n    notices: []\n"),
 		"LICENSE.md":  nil,
 		"LICENSE.txt": []byte("MIT License\n"),
 		"NOTICE.md":   nil,

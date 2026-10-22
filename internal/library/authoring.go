@@ -225,7 +225,7 @@ func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVe
 		}
 		planned := map[string][]byte{}
 		if declared == nil {
-			section := map[string]any{}
+			section := map[string]any{"formatVersion": trailguide.LibraryFormat}
 			if terms != nil {
 				notices := []string{}
 				if terms.Notice != nil {

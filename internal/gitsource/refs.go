@@ -1,15 +1,14 @@
 // Classify Git refs and validate strict semantic-version tags without Git access.
 
-package rules
+package gitsource
 
 import (
-	"fmt"
+	"encoding/json"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/decode"
-	"github.com/fabricahq/trailguide/trailguide"
 )
 
 // GitRefKind distinguishes a complete commit SHA, a tag name, and a branch name.
@@ -85,10 +84,7 @@ func (r GitRef) Release() int {
 	if r.kind != GitRefTag {
 		return 0
 	}
-	number, err := trailguide.ParseReleaseTag(r.Name())
-	if err != nil {
-		return 0
-	}
+	number, _ := ReleaseNumber(r.Name())
 	return number
 }
 
@@ -195,16 +191,30 @@ func TagVersion(tag, location string) (string, error) {
 	return version, nil
 }
 
-// RefRequiredProblem explains that source has no ref, which every source needs. release is the library release
-// that names the fix: the one the project records, when recorded is true, or else the library's newest. A release
-// of 0 means the source isn't a library or has no library release, so only a branch, tag, or commit fits.
-func RefRequiredProblem(source string, release int, recorded bool) string {
-	if release == 0 {
-		return fmt.Sprintf("sources.%s has no ref, and its repository has no library release to take, so the project must say which revision it takes: set sources.%s.ref in .trailguide/config.yaml to a branch, tag, or full commit SHA", source, source)
+// ParseRefField reads raw, a ref field's JSON value at location, such as sources.team.ref, with ParseGitRef. YAML
+// reads an unquoted value of digits as a number, so a number fails with advice to quote it.
+func ParseRefField(raw json.RawMessage, location string) (GitRef, error) {
+	if first := strings.TrimSpace(string(raw)); first != "" && strings.ContainsRune("-0123456789", rune(first[0])) {
+		return GitRef{}, invalid(location, "expected a tag or full commit SHA in quotes; YAML reads an unquoted value of digits as a number")
 	}
-	which := "the library's newest release"
-	if recorded {
-		which = "the release this project records"
+	text, err := decode.Text(raw, location)
+	if err != nil {
+		return GitRef{}, err
 	}
-	return fmt.Sprintf("sources.%s has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/%d to sources.%s, %s, or ref: latest-release to take the newest release at each update, then run the command again", source, release, source, which)
+	return ParseGitRef(text, location)
+}
+
+// releaseTagPattern matches a library release tag's short name, release/<number>, with no leading zeros and a
+// number below one billion.
+var releaseTagPattern = regexp.MustCompile(`^release/([1-9][0-9]{0,8})$`)
+
+// ReleaseNumber returns the library release number of name, a tag's short name such as release/4, and whether name
+// is a library release tag. trailguide.ParseReleaseTag reports why one isn't.
+func ReleaseNumber(name string) (int, bool) {
+	parts := releaseTagPattern.FindStringSubmatch(name)
+	if parts == nil {
+		return 0, false
+	}
+	number, _ := strconv.Atoi(parts[1])
+	return number, true
 }

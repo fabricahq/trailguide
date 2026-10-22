@@ -15,7 +15,7 @@ import (
 // TestClone_PushesCommitsAndTagsToTheFixture lets library release tests publish through the fixture's transport.
 func TestClone_PushesCommitsAndTagsToTheFixture(t *testing.T) {
 	ctx := context.Background()
-	f, err := New(ctx, Library(map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {}\n")}))
+	f, err := New(ctx, Library(map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n")}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestNew_ServesPartialCloneFilters(t *testing.T) {
 // TestRelease_TagsARecordThatParses publishes a library release whose tag message Trail Guide can read.
 func TestRelease_TagsARecordThatParses(t *testing.T) {
 	ctx := context.Background()
-	f, err := New(ctx, Library(map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {}\n")}))
+	f, err := New(ctx, Library(map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n")}))
 	if err != nil {
 		t.Fatal(err)
 	}

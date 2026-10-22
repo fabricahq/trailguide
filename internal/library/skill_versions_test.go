@@ -21,13 +21,13 @@ const (
 // ratchetConfig is a library manifest whose library forks dzhng's ratchet-files skill, based on basedOn, and lists the
 // fork at level, with a notice file.
 func ratchetConfig(basedOn, level string) []byte {
-	return []byte("schemaVersion: 2\nsources:\n  dzhng:\n    repository: https://github.com/dzhng/skills\n    skills:\n      forks:\n        skills/engineering/ratchet-files:\n          as: skills/ratchet-files\n          basedOn: \"" + basedOn + "\"\n          reason: We publish our own version.\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    " + level + ": [skills/ratchet-files]\n")
+	return []byte("schemaVersion: 2\nsources:\n  dzhng:\n    repository: https://github.com/dzhng/skills\n    skills:\n      forks:\n        skills/engineering/ratchet-files:\n          as: skills/ratchet-files\n          basedOn: \"" + basedOn + "\"\n          reason: We publish our own version.\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    " + level + ": [skills/ratchet-files]\n")
 }
 
 // ratchetLibrary is libraryFiles with the license and notice ratchetConfig declares, before the library had skills.
 func ratchetLibrary() map[string][]byte {
 	files := libraryFiles()
-	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
 	files["LICENSE.md"] = []byte("MIT License\n")
 	files["NOTICE.md"] = []byte("Notice\n")
 	return files
@@ -99,7 +99,7 @@ func TestRelease_PublishesAMovedAndARemovedFork(t *testing.T) {
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); !strings.HasPrefix(message, moved) {
 		t.Fatalf("tag message:\n%s\nwant it to start with:\n%s", message, moved)
 	}
-	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    recommended: [skills/ratchet-files]\n")})
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    recommended: [skills/ratchet-files]\n")})
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
 	}

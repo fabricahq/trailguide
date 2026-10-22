@@ -357,7 +357,7 @@ func (r *repository) skillLevels(ctx context.Context, commit string) (*trailguid
 	if err != nil || !found {
 		return nil, err
 	}
-	declaration, err := rules.ParseLibraryManifest(data, librarytree.RepositoryPath(librarytree.Manifest))
+	declaration, err := rules.ParsePublishedManifest(data, librarytree.RepositoryPath(librarytree.Manifest))
 	if err != nil || declaration == nil {
 		return nil, err
 	}

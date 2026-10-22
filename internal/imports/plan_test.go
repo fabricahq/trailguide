@@ -48,7 +48,7 @@ type history struct {
 func newHistory(t *testing.T) history {
 	t.Helper()
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":                   []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":                   []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml":          groupMetadata,
 		"techs/go/a.md":                 versionedRule("a 1.0.0"),
 		"techs/go/assets/a/diagram.bin": {1, 0},
@@ -428,7 +428,7 @@ func TestImport_ExclusionSelectorsMustMatchAnImportedRule(t *testing.T) {
 // from its own library release when the library-wide release no longer has the group.
 func TestImport_KeptRuleWhoseGroupWasRemovedKeepsItsGroupMetadata(t *testing.T) {
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":           []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":           []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/old/_group.yaml": []byte(`{"name":"Old","description":"Old rules.","whenToRead":"Rarely."}`),
 		"techs/old/x.md":        versionedRule("x 1.0.0"),
 		"techs/go/_group.yaml":  groupMetadata,
@@ -459,7 +459,7 @@ func TestImport_KeptRuleWhoseGroupWasRemovedKeepsItsGroupMetadata(t *testing.T) 
 func TestImport_IgnoresUnselectedGroupMetadata(t *testing.T) {
 	ctx := context.Background()
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml": groupMetadata,
 		"techs/go/y.md":        versionedRule("y 1.0.0"),
 	})
@@ -484,7 +484,7 @@ func TestImport_IgnoresUnselectedGroupMetadata(t *testing.T) {
 // release replace the pinned version's file.
 func TestImport_RefusesALibraryReleaseDeclaringTermsInsideARulesVersion(t *testing.T) {
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml":              groupMetadata,
 		"techs/go/a.md":                     versionedRule("a 1.0.0"),
 		"techs/go/assets/a/requirements.md": []byte("Original requirements.\n"),
@@ -493,7 +493,7 @@ func TestImport_RefusesALibraryReleaseDeclaringTermsInsideARulesVersion(t *testi
 	h := history{fixture: f, commits: map[int]string{}}
 	h.release(t, 1, nil, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n")
 	h.release(t, 2, map[string][]byte{
-		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"license":{"file":".trailguide/rules/techs/go/assets/a/requirements.md","notices":[]}}}`),
+		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"license":{"file":".trailguide/rules/techs/go/assets/a/requirements.md","notices":[]}}}`),
 		"techs/go/assets/a/requirements.md": []byte("Replacement requirements.\n"),
 		"techs/go/b.md":                     versionedRule("b 1.1.0"),
 	}, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.1.0\nchanges:\n  techs/go/b: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n")

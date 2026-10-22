@@ -273,7 +273,7 @@ func legacyFiles() map[string][]byte {
 // relative link one more ../, and commits the move.
 func moveLibrary(t *testing.T, fixture *gitfixture.Fixture, dir string) {
 	t.Helper()
-	moved := map[string][]byte{"rule-library.yaml": nil, ".trailguide/config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n")}
+	moved := map[string][]byte{"rule-library.yaml": nil, ".trailguide/config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n")}
 	for name, data := range legacyFiles() {
 		if first, _, _ := strings.Cut(name, "/"); first == "techs" || first == "practices" || first == "assets" {
 			moved[name] = nil
@@ -296,8 +296,8 @@ func moveLibrary(t *testing.T, fixture *gitfixture.Fixture, dir string) {
 
 // TestCheck_ComparesAMovedLibraryWithALibraryReleaseMadeBeforeTheMove reads the latest library release in the
 // layout before version 2, so rule a, whose bytes didn't change, needs no note, rule b, whose link changed, does,
-// and the manifest, now the library section of config.yaml, declaring the same license, isn't a changed
-// library-wide file.
+// and the manifest, now the library section of config.yaml, declaring the same license, is a changed library-wide
+// file, because it now declares its library format.
 func TestCheck_ComparesAMovedLibraryWithALibraryReleaseMadeBeforeTheMove(t *testing.T) {
 	ctx := context.Background()
 	for name, recorded := range map[string]bool{"unrecorded link change": false, "recorded link change": true} {
@@ -324,7 +324,7 @@ func TestCheck_ComparesAMovedLibraryWithALibraryReleaseMadeBeforeTheMove(t *test
 			}
 			edit(t, dir, map[string]string{"changes/move.yaml": "summary: Link to the moved shared asset.\nrules:\n  practices/testing/b: patch\n"})
 			result, err := Check(ctx, options)
-			if err != nil || !slices.Equal(previewRows(result.PendingRelease), []string{"practices/testing/b patch 1.0.0 1.0.1"}) || len(result.PendingRelease.LibraryFiles) != 0 {
+			if err != nil || !slices.Equal(previewRows(result.PendingRelease), []string{"practices/testing/b patch 1.0.0 1.0.1"}) || !slices.Equal(result.PendingRelease.LibraryFiles, []string{"config.yaml"}) {
 				t.Fatalf("got %+v, %v", result.PendingRelease, err)
 			}
 		})
@@ -337,17 +337,44 @@ func TestCheck_ComparesAMovedLibraryWithALibraryReleaseMadeBeforeTheMove(t *test
 func TestCheck_ListsTheManifestOnlyWhenItsLibrarySectionChanges(t *testing.T) {
 	ctx := context.Background()
 	_, options := authorClone(t, libraryFiles(), releaseOne)
-	edit(t, options.Directory, map[string]string{"config.yaml": "# The repository's project and library.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary: {}\n"})
+	edit(t, options.Directory, map[string]string{"config.yaml": "# The repository's project and library.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary: {formatVersion: 1}\n"})
 	result, err := Check(ctx, options)
 	if err != nil || len(result.PendingRelease.LibraryFiles) != 0 {
 		t.Fatalf("got %+v, %v; want no library-wide change", result.PendingRelease, err)
 	}
 	edit(t, options.Directory, map[string]string{
-		"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n",
+		"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  formatVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n",
 		"LICENSE.md":  "MIT License\n",
 	})
 	result, err = Check(ctx, options)
 	if err != nil || !slices.Equal(result.PendingRelease.LibraryFiles, []string{"LICENSE.md", "config.yaml"}) {
 		t.Fatalf("got %+v, %v; want the manifest and license listed", result.PendingRelease, err)
+	}
+}
+
+// TestManifestDigest_FollowsOnlyThePublishedContract identifies a manifest by what the library publishes: the
+// library section and its curated sources' repositories and refs. A different project schema version, or project
+// settings beside a curated source, keep the digest, so a library release doesn't list the manifest for them, and
+// a changed curated ref or format changes it.
+func TestManifestDigest_FollowsOnlyThePublishedContract(t *testing.T) {
+	const section = "library:\n  formatVersion: 1\n  skills: {offered: [helper:skills/help]}\n"
+	const helper = "  helper:\n    repository: https://github.com/acme/helper.git\n    ref: main\n"
+	base := manifestDigest([]byte("schemaVersion: 2\nsources:\n" + helper + section))
+	for name, config := range map[string]string{
+		"another schema version":                "schemaVersion: 3\nsources:\n" + helper + section,
+		"the curated source's project settings": "schemaVersion: 2\nskillTargets: [claude]\nsources:\n" + helper + "    skills: {include: [skills/help]}\n  other:\n    repository: https://github.com/acme/other.git\n" + section,
+	} {
+		if got := manifestDigest([]byte(config)); got != base {
+			t.Errorf("%s changed the digest", name)
+		}
+	}
+	for name, config := range map[string]string{
+		"a curated ref":        "schemaVersion: 2\nsources:\n" + strings.Replace(helper, "main", "v2.0.0", 1) + section,
+		"a curated repository": "schemaVersion: 2\nsources:\n" + strings.Replace(helper, "acme/helper", "acme/assist", 1) + section,
+		"the library format":   "schemaVersion: 2\nsources:\n" + helper + strings.Replace(section, "formatVersion: 1", "formatVersion: 2", 1),
+	} {
+		if got := manifestDigest([]byte(config)); got == base {
+			t.Errorf("%s kept the digest", name)
+		}
 	}
 }

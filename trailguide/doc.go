@@ -12,15 +12,24 @@
 //
 // A catalog typically reads a library in three steps. ParseReleaseTag recognizes the release/<number> tag names
 // among a repository's tags. ParseReleaseMessage splits each such annotated tag's message into its release notes
-// and its release record, which lists every rule's version and what changed. ParseRule and ParseGroupMetadata then
-// read the rule files and _group.yaml files at the tagged commit, and ParseLibraryManifest reads the library's
-// license and skill levels from its configuration there.
+// and its release record, which lists every rule's version and what changed. ParseLibraryManifest then reads the
+// library's license, skill levels, and curated sources from its configuration at the tagged commit, and
+// ParseRule and ParseGroupMetadata read the rule files and _group.yaml files there.
+//
+// A library declares the library format it publishes in its manifest's library.formatVersion. LibraryFormat is the
+// one this package reads, and covers the manifest, curated sources, rule files, group metadata, and the library's
+// layout. Release records have their own format, ReleaseRecordFormat. Read the manifest before a library's other
+// files, so a library in another format fails with *UnsupportedLibraryFormatError rather than an error about a file
+// whose meaning that format changed. ParseLibraryManifest reads a library as its consumers do: it ignores the
+// configuration's schemaVersion and project settings, which only the library's author's Trail Guide reads.
 //
 // Errors start with the input's location, such as a tag name, a field in a record, or a file path, and describe
-// the problem for people. Callers can inspect three errors: ErrNotReleaseTag, with errors.Is, for a tag name that
+// the problem for people. Callers can inspect four errors: ErrNotReleaseTag, with errors.Is, for a tag name that
 // isn't a library release tag; *UnsupportedReleaseRecordError, with errors.As, for a release record in a newer
-// format than this version reads; and *ValidationError, with errors.As, for the location and problem of any other
-// invalid input. Every error these functions return means the input is invalid.
+// format than this version reads; *UnsupportedLibraryFormatError, with errors.As, for a library in a format this
+// version doesn't read; and *ValidationError, with errors.As, for the location and problem of any other invalid
+// input, including a missing or malformed format. Every error these functions return means the input is invalid
+// or unsupported.
 //
 // This is a public API that follows Trail Guide's own version: each Trail Guide release includes it, and it may
 // change before Trail Guide 1.0.0.
