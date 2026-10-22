@@ -157,8 +157,8 @@ func TestPrepareLinksToARuleWhereItsCommitKeepsIt(t *testing.T) {
 	}
 }
 
-// TestPrepareShowsEachImportedRulesVersion puts the version below the rule ID in guidance, and records it,
-// its library release, and the rule's own commit in the library summary.
+// TestPrepareShowsEachImportedRulesVersion puts the version below the rule ID in guidance, and links the rule's
+// source at the rule's own commit.
 func TestPrepareShowsEachImportedRulesVersion(t *testing.T) {
 	older := strings.Repeat("b", 40)
 	files := generateWith(t, func(snapshot *library.Snapshot, source *rules.Source) {
@@ -176,32 +176,9 @@ func TestPrepareShowsEachImportedRulesVersion(t *testing.T) {
 	if !strings.Contains(files["rules/team/techs/go/errors.md"], "https://github.com/acme/rules/blob/"+older+"/.trailguide/rules/techs/go/errors.md") {
 		t.Error("the source link doesn't use the rule's own commit")
 	}
-	summary := files["libraries/team/README.md"]
-	for _, text := range []string{"**Library release:** release/2", "| `techs/go/errors` | 1.3.0 | release/1 |", "## Pins\n\n`trailguide project update` keeps these rules at their pinned versions.\n\n- `techs/go/errors`: 1.3.0. Reason: Waiting on \\| review.\n"} {
-		if !strings.Contains(summary, text) {
-			t.Errorf("library summary lacks %q:\n%s", text, summary)
-		}
-	}
-	if strings.Contains(summary, "unreleased") || strings.Contains(summary, "Requested revision") {
-		t.Errorf("library summary describes a ref it doesn't have:\n%s", summary)
-	}
 }
 
-// TestPrepareOmitsTheUnreleasedNoteWhenEveryRuleIsPublished covers a ref that isn't a library release tag but
-// names a revision whose rules all match published versions.
-func TestPrepareOmitsTheUnreleasedNoteWhenEveryRuleIsPublished(t *testing.T) {
-	files := generateWith(t, func(snapshot *library.Snapshot, _ *rules.Source) {
-		version := trailguide.RuleVersion{Major: 1}
-		snapshot.Release = 0
-		snapshot.Rules["techs/go/errors"] = library.ImportedRule{Version: &version, Release: 1, Commit: commit}
-	})
-	summary := files["libraries/team/README.md"]
-	if strings.Contains(summary, "unreleased") || !strings.Contains(summary, "| `techs/go/errors` | 1.0.0 | release/1 |") || !strings.Contains(summary, "**Requested revision:** v1.0.0") {
-		t.Errorf("library summary:\n%s", summary)
-	}
-}
-
-// TestPrepareShowsNoVersionForUnreleasedRules shows no version and says the source imports unreleased changes.
+// TestPrepareShowsNoVersionForUnreleasedRules shows no version for a rule with unreleased changes.
 func TestPrepareShowsNoVersionForUnreleasedRules(t *testing.T) {
 	files := generateWith(t, func(snapshot *library.Snapshot, _ *rules.Source) {
 		snapshot.Release = 0
@@ -212,54 +189,26 @@ func TestPrepareShowsNoVersionForUnreleasedRules(t *testing.T) {
 			t.Errorf("%s shows a version for an unreleased rule", name)
 		}
 	}
-	summary := files["libraries/team/README.md"]
-	for _, text := range []string{"**Imported from unreleased changes.**", "| `techs/go/errors` | No version | Unreleased |", "**Requested revision:** v1.0.0"} {
-		if !strings.Contains(summary, text) {
-			t.Errorf("library summary lacks %q:\n%s", text, summary)
-		}
-	}
-	if strings.Contains(summary, "## Pins") {
-		t.Errorf("library summary lists pins the source doesn't have:\n%s", summary)
-	}
 }
 
-// TestPrepareMarksExcludedRulesInTheLibrarySummary, which the source still imports but agents don't read.
-func TestPrepareMarksExcludedRulesInTheLibrarySummary(t *testing.T) {
+// TestLibraryReadme_DescribesOnlyLicenseTerms: the library README lists the declared terms and points to the
+// lockfile, which records the source's revision and rule versions, instead of repeating them.
+func TestLibraryReadme_DescribesOnlyLicenseTerms(t *testing.T) {
 	files := generateWith(t, func(snapshot *library.Snapshot, source *rules.Source) {
 		version := trailguide.RuleVersion{Major: 1}
+		snapshot.Release = 2
 		snapshot.Rules["techs/go/errors"] = library.ImportedRule{Version: &version, Release: 1, Commit: commit}
-		source.Exclude = map[string]rules.Exclusion{"techs/go/errors": {Reason: "Not for us."}}
+		source.Pins = map[string]rules.Pin{"techs/go/errors": {Version: version, Reason: "Still useful."}}
 	})
-	if summary := files["libraries/team/README.md"]; !strings.Contains(summary, "| Rule | Version | Library release | Status |\n") || !strings.Contains(summary, "| `techs/go/errors` | 1.0.0 | release/1 | Excluded |") {
-		t.Errorf("library summary:\n%s", summary)
+	readme := files["libraries/team/README.md"]
+	for _, text := range []string{"## License terms", "[lock.json](../../../../lock.json)", "`trailguide project list rules`"} {
+		if !strings.Contains(readme, text) {
+			t.Errorf("README lacks %q:\n%s", text, readme)
+		}
 	}
-}
-
-// TestLibraryReadme_ShowsAKeptRetiredRuleAsRetired: a rule the library retired that a pin keeps at its last version,
-// listed both in rules and in retiredRules, is marked retired and pinned, not active; one an update didn't move yet
-// is marked retired.
-func TestLibraryReadme_ShowsAKeptRetiredRuleAsRetired(t *testing.T) {
-	for _, test := range []struct {
-		name        string
-		pinned, ref bool
-		status      string
-	}{{"pinned", true, false, "Retired, pinned at 1.3.0"}, {"not yet dropped", false, false, "Retired; the next update drops it"}, {"held by ref", false, true, "Retired upstream; kept by ref v1.0.0"}} {
-		t.Run(test.name, func(t *testing.T) {
-			files := generateWith(t, func(snapshot *library.Snapshot, source *rules.Source) {
-				version := trailguide.RuleVersion{Major: 1, Minor: 3}
-				snapshot.Release = 2
-				snapshot.Rules["techs/go/errors"] = library.ImportedRule{Version: &version, Release: 1, Commit: strings.Repeat("b", 40)}
-				snapshot.RetiredRules = []string{"techs/go/errors"}
-				if !test.ref {
-					source.Ref = rules.GitRef{}
-				}
-				if test.pinned {
-					source.Pins = map[string]rules.Pin{"techs/go/errors": {Version: version, Reason: "Still useful."}}
-				}
-			})
-			if row := "| `techs/go/errors` | 1.3.0 | release/1 | " + test.status + " |"; !strings.Contains(files["libraries/team/README.md"], row) {
-				t.Errorf("README lacks %q:\n%s", row, files["libraries/team/README.md"])
-			}
-		})
+	for _, text := range []string{"techs/go/errors", "release/2", commit} {
+		if strings.Contains(readme, text) {
+			t.Errorf("README repeats %q from the lockfile:\n%s", text, readme)
+		}
 	}
 }

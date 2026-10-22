@@ -17,7 +17,7 @@ import (
 
 // installedRecord is an installed-skills.json that lists review, from the team source, in both skill targets, and
 // plan, authored and recorded without targets.
-const installedRecord = `{"formatVersion":1,"skills":[` +
+const installedRecord = `{"schemaVersion":1,"skills":[` +
 	`{"name":"plan","id":"skills/plan","targets":[]},` +
 	`{"name":"review","id":"team:skills/review","targets":[".agents/skills/review",".claude/skills/review"]}]}`
 
@@ -153,7 +153,7 @@ func TestPersonalSkillWarnings_NamesAnAgentOnlyWhenItReadsBothCopies(t *testing.
 		t.Run(test.personal+" beside "+test.target, func(t *testing.T) {
 			home := t.TempDir()
 			writeHomeFile(t, home, test.personal+"/review/SKILL.md", "# Mine\n")
-			record := `{"formatVersion":1,"skills":[{"name":"review","id":"team:skills/review","targets":["` + test.target + `/review"]}]}`
+			record := `{"schemaVersion":1,"skills":[{"name":"review","id":"team:skills/review","targets":["` + test.target + `/review"]}]}`
 			want := "your personal skill ~/" + test.personal + "/review has the same name as this project's review (team:skills/review, installed at " + test.target + "/review).\n" +
 				strings.Join(test.lines, "") + "Rename or remove your personal skill to use the project's."
 			if got := personalSkillWarnings(home, t.TempDir(), []byte(record)); !slices.Equal(got, []string{want}) {
@@ -166,7 +166,7 @@ func TestPersonalSkillWarnings_NamesAnAgentOnlyWhenItReadsBothCopies(t *testing.
 func TestPersonalSkillWarnings_ReadsNoSkillsFromAnUnreadableRecord(t *testing.T) {
 	home := t.TempDir()
 	writeHomeFile(t, home, ".claude/skills/review/SKILL.md", "# Mine\n")
-	for _, record := range []string{"", "{", `{"formatVersion":2,"skills":[{"name":"review","id":"team:skills/review","targets":[".claude/skills/review"]}]}`} {
+	for _, record := range []string{"", "{", `{"schemaVersion":2,"skills":[{"name":"review","id":"team:skills/review","targets":[".claude/skills/review"]}]}`} {
 		if got := personalSkillWarnings(home, t.TempDir(), []byte(record)); got == nil || len(got) != 0 {
 			t.Errorf("record %q: warnings = %q, want none", record, got)
 		}

@@ -519,7 +519,7 @@ func (b *curating) releaseTeam(t *testing.T, listed string) {
 	if _, err := b.team.Commit(ctx, b.team.Worktree(), "Release 2", files); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.team.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
+	if err := b.team.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -646,7 +646,7 @@ func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 	if _, err := kit.Commit(ctx, kit.Worktree(), "Improve deploy", gitfixture.Library(map[string][]byte{".trailguide/skills/deploy/SKILL.md": []byte(strings.Replace(deploySkill, "# Deploy", "# Deploy safely", 1))})); err != nil {
 		t.Fatal(err)
 	}
-	if err := kit.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+	if err := kit.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := PlanUpdate(ctx, options, git, []imports.UpdateTarget{{Source: "mine"}}, nil)

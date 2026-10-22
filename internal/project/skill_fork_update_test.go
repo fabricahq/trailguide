@@ -217,7 +217,7 @@ func TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Make the script plain", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := PlanUpdate(ctx, options, git, nil, nil)

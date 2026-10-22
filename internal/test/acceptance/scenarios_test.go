@@ -308,7 +308,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if _, err := fixture.Commit(ctx, fixture.Worktree(), "Change the errors rule", gitfixture.Library(map[string][]byte{"techs/go/errors.md": document})); err != nil {
 			return report, err
 		}
-		secondRelease := "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add updated wording.]}\n"
+		secondRelease := "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add updated wording.]}\n"
 		if err := fixture.Release(ctx, 2, secondRelease); err != nil {
 			return report, err
 		}
@@ -421,17 +421,10 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if !strings.Contains(output, "Warning: Source team imports "+unreleased) || !strings.Contains(output, "Unreleased rules: techs/go/naming.") {
 			return report, fmt.Errorf("sync did not warn about unreleased rules: %s", output)
 		}
-		after, err = readTree(ctx, consumer)
-		if err != nil {
-			return report, err
-		}
-		if !strings.Contains(string(after.Files[".trailguide/_managed/generated/libraries/team/README.md"]), "Imported from unreleased changes.") {
-			return report, fmt.Errorf("library summary does not mention unreleased changes")
-		}
 		if err := invoke("Check the unreleased import offline", consumer, offline, 0, "project", "check"); err != nil {
 			return report, err
 		}
-		report.Verified = append(report.Verified, "An unreleased ref warns, is summarized as unreleased, and still checks offline")
+		report.Verified = append(report.Verified, "An unreleased ref warns and still checks offline")
 	}
 	return report, nil
 }

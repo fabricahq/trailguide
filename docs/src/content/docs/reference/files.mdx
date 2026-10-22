@@ -81,7 +81,7 @@ The tree below shows the **repository root**, the top-level directory of your co
 
 </FileTree>
 
-`.claude/skills/` and `.agents/skills/` exist only for the [skill targets](/reference/configuration/#skill-targets) the repository configures, and only once it installs a skill. Your `AGENTS.md` stays outside the Trail Guide directory, at the repository root. Trail Guide maintains one section of it, between `<!-- trailguide:begin -->` and `<!-- trailguide:end -->` markers, and leaves the rest to you. A library also has `changes/` in its Trail Guide directory, for its [change notes](/reference/rule-versions/#change-notes); see [Library format](/reference/library-format/).
+`.claude/skills/` and `.agents/skills/` exist only for the [skill targets](/reference/configuration/#skill-targets) the repository configures, and only once it installs a skill. Your `AGENTS.md` stays outside the Trail Guide directory, at the repository root. Trail Guide maintains one section of it, between `<!-- trailguide:begin -->` and `<!-- trailguide:end -->` markers, and leaves the rest to you. A library also has `changes/` in its Trail Guide directory, for its [change notes](/reference/rule-versions/#change-notes); see [Library schema](/reference/library-schema/).
 
 Initialize from the repository root. In Git repositories, other commands find the nearest Git root and use its `.trailguide/` directory. Outside Git, run commands from the repository root. See [Working directories](/reference/cli/#working-directories).
 
@@ -90,7 +90,7 @@ Initialize from the repository root. In Git repositories, other commands find th
 The Trail Guide directory holds three kinds of content. Everything Trail Guide writes for you sits under `_managed/`, so anything outside it, apart from `lock.json` and `README.md`, is yours to edit:
 
 - **Authored content: `rules/`, `skills/`, and `assets/`.** The rules, rule group metadata, skills, and shared assets written in this repository. Add your own rules and skills here, including replacements and forks of rules and skills you include from sources. You maintain these files; sync preserves them. A library publishes exactly this content.
-- **Vendor snapshots: `_managed/vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with a `config.yaml` that holds only the [published manifest](/reference/library-format/#what-a-librarys-consumers-read), the `library` section and its curated sources' repositories and refs, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
+- **Vendor snapshots: `_managed/vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with a `config.yaml` that holds only the [published manifest](/reference/library-schema/#what-a-librarys-consumers-read), the `library` section and its curated sources' repositories and refs, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
 - **Generated guidance: `_managed/generated/`.** The resolved rules your agents read. Trail Guide combines the included and authored rules according to `config.yaml`, applies exclusions and replacements, and writes the reading indexes, including `SKILLS.md`. Do not edit this directory; rebuild it after changing your inputs. Its `.gitattributes` marks every file in it as generated, so GitHub collapses them in pull request diffs. Vendor snapshots stay expanded, so reviewers see what changed in a source.
 
 Installed skills are output too: Trail Guide writes a copy of each installed skill into every target folder, such as `.claude/skills/build-feature/`, from its vendored or authored source. See [Installed skills](#installed-skills).
@@ -153,7 +153,7 @@ Earlier versions asked you to paste a pointer to `.trailguide/generated/RULES.md
 | `SKILLS.md` | One entry per installed skill. Present only when the repository includes skills. |
 | `groups/` | Rule group pages containing full rules or summaries with links to full definitions. |
 | `rules/` | Individual resolved rules, available even when a rule group also includes them inline, and the reference-only rules that installed skills cite. |
-| `libraries/` | Source summaries and retained license and notice files. |
+| `libraries/` | Each source's declared license terms and retained license and notice files. |
 | `installed-skills.json` | The skill folders Trail Guide installed in the target folders. Present only when the repository includes skills. |
 
 Large indexes can span multiple pages. Follow the page directory and navigation links before selecting rules, and complete any truncated reads.
@@ -215,7 +215,7 @@ Trail Guide records what it installed in `_managed/generated/installed-skills.js
 
 ```json
 {
-  "formatVersion": 1,
+  "schemaVersion": 1,
   "generatedNotice": "Generated by Trail Guide. …",
   "skills": [
     {
@@ -235,7 +235,7 @@ Trail Guide records what it installed in `_managed/generated/installed-skills.js
 
 | Field | Meaning |
 | --- | --- |
-| `formatVersion` | The record's format version, `1`. |
+| `schemaVersion` | The record's schema version, `1`. |
 | `name` | The install name, which is the installed folder's name. |
 | `id` | The skill's project ID. |
 | `version` | The installed version, or `null` for an authored skill, a skill from a non-library source, or one with unreleased changes. |

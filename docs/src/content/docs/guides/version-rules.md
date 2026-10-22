@@ -102,7 +102,7 @@ Publish a library release whenever you want your pending changes to reach projec
 
 A rule's current version is the one in the newest library release. Rule files carry no version, and files on the default branch can include unreleased edits, so look in the library release instead. Each `release/<number>` tag's [release record](/reference/rule-versions/#release-record) lists the version of every current rule, not only the ones that changed, and tools read it from the tag. For a library on GitHub.com, the newest library release's GitHub Release page, when it has one, shows the same versions under **All rule versions in this library release**.
 
-In a project, the versions you take are listed under **Rule versions** in `.trailguide/_managed/generated/libraries/<source-name>/README.md`, and recorded in `.trailguide/lock.json`; see [Provenance](/reference/provenance/). A skill's current version is found the same way: the release record lists every current skill under `skills.versions`, the GitHub Release page shows them under **All skill versions in this library release**, and a project lists the versions it installs in `.trailguide/_managed/generated/SKILLS.md`. To take a newer version, see [Update one rule to its newest version](/guides/update/#update-one-rule-to-its-newest-version).
+In a project, the versions you take are recorded in `.trailguide/lock.json`, and [`trailguide project list rules`](/reference/cli/#project-list-rules) lists them; see [Provenance](/reference/provenance/). A skill's current version is found the same way: the release record lists every current skill under `skills.versions`, the GitHub Release page shows them under **All skill versions in this library release**, and a project lists the versions it installs in `.trailguide/_managed/generated/SKILLS.md`. To take a newer version, see [Update one rule to its newest version](/guides/update/#update-one-rule-to-its-newest-version).
 
 ## How library releases work
 
@@ -259,7 +259,7 @@ A skill can only be replaced by a skill, and a rule only by a rule. Remove the r
 
 ### Change a shared file, rule group description, or skill level
 
-Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-format/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
+Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-schema/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
 
 The release notes still name a skill whose level changes, such as offered to recommended, and a skill that becomes a fork or whose fork moves to another `basedOn` commit, so projects can see what the change means for them, even when the skill's files didn't change.
 
@@ -276,7 +276,7 @@ Earlier versions of Trail Guide kept a library's files at the repository root. L
 3. Add one `../` to each relative link from a rule to a shared asset, and two to each link to a license file at the repository root. Links that start with `/assets/` keep working.
 4. Record each rule whose links changed with `trailguide library change RULE_ID --bump patch --summary '...'`.
 
-Rule IDs and versions don't change, and rules you didn't edit need no note. Publish a library release once the pull request merges: projects can't import a library release made in the earlier layout, so they need one from the new layout. See [Libraries in the earlier layout](/reference/library-format/#libraries-in-the-earlier-layout).
+Rule IDs and versions don't change, and rules you didn't edit need no note. Publish a library release once the pull request merges: projects can't import a library release made in the earlier layout, so they need one from the new layout. See [Libraries in the earlier layout](/reference/library-schema/#libraries-in-the-earlier-layout).
 
 ### Check your changes
 

@@ -49,7 +49,7 @@ func newUpdateFixtureWith(t *testing.T, binary string) updateFixture {
 		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 	}
 	names := []string{"backoff", "errors", "format", "loaders", "naming", "retry"}
-	record := "formatVersion: 1\nrelease: 1\nrules:\n"
+	record := "schemaVersion: 1\nrelease: 1\nrules:\n"
 	changes := "changes:\n"
 	for _, name := range names {
 		files["techs/go/"+name+".md"] = updateRule(name + " 1.0.0")
@@ -80,7 +80,7 @@ func newUpdateFixtureWith(t *testing.T, binary string) updateFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.1.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.0.0\n"+
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.1.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.0.0\n"+
 		"changes:\n  techs/go/backoff: {change: major, from: 1.0.0, summaries: [Require jitter.]}\n  techs/go/errors: {change: major, from: 1.0.0, summaries: [Require wrapping.]}\n  techs/go/format: {change: patch, from: 1.0.0, summaries: [Fix a typo.]}\n"+
 		"  techs/go/loaders: {change: minor, from: 1.0.0, summaries: [Add pagination.]}\n  techs/go/naming: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n  techs/go/verify: {change: new, summaries: [Add the rule.]}\n"+
 		"retired:\n  techs/go/retry: {lastVersion: 1.0.0, replacedBy: techs/go/verify, summaries: [Covered by verify.]}\n"); err != nil {
@@ -601,7 +601,7 @@ func TestLibraryReadme_MentionsRetainedTermsOnlyWhenTheLibraryDeclaresThem(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "copies of declared library license and notice files") || !strings.Contains(string(data), "No library license declaration was supplied.") {
+	if strings.Contains(string(data), "copies of the license and notice files") || !strings.Contains(string(data), "No license declaration was supplied.") {
 		t.Fatalf("README:\n%s", data)
 	}
 }
@@ -758,7 +758,7 @@ func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -776,7 +776,7 @@ func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Change levels", gitfixture.Library(second)); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 	out, diagnostic, code := u.run(t, "project", "update")

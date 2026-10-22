@@ -148,7 +148,7 @@ func retiringLibrary(t *testing.T) (*gitfixture.Fixture, func()) {
 		if _, err := f.Commit(ctx, f.Worktree(), "Retire errors", gitfixture.Library(map[string][]byte{"techs/go/errors.md": nil})); err != nil {
 			t.Fatal(err)
 		}
-		if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules: {}\nretired:\n  techs/go/errors: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n"); err != nil {
+		if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules: {}\nretired:\n  techs/go/errors: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n"); err != nil {
 			t.Fatal(err)
 		}
 	}

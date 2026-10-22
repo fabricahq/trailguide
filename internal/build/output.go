@@ -4,13 +4,10 @@ package build
 
 import (
 	"bytes"
-	"fmt"
 	"maps"
 	"path"
-	"slices"
 	"strings"
 
-	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
@@ -82,106 +79,31 @@ func prepare(resolved resolution, options Options) (Output, error) {
 	return Output{Files: files, Skills: folders, SkillIDs: ids, RenamedSkills: renamed}, nil
 }
 
-// libraryReadme summarizes the imported library release, each imported rule's version, the source's pins, and
-// generated terms, without interpreting their legal meaning. It says when the source imports unreleased changes.
+// libraryReadme describes the license terms source declares, linking the copies Generate keeps beside it, without
+// interpreting their legal meaning. A source's revision and rule versions are in the lockfile, and trailguide project
+// list rules shows them, so the README doesn't repeat them.
 func libraryReadme(source resolvedSource) string {
 	file := "libraries/" + source.Name + "/README.md"
 	sections := []string{"# " + escapeText(source.Name)}
-	// Only a library that declares license or notice files has copies here to describe.
-	if source.License != nil && len(licenseMappings(source.Name, source.License)) > 0 {
-		sections = append(sections, "This folder retains byte-for-byte copies of declared library license and notice files. Do not edit these copies; change the upstream library and run `trailguide project sync`.")
+	mappings := []licenseMapping{}
+	if source.License != nil {
+		mappings = licenseMappings(source.Name, source.License)
 	}
-	sections = append(sections, "**Repository:** "+escapeText(source.Repository))
-	if source.NonLibrary {
-		sections = append(sections, "**Not a library.** The repository has no library manifest at the resolved commit, so this source supplies only skills, all from that commit.")
-	}
-	if source.Release != 0 {
-		sections = append(sections, fmt.Sprintf("**Library release:** release/%d", source.Release))
-	}
-	if source.Ref != "" {
-		sections = append(sections, "**Requested revision:** "+escapeText(source.Ref))
-	}
-	sections = append(sections, "**Resolved commit:** `"+source.Commit+"`")
-	if source.Ref != "" && source.Release == 0 && slices.ContainsFunc(slices.Collect(maps.Values(source.Versions)), func(rule library.ImportedRule) bool { return rule.Version == nil }) {
-		sections = append(sections, "**Imported from unreleased changes.** This source's ref isn't a library release, so the source doesn't follow rule versions: rules with unreleased changes have no version to cite.")
-	}
-	if !source.NonLibrary {
-		sections = append(sections, "## Rule versions", ruleVersionTable(source))
-	}
-	if len(source.Skills) > 0 {
-		items := []string{}
-		for _, id := range source.Skills {
-			item := "- `" + id + "`"
-			if fork, forked := source.Configured.SkillForks[id]; forked {
-				item += ": replaced by the authored skill `" + fork.As + "`"
-			} else if _, excluded := source.Configured.SkillExclude[id]; excluded {
-				item += ": excluded"
-			}
-			items = append(items, item)
-		}
-		sections = append(sections, "## Skills", "This source supplies these skills from the resolved commit, and the project installs each one it doesn't exclude or replace. [SKILLS.md](../../SKILLS.md) says what each one does, where it's installed, and why the project excludes or replaces one.", strings.Join(items, "\n"))
-	}
-	if len(source.Pins) > 0 {
-		sections = append(sections, "## Pins", "`trailguide project update` keeps these rules at their pinned versions.", pinList(source.Pins))
+	// Only a source that declares license or notice files has copies here to describe.
+	if len(mappings) > 0 {
+		sections = append(sections, "This folder retains byte-for-byte copies of the license and notice files this source declares. Do not edit these copies; change the upstream repository and run `trailguide project sync`.")
 	}
 	sections = append(sections, "## License terms")
 	if source.License == nil {
-		sections = append(sections, "No library license declaration was supplied.")
+		sections = append(sections, "No license declaration was supplied.")
+	} else if source.License.SPDXExpression != nil {
+		sections = append(sections, "**Declared license:** "+escapeText(*source.License.SPDXExpression))
 	}
-	if license := source.License; license != nil {
-		if license.SPDXExpression != nil {
-			sections = append(sections, "**Declared license:** "+escapeText(*license.SPDXExpression))
-		}
-		for _, mapping := range licenseMappings(source.Name, license) {
-			sections = append(sections, "- ["+escapeText(path.Base(mapping.Generated))+"]("+rules.RelativeLink(file, mapping.Generated)+")")
-		}
+	for _, mapping := range mappings {
+		sections = append(sections, "- ["+escapeText(path.Base(mapping.Generated))+"]("+rules.RelativeLink(file, mapping.Generated)+")")
 	}
-	sections = append(sections, "[lock.json](../../../../lock.json) records this source's revision and rule versions.", "Use [RULES.md](../../RULES.md) to find resolved rules. These files are generated; edit source inputs and rebuild.")
+	sections = append(sections, "[lock.json](../../../../lock.json) records the revision this source resolved to and the version of each of its rules; run `trailguide project list rules` to see them with how the project uses each rule.")
 	return strings.Join(sections, "\n\n") + "\n"
-}
-
-// ruleVersionTable lists each imported rule of source with its version, the library release that published it, and
-// whether agents read it: an excluded rule, which the source still imports so updates can report its changes, is
-// marked excluded, or replaced by its local rule, and a retired rule the source still imports is marked retired,
-// with the ref or pin that keeps it.
-func ruleVersionTable(source resolvedSource) string {
-	versions := source.Versions
-	if len(versions) == 0 {
-		return "This source imports no rules."
-	}
-	rows := []string{"| Rule | Version | Library release | Status |", "| --- | --- | --- | --- |"}
-	for _, id := range slices.Sorted(maps.Keys(versions)) {
-		rule := versions[id]
-		status := "Active"
-		pin, pinned := source.Pins[id]
-		switch exclusion, excluded := source.Configured.Exclusion(id); {
-		case excluded && exclusion.ReplacedBy != "":
-			status = "Replaced by `" + exclusion.ReplacementFile() + "`"
-		case excluded:
-			status = "Excluded"
-		case slices.Contains(source.Retired, id) && source.Ref != "":
-			status = "Retired upstream; kept by ref " + source.Ref
-		case slices.Contains(source.Retired, id) && pinned:
-			status = "Retired, pinned at " + pin.Version.String()
-		case slices.Contains(source.Retired, id):
-			status = "Retired; the next update drops it"
-		}
-		if rule.Version == nil {
-			rows = append(rows, "| `"+id+"` | No version | Unreleased | "+status+" |")
-			continue
-		}
-		rows = append(rows, fmt.Sprintf("| `%s` | %s | release/%d | %s |", id, rule.Version, rule.Release, status))
-	}
-	return strings.Join(rows, "\n")
-}
-
-// pinList lists each pinned rule, in ID order, with its pinned version and the reason the configuration gives.
-func pinList(pins map[string]rules.Pin) string {
-	items := []string{}
-	for _, id := range slices.Sorted(maps.Keys(pins)) {
-		items = append(items, fmt.Sprintf("- `%s`: %s. Reason: %s", id, pins[id].Version, escapeText(pins[id].Reason)))
-	}
-	return strings.Join(items, "\n")
 }
 
 // attributesFile is the Git attributes file Generate writes in the generated folder, and attributes its contents,

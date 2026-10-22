@@ -30,7 +30,7 @@ func interruptedForkUpdate(t *testing.T) updateFixture {
 	if _, err := u.fixture.Commit(ctx, u.fixture.Worktree(), "Third release", gitfixture.Library(map[string][]byte{"techs/go/loaders.md": updateRule("loaders 1.2.0, with [an example](assets/loaders/example.md)."), "techs/go/assets/loaders/example.md": []byte("An example.\n")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := u.fixture.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.2.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.0.0\nchanges:\n  techs/go/loaders: {change: minor, from: 1.1.0, summaries: [Add an example.]}\n"); err != nil {
+	if err := u.fixture.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.2.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.0.0\nchanges:\n  techs/go/loaders: {change: minor, from: 1.1.0, summaries: [Add an example.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	project := filepath.Join(u.directory, ".trailguide")

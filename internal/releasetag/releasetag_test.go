@@ -23,7 +23,7 @@ import (
 // tag is signed with GPG or SSH.
 func TestParseObject_SkipsHeadersAndSignature(t *testing.T) {
 	for _, signature := range []string{"-----BEGIN PGP SIGNATURE-----\nU0lH\n-----END PGP SIGNATURE-----\n", "-----BEGIN SSH SIGNATURE-----\nU1NIU0lH\n-----END SSH SIGNATURE-----\n"} {
-		object := "object 0123456789012345678901234567890123456789\ntype commit\ntag release/2\ntagger Fixture <fixture@example.invalid> 0 +0000\n\nNotes.\n\n---\nformatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n" + signature
+		object := "object 0123456789012345678901234567890123456789\ntype commit\ntag release/2\ntagger Fixture <fixture@example.invalid> 0 +0000\n\nNotes.\n\n---\nschemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n" + signature
 		release, err := releasetag.ParseObject("release/2", []byte(object))
 		if err != nil || release.Notes != "Notes." || release.Record.Release != 2 || len(release.Record.Rules) != 1 {
 			t.Fatalf("got %+v, %v", release, err)
@@ -54,7 +54,7 @@ func TestListAndRead_ReleaseTagsInNumberOrder(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 	dir := f.Worktree()
 	for _, number := range []string{"2", "10"} {
-		if err := f.Tag(ctx, dir, "release/"+number, "Library release "+number+".\n\n---\nformatVersion: 1\nrelease: "+number+"\nrules: {}\n"); err != nil {
+		if err := f.Tag(ctx, dir, "release/"+number, "Library release "+number+".\n\n---\nschemaVersion: 1\nrelease: "+number+"\nrules: {}\n"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -124,7 +124,7 @@ func TestRead_HandsOverEachBatchBeforeReadingTheNext(t *testing.T) {
 	notes := strings.Repeat("A long line of release notes.\n", 6<<20/30)
 	for number := 1; number <= 3; number++ {
 		message := filepath.Join(t.TempDir(), "message")
-		record := fmt.Sprintf("formatVersion: 1\nrelease: %d\nrules: {}\n", number)
+		record := fmt.Sprintf("schemaVersion: 1\nrelease: %d\nrules: {}\n", number)
 		if err := os.WriteFile(message, []byte(notes+"\n---\n"+record), 0600); err != nil {
 			t.Fatal(err)
 		}

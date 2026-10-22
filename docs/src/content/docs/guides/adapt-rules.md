@@ -77,13 +77,13 @@ Do not put edited material in `_managed/vendor/` and label it an unchanged vendo
 ## 4. Review, include, and generate
 
 Review the definition against the authoring rubric and the original source.
-`trailguide library check` validates the library format.
+`trailguide library check` validates the library against its schema.
 Publish the compatible library to a Git repository and add it to the consuming project's `sources`, with `techs/javascript/*` in `rules.include`.
 Sync fetches the included rules, generates resolved rules and license links, and applies those files to the consuming project.
 See [Configuration](/reference/configuration/) for adding a source and choosing rules.
 
 After generating the files, confirm that the rule displays the MIT declaration and attribution to the original document.
-Open `_managed/generated/libraries/<source-name>/README.md` for the library summary.
+Open `_managed/generated/libraries/<source-name>/README.md` for the library's declared license.
 Follow the generated rule’s license and notice links into `_managed/generated/libraries/<source-name>/licenses/`.
 The copies preserve the original text; the originals stay in `_managed/vendor/<source-name>/`.
 

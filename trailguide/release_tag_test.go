@@ -45,7 +45,7 @@ func TestParseReleaseTag_AcceptsOnlyCanonicalReleaseNumbers(t *testing.T) {
 }
 
 // record2 is a minimal valid release record for release/2.
-const record2 = "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n"
+const record2 = "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n"
 
 // TestParseReleaseMessage_SplitsAtTheLastSeparatorLine keeps earlier --- lines in the notes, without trailing line
 // breaks.
@@ -78,7 +78,7 @@ func TestParseReleaseMessage_RefusesMessagesWithoutARecord(t *testing.T) {
 		"record before notes":    record2 + "---\nNotes.\n",
 		"empty message":          "",
 		"separator only":         "---\n",
-		"record for release one": "Notes.\n---\nformatVersion: 1\nrelease: 1\nrules: {}\n",
+		"record for release one": "Notes.\n---\nschemaVersion: 1\nrelease: 1\nrules: {}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, _, err := trailguide.ParseReleaseMessage("release/2", []byte(message)); err == nil || errors.Is(err, trailguide.ErrNotReleaseTag) {

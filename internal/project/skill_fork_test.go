@@ -62,9 +62,6 @@ func TestSync_LeavesOutAnExcludedSkill(t *testing.T) {
 	if !strings.Contains(index, "## Excluded skills") || !strings.Contains(index, "- `team:skills/review`: We review in CI.") || strings.Contains(index, "### review") {
 		t.Fatalf("SKILLS.md doesn't list the excluded skill with its reason:\n%s", index)
 	}
-	if readme := readRepositoryFile(t, options, ".trailguide/_managed/generated/libraries/team/README.md"); !strings.Contains(readme, "- `skills/review`: excluded") {
-		t.Fatalf("source README:\n%s", readme)
-	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
 		t.Fatalf("check after sync = %+v, %v", result, err)
 	}
@@ -285,7 +282,7 @@ func secondSkillRelease(t *testing.T, f *gitfixture.Fixture) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	return commit
@@ -565,7 +562,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+			if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := PlanUpdate(ctx, options, git, nil, nil)
@@ -601,7 +598,7 @@ func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")

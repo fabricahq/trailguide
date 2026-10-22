@@ -5,7 +5,7 @@ description: "What Trail Guide accepts in rule files, rule group metadata, and s
 
 This page defines what Trail Guide accepts in a rule file and in rule group metadata. The same format applies to rules in a library and to a project's own rules. For how to write a rule well, see [Rule rubric and template](/reference/rule-authoring/).
 
-Each rule is a Markdown file, and related rules belong to a **rule group**: a directory under `.trailguide/rules/techs/` or `.trailguide/rules/practices/` that holds a `_group.yaml` file. [Library format](/reference/library-format/) covers where rule groups live in a library.
+Each rule is a Markdown file, and related rules belong to a **rule group**: a directory under `.trailguide/rules/techs/` or `.trailguide/rules/practices/` that holds a `_group.yaml` file. [Library schema](/reference/library-schema/) covers where rule groups live in a library.
 
 Rule group metadata and rule frontmatter use YAML. Duplicate keys, anchors, aliases, and explicit tags are rejected.
 
@@ -63,7 +63,7 @@ Use a commit-pinned URL and describe the adaptation. These citations identify so
 Attribution in the Markdown body remains preserved. Unknown attribution-object fields are rejected.
 
 Keep attribution with the rule in metadata or prose; a separate attribution file is not required by the format.
-Declare accompanying license and notice files in the [library manifest](/reference/library-format/#license-metadata) so Trail Guide can retain them and their links.
+Declare accompanying license and notice files in the [library manifest](/reference/library-schema/#license-metadata) so Trail Guide can retain them and their links.
 
 ## Supporting assets
 
@@ -110,4 +110,4 @@ Relative links in raw HTML are rejected during generation. Use Markdown links, i
 
 - [Rule rubric and template](/reference/rule-authoring/) explains how to write a rule well.
 - [Write a rule](/guides/write-rules/) walks through writing an individual rule.
-- [Library format](/reference/library-format/) covers a library's layout, manifest, and license.
+- [Library schema](/reference/library-schema/) covers a library's layout, manifest, and license.
