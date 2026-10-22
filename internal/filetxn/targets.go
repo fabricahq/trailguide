@@ -159,7 +159,7 @@ func managedTarget(target Target) bool {
 	return target == Vendor || target == Generated || legacyManagedTarget(target)
 }
 
-// legacyManagedTarget reports whether target is a managed tree where Trail Guide 0.6 and earlier kept it.
+// legacyManagedTarget reports whether target is a managed tree where Trail Guide 0.7 and earlier kept it.
 func legacyManagedTarget(target Target) bool {
 	return target == LegacyVendor || target == LegacyGenerated
 }

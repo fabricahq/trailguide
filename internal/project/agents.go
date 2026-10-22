@@ -155,7 +155,7 @@ type agentsPlan struct {
 // the section is current, or when the file has no section but already points to the project's
 // _managed/generated/RULES.md, as the block Trail Guide once asked users to paste does: that file stays the project's
 // until its pointer is removed. It fails with agents-pointer-outdated when such a file points to generated/RULES.md,
-// where Trail Guide 0.6 and earlier kept it, with agents-section-edited when the section's lines changed since Trail
+// where Trail Guide 0.7 and earlier kept it, with agents-section-edited when the section's lines changed since Trail
 // Guide wrote them, and with agents-section-invalid when its markers are broken.
 func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configuration, options Options) (plan agentsPlan, err error) {
 	if config.SkipAgentsFile {
@@ -188,7 +188,7 @@ func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configur
 	case !s.found() && strings.Contains(existing, directory+"/"+librarytree.Generated+"/RULES.md"):
 		return plan, nil
 	case !s.found() && strings.Contains(existing, directory+"/"+librarytree.LegacyGenerated+"/RULES.md"):
-		return plan, failure("agents-pointer-outdated", fmt.Sprintf("%s: points agents to %s/%s/RULES.md, where Trail Guide 0.6 and earlier kept the rules, which are now in %s/%s/RULES.md. Change the path, or delete the text that points there so Trail Guide keeps a section in the file instead, then run the command again", agentsFile, directory, librarytree.LegacyGenerated, directory, librarytree.Generated), nil)
+		return plan, failure("agents-pointer-outdated", fmt.Sprintf("%s: points agents to %s/%s/RULES.md, where Trail Guide 0.7 and earlier kept the rules, which are now in %s/%s/RULES.md. Change the path, or delete the text that points there so Trail Guide keeps a section in the file instead, then run the command again", agentsFile, directory, librarytree.LegacyGenerated, directory, librarytree.Generated), nil)
 	case !s.found():
 		content, action = appendAgentsSection(existing, want), "added"
 		if data == nil {

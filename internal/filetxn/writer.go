@@ -77,7 +77,7 @@ func isLegacyRoot(root *os.Root) bool {
 type Target string
 
 // Vendor and Generated are the managed trees, under the Trail Guide directory's _managed/ folder.
-// LegacyVendor and LegacyGenerated are where Trail Guide 0.6 and earlier kept them: sync removes them, with a nil
+// LegacyVendor and LegacyGenerated are where Trail Guide 0.7 and earlier kept them: sync removes them, with a nil
 // file map, when it moves a project to the current layout, and recovery finishes or restores a transaction those
 // versions journaled for them.
 const (

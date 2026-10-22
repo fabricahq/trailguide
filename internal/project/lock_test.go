@@ -229,7 +229,7 @@ func toLegacy(t *testing.T, options Options) []byte {
 	return lock
 }
 
-// toLegacyLayout moves the managed trees of the project at root to where Trail Guide 0.6 and earlier kept them.
+// toLegacyLayout moves the managed trees of the project at root to where Trail Guide 0.7 and earlier kept them.
 func toLegacyLayout(t *testing.T, root *os.Root) {
 	t.Helper()
 	for from, to := range map[string]string{"_managed/vendor": "vendor", "_managed/generated": "generated"} {

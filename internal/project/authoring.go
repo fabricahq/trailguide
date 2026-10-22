@@ -41,7 +41,8 @@ type RuleOptions struct {
 
 // Initialize creates missing scaffolding and refreshes an unmodified managed guide; valid configuration and authored
 // files are preserved. A new configuration installs skills into both skill targets, claude and agents. It fails,
-// writing nothing, when the project still has a local/ folder, or when AGENTS.md has an edited section or broken markers.
+// writing nothing, when the project still has a local/ folder, keeps vendor/ and generated/ where Trail Guide 0.7 and
+// earlier did, which only sync moves, or when AGENTS.md has an edited section or broken markers.
 // Then it adds or refreshes the Trail Guide section of the repository's AGENTS.md, as build does, listing the file among
 // the changed files, or the added ones when it created it; a failure there comes after the other files were written,
 // and running init again finishes it.
@@ -61,6 +62,14 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 	}
 	defer root.Close()
 	changes, err := filetxn.Edit(ctx, root, func() ([]filetxn.File, error) {
+		// The guide and the AGENTS.md section name _managed/, so a project sync hasn't moved there yet keeps both.
+		layout, err := readLayout(root)
+		if err != nil {
+			return nil, err
+		}
+		if layout.legacy {
+			return nil, layoutMigrationNeeded()
+		}
 		var files []filetxn.File
 		old, err := filetxn.ReadOptional(ctx, root, configurationFile)
 		if err != nil {

@@ -293,7 +293,7 @@ func (p *planner) editedRelease(number int) error {
 	name, recorded := p.source.Name, p.recorded.Release
 	switch {
 	case number < recorded:
-		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, older than library release %d, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward. To go back, restore .trailguide/config.yaml, .trailguide/lock.json, and .trailguide/vendor/%s/ from the commit that recorded release %d, such as with git revert, then run trailguide project sync; or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
+		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, older than library release %d, which the project records; sync doesn't move a source, and trailguide project update moves a source only forward. To go back, restore .trailguide/config.yaml, .trailguide/lock.json, and .trailguide/_managed/vendor/%s/ from the commit that recorded release %d, such as with git revert, then run trailguide project sync; or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
 	case !p.updating:
 		return fail("ref-changed", fmt.Sprintf("sources.%s.ref names release/%d, but the project records library release %d, and sync doesn't move a source to another release. Run trailguide project update %s to review the move to release %d and take it, or set sources.%s.ref back to release/%d.", name, number, recorded, name, number, name, recorded), nil)
 	}

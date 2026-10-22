@@ -1,4 +1,4 @@
-// Test moving a project's managed trees from where Trail Guide 0.6 kept them to _managed/, and the skills/ guide.
+// Test moving a project's managed trees from where Trail Guide 0.7 kept them to _managed/, and the skills/ guide.
 
 package project
 
@@ -17,7 +17,7 @@ import (
 )
 
 // TestSync_MovesTheManagedTreesUnderManaged: every other command refuses a project whose vendor/ and generated/
-// are where Trail Guide 0.6 kept them, writing nothing, and sync moves them under _managed/ in one transaction,
+// are where Trail Guide 0.7 kept them, writing nothing, and sync moves them under _managed/ in one transaction,
 // keeping the lockfile and every vendored file. The moved project is current offline.
 func TestSync_MovesTheManagedTreesUnderManaged(t *testing.T) {
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestSync_MovesTheManagedTreesUnderManaged(t *testing.T) {
 	requireCurrent(t, options)
 }
 
-// TestProject_RefusesAMixedLayout fails, writing nothing, when a tree under _managed/ and a tree where Trail Guide 0.6 kept it
+// TestProject_RefusesAMixedLayout fails, writing nothing, when a tree under _managed/ and a tree where Trail Guide 0.7 kept it
 // are both present, as a merge of a moved branch with one that wasn't leaves them.
 func TestProject_RefusesAMixedLayout(t *testing.T) {
 	ctx := context.Background()

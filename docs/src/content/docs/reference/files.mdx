@@ -145,7 +145,7 @@ The commands that write the section create `AGENTS.md` when it's missing, and ad
 
 When `AGENTS.md` already points to `.trailguide/_managed/generated/RULES.md` outside the markers, Trail Guide leaves the file alone and `trailguide project check` accepts it. To switch to the maintained section, delete your own pointer and run `trailguide project build`.
 
-Trail Guide 0.6 and earlier asked you to paste a pointer to `.trailguide/generated/RULES.md`, where it kept generated guidance then. That file no longer exists, so while `AGENTS.md` has that pointer outside the markers, the commands that write or check the section fail with `agents-pointer-outdated`. Change the path to `.trailguide/_managed/generated/RULES.md`, or delete the pasted section and rerun the command so Trail Guide adds the maintained section in its place.
+Earlier versions asked you to paste a pointer to `.trailguide/generated/RULES.md`, where Trail Guide 0.7 and earlier kept generated guidance. That file no longer exists, so while `AGENTS.md` has that pointer outside the markers, the commands that write or check the section fail with `agents-pointer-outdated`. Change the path to `.trailguide/_managed/generated/RULES.md`, or delete the pasted section and rerun the command so Trail Guide adds the maintained section in its place.
 
 | Generated path | Contents |
 | --- | --- |

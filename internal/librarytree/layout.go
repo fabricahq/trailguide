@@ -59,7 +59,7 @@ const (
 	Generated = Managed + "/generated"
 )
 
-// LegacyVendor and LegacyGenerated are where Trail Guide 0.6 and earlier kept Vendor and Generated, at the top of
+// LegacyVendor and LegacyGenerated are where Trail Guide 0.7 and earlier kept Vendor and Generated, at the top of
 // the Trail Guide directory. Sync moves them.
 const (
 	LegacyVendor    = "vendor"

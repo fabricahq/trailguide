@@ -1,4 +1,4 @@
-// Test moving the managed trees from where Trail Guide 0.6 kept them to _managed/ in one transaction.
+// Test moving the managed trees from where Trail Guide 0.7 kept them to _managed/ in one transaction.
 
 package filetxn
 

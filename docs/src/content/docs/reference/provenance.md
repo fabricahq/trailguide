@@ -34,7 +34,7 @@ An **active rule** is one included in that generated guidance. An excluded rule 
 
 These files describe the current result, rather than a running history of every update. They contain no changing timestamps or machine-specific paths.
 
-Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report that repeated these facts. Trail Guide no longer writes it, and the sync that [moves the project to the new layout](#migrate-from-trail-guide-06) removes it.
+Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report that repeated these facts. Trail Guide no longer writes it, and the sync that [moves the project to the new layout](#migrate-from-trail-guide-07) removes it.
 
 ## Trace a rule to its source
 
@@ -294,9 +294,9 @@ Sync reads each record, checks it and the vendored files as 0.5 did, writes `loc
 
 A record changed outside Trail Guide 0.5 is refused as an edited lock entry is, and recovers the same way.
 
-### Migrate from Trail Guide 0.6
+### Migrate from Trail Guide 0.7
 
-Trail Guide 0.6 and earlier kept vendor snapshots and generated guidance in `.trailguide/vendor/` and `.trailguide/generated/`. They now live under `.trailguide/_managed/`, so every file Trail Guide writes for you is in one place. Build, check, update, and the other commands that read vendored files refuse a project in the old layout with `layout-migration-needed`. Move it once, and commit the result:
+Trail Guide 0.7 and earlier kept vendor snapshots and generated guidance in `.trailguide/vendor/` and `.trailguide/generated/`. They now live under `.trailguide/_managed/`, so every file Trail Guide writes for you is in one place. Init, build, check, update, and the other commands that read vendored files refuse a project in the old layout with `layout-migration-needed`. Move it once, and commit the result:
 
 ```sh
 trailguide project sync

@@ -13,7 +13,7 @@ import (
 )
 
 // managedLayout is where a project keeps its vendor snapshots and generated output: under _managed/, or, when legacy
-// is set, at the top of the Trail Guide directory, where Trail Guide 0.6 and earlier kept them.
+// is set, at the top of the Trail Guide directory, where Trail Guide 0.7 and earlier kept them.
 type managedLayout struct {
 	vendor, generated filetxn.Target
 	legacy            bool
@@ -53,7 +53,7 @@ func readLayout(root *os.Root) (managedLayout, error) {
 		managed = managed || found
 	}
 	if managed {
-		return managedLayout{}, failure("mixed-layout", fmt.Sprintf(".trailguide/%s/ and .trailguide/%s/, a folder Trail Guide 0.6 and earlier wrote, are both present. Sync never writes both, so a merge combined a migrated branch with one that wasn't. Take one branch's .trailguide/%s/, %s/, and %s/ folders and %s, then run trailguide project sync", librarytree.Managed, legacy[0], librarytree.Managed, librarytree.LegacyVendor, librarytree.LegacyGenerated, lockFile), nil)
+		return managedLayout{}, failure("mixed-layout", fmt.Sprintf(".trailguide/%s/ and .trailguide/%s/, a folder Trail Guide 0.7 and earlier wrote, are both present. Sync never writes both, so a merge combined a migrated branch with one that wasn't. Take one branch's .trailguide/%s/, %s/, and %s/ folders and %s, then run trailguide project sync", librarytree.Managed, legacy[0], librarytree.Managed, librarytree.LegacyVendor, librarytree.LegacyGenerated, lockFile), nil)
 	}
 	return managedLayout{vendor: filetxn.LegacyVendor, generated: filetxn.LegacyGenerated, legacy: true}, nil
 }
@@ -72,5 +72,5 @@ func present(root *os.Root, name string) (bool, error) {
 
 // layoutMigrationNeeded is the failure of every command but sync in a project in the legacy layout.
 func layoutMigrationNeeded() error {
-	return failure("layout-migration-needed", fmt.Sprintf("the project keeps .trailguide/%s/ and .trailguide/%s/ where Trail Guide 0.6 and earlier did. Run trailguide project sync once to move them under .trailguide/%s/, which moves no source, and commit the result", librarytree.LegacyVendor, librarytree.LegacyGenerated, librarytree.Managed), nil)
+	return failure("layout-migration-needed", fmt.Sprintf("the project keeps .trailguide/%s/ and .trailguide/%s/ where Trail Guide 0.7 and earlier did. Run trailguide project sync once to move them under .trailguide/%s/, which moves no source, and commit the result", librarytree.LegacyVendor, librarytree.LegacyGenerated, librarytree.Managed), nil)
 }
