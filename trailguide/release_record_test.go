@@ -186,6 +186,12 @@ func TestParseReleaseRecord_ChecksTheSchemaVersionBeforeTheContent(t *testing.T)
 	if record, err := trailguide.ParseReleaseRecord([]byte(record2), "release/2"); err != nil || record.Release != 2 {
 		t.Fatalf("schema version %d: got %+v, %v", trailguide.ReleaseRecordSchemaVersion, record, err)
 	}
+	if record, err := trailguide.ParseReleaseRecord([]byte(strings.Replace(record2, "schemaVersion", "formatVersion", 1)), "release/2"); err != nil || record.Release != 2 {
+		t.Fatalf("a record from before Trail Guide 0.8.0, which spells the field formatVersion: got %+v, %v", record, err)
+	}
+	if _, err := trailguide.ParseReleaseRecord([]byte("formatVersion: 2\nrelease: 2\nrules: {}\n"), "release/2"); !strings.Contains(fmt.Sprint(err), "release/2.formatVersion") {
+		t.Fatalf("a newer formatVersion: got %v; want an error at release/2.formatVersion", err)
+	}
 	for name, input := range map[string]string{
 		"newer schema version":                "schemaVersion: 2\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n",
 		"newer schema version, other content": "schemaVersion: 2\nrelease: second\nrules: [techs/go/a]\nchanges: none\n",
