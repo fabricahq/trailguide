@@ -536,6 +536,23 @@ func TestCheck_RejectsTermsInsideARulesVersion(t *testing.T) {
 	}
 }
 
+// TestCheck_ReadsAReleaseRecordThatSpellsTheFieldFormatVersion reads the history of a library whose release/1 was
+// published before Trail Guide 0.8.0, whose record spells its schema version formatVersion.
+func TestCheck_ReadsAReleaseRecordThatSpellsTheFieldFormatVersion(t *testing.T) {
+	ctx := context.Background()
+	fixture, options := authorClone(t, libraryFiles(), strings.Replace(releaseOne, "schemaVersion: 1", "formatVersion: 1", 1))
+	if _, err := fixture.Commit(ctx, options.Directory, "Change a", gitfixture.Library(map[string][]byte{
+		"practices/testing/a.md": []byte(ruleText("Changed.")),
+		"changes/a.yaml":         []byte("summary: Change a.\nrules:\n  practices/testing/a: patch\n"),
+	})); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Check(ctx, options)
+	if err != nil || !slices.Equal(previewRows(result.PendingRelease), []string{"practices/testing/a patch 1.0.0 1.0.1"}) {
+		t.Fatal(result, err)
+	}
+}
+
 // TestCheck_AsksToUpgradeForANewerReleaseRecordSchema refuses a library release whose record a later Trail Guide
 // wrote, with its own code.
 func TestCheck_AsksToUpgradeForANewerReleaseRecordSchema(t *testing.T) {
