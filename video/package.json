@@ -9,8 +9,8 @@
     "render:silent": "remotion render src/index.ts TrailGuideTour out/trailguide-tour-silent.mp4 --muted",
     "still": "remotion still src/index.ts TrailGuideTour out/poster.png --frame=60",
     "typecheck": "tsc --project tsconfig.json",
-    "format": "prettier --single-quote --print-width 120 --write src scripts",
-    "format:check": "prettier --single-quote --print-width 120 --check src scripts",
+    "format": "prettier --single-quote --print-width 120 --write src scripts remotion.config.ts",
+    "format:check": "prettier --single-quote --print-width 120 --check src scripts remotion.config.ts",
     "check": "bun run format:check && bun run typecheck"
   },
   "dependencies": {
