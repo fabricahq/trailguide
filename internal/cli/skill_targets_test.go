@@ -93,8 +93,8 @@ func TestSync_InstallsTheSkillsOfAnAddedSource(t *testing.T) {
 		targets, warning string
 		added            []string
 	}{
-		{"claude", "", []string{"../.claude/skills/review/SKILL.md", "generated/SKILLS.md", "vendor/tools/tools/review/SKILL.md"}},
-		{"none", "The project has no skill targets, so no copy of its 1 skill(s) was installed.", []string{"generated/SKILLS.md", "vendor/tools/tools/review/SKILL.md"}},
+		{"claude", "", []string{"../.claude/skills/review/SKILL.md", "_managed/generated/SKILLS.md", "_managed/vendor/tools/tools/review/SKILL.md"}},
+		{"none", "The project has no skill targets, so no copy of its 1 skill(s) was installed.", []string{"_managed/generated/SKILLS.md", "_managed/vendor/tools/tools/review/SKILL.md"}},
 	} {
 		t.Run(test.targets, func(t *testing.T) {
 			directory := t.TempDir()

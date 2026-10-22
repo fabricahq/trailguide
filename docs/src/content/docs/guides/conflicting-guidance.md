@@ -33,7 +33,7 @@ Then give a repository-aware agent this prompt:
 ```text
 Review this project's resolved Trail Guide for conflicting guidance.
 
-Read .trailguide/generated/RULES.md, every part of each rule group index,
+Read .trailguide/_managed/generated/RULES.md, every part of each rule group index,
 and all linked resolved rules to assess conflicts across the complete
 adopted set.
 Use .trailguide/lock.json to identify the reviewed snapshot.
@@ -86,7 +86,7 @@ It affects only Fabrica's rule; Acme's rule stays active.
 
 For a conflicting rule your project wrote, edit its file under `.trailguide/rules/`.
 Keep edits in source files and configuration, then rebuild the indexes and resolved definitions.
-Do not edit `vendor/` or `generated/` directly.
+Do not edit `_managed/vendor/` or `_managed/generated/` directly.
 
 ## Rebuild and review again
 

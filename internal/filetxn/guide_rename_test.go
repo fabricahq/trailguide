@@ -19,8 +19,8 @@ func TestUnsupportedGuideRenamePreservesLiveOutput(t *testing.T) {
 			t.Run(string(guide)+"/"+unsupported.Error(), func(t *testing.T) {
 				root := openProject(t)
 				writeFixture(t, root, string(guide), "old guide")
-				writeFixture(t, root, "generated/old", "old output")
-				writeFixture(t, root, "vendor/old", "old library")
+				writeFixture(t, root, "_managed/generated/old", "old output")
+				writeFixture(t, root, "_managed/vendor/old", "old library")
 				calls := 0
 				blocked := func(int, string, int, string) error { calls++; return unsupported }
 				operation := func(w *Writer) error {
@@ -33,7 +33,7 @@ func TestUnsupportedGuideRenamePreservesLiveOutput(t *testing.T) {
 					if !errors.Is(err, unsupported) || !strings.Contains(err.Error(), "existing files were not changed") {
 						t.Fatal("expected safe publication refusal", err)
 					}
-					for name, want := range map[string]string{string(guide): "old guide", "generated/old": "old output", "vendor/old": "old library"} {
+					for name, want := range map[string]string{string(guide): "old guide", "_managed/generated/old": "old output", "_managed/vendor/old": "old library"} {
 						data, err := root.ReadFile(name)
 						if err != nil || string(data) != want {
 							t.Fatal(name, string(data), err)

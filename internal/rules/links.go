@@ -141,7 +141,7 @@ func RelativeTarget(destination, file string) (target, suffix string, local bool
 // RelativeTarget does, from where the file lives in its repository, and returns the target's library path. A
 // destination starting with / is relative to the Trail Guide directory, .trailguide/, as in a project's authored
 // files, so /assets/diagram.svg names a shared asset. A local destination that holds no library file, such as one in
-// .trailguide/vendor/, fails.
+// .trailguide/_managed/vendor/, fails.
 func LibraryTarget(destination, file string) (target, suffix string, local bool, err error) {
 	location := librarytree.RepositoryPath(file)
 	target, suffix, local, err = RelativeTarget(destination, location)

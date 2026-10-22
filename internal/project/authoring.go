@@ -41,7 +41,8 @@ type RuleOptions struct {
 
 // Initialize creates missing scaffolding and refreshes an unmodified managed guide; valid configuration and authored
 // files are preserved. A new configuration installs skills into both skill targets, claude and agents. It fails,
-// writing nothing, when the project still has a local/ folder, or when AGENTS.md has an edited section or broken markers.
+// writing nothing, when the project still has a local/ folder, keeps vendor/ and generated/ where Trail Guide 0.7 and
+// earlier did, which only sync moves, or when AGENTS.md has an edited section or broken markers.
 // Then it adds or refreshes the Trail Guide section of the repository's AGENTS.md, as build does, listing the file among
 // the changed files, or the added ones when it created it; a failure there comes after the other files were written,
 // and running init again finishes it.
@@ -61,6 +62,14 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 	}
 	defer root.Close()
 	changes, err := filetxn.Edit(ctx, root, func() ([]filetxn.File, error) {
+		// The guide and the AGENTS.md section name _managed/, so a project sync hasn't moved there yet keeps both.
+		layout, err := readLayout(root)
+		if err != nil {
+			return nil, err
+		}
+		if layout.legacy {
+			return nil, layoutMigrationNeeded()
+		}
 		var files []filetxn.File
 		old, err := filetxn.ReadOptional(ctx, root, configurationFile)
 		if err != nil {
@@ -113,7 +122,7 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 		if guide != nil {
 			files = append(files, *guide)
 		}
-		return files, nil
+		return withSkillsGuide(ctx, root, files)
 	})
 	result, err := authoringResult(changes, err)
 	if err != nil {
@@ -280,6 +289,6 @@ func failure(code, problem string, cause error) error {
 }
 
 func groupFiles(directory, id string, metadata []byte, projectGuideName string) []filetxn.File {
-	instructions := fmt.Sprintf("## Add or edit rules\n\nFollow [the project guide](../../../%s) for commands to run from the project root.\nUse `trailguide project add rule %s/<rule-name>` to add a rule. Edit existing rule files directly.\nRun trailguide project build and trailguide project check from the project root after local changes, then inspect [the resolved rules](../../../generated/RULES.md).\nUse the resolved rules when working on the project: they include imported guidance and apply exclusions and replacements.\n", projectGuideName, id)
+	instructions := fmt.Sprintf("## Add or edit rules\n\nFollow [the project guide](../../../%s) for commands to run from the project root.\nUse `trailguide project add rule %s/<rule-name>` to add a rule. Edit existing rule files directly.\nRun trailguide project build and trailguide project check from the project root after local changes, then inspect [the resolved rules](../../../%s/RULES.md).\nUse the resolved rules when working on the project: they include imported guidance and apply exclusions and replacements.\n", projectGuideName, id, librarytree.Generated)
 	return []filetxn.File{{Path: path.Join(directory, "_group.yaml"), Content: metadata}, {Path: path.Join(directory, "README.md"), Content: rules.GroupGuide(id, instructions)}}
 }

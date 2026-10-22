@@ -131,7 +131,7 @@ func TestBuild_LinksAnAuthoredSkillToTheAuthoredRuleItCites(t *testing.T) {
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	if installed := readRepositoryFile(t, options, ".claude/skills/tidy/SKILL.md"); !strings.HasSuffix(installed, "- `local:techs/go/errors`: [.trailguide/generated/rules/local/techs/go/errors.md](../../../.trailguide/generated/rules/local/techs/go/errors.md)\n") {
+	if installed := readRepositoryFile(t, options, ".claude/skills/tidy/SKILL.md"); !strings.HasSuffix(installed, "- `local:techs/go/errors`: [.trailguide/_managed/generated/rules/local/techs/go/errors.md](../../../.trailguide/_managed/generated/rules/local/techs/go/errors.md)\n") {
 		t.Fatalf("installed SKILL.md:\n%s", installed)
 	}
 	requireCurrent(t, options)
@@ -168,10 +168,10 @@ func TestCheck_FailsWhenAnAuthoredSkillCitesARuleItsLibraryRetired(t *testing.T)
 		t.Fatal(err)
 	}
 	installed := readRepositoryFile(t, options, ".claude/skills/fix/SKILL.md")
-	if want := "\n## Rules this skill applies\n\nRead each rule in full before the step that applies it. These are the project's versions of the rules this skill cites, for reference: they don't join RULES.md.\n\n- `team:techs/go/errors` 1.0.0: [.trailguide/generated/rules/team/techs/go/errors.md](../../../.trailguide/generated/rules/team/techs/go/errors.md)\n"; !strings.HasSuffix(installed, want) {
+	if want := "\n## Rules this skill applies\n\nRead each rule in full before the step that applies it. These are the project's versions of the rules this skill cites, for reference: they don't join RULES.md.\n\n- `team:techs/go/errors` 1.0.0: [.trailguide/_managed/generated/rules/team/techs/go/errors.md](../../../.trailguide/_managed/generated/rules/team/techs/go/errors.md)\n"; !strings.HasSuffix(installed, want) {
 		t.Fatalf("installed SKILL.md:\n%s\nwant it to end with\n%s", installed, want)
 	}
-	if _, err := os.Stat(filepath.Join(options.Directory, ".trailguide/generated/rules/team/techs/go/errors.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(options.Directory, ".trailguide/_managed/generated/rules/team/techs/go/errors.md")); err != nil {
 		t.Fatalf("the cited rule's link has no target: %v", err)
 	}
 	requireCurrent(t, options)
@@ -239,7 +239,7 @@ func TestSync_RejectsAnAuthoredSkillCitingARuleItsSourceDoesntHave(t *testing.T)
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	if installed := readRepositoryFile(t, options, ".claude/skills/fix/SKILL.md"); !strings.HasSuffix(installed, "- `team:techs/go/errors` 1.0.0: [.trailguide/generated/rules/team/techs/go/errors.md](../../../.trailguide/generated/rules/team/techs/go/errors.md)\n- `team:practices/testing/verify`: not included by this project, so it has no version of it\n") {
+	if installed := readRepositoryFile(t, options, ".claude/skills/fix/SKILL.md"); !strings.HasSuffix(installed, "- `team:techs/go/errors` 1.0.0: [.trailguide/_managed/generated/rules/team/techs/go/errors.md](../../../.trailguide/_managed/generated/rules/team/techs/go/errors.md)\n- `team:practices/testing/verify`: not included by this project, so it has no version of it\n") {
 		t.Fatalf("installed SKILL.md:\n%s", installed)
 	}
 	requireCurrent(t, options)

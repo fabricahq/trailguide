@@ -23,12 +23,12 @@ func TestRenderAgentsSection(t *testing.T) {
 	if marker == nil || marker[1] != "1.2.3" || marker[2] != agentsDigest(strings.Join(lines[1:len(lines)-2], "")) || lines[len(lines)-2] != "<!-- trailguide:end -->\n" {
 		t.Fatalf("markers:\n%s", section)
 	}
-	for _, want := range []string{"## Skills and Rules\n", "Read `.trailguide/generated/RULES.md`", "If `.trailguide/generated/SKILLS.md` exists, read it", "follow `.trailguide/README.md`"} {
+	for _, want := range []string{"## Skills and Rules\n", "Read `.trailguide/_managed/generated/RULES.md`", "If `.trailguide/_managed/generated/SKILLS.md` exists, read it", "follow `.trailguide/README.md`"} {
 		if !strings.Contains(section, want) {
 			t.Fatalf("missing %q:\n%s", want, section)
 		}
 	}
-	if legacy := renderAgentsSection(".code-rules", "1.2.3"); strings.Contains(legacy, ".trailguide/") || !strings.Contains(legacy, "Read `.code-rules/generated/RULES.md`") {
+	if legacy := renderAgentsSection(".code-rules", "1.2.3"); strings.Contains(legacy, ".trailguide/") || !strings.Contains(legacy, "Read `.code-rules/_managed/generated/RULES.md`") {
 		t.Fatalf("section for .code-rules/:\n%s", legacy)
 	}
 }
@@ -50,9 +50,9 @@ func TestPlanAgentsSection(t *testing.T) {
 		"older version":    {ptr("# Guide\n\n" + older + "\n## Releases\n"), "# Guide\n\n" + current + "\n## Releases\n", "updated"},
 		"other directory":  {ptr(renderAgentsSection(".code-rules", "1.2.3")), current, "updated"},
 		"current":          {ptr("# Guide\n\n" + current + "Footer\n"), "", ""},
-		"pasted":           {ptr("## Engineering rules\n\n1. Read `.trailguide/generated/RULES.md`.\n"), "", ""},
+		"pasted":           {ptr("## Engineering rules\n\n1. Read `.trailguide/_managed/generated/RULES.md`.\n"), "", ""},
 		"crlf current":     {ptr(strings.ReplaceAll(current, "\n", "\r\n")), "", ""},
-		"pasted elsewhere": {ptr("Read `.code-rules/generated/RULES.md`.\n"), "Read `.code-rules/generated/RULES.md`.\n\n" + current, "added"},
+		"pasted elsewhere": {ptr("Read `.code-rules/_managed/generated/RULES.md`.\n"), "Read `.code-rules/_managed/generated/RULES.md`.\n\n" + current, "added"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := agentsProject(t, test.existing)
@@ -78,13 +78,14 @@ func TestPlanAgentsSection(t *testing.T) {
 func TestPlanAgentsSectionRefuses(t *testing.T) {
 	current := renderAgentsSection(".trailguide", "1.2.3")
 	for name, test := range map[string]struct{ existing, code string }{
-		"edited":     {strings.Replace(current, "Briefly report", "Always report", 1), "agents-section-edited"},
-		"begin only": {"# Guide\n<!-- trailguide:begin 1.2.3 sha256:0123456789abcdef -->\n", "agents-section-invalid"},
-		"end first":  {"<!-- trailguide:end -->\n" + current, "agents-section-invalid"},
-		"two begins": {"<!-- trailguide:begin 1.2.3 sha256:0123456789abcdef -->\n" + current, "agents-section-invalid"},
-		"two ends":   {current + "<!-- trailguide:end -->\n", "agents-section-invalid"},
-		"link":       {current, "unsafe-file"},
-		"malformed":  {strings.NewReplacer("trailguide:begin 1.2.3", "trailguide:begin", "trailguide:end", "trailguide:end-x").Replace(current), "agents-section-invalid"},
+		"edited":      {strings.Replace(current, "Briefly report", "Always report", 1), "agents-section-edited"},
+		"old pointer": {"## Engineering rules\n\n1. Read `.trailguide/generated/RULES.md`.\n", "agents-pointer-outdated"},
+		"begin only":  {"# Guide\n<!-- trailguide:begin 1.2.3 sha256:0123456789abcdef -->\n", "agents-section-invalid"},
+		"end first":   {"<!-- trailguide:end -->\n" + current, "agents-section-invalid"},
+		"two begins":  {"<!-- trailguide:begin 1.2.3 sha256:0123456789abcdef -->\n" + current, "agents-section-invalid"},
+		"two ends":    {current + "<!-- trailguide:end -->\n", "agents-section-invalid"},
+		"link":        {current, "unsafe-file"},
+		"malformed":   {strings.NewReplacer("trailguide:begin 1.2.3", "trailguide:begin", "trailguide:end", "trailguide:end-x").Replace(current), "agents-section-invalid"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := agentsProject(t, &test.existing)
@@ -138,14 +139,14 @@ func TestBuildAgentsSection(t *testing.T) {
 	if _, err := Check(ctx, options); !errors.As(err, &failure) || failure.Code != "agents-section-edited" {
 		t.Fatalf("check: %v", err)
 	}
-	writeFixture(t, root, "generated/RULES.md", "stale")
+	writeFixture(t, root, "_managed/generated/RULES.md", "stale")
 	if _, err := Build(ctx, options); !errors.As(err, &failure) || failure.Code != "agents-section-edited" {
 		t.Fatalf("build: %v", err)
 	}
 	if got, err := os.ReadFile(agents); err != nil || string(got) != edited {
 		t.Fatalf("build changed the edited section: %s %v", got, err)
 	}
-	if generated, err := filetxn.ReadOptional(ctx, root, "generated/RULES.md"); err != nil || string(generated) != "stale" {
+	if generated, err := filetxn.ReadOptional(ctx, root, "_managed/generated/RULES.md"); err != nil || string(generated) != "stale" {
 		t.Fatalf("a refused build wrote generated output: %v", err)
 	}
 }
@@ -178,7 +179,7 @@ func TestAgentsFileTurnedOff(t *testing.T) {
 func TestCheckAcceptsAPastedSection(t *testing.T) {
 	ctx := context.Background()
 	_, options := localProject(t)
-	pasted := "## Engineering rules\n\n1. Read `.trailguide/generated/RULES.md` and follow its instructions.\n"
+	pasted := "## Engineering rules\n\n1. Read `.trailguide/_managed/generated/RULES.md` and follow its instructions.\n"
 	agents := filepath.Join(options.Directory, "AGENTS.md")
 	if err := os.WriteFile(agents, []byte(pasted), 0644); err != nil {
 		t.Fatal(err)

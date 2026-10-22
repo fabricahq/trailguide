@@ -62,7 +62,7 @@ func interruptedForkUpdate(t *testing.T) updateFixture {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	blocker := filepath.Join(".trailguide-transaction", "old-generated")
+	blocker := filepath.Join(".trailguide-transaction", "old-_managed+generated")
 	err = filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
 		// Apply calls this after staging every target and before writing its journal and creating the parent.
 		return w.Apply(output, func() error { return root.MkdirAll(filepath.Join(blocker, "blocker"), 0700) })

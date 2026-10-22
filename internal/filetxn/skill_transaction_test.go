@@ -31,8 +31,8 @@ func openSkillProject(t *testing.T) (repository, root *os.Root) {
 	if root.Name() != filepath.Join(repository.Name(), ".trailguide") {
 		t.Fatalf("root name %s", root.Name())
 	}
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 	writeFixture(t, repository, ".claude/skills/review/SKILL.md", "old review")
 	writeFixture(t, repository, ".claude/skills/theirs/SKILL.md", "their skill")
 	return repository, root
@@ -79,7 +79,7 @@ func repositoryFiles(t *testing.T, repository *os.Root) map[string]string {
 // requireSkillProject checks the managed trees' state and the files in the skill targets.
 func requireSkillProject(t *testing.T, repository, root *os.Root, state string, want map[string]string) {
 	t.Helper()
-	for name, suffix := range map[string]string{"vendor/team/rule.md": " rule", "generated/RULES.md": " output"} {
+	for name, suffix := range map[string]string{"_managed/vendor/team/rule.md": " rule", "_managed/generated/RULES.md": " output"} {
 		data, err := root.ReadFile(name)
 		if err != nil || string(data) != state+suffix {
 			t.Fatalf("%s: got %q, want %q: %v", name, data, state+suffix, err)
@@ -171,7 +171,7 @@ func TestApply_RefusesALinkedSkillTarget(t *testing.T) {
 	output, executable := skillUpdate(false)
 	err := WithWriter(context.Background(), root, func(w *Writer) error { return w.ApplyModes(output, executable, nil) })
 	projectCode(t, err, "unsafe-path")
-	if data, err := root.ReadFile("generated/RULES.md"); err != nil || string(data) != "old output" {
+	if data, err := root.ReadFile("_managed/generated/RULES.md"); err != nil || string(data) != "old output" {
 		t.Fatalf("generated output changed: %q, %v", data, err)
 	}
 }
@@ -231,7 +231,7 @@ func TestKilledSkillWriterRecovers(t *testing.T) {
 		t.Fatalf("child did not stop at rename: %v", err)
 	}
 	for _, test := range []struct{ name, stop, state string }{
-		{"generated", "generated", "old"},
+		{"_managed/generated", "_managed/generated", "old"},
 		{"first skill folder", ".agents/skills/build", "old"},
 		{"backup", ".trailguide/" + transactionName + "/" + backupPrefix + "..+.claude+skills+review", "old"},
 		{"replaced folder", ".claude/skills/review", "old"},

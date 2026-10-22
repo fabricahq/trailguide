@@ -36,7 +36,7 @@ func generateCiting(t *testing.T, exclude string, local map[string][]byte, skill
 func TestGenerateLinksAnInstalledSkillToEachRuleItCites(t *testing.T) {
 	custom := map[string][]byte{"techs/go/custom.md": []byte(document)}
 	link := func(file string) string {
-		return "[.trailguide/generated/" + file + "](../../../.trailguide/generated/" + file + ")"
+		return "[.trailguide/_managed/generated/" + file + "](../../../.trailguide/_managed/generated/" + file + ")"
 	}
 	tests := map[string]struct {
 		exclude, cited string
@@ -119,7 +119,7 @@ func TestGenerateLinksALibrarySkillToTheRulesItCitesInItsLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := string(output.Skills[".claude/skills/review"].Files["SKILL.md"])
-	for _, want := range []string{"- `team:techs/go/errors` 1.0.0: [.trailguide/generated/rules/team/techs/go/errors.md]", "- `team:techs/go/old`: retired by its library"} {
+	for _, want := range []string{"- `team:techs/go/errors` 1.0.0: [.trailguide/_managed/generated/rules/team/techs/go/errors.md]", "- `team:techs/go/old`: retired by its library"} {
 		if !strings.Contains(installed, want) {
 			t.Errorf("installed SKILL.md lacks %q:\n%s", want, installed)
 		}
@@ -136,7 +136,7 @@ func TestGenerateListsCitedRulesInSkillsIndexWithoutSkillTargets(t *testing.T) {
 		t.Fatal(err)
 	}
 	index := string(output.Files["SKILLS.md"])
-	if want := "- **Applies:**\n  - `team:techs/go/errors` 1.0.0: [.trailguide/generated/rules/team/techs/go/errors.md](rules/team/techs/go/errors.md)"; !strings.Contains(index, want) {
+	if want := "- **Applies:**\n  - `team:techs/go/errors` 1.0.0: [.trailguide/_managed/generated/rules/team/techs/go/errors.md](rules/team/techs/go/errors.md)"; !strings.Contains(index, want) {
 		t.Fatalf("SKILLS.md:\n%s\nwant\n%s", index, want)
 	}
 }

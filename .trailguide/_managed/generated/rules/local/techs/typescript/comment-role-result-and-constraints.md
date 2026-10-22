@@ -105,7 +105,7 @@ Not a violation: a private helper without a comment whose name and signature mak
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/typescript/comment-role-result-and-constraints.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/typescript/comment-role-result-and-constraints.md)
 
 **Attribution:** [Adapted from mkosir TypeScript Style Guide guidance \(comment-role-result-and-constraints; MIT, notice retained in NOTICE.md\): restructured to the rule template; the guidance and examples are otherwise preserved.](<https://github.com/mkosir/typescript-style-guide/blob/86bebd58a987e23277dba02028c0ee2d6ffb5073/website/src/pages/index.mdx>)
 

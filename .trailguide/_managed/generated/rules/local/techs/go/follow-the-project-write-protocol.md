@@ -108,7 +108,7 @@ Check that tests change the project between plan and commit, and make a late ste
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/follow-the-project-write-protocol.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/follow-the-project-write-protocol.md)
 
 ### Source metadata
 

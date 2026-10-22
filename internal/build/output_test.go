@@ -75,7 +75,7 @@ func TestPrepareNamesTheReplacedRule(t *testing.T) {
 	if strings.Contains(page, "Declared license") || strings.Contains(page, "licenses/") {
 		t.Errorf("the replacement inherited the library's license:\n%s", page)
 	}
-	if readme := string(got.Files["rules/README.md"]); !strings.Contains(readme, "[lock.json](../../lock.json)") {
+	if readme := string(got.Files["rules/README.md"]); !strings.Contains(readme, "[lock.json](../../../lock.json)") {
 		t.Errorf("rules/README.md doesn't point to the lockfile:\n%s", readme)
 	}
 	if _, written := got.Files["provenance.json"]; written {

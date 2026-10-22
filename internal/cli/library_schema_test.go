@@ -73,11 +73,11 @@ library:
 			t.Fatalf("%v: exit %d\n%s%s", args, code, out, diagnostic)
 		}
 	}
-	rules, err := os.ReadFile(filepath.Join(directory, ".trailguide", "generated", "RULES.md"))
+	rules, err := os.ReadFile(filepath.Join(directory, ".trailguide", "_managed", "generated", "RULES.md"))
 	if err != nil || !strings.Contains(string(rules), "techs/go") {
 		t.Fatalf("generated guidance lacks the library's group: %v\n%s", err, rules)
 	}
-	manifest, err := os.ReadFile(filepath.Join(directory, ".trailguide", "vendor", "team", "config.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(directory, ".trailguide", "_managed", "vendor", "team", "config.yaml"))
 	want := `{"library":{"description":"A field a later Trail Guide may add, which consumers can ignore.","schemaVersion":1},"sources":{}}` + "\n"
 	if err != nil || string(manifest) != want {
 		t.Fatalf("vendored manifest %s, %v; want only the published contract: %s", manifest, err, want)

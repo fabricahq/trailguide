@@ -3,8 +3,12 @@
 package library
 
 import (
+	"context"
+	_ "embed"
 	"fmt"
 	"maps"
+	"os"
+	"path"
 	"slices"
 	"strings"
 
@@ -17,7 +21,7 @@ import (
 const skillsDirectory = ".trailguide/" + skills.Directory
 
 // skillProblems returns every problem in the skills tree holds, by path in the library's skills/ folder, in path
-// order, each starting with the file or folder it's about: a file directly in skills/, a folder whose name breaks the
+// order, each starting with the file or folder it's about: a file directly in skills/ other than its guide, a folder whose name breaks the
 // skill name grammar or that has no SKILL.md, frontmatter skills.ReadMetadata or skills.Check rejects, a SKILL.md that still has the draft marker, and a cited
 // rule that isn't one of current, the library's rules, naming the replacement when the library's release history or
 // a pending change note retired it, and a skill a skill uses that isn't a folder of skills/ with a SKILL.md or, when
@@ -30,8 +34,11 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 	folders := map[string]bool{}
 	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
 		folder, file, inFolder := strings.Cut(name, "/")
+		if !inFolder && name == skills.Guide {
+			continue
+		}
 		if !inFolder {
-			problems = append(problems, skills.Directory+"/"+name+": skills/ holds only skill folders")
+			problems = append(problems, skills.Directory+"/"+name+": skills/ holds only skill folders and "+skills.Guide)
 			continue
 		}
 		folders[folder] = folders[folder] || file == skills.File
@@ -219,4 +226,21 @@ func citedRuleProblem(id string, current []string, history releaseHistory, retir
 		return fmt.Sprintf("%s names %s, which is retired; remove it", skills.RulesUsedKey, id)
 	}
 	return fmt.Sprintf("%s names %s, which isn't a rule in this library", skills.RulesUsedKey, id)
+}
+
+// skillsGuide explains a library's skills/ folder to people: what it publishes, how a skill's level is set, and how
+// to publish a change.
+//
+//go:embed skills-guide.md
+var skillsGuide string
+
+// withSkillsGuide returns files with .trailguide/skills/README.md, the folder's guide, added when the library at root,
+// its repository root, has none. It never replaces a guide, which the library may edit.
+func withSkillsGuide(ctx context.Context, root *os.Root, files []filetxn.File) ([]filetxn.File, error) {
+	name := path.Join(skillsDirectory, skills.Guide)
+	existing, err := filetxn.ReadOptional(ctx, root, name)
+	if err != nil || existing != nil {
+		return files, err
+	}
+	return append(files, filetxn.File{Path: name, Content: []byte(skillsGuide)}), nil
 }

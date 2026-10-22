@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -42,7 +44,7 @@ func decodeStored(config rules.Configuration, files map[string][]byte) (map[stri
 	if !found {
 		lock = nil
 	}
-	stored, err := readRecords(config, lock, vendor, false, nil)
+	stored, err := readRecords(config, lock, vendor, currentLayout, false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +135,7 @@ func legacyStored(t *testing.T, config rules.Configuration, snapshots map[string
 // decodeLegacy decodes what legacyStored returns, as sync reads it to migrate, checking each record against
 // configuration as offline commands check lock entries.
 func decodeLegacy(config rules.Configuration, files map[string][]byte) (map[string]snapshot, error) {
-	stored, err := readRecords(config, nil, files, true, nil)
+	stored, err := readRecords(config, nil, files, currentLayout, true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -218,12 +220,26 @@ func toLegacy(t *testing.T, options Options) []byte {
 		if err != nil {
 			t.Fatal(err)
 		}
-		writeFixture(t, root, "vendor/"+name+"/"+legacyRecord, string(encoded)+"\n")
+		writeFixture(t, root, "_managed/vendor/"+name+"/"+legacyRecord, string(encoded)+"\n")
 	}
 	if err := root.Remove(lockFile); err != nil {
 		t.Fatal(err)
 	}
+	toLegacyLayout(t, root)
 	return lock
+}
+
+// toLegacyLayout moves the managed trees of the project at root to where Trail Guide 0.7 and earlier kept them.
+func toLegacyLayout(t *testing.T, root *os.Root) {
+	t.Helper()
+	for from, to := range map[string]string{"_managed/vendor": "vendor", "_managed/generated": "generated"} {
+		if err := root.Rename(from, to); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := root.Remove("_managed"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // legacyProject returns a project of team at latest-release, synced at library release 1 and left as Trail Guide
@@ -265,19 +281,25 @@ func TestSync_MigratesPerSourceRecordsWithoutMovingASource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(changes.Added, lockFile) || !slices.Contains(changes.Removed, "vendor/team/_source.json") {
-		t.Errorf("changes = %+v; want the lockfile added and the record removed", changes)
+	if !slices.Contains(changes.Added, lockFile) || !slices.Contains(changes.Removed, "vendor/team/_source.json") || !slices.Contains(changes.Added, "_managed/generated/RULES.md") || !slices.Contains(changes.Removed, "generated/RULES.md") {
+		t.Errorf("changes = %+v; want the lockfile added, the record removed, and the managed trees moved", changes)
 	}
 	after := projectTree(t, options)
 	if !bytes.Equal(after.Files[lockFile], lock) {
 		t.Fatalf("migration wrote:\n%s\nwant what sync wrote at the same revision:\n%s", after.Files[lockFile], lock)
 	}
 	for name, data := range before.Files {
-		if strings.HasPrefix(name, "vendor/") && !strings.HasSuffix(name, "/"+legacyRecord) && !bytes.Equal(after.Files[name], data) {
+		moved := "_managed/" + name
+		if strings.HasPrefix(name, "vendor/") && !strings.HasSuffix(name, "/"+legacyRecord) && !bytes.Equal(after.Files[moved], data) {
 			t.Errorf("migration changed %s", name)
 		}
-		if strings.HasSuffix(name, "/"+legacyRecord) && after.Files[name] != nil {
+		if strings.HasSuffix(name, "/"+legacyRecord) && after.Files[moved] != nil {
 			t.Errorf("migration kept %s", name)
+		}
+	}
+	for _, name := range []string{"vendor", "generated"} {
+		if _, err := os.Stat(filepath.Join(options.Directory, ".trailguide", name)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf(".trailguide/%s: %v, want it moved under _managed/", name, err)
 		}
 	}
 	requireCurrent(t, options)
@@ -374,10 +396,10 @@ func TestProject_RefusesAMissingLockfile(t *testing.T) {
 	// discarding it.
 	config := readRepositoryFile(t, options, ".trailguide/config.yaml")
 	writeFixture(t, root, configurationFile, "schemaVersion: 2\nsources: {}\n")
-	if _, err := Sync(ctx, options, git); !strings.Contains(fmt.Sprint(err), "delete .trailguide/vendor/") {
+	if _, err := Sync(ctx, options, git); !strings.Contains(fmt.Sprint(err), "delete .trailguide/_managed/vendor/") {
 		t.Fatalf("sync with no source: %v", err)
 	}
-	if _, err := root.Stat("vendor/team"); err != nil {
+	if _, err := root.Stat("_managed/vendor/team"); err != nil {
 		t.Fatal(err)
 	}
 	writeFixture(t, root, configurationFile, config)

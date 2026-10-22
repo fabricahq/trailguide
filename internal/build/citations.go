@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -101,7 +102,7 @@ func skillLocation(skill resolvedSkill) string {
 	if skill.Source == "" {
 		return skill.Folder + "/" + skills.File
 	}
-	return "vendor/" + skill.Source + "/" + skill.Folder + "/" + skills.File
+	return librarytree.Vendor + "/" + skill.Source + "/" + skill.Folder + "/" + skills.File
 }
 
 // citedSection returns the section an installed copy of skill's SKILL.md ends with, linking from installed, the
@@ -130,7 +131,7 @@ func citedLine(cited citedRule, installed string) string {
 		} else if cited.Active.Origin.Version != nil {
 			label += " " + cited.Active.Origin.Version.String()
 		}
-		file := ".trailguide/generated/" + rulePath(cited.Active.Rule)
+		file := librarytree.Directory + "/" + librarytree.Generated + "/" + rulePath(cited.Active.Rule)
 		return label + ": [" + file + "](" + rules.RelativeLink(installed, file) + ")"
 	case cited.Retired:
 		return id + ": retired by its library, so the project has no version of it"

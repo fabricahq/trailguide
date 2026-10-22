@@ -23,12 +23,12 @@ func TestCheckReportsCurrentProblems(t *testing.T) {
 			t.Fatal(code, out, diagnostic)
 		}
 	}
-	for _, name := range []string{".trailguide/README.md", ".trailguide/generated/groups/README.md", "AGENTS.md"} {
+	for _, name := range []string{".trailguide/README.md", ".trailguide/_managed/generated/groups/README.md", "AGENTS.md"} {
 		if err := os.Remove(filepath.Join(directory, name)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range []string{"generated/RULES.md", "generated/unexpected.md"} {
+	for _, name := range []string{"_managed/generated/RULES.md", "_managed/generated/unexpected.md"} {
 		if err := os.WriteFile(filepath.Join(directory, ".trailguide", name), []byte("Manual content."), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -56,9 +56,9 @@ func TestCheckReportsCurrentProblems(t *testing.T) {
 		repairs[repairCommand(t, problem)] = true
 	}
 	want := map[string]string{
-		"missing-file":    "generated/groups/README.md",
-		"stale-contents":  "generated/RULES.md",
-		"unexpected-file": "generated/unexpected.md",
+		"missing-file":    "_managed/generated/groups/README.md",
+		"stale-contents":  "_managed/generated/RULES.md",
+		"unexpected-file": "_managed/generated/unexpected.md",
 		"outdated-readme": "README.md",
 		// Paths are relative to the Trail Guide directory.
 		"outdated-agents-section": "../AGENTS.md",

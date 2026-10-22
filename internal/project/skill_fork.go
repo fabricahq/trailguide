@@ -14,6 +14,7 @@ import (
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -116,7 +117,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("source %s doesn't install skill %s, as its last sync recorded; name a skill its skills.include selects, and if you just added it, run trailguide project sync first", source.Name, from.Skill)}
 		}
 		files := snapshot.SkillFiles(from.Skill)
-		location := "vendor/" + source.Name + "/" + library.SkillFolder(from.Skill) + "/" + skills.File
+		location := librarytree.Vendor + "/" + source.Name + "/" + library.SkillFolder(from.Skill) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(files[skills.File], location)
 		if err != nil {
 			return err
@@ -243,7 +244,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		if err != nil {
 			return nil, err
 		}
-		return append(slices.Clone(p.files), filetxn.File{Path: configurationFile, Content: edited, Previous: original}), nil
+		return withSkillsGuide(ctx, root, append(slices.Clone(p.files), filetxn.File{Path: configurationFile, Content: edited, Previous: original}))
 	})
 }
 

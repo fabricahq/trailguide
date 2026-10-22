@@ -24,9 +24,9 @@ var lockSync = map[Target]map[string][]byte{
 // lockfile.
 func writeLockProject(t *testing.T, root *os.Root, migrating bool) {
 	t.Helper()
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
 	if migrating {
-		writeFixture(t, root, "vendor/team/_source.json", "old record")
+		writeFixture(t, root, "_managed/vendor/team/_source.json", "old record")
 	} else {
 		writeFixture(t, root, "lock.json", "old lock")
 	}
@@ -35,11 +35,11 @@ func writeLockProject(t *testing.T, root *os.Root, migrating bool) {
 // requireLockProject checks that the lockfile and vendor tree are both the previous ones or both the new ones.
 func requireLockProject(t *testing.T, root *os.Root, migrating bool, state string) {
 	t.Helper()
-	if data, err := root.ReadFile("vendor/team/rule.md"); err != nil || string(data) != state+" rule" {
-		t.Fatalf("vendor/team/rule.md: got %q, want %q: %v", data, state+" rule", err)
+	if data, err := root.ReadFile("_managed/vendor/team/rule.md"); err != nil || string(data) != state+" rule" {
+		t.Fatalf("_managed/vendor/team/rule.md: got %q, want %q: %v", data, state+" rule", err)
 	}
 	lock, lockErr := root.ReadFile("lock.json")
-	_, recordErr := root.Stat("vendor/team/_source.json")
+	_, recordErr := root.Stat("_managed/vendor/team/_source.json")
 	switch {
 	case state == "new" && (lockErr != nil || string(lock) != "new lock" || !errors.Is(recordErr, os.ErrNotExist)):
 		t.Fatalf("new state: lock %q, %v; record %v", lock, lockErr, recordErr)
@@ -103,8 +103,8 @@ func TestKilledLockWriterRecovers(t *testing.T) {
 	for _, migrating := range []bool{true, false} {
 		stops := map[string]string{
 			transactionName + "/rename-check/lock.json": "old",
-			transactionName + "/old-vendor":             "old",
-			"vendor":                                    "old",
+			transactionName + "/old-_managed+vendor":    "old",
+			"_managed/vendor":                           "old",
 			"lock.json":                                 "old",
 			transactionName + "/committed.json":         "new",
 		}

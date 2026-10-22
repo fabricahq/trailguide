@@ -81,7 +81,7 @@ func TestKilledAgentsWriterRecovers(t *testing.T) {
 		t.Fatalf("child did not stop at rename: %v", err)
 	}
 	for _, test := range []struct{ name, stop, state string }{
-		{"generated", "generated", "old"},
+		{"_managed/generated", "_managed/generated", "old"},
 		{"backup", ".trailguide/" + transactionName + "/" + backupPrefix + "..+AGENTS.md", "old"},
 		{"replaced file", "AGENTS.md", "old"},
 		{"committed", transactionName + "/committed.json", "new"},

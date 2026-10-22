@@ -155,6 +155,6 @@ The copy in `.agents/skills/` also gets `agents/openai.yaml`, the file Codex rea
 
 When a skill cites rules, its installed `SKILL.md` ends with a generated section, **Rules this skill applies**, that points at your project's version of every rule the skill cites, including any authored rule that replaces one. Agents read those rules in full before the step that uses them.
 
-Trail Guide also writes `.trailguide/generated/SKILLS.md`, which lists every installed skill, its source, level, and version, how many rules it applies, and the skills it calls. Agents in tools without native skill support can read it there.
+Trail Guide also writes `.trailguide/_managed/generated/SKILLS.md`, which lists every installed skill, its source, level, and version, how many rules it applies, and the skills it calls. Agents in tools without native skill support can read it there.
 
 When a skill and a rule disagree, agents should follow the rule and report the conflict, so someone can fix the skill. See [For agents](/for-agents/).

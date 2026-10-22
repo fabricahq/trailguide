@@ -61,8 +61,12 @@ func TestLibraryLifecycle(t *testing.T) {
 	notice := "Notice\r\n"
 	terms := &Terms{SPDXExpression: "MIT", License: "Original terms\r\n", Notice: &notice}
 	result, err := Initialize(ctx, options, terms, "1.2.3")
-	if err != nil || len(result.Written()) != 5 {
+	if err != nil || len(result.Written()) != 6 {
 		t.Fatal(result, err)
+	}
+	guide, err := os.ReadFile(filepath.Join(options.Directory, ".trailguide", "skills", "README.md"))
+	if err != nil || !strings.Contains(string(guide), "skill this library publishes") {
+		t.Fatalf("skills/README.md: %q, %v", guide, err)
 	}
 	data, _ := os.ReadFile(filepath.Join(options.Directory, "LICENSE.md"))
 	if string(data) != terms.License {
@@ -145,8 +149,8 @@ func TestLibraryCheckUnusedContent(t *testing.T) {
 				initRepository(t, options.Directory)
 				write(".git/objects/example", "arbitrary repository bytes")
 				write("docs/design.txt", "unrelated documentation")
-				write(".trailguide/vendor/team/config.yaml", "not this library's manifest")
-				write(".trailguide/generated/RULES.md", "[missing](absent.md)")
+				write(".trailguide/_managed/vendor/team/config.yaml", "not this library's manifest")
+				write(".trailguide/_managed/generated/RULES.md", "[missing](absent.md)")
 				write(".trailguide/rules/README.md", "[missing](absent.md)")
 			case "cross-rule":
 				write("assets/shared.md", "[rule](/rules/techs/go/errors.md)")

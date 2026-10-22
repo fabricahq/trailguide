@@ -75,6 +75,6 @@ This folder retains byte-for-byte copies of declared library license and notice 
 
 - [001.md](licenses/notices/001.md)
 
-[lock.json](../../../lock.json) records this source's revision and rule versions.
+[lock.json](../../../../lock.json) records this source's revision and rule versions.
 
 Use [RULES.md](../../RULES.md) to find resolved rules. These files are generated; edit source inputs and rebuild.

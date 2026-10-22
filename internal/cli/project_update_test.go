@@ -231,7 +231,7 @@ func TestUpdate_YesAppliesWithKeepAndExclude(t *testing.T) {
 			}
 		}
 	}
-	if err := json.Unmarshal([]byte(out), &result); err != nil || code != 0 || !result.OK || !result.Value.Applied || result.Value.Changed[0] != "config.yaml" {
+	if err := json.Unmarshal([]byte(out), &result); err != nil || code != 0 || !result.OK || !result.Value.Applied || !slices.Contains(result.Value.Changed, "config.yaml") {
 		t.Fatalf("exit %d, %v:\n%s%s", code, err, out, diagnostic)
 	}
 	decisions := map[string]string{}
@@ -597,7 +597,7 @@ func TestBuildAndCheck_ReportAnUnknownExclusionTheSameWay(t *testing.T) {
 // so its generated README says so and doesn't claim the folder keeps copies of terms.
 func TestLibraryReadme_MentionsRetainedTermsOnlyWhenTheLibraryDeclaresThem(t *testing.T) {
 	u := newUpdateFixture(t)
-	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "generated", "libraries", "team", "README.md"))
+	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide", "_managed/generated", "libraries", "team", "README.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -610,7 +610,7 @@ func TestLibraryReadme_MentionsRetainedTermsOnlyWhenTheLibraryDeclaresThem(t *te
 // are from there, as authoring commands do.
 func TestBuild_NamesItsPathsRelativeToTheWorkingDirectory(t *testing.T) {
 	u := newUpdateFixture(t)
-	if err := os.Remove(filepath.Join(u.directory, ".trailguide", "generated", "RULES.md")); err != nil {
+	if err := os.Remove(filepath.Join(u.directory, ".trailguide", "_managed/generated", "RULES.md")); err != nil {
 		t.Fatal(err)
 	}
 	// A .git directory makes the project a repository, whose root commands find from a subdirectory.
@@ -626,7 +626,7 @@ func TestBuild_NamesItsPathsRelativeToTheWorkingDirectory(t *testing.T) {
 		t.Fatalf("check: exit %d, stdout:\n%s", code, out)
 	}
 	out, diagnostic, code := runCLI(t, u.binary, sub, "project", "build")
-	if code != 0 || diagnostic != "" || !strings.Contains(out, "Paths relative to ../../.trailguide/generated:\n  Add: RULES.md\n") {
+	if code != 0 || diagnostic != "" || !strings.Contains(out, "Paths relative to ../../.trailguide/_managed/generated:\n  Add: RULES.md\n") {
 		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
 	}
 }

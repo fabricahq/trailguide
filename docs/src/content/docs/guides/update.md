@@ -220,7 +220,7 @@ A skill's new version can use more skills or cite more rules. The preview lists 
 
 `--exclude` takes skill IDs the same way it takes rule IDs, such as `--exclude fabrica:skills/review-change`. Pins, `--keep`, and `--update-fork` are for rules only, and `--merge-fork` is for forked skills only, and `trailguide project update fabrica:skills/build-feature` is refused: skills move only when their whole source updates, in a full update or `trailguide project update fabrica`. In a terminal, the update asks you to confirm each major skill change, retirement, and level change, and asks about each new skill that isn't required, as it does for rules. To hold a skill back, stop the update, then [exclude](/guides/install-skills/#exclude-a-skill) or [fork](/guides/install-skills/#fork-a-skill) it, or set the source's [`ref`](#take-one-library-release), which holds every rule and skill from that source. For a skill you forked, `--merge-fork` merges the source's changes into your fork instead of replacing it; see [Fork a skill](/guides/fork-skills/).
 
-After you confirm, the update rewrites the installed copies in your target folders, `generated/SKILLS.md`, and `generated/installed-skills.json` in the same step as `vendor/` and `generated/`.
+After you confirm, the update rewrites the installed copies in your target folders, `_managed/generated/SKILLS.md`, and `_managed/generated/installed-skills.json` in the same step as `_managed/vendor/` and `_managed/generated/`.
 
 ### Level changes
 
@@ -303,7 +303,7 @@ Libraries retire rules and skills that no longer earn their place, often because
 
 An update changes what your agents read and may change scripts they run, so review it like any other change before you commit. `trailguide project update` reports added, changed, and removed file paths. Before committing:
 
-- Inspect the diff of `.trailguide/vendor/` for changes from your sources, including rules and skills hidden by your exclusions and replacements, and changes to retained licenses and notices.
+- Inspect the diff of `.trailguide/_managed/vendor/` for changes from your sources, including rules and skills hidden by your exclusions and replacements, and changes to retained licenses and notices.
 - Inspect the diff of the installed skills in `.claude/skills/` and `.agents/skills/`, especially scripts, which your agents may run.
 - For each `replaced` rule in the preview, compare the library's old and new text before deciding whether your own rule still makes sense.
 - When updated rules introduce competing obligations, use the [conflict-review prompt](/guides/conflicting-guidance/#generate-a-review-prompt) to inspect the combined guidance.
