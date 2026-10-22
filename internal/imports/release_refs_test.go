@@ -75,7 +75,7 @@ func TestImport_LatestReleaseKeepsTheRecordedRelease(t *testing.T) {
 	if want := map[string]string{"techs/go/a": "2.0.0@3", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(three.Snapshot), want) || three.Snapshot.Release != 3 || !three.Snapshot.Ref.IsZero() || len(three.Warnings) != 0 {
 		t.Fatalf("versions %v, snapshot %+v, warnings %v", versions(three.Snapshot), three.Snapshot, three.Warnings)
 	}
-	h.release(t, 4, map[string][]byte{"techs/go/a.md": versionedRule("a 2.1.0")}, "formatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.1.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: minor, from: 2.0.0, summaries: [Add a case.]}\n")
+	h.release(t, 4, map[string][]byte{"techs/go/a.md": versionedRule("a 2.1.0")}, "schemaVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.1.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: minor, from: 2.0.0, summaries: [Add a case.]}\n")
 	kept, err := h.sync(t, config, &three.Snapshot)
 	if err != nil {
 		t.Fatal(err)

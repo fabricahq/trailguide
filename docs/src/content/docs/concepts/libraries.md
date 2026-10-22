@@ -65,4 +65,4 @@ Libraries can be public or private. Projects keep a vendor snapshot of what they
 
 Trail Guide preserves declared license text and notices with the rules and skills projects take. For choosing terms, see [License rules](/guides/license-rules/).
 
-To publish your own, follow [Create your first library](/start-here/create-library/). For file details, see [Library format](/reference/library-format/).
+To publish your own, follow [Create your first library](/start-here/create-library/). For file details, see [Library schema](/reference/library-schema/).

@@ -423,8 +423,8 @@ library:
 
 | Field | Meaning |
 | --- | --- |
-| `library.schemaVersion` | Required. `1`, the [library schema version](/reference/library-format/#schema-version) the library publishes. Unrelated to the top-level `schemaVersion`. |
-| `library.license` | Optional. The terms that cover everything the library publishes. See [License metadata](/reference/library-format/#license-metadata). |
+| `library.schemaVersion` | Required. `1`, the [library schema version](/reference/library-schema/#schema-version) the library publishes. Unrelated to the top-level `schemaVersion`. |
+| `library.license` | Optional. The terms that cover everything the library publishes. See [License metadata](/reference/library-schema/#license-metadata). |
 | `library.skills.required` | Skills every project that uses the library installs. |
 | `library.skills.recommended` | Skills a project installs when it includes `recommended`. |
 | `library.skills.offered` | Skills a project installs when it names them or includes `"*"`. |
@@ -432,7 +432,7 @@ library:
 
 A `library` section with only `schemaVersion: 1` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
 
-`trailguide library check` validates the manifest, and fails when two listed skills, authored or curated, have the same install name, so projects never inherit a clash from one library. See [Library format](/reference/library-format/).
+`trailguide library check` validates the manifest, and fails when two listed skills, authored or curated, have the same install name, so projects never inherit a clash from one library. See [Library schema](/reference/library-schema/).
 
 The manifest replaces the separate `rule-library.yaml` that earlier versions used. A repository with a `rule-library.yaml` fails to load; see [No backward compatibility](#no-backward-compatibility).
 
@@ -650,10 +650,10 @@ There's no upgrade command. Rewrite the file by hand:
 
 ## Version boundaries
 
-The top-level `schemaVersion` describes this configuration. A library's [`library.schemaVersion`](/reference/library-format/#schema-version) describes what it publishes, and projects that import the library ignore its top-level `schemaVersion`, so this schema can change without breaking a library's consumers.
+The top-level `schemaVersion` describes this configuration. A library's [`library.schemaVersion`](/reference/library-schema/#schema-version) describes what it publishes, and projects that import the library ignore its top-level `schemaVersion`, so this schema can change without breaking a library's consumers.
 The caller-supplied `toolVersion` identifies the tool that generated the output.
 
 Each source's `ref` and pins state which versions the project wants: `ref` names the library release or revision, and every rule without a pin follows the source's lock, which `trailguide project update` moves together with `ref`.
 The lockfile records each included rule's and skill's version, library release, and commit, or a non-library source's commit, used by offline commands. It is output Trail Guide owns, not a second version the project chooses.
 
-See [Library format](/reference/library-format/) for library contents and [Include rules](/guides/select-rules/#adapt-the-selection-to-your-project) for examples of exceptions.
+See [Library schema](/reference/library-schema/) for library contents and [Include rules](/guides/select-rules/#adapt-the-selection-to-your-project) for examples of exceptions.

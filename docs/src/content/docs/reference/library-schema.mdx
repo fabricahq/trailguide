@@ -1,5 +1,5 @@
 ---
-title: "Library format"
+title: "Library schema"
 description: "Layout, manifest, skill levels, curated skills, shared assets, and license metadata for a library."
 ---
 
@@ -107,7 +107,7 @@ The rest of the file is an ordinary [configuration](/reference/configuration/): 
 - rule files and rule group metadata;
 - the library layout: where the manifest, rules, skills, and shared assets live.
 
-[Release records](/reference/rule-versions/#release-record) have their own `formatVersion`, which changes independently.
+[Release records](/reference/rule-versions/#release-record) have their own `schemaVersion`, which changes independently.
 
 The configuration's top-level `schemaVersion` is a different version: it describes the project configuration, which the library's own Trail Guide reads. `library.schemaVersion` describes what the library publishes, which its consumers read.
 

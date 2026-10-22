@@ -181,7 +181,7 @@ func (r *repository) loadHistory(ctx context.Context) (releaseHistory, error) {
 	var unsupported *trailguide.UnsupportedReleaseRecordError
 	switch {
 	case errors.As(err, &invalid) && errors.As(invalid.Err, &unsupported):
-		return releaseHistory{}, fail("unsupported-release-record", fmt.Sprintf("Library release tag %s uses release record format %d, which this version of Trail Guide can't read. Upgrade Trail Guide, then run the command again.", invalid.Tag, unsupported.FormatVersion), nil)
+		return releaseHistory{}, fail("unsupported-release-record", fmt.Sprintf("Library release tag %s uses release record schema version %d, which this version of Trail Guide can't read. Upgrade Trail Guide, then run the command again.", invalid.Tag, unsupported.SchemaVersion), nil)
 	case invalid != nil:
 		return releaseHistory{}, fail("invalid-release-tag", "Invalid release record: "+invalid.Problem()+". Don't create or move release tags by hand.", invalid.Err)
 	}

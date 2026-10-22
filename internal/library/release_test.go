@@ -134,7 +134,7 @@ func TestRelease_FirstLibraryReleaseGivesEveryRuleOneAndPushesOnlyItsTag(t *test
 		t.Fatal(err)
 	}
 	notes := "Library release 1 publishes 2 rules.\n\n## New rules\n\n- **practices/testing/a** `1.0.0`\n- **practices/testing/b** `1.0.0`\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/testing/a | 1.0.0 |\n| practices/testing/b | 1.0.0 |\n\n</details>"
-	record := "formatVersion: 1\nrelease: 1\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: new\n    summaries:\n      - Add the rule.\n  practices/testing/b:\n    change: new\n    summaries:\n      - Add the rule.\nlibraryFiles:\n  - config.yaml\n  - practices/testing/_group.yaml\n"
+	record := "schemaVersion: 1\nrelease: 1\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: new\n    summaries:\n      - Add the rule.\n  practices/testing/b:\n    change: new\n    summaries:\n      - Add the rule.\nlibraryFiles:\n  - config.yaml\n  - practices/testing/_group.yaml\n"
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/1"); message != notes+"\n---\n"+record {
 		t.Fatalf("tag message:\n%s\nwant:\n%s\n---\n%s", message, notes, record)
 	}
@@ -182,7 +182,7 @@ func TestRelease_LaterLibraryReleasePublishesPendingNotesAndLibraryWideFiles(t *
 		t.Fatal(err)
 	}
 	notes := "Library release 2 changes 3 rules: 1 new, 1 minor, and 1 retired.\n\n## New rules\n\n- **practices/testing/c** `1.0.0`\n  - Fold b into a broader rule.\n\n## Minor changes\n\n- **practices/testing/a** `1.0.0` → `1.1.0`\n  - Fix a typo.\n  - Test one past the limit.\n\n## Retired rules\n\n- **practices/testing/b**, last version `1.0.0`, replaced by **practices/testing/c**\n  - Fold b into a broader rule.\n\nThis library release also updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/testing/a | 1.1.0 |\n| practices/testing/c | 1.0.0 |\n\n</details>"
-	record := "formatVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.1.0\n  practices/testing/c: 1.0.0\nchanges:\n  practices/testing/a:\n    change: minor\n    from: 1.0.0\n    summaries:\n      - Fix a typo.\n      - Test one past the limit.\n  practices/testing/c:\n    change: new\n    summaries:\n      - Fold b into a broader rule.\nretired:\n  practices/testing/b:\n    lastVersion: 1.0.0\n    replacedBy: practices/testing/c\n    summaries:\n      - Fold b into a broader rule.\nlibraryFiles:\n  - assets/diagram.svg\n  - practices/testing/_group.yaml\n"
+	record := "schemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.1.0\n  practices/testing/c: 1.0.0\nchanges:\n  practices/testing/a:\n    change: minor\n    from: 1.0.0\n    summaries:\n      - Fix a typo.\n      - Test one past the limit.\n  practices/testing/c:\n    change: new\n    summaries:\n      - Fold b into a broader rule.\nretired:\n  practices/testing/b:\n    lastVersion: 1.0.0\n    replacedBy: practices/testing/c\n    summaries:\n      - Fold b into a broader rule.\nlibraryFiles:\n  - assets/diagram.svg\n  - practices/testing/_group.yaml\n"
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); message != notes+"\n---\n"+record {
 		t.Fatalf("tag message:\n%s\nwant:\n%s\n---\n%s", message, notes, record)
 	}
@@ -200,7 +200,7 @@ func TestRelease_PublishesLibraryWideChangesWithoutRuleChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Library release 2 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/testing/a | 1.0.0 |\n| practices/testing/b | 1.0.0 |\n\n</details>\n---\nformatVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nlibraryFiles:\n  - practices/testing/_group.yaml\n"
+	want := "Library release 2 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/testing/a | 1.0.0 |\n| practices/testing/b | 1.0.0 |\n\n</details>\n---\nschemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nlibraryFiles:\n  - practices/testing/_group.yaml\n"
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); message != want || !result.TagCreated || len(result.Rules) != 0 {
 		t.Fatalf("result %+v, tag message:\n%s", result, message)
 	}
@@ -677,7 +677,7 @@ func TestCreateTag_SizesTagsLikeGitAndDeletesOneTooLarge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := []byte("Notes.\n---\nformatVersion: 1\nrelease: 1\nrules: {}\n")
+	message := []byte("Notes.\n---\nschemaVersion: 1\nrelease: 1\nrules: {}\n")
 	object, err := git.createTag(ctx, "release/1", fixture.LatestCommit, message)
 	if err != nil {
 		t.Fatal(err)
@@ -877,7 +877,7 @@ func TestRelease_AsksToUpgradeForAnUnpublishedTagInANewerFormat(t *testing.T) {
 	ctx := context.Background()
 	fixture, options := authorClone(t, libraryFiles())
 	// A newer Trail Guide created this tag, then stopped before pushing it.
-	newer := "Library release 1.\n\n---\nformatVersion: 2\nrelease: 1\nrules: A later shape.\n"
+	newer := "Library release 1.\n\n---\nschemaVersion: 2\nrelease: 1\nrules: A later shape.\n"
 	if err := fixture.Tag(ctx, options.Directory, "release/1", newer); err != nil {
 		t.Fatal(err)
 	}
@@ -896,14 +896,14 @@ func TestRelease_AsksToUpgradeForAnUnpublishedTagInANewerFormat(t *testing.T) {
 // nothing when they differ: a hand-made tag can't skip a missing change note or change what a note publishes.
 func TestRelease_RefusesAnUnpublishedTagThatDoesntMatchTheLibrary(t *testing.T) {
 	changed := map[string][]byte{"practices/testing/a.md": []byte(ruleText("Test the retry limit and one past it."))}
-	unchanged := "Library release 2.\n\n---\nformatVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\n"
+	unchanged := "Library release 2.\n\n---\nschemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\n"
 	for _, test := range []struct {
 		name, code, message string
 		files               map[string][]byte
 	}{
 		{"a change without a note", "change-notes", unchanged, changed},
 		{"a record that differs from the notes", "release-tag-mismatch", unchanged, map[string][]byte{"practices/testing/a.md": changed["practices/testing/a.md"], "changes/a.yaml": []byte("summary: Test one past the limit.\nrules:\n  practices/testing/a: major\n")}},
-		{"notes that differ from the record", "release-tag-mismatch", "Nothing risky.\n\n---\nformatVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 2.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: major\n    from: 1.0.0\n    summaries:\n      - Test one past the limit.\n", map[string][]byte{"practices/testing/a.md": changed["practices/testing/a.md"], "changes/a.yaml": []byte("summary: Test one past the limit.\nrules:\n  practices/testing/a: major\n")}},
+		{"notes that differ from the record", "release-tag-mismatch", "Nothing risky.\n\n---\nschemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 2.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: major\n    from: 1.0.0\n    summaries:\n      - Test one past the limit.\n", map[string][]byte{"practices/testing/a.md": changed["practices/testing/a.md"], "changes/a.yaml": []byte("summary: Test one past the limit.\nrules:\n  practices/testing/a: major\n")}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()

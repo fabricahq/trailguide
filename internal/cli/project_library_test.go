@@ -135,7 +135,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	if _, err := upstream.Commit(ctx, upstream.Worktree(), "Clarify errors", gitfixture.Library(map[string][]byte{"techs/go/errors.md": []byte("---\ntitle: Return errors\nimpact: HIGH\nimpactDescription: Keep failures visible.\nwhenToRead: When calling functions.\n---\nReturn errors to the caller, wrapped.\n")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := upstream.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.1\nchanges:\n  techs/go/errors: {change: patch, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
+	if err := upstream.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.1\nchanges:\n  techs/go/errors: {change: patch, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	run("project", "update", "--yes")

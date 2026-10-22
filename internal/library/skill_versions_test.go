@@ -65,7 +65,7 @@ func TestRelease_NamesANewForkedSkillMadeRecommendedWithoutRuleChanges(t *testin
 		t.Fatal(err)
 	}
 	notes := "Library release 2 changes 1 skill: 1 new.\n\n## Skills\n\n- **skills/ratchet-files** `1.0.0`, new, recommended, forked from **dzhng:skills/engineering/ratchet-files** at `8105a34`\n  - Ratchet a file count down, adapted from dzhng/skills.\n\nThis library release also updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All rule versions in this library release</summary>\n\n| Rule | Version |\n| --- | --- |\n| practices/testing/a | 1.0.0 |\n| practices/testing/b | 1.0.0 |\n\n</details>\n\n<details>\n<summary>All skill versions in this library release</summary>\n\n| Skill | Version |\n| --- | --- |\n| skills/ratchet-files | 1.0.0 |\n\n</details>"
-	record := "formatVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nlibraryFiles:\n  - NOTICE.md\n  - config.yaml\nskills:\n  versions:\n    skills/ratchet-files: 1.0.0\n  changes:\n    skills/ratchet-files:\n      change: new\n      summaries:\n        - Ratchet a file count down, adapted from dzhng/skills.\n"
+	record := "schemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nlibraryFiles:\n  - NOTICE.md\n  - config.yaml\nskills:\n  versions:\n    skills/ratchet-files: 1.0.0\n  changes:\n    skills/ratchet-files:\n      change: new\n      summaries:\n        - Ratchet a file count down, adapted from dzhng/skills.\n"
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); message != notes+"\n---\n"+record {
 		t.Fatalf("tag message:\n%s\nwant:\n%s\n---\n%s", message, notes, record)
 	}
@@ -167,7 +167,7 @@ func TestRelease_VersionsChangedSkillsFromTheirNotes(t *testing.T) {
 	}
 
 	// A library release that a Trail Guide without skill support publishes leaves skill versions to release/2.
-	if err := fixture.Tag(ctx, options.Directory, "release/3", "Library release 3 changes no rules.\n---\nformatVersion: 1\nrelease: 3\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\n"); err != nil {
+	if err := fixture.Tag(ctx, options.Directory, "release/3", "Library release 3 changes no rules.\n---\nschemaVersion: 1\nrelease: 3\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	checked, err = Check(ctx, options)

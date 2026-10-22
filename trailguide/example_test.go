@@ -19,7 +19,7 @@ func Example() {
 		{"v0.1.0", "An unrelated tag."},
 		{"release/1", `Publishes 1 rule.
 ---
-formatVersion: 1
+schemaVersion: 1
 release: 1
 rules:
   techs/go/handle-errors: 1.0.0
@@ -31,7 +31,7 @@ changes:
 `},
 		{"release/2", `Updates 1 rule.
 ---
-formatVersion: 1
+schemaVersion: 1
 release: 2
 rules:
   techs/go/handle-errors: 1.1.0
@@ -52,7 +52,7 @@ changes:
 		notes, record, err := trailguide.ParseReleaseMessage(tag.name, []byte(tag.message))
 		var unsupported *trailguide.UnsupportedReleaseRecordError
 		if errors.As(err, &unsupported) {
-			fmt.Println(tag.name, "needs a newer trailguide package for record format", unsupported.FormatVersion)
+			fmt.Println(tag.name, "needs a newer trailguide package for release record schema version", unsupported.SchemaVersion)
 			continue
 		}
 		if err != nil {

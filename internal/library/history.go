@@ -219,7 +219,7 @@ func (g *libraryGit) history(ctx context.Context) (releaseHistory, error) {
 	var unsupported *trailguide.UnsupportedReleaseRecordError
 	switch {
 	case errors.As(err, &invalid) && errors.As(invalid.Err, &unsupported):
-		return releaseHistory{}, unsupportedRecord(invalid.Tag, unsupported.FormatVersion)
+		return releaseHistory{}, unsupportedRecord(invalid.Tag, unsupported.SchemaVersion)
 	case invalid != nil:
 		return releaseHistory{}, failure("invalid-release-tag", invalid.Error()+". Don't create or move release tags by hand; if you created "+invalid.Tag+" by hand, delete it with git tag --delete "+invalid.Tag+", then run the command again.", invalid.Err)
 	}
@@ -270,9 +270,9 @@ func (g *libraryGit) skillFiles(ctx context.Context, treeish string) (map[string
 }
 
 // unsupportedRecord fails with unsupported-release-record for release tag tag, whose record a newer Trail Guide
-// wrote in release record format version, asking the author to upgrade.
+// wrote in release record schema version version, which this one can't read, asking the author to upgrade.
 func unsupportedRecord(tag string, version int) error {
-	return failure("unsupported-release-record", tag+" uses release record format "+strconv.Itoa(version)+", which this version of Trail Guide can't read. Upgrade Trail Guide, then run the command again.", nil)
+	return failure("unsupported-release-record", tag+" uses release record schema version "+strconv.Itoa(version)+", which this version of Trail Guide can't read. Upgrade Trail Guide, then run the command again.", nil)
 }
 
 // releaseFiles lists the blobs under practices/, techs/, and changes/ at a release tag's commit, by library path.

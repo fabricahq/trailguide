@@ -64,24 +64,24 @@ type RetiredRule struct {
 	Summaries   []string    `json:"summaries"`
 }
 
-// ReleaseRecordFormat is the newest release record format this version of Trail Guide writes and reads, recorded in
-// each record's formatVersion. It changes only for incompatible changes: readers ignore fields they don't know, so new
-// optional fields keep the format.
-const ReleaseRecordFormat = 1
+// ReleaseRecordSchemaVersion is the newest release record schema version this version of Trail Guide writes and
+// reads, recorded in each record's schemaVersion. It changes only for incompatible changes: readers ignore fields they
+// don't know, so new optional fields keep the schema version.
+const ReleaseRecordSchemaVersion = 1
 
-// UnsupportedReleaseRecordError reports a release record whose formatVersion is above ReleaseRecordFormat: a newer
-// Trail Guide published it, and only a version of Trail Guide, and of this package, that supports its format can read
-// it. Check for it with errors.As.
+// UnsupportedReleaseRecordError reports a release record whose schemaVersion is above ReleaseRecordSchemaVersion: a
+// newer Trail Guide published it, and only a version of Trail Guide, and of this package, that supports its schema
+// version can read it. Check for it with errors.As.
 type UnsupportedReleaseRecordError struct {
-	// Location is the record's formatVersion field, such as release/4.formatVersion.
+	// Location is the record's schema version field, such as release/4.schemaVersion.
 	Location string
-	// FormatVersion is the record's format, above ReleaseRecordFormat.
-	FormatVersion int
+	// SchemaVersion is the record's schema version, above ReleaseRecordSchemaVersion.
+	SchemaVersion int
 }
 
-// Error names the record's format and asks the reader to upgrade Trail Guide.
+// Error names the record's schema version and asks the reader to upgrade Trail Guide.
 func (e *UnsupportedReleaseRecordError) Error() string {
-	return e.Location + ": the release record uses format " + strconv.Itoa(e.FormatVersion) + ", but this version of Trail Guide reads only format " + strconv.Itoa(ReleaseRecordFormat) + "; upgrade Trail Guide to read this library release"
+	return e.Location + ": the release record uses schema version " + strconv.Itoa(e.SchemaVersion) + ", but this version of Trail Guide reads only schema version " + strconv.Itoa(ReleaseRecordSchemaVersion) + "; upgrade Trail Guide to read this library release"
 }
 
 // Limits on a release record's collections bound the work of reading a record from a library nobody vetted. A
@@ -110,10 +110,11 @@ func thousands(count int) string {
 }
 
 // ParseReleaseRecord parses a release record: the YAML after the last --- line of a library release tag's message.
-// location names the record in errors, such as its tag name. It reads formatVersion before anything else and
-// fails with *UnsupportedReleaseRecordError when it's above ReleaseRecordFormat, so it never misreads a newer
-// format. It ignores fields it doesn't know, at any level and whatever their values, so later formats can add
-// fields that older readers skip; the record must still be one YAML document without anchors, aliases, explicit
+// location names the record in errors, such as its tag name. It reads schemaVersion before anything else and
+// fails with *UnsupportedReleaseRecordError when it's above ReleaseRecordSchemaVersion, so it never misreads a newer
+// schema version. Records published before Trail Guide 0.8.0 spell the field formatVersion, which it reads when
+// schemaVersion is absent. It ignores fields it doesn't know, at any level and whatever their values, so later schema
+// versions can add fields that older readers skip; the record must still be one YAML document without anchors, aliases, explicit
 // tags, or duplicate keys. It validates every field it knows, including that each change leads to the version in
 // rules and that the first library release lists every rule and skill as new, and it refuses more than 10,000
 // entries in rules, changes, retired, or any map of skills, and more than 20,000 in libraryFiles.
@@ -131,13 +132,19 @@ func parseReleaseRecord(input []byte, location string) (ReleaseRecord, error) {
 	if root.Kind != yaml.MappingNode {
 		return ReleaseRecord{}, invalid(location, "expected an object")
 	}
-	// The format comes first: a later format may hold content this version can't interpret at all.
-	var format json.RawMessage
-	if node := field(root, "formatVersion"); node != nil {
-		// A value that isn't a plain scalar leaves format empty, which recordFormat reports as invalid.
-		format, _ = decode.JSON(node, location+".formatVersion")
+	// The schema version comes first: a later one may hold content this version can't interpret at all.
+	key := "schemaVersion"
+	node := field(root, key)
+	if node == nil && field(root, "formatVersion") != nil {
+		key = "formatVersion"
+		node = field(root, key)
 	}
-	if err := recordFormat(format, location+".formatVersion"); err != nil {
+	var version json.RawMessage
+	if node != nil {
+		// A value that isn't a plain scalar leaves version empty, which recordSchema reports as invalid.
+		version, _ = decode.JSON(node, location+"."+key)
+	}
+	if err := recordSchema(version, location+"."+key); err != nil {
 		return ReleaseRecord{}, err
 	}
 	fields, err := knownFields(root, location, map[string][]string{"release": nil, "rules": nil, "libraryFiles": nil, "changes": {"change", "from", "summaries"}, "retired": {"lastVersion", "replacedBy", "summaries"}})
@@ -320,14 +327,15 @@ func requireAllNew(versions map[string]RuleVersion, changes map[string]RecordedC
 	return nil
 }
 
-// recordFormat accepts ReleaseRecordFormat, reporting a larger whole number as a format this version can't read.
-func recordFormat(input json.RawMessage, location string) error {
-	format, err := strconv.Atoi(string(input))
+// recordSchema accepts ReleaseRecordSchemaVersion, reporting a larger whole number as a schema version this version
+// can't read.
+func recordSchema(input json.RawMessage, location string) error {
+	version, err := strconv.Atoi(string(input))
 	switch {
-	case err != nil || format < 1:
-		return invalid(location, "expected the release record format, a whole number such as 1")
-	case format > ReleaseRecordFormat:
-		return &UnsupportedReleaseRecordError{Location: location, FormatVersion: format}
+	case err != nil || version < 1:
+		return invalid(location, "expected the release record schema version, a whole number such as 1")
+	case version > ReleaseRecordSchemaVersion:
+		return &UnsupportedReleaseRecordError{Location: location, SchemaVersion: version}
 	}
 	return nil
 }

@@ -38,7 +38,7 @@ func newForkFixture(t *testing.T) forkFixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/errors: 1.0.0\nchanges:\n  practices/testing/verify: {change: new, summaries: [Add the rule.]}\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/errors: 1.0.0\nchanges:\n  practices/testing/verify: {change: new, summaries: [Add the rule.]}\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -52,7 +52,7 @@ func newForkFixture(t *testing.T) forkFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(map[string][]byte{"techs/go/errors.md": updateRule("Wrap errors.")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	return forkFixture{u}

@@ -71,7 +71,7 @@ func publishScriptRelease(t *testing.T, f *gitfixture.Fixture) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Make the new scripts executable", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 }

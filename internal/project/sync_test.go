@@ -19,7 +19,7 @@ import (
 )
 
 // firstRelease is the release record of the sync fixture's first library release.
-const firstRelease = "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"
+const firstRelease = "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"
 
 // syncProject initializes a project and a library, with exact binary and license content, whose first library
 // release publishes techs/go/errors at 1.0.0. The project selects techs/go.

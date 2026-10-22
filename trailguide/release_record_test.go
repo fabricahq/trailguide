@@ -26,7 +26,7 @@ func TestReleaseMessageFixtures(t *testing.T) {
 			OK    bool
 			Notes string
 			Value json.RawMessage
-			// Error's Kind is "unsupported" for a record format newer than the parser reads, "notReleaseTag" for a tag
+			// Error's Kind is "unsupported" for a record schema version newer than the parser reads, "notReleaseTag" for a tag
 			// name that isn't release/<number>, and empty for a validation error.
 			Error *struct{ Message, Location, Kind string }
 		}
@@ -75,7 +75,7 @@ func TestReleaseMessageFixtures(t *testing.T) {
 // entries, with the rules entries the changes need, up to the 10,000 rules allows.
 func recordWith(section string, count int) []byte {
 	var record strings.Builder
-	record.WriteString("formatVersion: 1\nrelease: 2\n")
+	record.WriteString("schemaVersion: 1\nrelease: 2\n")
 	if section == "rules" || section == "changes" {
 		ruleCount := count
 		if section == "changes" {
@@ -140,12 +140,12 @@ func TestParseReleaseRecord_RefusesDuplicateLibraryFilesInLargeLists(t *testing.
 // TestParseReleaseRecord_IgnoresUnknownFieldsAtEveryLevel reads a record that a later format extended at the top
 // level, in a change, and in a retirement, with values of any shape, as the record without them.
 func TestParseReleaseRecord_IgnoresUnknownFieldsAtEveryLevel(t *testing.T) {
-	const known = "formatVersion: 1\nrelease: 3\n" +
+	const known = "schemaVersion: 1\nrelease: 3\n" +
 		"rules:\n  techs/go/a: 1.1.0\n" +
 		"changes:\n  techs/go/a:\n    change: minor\n    from: 1.0.0\n    summaries: [Add an example.]\n" +
 		"retired:\n  techs/go/b:\n    lastVersion: 2.0.0\n    replacedBy: techs/go/a\n    summaries: [Covered by a.]\n" +
 		"libraryFiles: [techs/go/_group.yaml]\n"
-	const extended = "formatVersion: 1\nrelease: 3\npublishedAt: 2026-10-01T12:00:00Z\nsigner: {name: Fixture, keys: [1, 2]}\n" +
+	const extended = "schemaVersion: 1\nrelease: 3\npublishedAt: 2026-10-01T12:00:00Z\nsigner: {name: Fixture, keys: [1, 2]}\n" +
 		"rules:\n  techs/go/a: 1.1.0\n" +
 		"changes:\n  techs/go/a:\n    change: minor\n    from: 1.0.0\n    summaries: [Add an example.]\n    notes: [{id: 7}]\n    breaking: false\n" +
 		"retired:\n  techs/go/b:\n    lastVersion: 2.0.0\n    replacedBy: techs/go/a\n    summaries: [Covered by a.]\n    retiredAt: 2026-10-01\n" +
@@ -179,29 +179,35 @@ func TestParseReleaseRecord_AppliesDocumentRulesToUnknownFields(t *testing.T) {
 	}
 }
 
-// TestParseReleaseRecord_ChecksTheFormatBeforeTheContent reads format 1, reports a newer format with
-// *UnsupportedReleaseRecordError whatever the rest of the record holds, and refuses a missing or malformed format
-// as an invalid record.
-func TestParseReleaseRecord_ChecksTheFormatBeforeTheContent(t *testing.T) {
+// TestParseReleaseRecord_ChecksTheSchemaVersionBeforeTheContent reads schema version 1, reports a newer one with
+// *UnsupportedReleaseRecordError whatever the rest of the record holds, and refuses a missing or malformed schema
+// version as an invalid record.
+func TestParseReleaseRecord_ChecksTheSchemaVersionBeforeTheContent(t *testing.T) {
 	if record, err := trailguide.ParseReleaseRecord([]byte(record2), "release/2"); err != nil || record.Release != 2 {
-		t.Fatalf("format %d: got %+v, %v", trailguide.ReleaseRecordFormat, record, err)
+		t.Fatalf("schema version %d: got %+v, %v", trailguide.ReleaseRecordSchemaVersion, record, err)
+	}
+	if record, err := trailguide.ParseReleaseRecord([]byte(strings.Replace(record2, "schemaVersion", "formatVersion", 1)), "release/2"); err != nil || record.Release != 2 {
+		t.Fatalf("a record from before Trail Guide 0.8.0, which spells the field formatVersion: got %+v, %v", record, err)
+	}
+	if _, err := trailguide.ParseReleaseRecord([]byte("formatVersion: 2\nrelease: 2\nrules: {}\n"), "release/2"); !strings.Contains(fmt.Sprint(err), "release/2.formatVersion") {
+		t.Fatalf("a newer formatVersion: got %v; want an error at release/2.formatVersion", err)
 	}
 	for name, input := range map[string]string{
-		"newer format":                "formatVersion: 2\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n",
-		"newer format, other content": "formatVersion: 2\nrelease: second\nrules: [techs/go/a]\nchanges: none\n",
-		"newer format, format last":   "release: second\nformatVersion: 2\n",
+		"newer schema version":                "schemaVersion: 2\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n",
+		"newer schema version, other content": "schemaVersion: 2\nrelease: second\nrules: [techs/go/a]\nchanges: none\n",
+		"newer schema version, version last":  "release: second\nschemaVersion: 2\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := trailguide.ParseReleaseRecord([]byte(input), "release/2")
 			var unsupported *trailguide.UnsupportedReleaseRecordError
-			if !errors.As(err, &unsupported) || unsupported.FormatVersion != 2 || unsupported.Location != "release/2.formatVersion" {
-				t.Fatalf("got %v; want UnsupportedReleaseRecordError for format 2", err)
+			if !errors.As(err, &unsupported) || unsupported.SchemaVersion != 2 || unsupported.Location != "release/2.schemaVersion" {
+				t.Fatalf("got %v; want UnsupportedReleaseRecordError for schema version 2", err)
 			}
 		})
 	}
-	for name, format := range map[string]string{"missing": "", "zero": "formatVersion: 0\n", "negative": "formatVersion: -1\n", "text": "formatVersion: one\n", "list": "formatVersion: [1]\n"} {
+	for name, version := range map[string]string{"missing": "", "zero": "schemaVersion: 0\n", "negative": "schemaVersion: -1\n", "text": "schemaVersion: one\n", "list": "schemaVersion: [1]\n"} {
 		t.Run(name, func(t *testing.T) {
-			_, err := trailguide.ParseReleaseRecord([]byte(format+"release: 2\nrules: {}\n"), "release/2")
+			_, err := trailguide.ParseReleaseRecord([]byte(version+"release: 2\nrules: {}\n"), "release/2")
 			var unsupported *trailguide.UnsupportedReleaseRecordError
 			if err == nil || errors.As(err, &unsupported) {
 				t.Fatalf("got %v; want an invalid record", err)

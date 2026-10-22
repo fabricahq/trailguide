@@ -50,7 +50,7 @@ func releaseNewLevels(t *testing.T, f *gitfixture.Fixture) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Require review and audit", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -302,7 +302,7 @@ func TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose(t *testing.T)
 	})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := PlanUpdate(ctx, options, git, []imports.UpdateTarget{{Source: "team", Rule: "techs/go/errors"}}, nil)
@@ -409,7 +409,7 @@ func TestUpdate_PreviewsALevelChangeThatRemovesASkillOnItsRow(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Stop recommending review", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\nchanges: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := PlanUpdate(ctx, options, git, nil, nil)
