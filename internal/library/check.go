@@ -5,9 +5,6 @@ package library
 import (
 	"bytes"
 	"context"
-	"errors"
-	"fmt"
-	"io/fs"
 	"iter"
 	"maps"
 	"os"
@@ -93,7 +90,10 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = validateLibraryInventory(ctx, input.tree.Files, rules.LicensePaths(input.license)); err != nil {
 		return checkedLibrary{}, err
 	}
-	if err = requireLeveledSkills(root, input.tree.Files[librarytree.Manifest]); err != nil {
+	if input.skills, err = git.trackedSkills(ctx, input.skills); err != nil {
+		return checkedLibrary{}, err
+	}
+	if err = requireLeveledSkills(input.skills, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
 	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
@@ -358,9 +358,11 @@ func validateLibraryInventory(ctx context.Context, files map[string][]byte, term
 // checkInput is a bounded snapshot of every library-owned file and change note a complete check considers.
 type checkInput struct {
 	tree *filetxn.Tree
-	// skills is the library's skills/ folder, by path in it, or nil when the library has none.
-	skills  *filetxn.Tree
-	license *trailguide.LicenseDeclaration
+	// skills is the library's skills/ folder, by path in it, or nil when the library has none. In a library in Git,
+	// check drops the files Git ignores and doesn't track. skillsDigest is the Digest of the folder as read.
+	skills       *filetxn.Tree
+	skillsDigest string
+	license      *trailguide.LicenseDeclaration
 	// notes maps each change note, by its library path under changes/, to its bytes; notes stay out of catalogs and snapshots.
 	notes map[string][]byte
 }
@@ -379,7 +381,7 @@ func libraryCheckInput(ctx context.Context, root *os.Root) (checkInput, error) {
 	if err != nil {
 		return checkInput{}, err
 	}
-	return checkInput{tree: &filetxn.Tree{Files: inventory.Files, Directories: inventory.Directories}, skills: authoredSkills, license: inventory.License, notes: notes}, nil
+	return checkInput{tree: &filetxn.Tree{Files: inventory.Files, Directories: inventory.Directories}, skills: authoredSkills, skillsDigest: authoredSkills.Digest(), license: inventory.License, notes: notes}, nil
 }
 
 // requireLibraryUnchanged rejects differences observed after validating the captured snapshot.
@@ -388,15 +390,15 @@ func requireLibraryUnchanged(ctx context.Context, root *os.Root, before checkInp
 	if err != nil {
 		return failure("changed-input", "library changed during validation; retry library check", err)
 	}
-	if !maps.EqualFunc(before.tree.Files, after.tree.Files, bytes.Equal) || !slices.Equal(before.tree.Directories, after.tree.Directories) || before.skills.Digest() != after.skills.Digest() || !maps.EqualFunc(before.notes, after.notes, bytes.Equal) {
+	if !maps.EqualFunc(before.tree.Files, after.tree.Files, bytes.Equal) || !slices.Equal(before.tree.Directories, after.tree.Directories) || before.skillsDigest != after.skillsDigest || !maps.EqualFunc(before.notes, after.notes, bytes.Equal) {
 		return failure("changed-input", "library changed during validation; retry library check", nil)
 	}
 	return nil
 }
 
 // requireLeveledSkills fails when manifest, the library's configuration, gives a level to an own skill the library
-// doesn't have: a folder in .trailguide/skills/ with a SKILL.md, in the repository at root.
-func requireLeveledSkills(root *os.Root, manifest []byte) error {
+// doesn't have: a folder in tree, the library's skills/ folder, with a SKILL.md.
+func requireLeveledSkills(tree *filetxn.Tree, manifest []byte) error {
 	declaration, err := rules.ParseLibraryManifest(manifest, manifestPath)
 	if err != nil || declaration == nil {
 		return err
@@ -406,12 +408,8 @@ func requireLeveledSkills(root *os.Root, manifest []byte) error {
 		if strings.Contains(id, ":") {
 			continue
 		}
-		file := librarytree.Directory + "/" + id + "/" + skills.File
-		info, err := root.Lstat(file)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("inspect %s: %v", file, err)
-		}
-		if err != nil || !info.Mode().IsRegular() {
+		if _, ok := tree.Files[strings.TrimPrefix(id, skills.Directory+"/")+"/"+skills.File]; tree == nil || !ok {
+			file := librarytree.Directory + "/" + id + "/" + skills.File
 			return &ValidationError{Location: manifestPath + ": " + declaration.Skills.Field(id), Problem: id + " names no skill of the library, because " + file + " doesn't exist; add the skill, or remove it from the list"}
 		}
 	}

@@ -486,10 +486,10 @@ func (g *libraryGit) hashRepositoryFiles(ctx context.Context, paths []string) (m
 	return hashes, nil
 }
 
-// changedSkills reports, for each of names, the folders of skills in tree, the working tree's skills/ folder, that
-// base, the skills/ folder of the library release skill versions come from, also has, whether the skill's files
-// differ from base's: in which files it has, in their content as Git would store it, or in their executable bit.
-// Files Git ignores and doesn't track aren't part of a skill.
+// changedSkills reports, for each of names, the folders of skills in tree, the tracked files of the working tree's
+// skills/ folder, that base, the skills/ folder of the library release skill versions come from, also has, whether the
+// skill's files differ from base's: in which files it has, in their content as Git would store it, or in their
+// executable bit.
 func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntry, tree *filetxn.Tree, names []string) (map[string]bool, error) {
 	working := map[string][]string{}
 	paths := []string{}
@@ -498,18 +498,9 @@ func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntr
 			folder, _, _ := strings.Cut(name, "/")
 			if slices.Contains(names, folder) {
 				paths = append(paths, skillsDirectory+"/"+name)
+				working[folder] = append(working[folder], name)
 			}
 		}
-	}
-	ignored, err := g.ignoredFiles(ctx, paths)
-	if err != nil {
-		return nil, err
-	}
-	paths = slices.DeleteFunc(paths, func(path string) bool { return ignored[path] })
-	for _, path := range paths {
-		name := strings.TrimPrefix(path, skillsDirectory+"/")
-		folder, _, _ := strings.Cut(name, "/")
-		working[folder] = append(working[folder], name)
 	}
 	hashes, err := g.hashRepositoryFiles(ctx, paths)
 	if err != nil {
@@ -536,6 +527,50 @@ func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntr
 		})
 	}
 	return changed, nil
+}
+
+// trackedSkills returns tree, the working tree's skills/ folder, without the files Git ignores and doesn't track,
+// which no commit holds, and without the folders that held only such files, so that a library release records
+// exactly the skills its commit delivers. A nil g, a library outside Git, keeps every file.
+func (g *libraryGit) trackedSkills(ctx context.Context, tree *filetxn.Tree) (*filetxn.Tree, error) {
+	if g == nil || tree == nil {
+		return tree, nil
+	}
+	paths := make([]string, 0, len(tree.Files))
+	for name := range tree.Files {
+		paths = append(paths, skillsDirectory+"/"+name)
+	}
+	ignored, err := g.ignoredFiles(ctx, paths)
+	if err != nil || len(ignored) == 0 {
+		return tree, err
+	}
+	tracked := &filetxn.Tree{Files: map[string][]byte{}, Directories: []string{}}
+	for name, data := range tree.Files {
+		if !ignored[skillsDirectory+"/"+name] {
+			tracked.Files[name] = data
+		}
+	}
+	for _, name := range tree.Executable {
+		if _, ok := tracked.Files[name]; ok {
+			tracked.Executable = append(tracked.Executable, name)
+		}
+	}
+	for _, directory := range tree.Directories {
+		if !holdsFiles(tree.Files, directory) || holdsFiles(tracked.Files, directory) {
+			tracked.Directories = append(tracked.Directories, directory)
+		}
+	}
+	return tracked, nil
+}
+
+// holdsFiles reports whether files, by path, has one in directory or a folder in it.
+func holdsFiles(files map[string][]byte, directory string) bool {
+	for name := range files {
+		if strings.HasPrefix(name, directory+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // ignoredFiles reports which of paths, repository paths of files in the working tree, Git ignores and doesn't track.

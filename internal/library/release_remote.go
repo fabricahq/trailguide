@@ -345,8 +345,8 @@ func commits(count uint64) string {
 }
 
 // requireCommitted refuses unless head commits exactly the bytes check read, as regular files, including the
-// library's skills, except their files Git ignores, so the library release publishes what check validated, even where a Git filter such as Git LFS
-// stores other content.
+// library's tracked skill files with their executable bits, so the library release publishes what check validated,
+// even where a Git filter such as Git LFS stores other content.
 func (g *libraryGit) requireCommitted(ctx context.Context, head string, input checkInput) error {
 	library, err := g.libraryEntries(ctx, head, libraryPaths(rules.LicensePaths(input.license)))
 	if err != nil {
@@ -370,20 +370,14 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 			captured[librarytree.RepositoryPath(name)] = data
 		}
 	}
+	// Check dropped the skill files Git ignores, such as a cache a script wrote, which aren't part of a skill.
+	executable := map[string]bool{}
 	if input.skills != nil {
-		names := []string{}
-		for name := range input.skills.Files {
-			names = append(names, skillsDirectory+"/"+name)
-		}
-		// A file Git ignores, such as a cache a script wrote, isn't part of the skill, so it needn't be committed.
-		ignored, err := g.ignoredFiles(ctx, names)
-		if err != nil {
-			return err
-		}
 		for name, data := range input.skills.Files {
-			if !ignored[skillsDirectory+"/"+name] {
-				captured[skillsDirectory+"/"+name] = data
-			}
+			captured[skillsDirectory+"/"+name] = data
+		}
+		for _, name := range input.skills.Executable {
+			executable[skillsDirectory+"/"+name] = true
 		}
 	}
 	var problems []string
@@ -396,6 +390,9 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 			problems = append(problems, location+" is committed as a symbolic link or submodule, not a file")
 		case entry.object != blobID(strings.TrimSpace(string(format)), data):
 			problems = append(problems, location+" differs from its committed copy")
+		case strings.HasPrefix(location, skillsDirectory+"/") && executable[location] != (entry.mode == "100755"):
+			// A skill's version covers its files' executable bits, so the commit must have them as check read them.
+			problems = append(problems, location+" has an executable bit that differs from its committed copy")
 		}
 	}
 	for location := range captured {

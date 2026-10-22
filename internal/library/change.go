@@ -318,6 +318,9 @@ func requireChanged(ctx context.Context, root *os.Root, git *libraryGit, history
 		if err != nil {
 			return err
 		}
+		if tree, err = git.trackedSkills(ctx, tree); err != nil {
+			return err
+		}
 		changedSkills, err := git.changedSkills(ctx, history.skills.files, tree, folders)
 		if err != nil {
 			return err

@@ -236,3 +236,51 @@ func TestCheck_LeavesFilesGitIgnoresOutOfASkillsVersion(t *testing.T) {
 		t.Fatalf("%+v: %v", result, err)
 	}
 }
+
+// TestRelease_RecordsOnlySkillsItsCommitDelivers refuses a note for a skill whose files Git ignores, which no commit
+// holds, and publishes no version for it.
+func TestRelease_RecordsOnlySkillsItsCommitDelivers(t *testing.T) {
+	ctx := context.Background()
+	files := libraryFiles()
+	files[".gitignore"] = []byte(".trailguide/skills/local/\n")
+	fixture, options := authorClone(t, files)
+	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
+		t.Fatal(err)
+	}
+	edit(t, options.Directory, map[string]string{".trailguide/skills/local/SKILL.md": "---\nname: local\ndescription: A personal skill.\n---\n# Local\n"})
+	checked, err := Check(ctx, options)
+	if err != nil || checked.SkillCount != 0 || len(checked.PendingRelease.Skills) != 0 {
+		t.Fatalf("%+v: %v", checked, err)
+	}
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"changes/local.yaml": []byte("summary: Add a personal skill.\nskills:\n  skills/local: new\n")})
+	if _, err := Check(ctx, options); errorCode(err) != "change-notes" || !strings.Contains(err.Error(), "skills/local") {
+		t.Fatalf("got %v; want the note for the ignored skill rejected", err)
+	}
+	if _, err := Release(ctx, ReleaseRequest{Options: options}); err == nil || strings.Contains(tags(t, fixture, remoteDir(fixture)), "release/2") {
+		t.Fatalf("published a release for an ignored skill: %v", err)
+	}
+}
+
+// TestRelease_RefusesAnExecutableBitItsCommitLacks refuses to publish a skill's new version when the working tree
+// makes a script executable but the commit doesn't.
+func TestRelease_RefusesAnExecutableBitItsCommitLacks(t *testing.T) {
+	ctx := context.Background()
+	files := libraryFiles()
+	files[".trailguide/skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
+	files[".trailguide/skills/review/scripts/lint.sh"] = []byte("#!/bin/sh\n")
+	fixture, options := authorClone(t, files)
+	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
+		t.Fatal(err)
+	}
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"changes/review.yaml": []byte("summary: Run the lint script directly.\nskills:\n  skills/review: patch\n")})
+	if err := os.Chmod(filepath.Join(options.Directory, ".trailguide", "skills", "review", "scripts", "lint.sh"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if checked, err := Check(ctx, options); err != nil || len(checked.PendingRelease.Skills) != 1 || checked.PendingRelease.Skills[0].To.String() != "1.0.1" {
+		t.Fatalf("%+v: %v", checked.PendingRelease.Skills, err)
+	}
+	_, err := Release(ctx, ReleaseRequest{Options: options})
+	if errorCode(err) != "uncommitted-changes" || !strings.Contains(err.Error(), "  - .trailguide/skills/review/scripts/lint.sh has an executable bit that differs from its committed copy\n") || strings.Contains(tags(t, fixture, remoteDir(fixture)), "release/2") {
+		t.Fatalf("got %v; want the uncommitted executable bit refused", err)
+	}
+}
