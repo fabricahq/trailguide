@@ -885,8 +885,10 @@ func decodeValue(decoder *json.Decoder, where string) (any, error) {
 				return nil, err
 			}
 		}
-		_, err := decoder.Token()
-		return object, err
+		if _, err := decoder.Token(); err != nil {
+			return nil, invalid(where, "invalid JSON: "+err.Error())
+		}
+		return object, nil
 	case json.Delim('['):
 		list := []any{}
 		for decoder.More() {
@@ -896,8 +898,10 @@ func decodeValue(decoder *json.Decoder, where string) (any, error) {
 			}
 			list = append(list, item)
 		}
-		_, err := decoder.Token()
-		return list, err
+		if _, err := decoder.Token(); err != nil {
+			return nil, invalid(where, "invalid JSON: "+err.Error())
+		}
+		return list, nil
 	}
 	return token, nil
 }

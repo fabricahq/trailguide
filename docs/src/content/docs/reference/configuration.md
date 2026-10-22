@@ -291,9 +291,9 @@ Every source has a `ref`, which says which revision of its repository the projec
 | Another tag, such as `v1.2` or `refs/tags/v1.2` | The recorded commit. | For a non-library source, the commit the tag names now, warning when the tag moved since the last update. A library source stays. |
 | A full 40-character commit SHA | That commit. | Nowhere; it never moves. |
 
-Sync resolves a branch, tag, or commit to a commit when it first reads the source, records that commit in the source's vendor snapshot, and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the snapshot records the release and each rule's version, and sync keeps them too. Sync never moves a source: only `trailguide project update` does, after a preview.
+Sync resolves a branch, tag, or commit to a commit when it first reads the source, records that commit in [`.trailguide/lock.json`](/reference/provenance/#inspect-the-lockfile), and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the lockfile records the release and each rule's version, and sync keeps them too. Sync never moves a source: only `trailguide project update` does, after a preview.
 
-`latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move only in `vendor/` and `generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.
+`latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move in `.trailguide/lock.json`, `vendor/`, and `generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.
 
 ### Change a ref
 
@@ -566,7 +566,7 @@ Each rule and skill in a library has its own [version](/reference/rule-versions/
 - [`.trailguide/lock.json`](/reference/provenance/#inspect-the-lockfile) records the library release or commit, and the exact version of every included rule and skill. [`trailguide project sync`](/reference/cli/#project-sync) restores exactly that, so every checkout has the same content.
 - [`trailguide project update`](/reference/cli/#project-update) previews newer versions, new rules and skills, level changes, and retirements, and applies them after you confirm, writing the new release to `ref`.
 
-`trailguide project sync` never moves a source; when you change its `ref`, sync fails and names `trailguide project update SOURCE`, which takes it. A rule or skill you newly include comes from the release `ref` names, or from the recorded commit. When it isn't there, such as a skill the library published after your last update, sync fails and names the command that moves the source, `trailguide project update SOURCE`.
+`trailguide project sync` never moves a source. When you change its `ref` to another library release, sync fails and names `trailguide project update SOURCE`, which takes it; when you change it to a branch, tag, or commit, sync takes the revision the new `ref` names. A rule or skill you newly include comes from the release `ref` names, or from the recorded commit. When it isn't there, such as a skill the library published after your last update, sync fails and names the command that moves the source, `trailguide project update SOURCE`.
 
 A project chooses rule versions one by one, with pins, but not skill versions. All of a source's skills come from its one recorded revision, and move together when it moves. A skill's version still says what changed, in release notes, `generated/SKILLS.md`, the installed copy's marker line, provenance, and the update preview.
 

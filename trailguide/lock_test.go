@@ -191,7 +191,7 @@ func TestLock_RefusesInconsistentEntries(t *testing.T) {
 }
 
 // TestLock_RefusesDuplicateKeysAndNewerFormats refuses a key twice at any depth, as a merge that kept both sides
-// leaves it, and asks to upgrade for a newer lockVersion.
+// leaves it, asks to upgrade for a newer lockVersion, and reports a truncated file as a validation error.
 func TestLock_RefusesDuplicateKeysAndNewerFormats(t *testing.T) {
 	text := encodeFixture(t)
 	duplicated := strings.Replace(text, `      "kind": "non-library",`, `      "kind": "non-library",`+"\n"+`      "kind": "non-library",`, 1)
@@ -205,6 +205,12 @@ func TestLock_RefusesDuplicateKeysAndNewerFormats(t *testing.T) {
 	}
 	if _, err := trailguide.ParseLock([]byte(strings.Replace(text, `"lockVersion": 1`, `"lockVersion": 0`, 1))); err == nil {
 		t.Fatal("accepted lockVersion 0")
+	}
+	var invalid *trailguide.ValidationError
+	for _, truncated := range []string{`{"lockVersion":1,"sources":{}`, `{"lockVersion":1,"sources":{"tools":{"rules":["a"]`} {
+		if _, _, err := trailguide.ParseLockEntries([]byte(truncated)); !errors.As(err, &invalid) {
+			t.Fatalf("truncated %s: %v", truncated, err)
+		}
 	}
 }
 
