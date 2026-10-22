@@ -253,11 +253,11 @@ func TestLibraryCommands_ShareTheWriterOfTheTrailGuideDirectory(t *testing.T) {
 // .trailguide/, which that layout didn't read.
 func legacyFiles() map[string][]byte {
 	files := map[string][]byte{
-		"rule-library.yaml":            []byte("formatVersion: 1\nlicense:\n  spdxExpression: MIT\n  file: LICENSE.md\n  notices: []\n"),
-		"LICENSE.md":                   []byte("MIT License\n"),
-		"assets/retry.svg":             []byte("<svg/>\n"),
-		".trailguide/config.yaml":      []byte("schemaVersion: 2\nsources: {}\n"),
-		".trailguide/generated/OUT.md": []byte("generated\n"),
+		"rule-library.yaml":                     []byte("formatVersion: 1\nlicense:\n  spdxExpression: MIT\n  file: LICENSE.md\n  notices: []\n"),
+		"LICENSE.md":                            []byte("MIT License\n"),
+		"assets/retry.svg":                      []byte("<svg/>\n"),
+		".trailguide/config.yaml":               []byte("schemaVersion: 2\nsources: {}\n"),
+		".trailguide/_managed/generated/OUT.md": []byte("generated\n"),
 	}
 	for name, data := range libraryFiles() {
 		if name != "config.yaml" {

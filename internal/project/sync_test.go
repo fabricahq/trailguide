@@ -96,11 +96,11 @@ func TestSyncRoundTripAndRetirement(t *testing.T) {
 	if err != nil || len(retired.Removed) == 0 {
 		t.Fatalf("retire: %+v %v", retired, err)
 	}
-	vendor, err := filetxn.ReadTree(ctx, root, "vendor")
+	vendor, err := filetxn.ReadTree(ctx, root, "_managed/vendor")
 	if err != nil || len(vendor.Files) != 0 {
 		t.Fatal("retired files retained", err)
 	}
-	index, err := root.ReadFile("generated/RULES.md")
+	index, err := root.ReadFile("_managed/generated/RULES.md")
 	if err != nil {
 		t.Fatal(err)
 	}

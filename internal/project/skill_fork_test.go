@@ -55,14 +55,14 @@ func TestSync_LeavesOutAnExcludedSkill(t *testing.T) {
 	if exists(t, options, ".claude/skills/review") || !exists(t, options, ".claude/skills/build-feature/SKILL.md") {
 		t.Fatal("sync installed the excluded skill, or not the other one")
 	}
-	if !exists(t, options, ".trailguide/vendor/team/skills/review/SKILL.md") {
+	if !exists(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md") {
 		t.Fatal("sync didn't keep the excluded skill's files in vendor/")
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 	if !strings.Contains(index, "## Excluded skills") || !strings.Contains(index, "- `team:skills/review`: We review in CI.") || strings.Contains(index, "### review") {
 		t.Fatalf("SKILLS.md doesn't list the excluded skill with its reason:\n%s", index)
 	}
-	if readme := readRepositoryFile(t, options, ".trailguide/generated/libraries/team/README.md"); !strings.Contains(readme, "- `skills/review`: excluded") {
+	if readme := readRepositoryFile(t, options, ".trailguide/_managed/generated/libraries/team/README.md"); !strings.Contains(readme, "- `skills/review`: excluded") {
 		t.Fatalf("source README:\n%s", readme)
 	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
@@ -117,7 +117,7 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 	if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "<!-- trailguide:installed skills/build-feature. Do not edit; edit .trailguide/skills/build-feature/ instead. -->") {
 		t.Fatalf("installed copy isn't the fork:\n%s", installed)
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 	for _, want := range []string{"**Skill:** `skills/build-feature`, authored in this project", "**Replaces:** `team:skills/build-feature`, which the project forks, based on its copy at commit `" + commit + "`", "**Reason:** We build with make."} {
 		if !strings.Contains(index, want) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
@@ -493,7 +493,7 @@ func TestPlanSkillFork_KeepsTheSkillsThatSkillsUsesAdds(t *testing.T) {
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 	if !strings.Contains(index, "- **Uses:** `review`") {
 		t.Fatalf("SKILLS.md doesn't say the fork uses review:\n%s", index)
 	}
@@ -558,7 +558,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
 				t.Fatalf("installed %v; want only the fork", got)
 			}
-			if !exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+			if !exists(t, options, ".trailguide/_managed/vendor/team/skills/build-feature/SKILL.md") {
 				t.Fatal("sync didn't import the forked skill to compare with the fork")
 			}
 			later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
@@ -583,7 +583,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
 				t.Fatalf("after the update, installed %v; want the fork", got)
 			}
-			if exists(t, options, ".trailguide/vendor/team/skills/build-feature/SKILL.md") {
+			if exists(t, options, ".trailguide/_managed/vendor/team/skills/build-feature/SKILL.md") {
 				t.Fatal("the update kept the deleted skill's vendored copy")
 			}
 			if again, err := Sync(ctx, options, git); err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {

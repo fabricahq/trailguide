@@ -16,12 +16,12 @@ See [product scope](/start-here/overview/#what-trail-guide-does-not-do).
 
 Before planning, implementing, reviewing, testing, or debugging a change:
 
-1. Read `.trailguide/generated/RULES.md` and follow its instructions to
-   select relevant groups and read their rules in full, including linked
-   files and additional index pages.
-2. If `.trailguide/generated/SKILLS.md` exists, read it and use the skills
-   relevant to the task. Read each skill's instructions and the rules it
-   cites before performing the steps that apply them.
+1. Read `.trailguide/_managed/generated/RULES.md` and follow its
+   instructions to select relevant groups and read their rules in full,
+   including linked files and additional index pages.
+2. If `.trailguide/_managed/generated/SKILLS.md` exists, read it and use
+   the skills relevant to the task. Read each skill's instructions and the
+   rules it cites before performing the steps that apply them.
 3. Follow the applicable rules and their exceptions while doing the work.
 4. Before finishing, check your work against those rules and run the
    relevant validation. Briefly report what you verified and any gaps.
@@ -32,7 +32,7 @@ report the issue rather than silently skipping them or choosing a policy.
 To add, change, or update rules or skills, follow `.trailguide/README.md`.
 ```
 
-`.trailguide/generated/RULES.md` then tells the agent how to select rule groups, read rules, and report findings, so these instructions stay short.
+`.trailguide/_managed/generated/RULES.md` then tells the agent how to select rule groups, read rules, and report findings, so these instructions stay short.
 The generated index is an explicit entry point.
 Do not rely on automatic discovery of nested `AGENTS.md` files to load the rules.
 
@@ -62,7 +62,7 @@ Reading the index alone is not enough.
 
 ## Use installed skills
 
-A project can also install [skills](/concepts/skill/): step-by-step procedures for one kind of task, such as building a feature or reviewing a pull request. Trail Guide writes them into `.claude/skills/` and `.agents/skills/`, where tools with native skill support find them. When the project has skills, `RULES.md` links to `.trailguide/generated/SKILLS.md`, which lists each installed skill with its description, type, and installed path. If your tool doesn't load skills on its own, read `SKILLS.md` and open a skill's `SKILL.md` when its description matches the task.
+A project can also install [skills](/concepts/skill/): step-by-step procedures for one kind of task, such as building a feature or reviewing a pull request. Trail Guide writes them into `.claude/skills/` and `.agents/skills/`, where tools with native skill support find them. When the project has skills, `RULES.md` links to `.trailguide/_managed/generated/SKILLS.md`, which lists each installed skill with its description, type, and installed path. If your tool doesn't load skills on its own, read `SKILLS.md` and open a skill's `SKILL.md` when its description matches the task.
 
 When you use a skill:
 

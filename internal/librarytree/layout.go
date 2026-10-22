@@ -47,6 +47,25 @@ const Manifest = "config.yaml"
 // kept its groups, shared assets, and change notes at the repository root.
 const LegacyManifest = "rule-library.yaml"
 
+// Managed is the folder of the Trail Guide directory that holds everything Trail Guide writes there besides the
+// lockfile and the project guide: Vendor and Generated. The underscore marks it as Trail Guide's; no authored
+// folder's name starts with one. A library never publishes it.
+const Managed = "_managed"
+
+// Vendor is the folder, relative to the Trail Guide directory, of a project's vendor snapshots, one folder per
+// source; Generated is the folder of its generated guidance, which agents read.
+const (
+	Vendor    = Managed + "/vendor"
+	Generated = Managed + "/generated"
+)
+
+// LegacyVendor and LegacyGenerated are where Trail Guide 0.6 and earlier kept Vendor and Generated, at the top of
+// the Trail Guide directory. Sync moves them.
+const (
+	LegacyVendor    = "vendor"
+	LegacyGenerated = "generated"
+)
+
 // RepositoryPath returns where the library file at library path file lives in its repository. The manifest is
 // .trailguide/config.yaml; groups, at techs/ and practices/, live in .trailguide/rules/; shared assets, at assets/,
 // and change notes, at changes/, live in .trailguide/. Any other path is a license or notice file, at the same path
@@ -65,7 +84,7 @@ func RepositoryPath(file string) string {
 }
 
 // SnapshotPath returns where the library file at library path file is stored in a project's snapshot of the
-// library, vendor/<source>/: its path relative to the library's Trail Guide directory, as RepositoryPath places it,
+// library, _managed/vendor/<source>/: its path relative to the library's Trail Guide directory, as RepositoryPath places it,
 // so a rule at rules/techs/go/x.md keeps its relative links to shared assets at assets/. A license or notice file
 // outside the Trail Guide directory keeps its path relative to the repository root.
 func SnapshotPath(file string) string {
@@ -88,7 +107,7 @@ func InSnapshotNames(file string) bool {
 
 // LibraryPath returns the library path of the file or directory at repository path file, the inverse of
 // RepositoryPath. It reports false for a path that holds no library file: anything else in .trailguide/, such as
-// vendor/, generated/, or rules/README.md, and a path outside .trailguide/ whose library path would be one of a
+// _managed/, or rules/README.md, and a path outside .trailguide/ whose library path would be one of a
 // file inside it, such as assets/logo.svg or config.yaml at the repository root.
 func LibraryPath(file string) (string, bool) {
 	inside, found := strings.CutPrefix(file, Directory+"/")

@@ -22,7 +22,7 @@ skillTargets: [claude, agents]
 
 `claude` installs into `.claude/skills/`, which Claude Code reads. `agents` installs into `.agents/skills/`, which Codex, Cursor, and other agents that follow the shared convention read. `trailguide project init` writes both, and nothing is written to either folder until the project installs a skill.
 
-To record which skills your sources require before you choose agent folders, set `skillTargets: []`. Trail Guide still records and checks every skill and lists it in `.trailguide/generated/SKILLS.md`, but writes no installed copies, and sync warns that it installed nothing. See [Skill targets](/reference/configuration/#skill-targets).
+To record which skills your sources require before you choose agent folders, set `skillTargets: []`. Trail Guide still records and checks every skill and lists it in `.trailguide/_managed/generated/SKILLS.md`, but writes no installed copies, and sync warns that it installed nothing. See [Skill targets](/reference/configuration/#skill-targets).
 
 ## Add a library
 
@@ -101,9 +101,9 @@ Add `--json` to get the list for scripts. See [project list skills](/reference/c
 After sync, each installed skill appears in several places. Trail Guide writes all of them, so don't edit them by hand:
 
 - **`.claude/skills/build-feature/`** and **`.agents/skills/build-feature/`**: the installed copies your agents load, one folder per target.
-- **`.trailguide/vendor/fabrica/skills/build-feature/`**: the original files, as the library published that version.
-- **`.trailguide/generated/SKILLS.md`**: one entry per installed skill, with its description, ID and version, level and the library that set it, type, installed paths, how many rules it applies, the skills it calls, and why it's installed.
-- **`.trailguide/generated/installed-skills.json`**: which folders in the targets Trail Guide installed.
+- **`.trailguide/_managed/vendor/fabrica/skills/build-feature/`**: the original files, as the library published that version.
+- **`.trailguide/_managed/generated/SKILLS.md`**: one entry per installed skill, with its description, ID and version, level and the library that set it, type, installed paths, how many rules it applies, the skills it calls, and why it's installed.
+- **`.trailguide/_managed/generated/installed-skills.json`**: which folders in the targets Trail Guide installed.
 
 An installed copy matches the library's folder, scripts and their executable bits included, with two additions to `SKILL.md`:
 
@@ -114,7 +114,7 @@ Don't edit installed copies: the next sync replaces them, and `trailguide projec
 
 Trail Guide writes only the skill folders it installs. Other folders in `.claude/skills/` and `.agents/skills/`, such as a skill another tool installed, stay as they are. When one of them has the name of a skill you install, sync fails with `skill-folder-not-managed` instead of overwriting it. See [Installed skills](/reference/files/#installed-skills) and [Who owns the target folders](/reference/sync/#who-owns-the-target-folders).
 
-`generated/RULES.md` gains one line pointing to `SKILLS.md`, so agents whose tools don't load skills from the target folders still find them through the instructions in your `AGENTS.md`.
+`_managed/generated/RULES.md` gains one line pointing to `SKILLS.md`, so agents whose tools don't load skills from the target folders still find them through the instructions in your `AGENTS.md`.
 
 ## Skills a skill calls, and the rules it cites
 
@@ -227,7 +227,7 @@ sources:
           reason: Release Planner writes our release notes.
 ```
 
-These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed.
+These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `_managed/vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed.
 
 You can't exclude or fork a [required skill](/reference/configuration/#skill-levels): sync fails and names the library that requires it. Required skills are your organization's floor; to diverge from one, stop using the source.
 
@@ -292,7 +292,7 @@ Commit `.trailguide/` and the installed skill folders together:
 git add .trailguide .claude/skills .agents/skills
 ```
 
-Committed copies give every checkout, CI job, and fresh cloud session the same skills without running sync. Run `trailguide project check` in CI: it fails when an installed copy differs from what sync would write, when a folder Trail Guide installed is missing, or when `generated/installed-skills.json` is out of date.
+Committed copies give every checkout, CI job, and fresh cloud session the same skills without running sync. Run `trailguide project check` in CI: it fails when an installed copy differs from what sync would write, when a folder Trail Guide installed is missing, or when `_managed/generated/installed-skills.json` is out of date.
 
 If your `.gitignore` excludes a target folder, such as with `/.claude/`, check reports the folders as missing in every fresh checkout. Add an exception for the skills folder. Git can't re-include a folder inside an excluded folder, so first change the ignore line to exclude the folder's contents instead:
 

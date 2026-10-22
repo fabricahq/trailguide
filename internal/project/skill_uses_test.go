@@ -79,7 +79,7 @@ func TestSync_InstallsEverySkillAnIncludedSkillUsesFromTheSameSource(t *testing.
 			t.Errorf("lock entry lacks\n%s\nin\n%s", want, record)
 		}
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 	for _, want := range []string{
 		"- **Uses:** `how`, `tdd`\n- **Installed because:** used by `poteto-mode`\n",
 		"- **Uses:** `architect`\n- **Installed because:** included\n",
@@ -146,7 +146,7 @@ func TestSync_InstallsTheSkillsALibrarySkillUses(t *testing.T) {
 	if !exists(t, options, ".agents/skills/review-tests/SKILL.md") {
 		t.Fatal("sync didn't install the skill fix-bug uses")
 	}
-	if index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md"); !strings.Contains(index, "- **Level:** offered by `team`, release 1\n- **Installed because:** used by `fix-bug`\n") {
+	if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "- **Level:** offered by `team`, release 1\n- **Installed because:** used by `fix-bug`\n") {
 		t.Fatalf("SKILLS.md:\n%s", index)
 	}
 }
@@ -186,7 +186,7 @@ func TestSync_FailsWithoutWritingWhenAUsedSkillCannotBeFound(t *testing.T) {
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location || !strings.Contains(validation.ValidationProblem(), test.problem) {
 				t.Fatalf("got %v\nwant %s: %s", err, test.location, test.problem)
 			}
-			if exists(t, options, ".claude") || exists(t, options, ".trailguide/vendor/pstack") {
+			if exists(t, options, ".claude") || exists(t, options, ".trailguide/_managed/vendor/pstack") {
 				t.Fatal("failed sync wrote files")
 			}
 		})

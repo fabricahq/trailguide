@@ -17,6 +17,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
@@ -29,11 +30,12 @@ const backupPrefix = "old-"
 // trees, format 3 adds a project guide, format 4 adds the configuration, format 5 adds local group metadata, format 6
 // adds local rules and their asset directories, which it can remove, format 7 adds skill folders outside the
 // Trail Guide directory, which it can remove too, format 8 adds the repository's AGENTS.md, format 9 adds authored
-// skill folders, and format 10 adds the lockfile.
-var maxJournalEntries = map[int]int{1: 2, 2: 2, 3: 3, 4: 4, 5: 4 + maxLocalGroupMetadata, 6: 4 + maxLocalGroupMetadata + 2*maxLocalRules, 7: 4 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 8: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 9: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills, 10: 6 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills}
+// skill folders, format 10 adds the lockfile, and format 11 moves the two managed trees under _managed/ and adds
+// their legacy places, which it can remove.
+var maxJournalEntries = map[int]int{1: 2, 2: 2, 3: 3, 4: 4, 5: 4 + maxLocalGroupMetadata, 6: 4 + maxLocalGroupMetadata + 2*maxLocalRules, 7: 4 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 8: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders, 9: 5 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills, 10: 6 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills, 11: 8 + maxLocalGroupMetadata + 2*maxLocalRules + maxSkillFolders + maxAuthoredSkills}
 
 // maxJournalFormat is the newest journal format; Apply writes the oldest one that can hold its targets.
-const maxJournalFormat = 10
+const maxJournalFormat = 11
 
 const lockName = ".trailguide-lock"
 const cleanupName = ".trailguide-cleanup"
@@ -74,9 +76,15 @@ func isLegacyRoot(root *os.Root) bool {
 // folder.
 type Target string
 
+// Vendor and Generated are the managed trees, under the Trail Guide directory's _managed/ folder.
+// LegacyVendor and LegacyGenerated are where Trail Guide 0.6 and earlier kept them: sync removes them, with a nil
+// file map, when it moves a project to the current layout, and recovery finishes or restores a transaction those
+// versions journaled for them.
 const (
-	Vendor    Target = "vendor"
-	Generated Target = "generated"
+	Vendor          Target = librarytree.Vendor
+	Generated       Target = librarytree.Generated
+	LegacyVendor    Target = librarytree.LegacyVendor
+	LegacyGenerated Target = librarytree.LegacyGenerated
 )
 
 // Writer holds exclusive project ownership only during WithWriter's callback.
@@ -263,14 +271,14 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 	}
 	places := &roots{project: w.root}
 	defer places.close()
-	order := []Target{Vendor, Generated, GuideReadme, GuideStandalone, Config, Lock, AgentsFile}
+	order := []Target{LegacyVendor, LegacyGenerated, Vendor, Generated, GuideReadme, GuideStandalone, Config, Lock, AgentsFile}
 	metadata, localRules, authoredSkills, skillFolders := 0, 0, 0, 0
 	for target, files := range output {
 		if !validTarget(target) {
 			return failure("invalid-target", fmt.Sprintf("%q: only managed trees, project guides, the configuration, the lockfile, AGENTS.md, local group metadata, local rules and their asset directories, authored skills, and skill folders may be replaced", target), nil)
 		}
 		if files == nil && !removable(target) {
-			return failure("invalid-target", fmt.Sprintf("%q: only a local rule's asset directory or a skill folder may be removed", target), nil)
+			return failure("invalid-target", fmt.Sprintf("%q: only a local rule's asset directory, a skill folder, or a managed tree in the legacy layout may be removed", target), nil)
 		}
 		_, skill := skillFolderTarget(target)
 		switch {
@@ -290,6 +298,11 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 				return err
 			}
 			if err := requireRealParents(p.root, p.live); err != nil {
+				return err
+			}
+		}
+		if target == Vendor || target == Generated {
+			if err := requireRealParents(w.root, string(target)); err != nil {
 				return err
 			}
 		}
@@ -316,7 +329,7 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 		}
 	}
 	// Local targets and skill folders follow the fixed targets in path order, so journals are deterministic.
-	fixed := 7
+	fixed := 9
 	if metadata > maxLocalGroupMetadata || localRules > maxLocalRules || len(order)-fixed-metadata-localRules-authoredSkills-skillFolders > maxLocalRules || authoredSkills > maxAuthoredSkills || skillFolders > maxSkillFolders {
 		return failure("invalid-target", fmt.Sprintf("one transaction can hold at most %d local group metadata files, %d local rules with their asset directories, %d authored skills, and %d skill folders", maxLocalGroupMetadata, maxLocalRules, maxAuthoredSkills, maxSkillFolders), nil)
 	}
@@ -325,7 +338,8 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 		return err
 	}
 	prepared := false
-	// parents lists, outermost first, the missing parent directories of local rule targets and skill folders to
+	// parents lists, outermost first, the missing parent directories of local rule targets, skill folders, and the
+	// managed trees, such as _managed/, to
 	// create once the journal is written. Nothing removes them again, so a rollback leaves them, empty.
 	parents := []parent{}
 	defer func() {
@@ -362,7 +376,7 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 			}
 			continue
 		}
-		if _, skill := skillFolderTarget(target); skill || localRuleTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) {
+		if _, skill := skillFolderTarget(target); skill || localRuleTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) || target == Vendor || target == Generated {
 			missing, err := missingParents(p.root, path.Dir(p.live))
 			if err != nil {
 				return err
@@ -437,7 +451,13 @@ func (w *Writer) ApplyModes(output map[Target]map[string][]byte, executable map[
 		case authoredSkillTarget(entry.Name):
 			formatVersion = max(formatVersion, 9)
 		case entry.Name == Lock:
-			formatVersion = 10
+			formatVersion = max(formatVersion, 10)
+		}
+	}
+	// Earlier formats name the managed trees by their legacy places, so a journal naming either tree is format 11.
+	for _, entry := range entries {
+		if managedTarget(entry.Name) {
+			formatVersion = 11
 		}
 	}
 	if err := durableJSON(w.root, path.Join(transactionName, "journal.json"), journalRecord{formatVersion, entries}); err != nil {
@@ -659,7 +679,7 @@ func recoverWithRename(root *os.Root, rename func(string, string) error) error {
 	for _, entry := range record.Entries {
 		localRule := localRuleTarget(entry.Name) || localRuleAssetsTarget(entry.Name)
 		_, skill := skillFolderTarget(entry.Name)
-		if (!validTarget(entry.Name) || (guideTarget(entry.Name) && record.FormatVersion < 3) || (entry.Name == Config && record.FormatVersion < 4) || (localGroupMetadataTarget(entry.Name) && record.FormatVersion < 5) || (localRule && record.FormatVersion < 6) || (skill && record.FormatVersion < 7) || (entry.Name == AgentsFile && record.FormatVersion < 8) || (authoredSkillTarget(entry.Name) && record.FormatVersion < 9) || (entry.Name == Lock && record.FormatVersion < 10)) || seen[entry.Name] || !validDigest(entry.Before) || !validDigest(entry.After) || entry.Existed == (entry.Before == treeDigest(nil)) || (removes(entry) && (!removable(entry.Name) || !entry.Existed)) {
+		if (!validTarget(entry.Name) || (guideTarget(entry.Name) && record.FormatVersion < 3) || (entry.Name == Config && record.FormatVersion < 4) || (localGroupMetadataTarget(entry.Name) && record.FormatVersion < 5) || (localRule && record.FormatVersion < 6) || (skill && record.FormatVersion < 7) || (entry.Name == AgentsFile && record.FormatVersion < 8) || (authoredSkillTarget(entry.Name) && record.FormatVersion < 9) || (entry.Name == Lock && record.FormatVersion < 10) || (managedTarget(entry.Name) && !legacyManagedTarget(entry.Name) && record.FormatVersion < 11)) || seen[entry.Name] || !validDigest(entry.Before) || !validDigest(entry.After) || entry.Existed == (entry.Before == treeDigest(nil)) || (removes(entry) && (!removable(entry.Name) || !entry.Existed)) {
 			return failure("recovery-required", "invalid transaction entry; preserve it for manual recovery", nil)
 		}
 		seen[entry.Name] = true

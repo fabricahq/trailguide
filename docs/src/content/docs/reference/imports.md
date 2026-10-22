@@ -22,9 +22,9 @@ These files live in the **Trail Guide directory**, `.trailguide/` at the reposit
 
 | Directory | What it contains |
 | --- | --- |
-| `vendor/` | One vendor snapshot per source, with its record of versions and commits. |
+| `_managed/vendor/` | One vendor snapshot per source, with its record of versions and commits. |
 | `rules/`, `skills/`, and `assets/` | Rules, skills, and shared assets authored in this repository, including replacements for ones you include. |
-| `generated/` | The rules and reading indexes your agents use, including `SKILLS.md`. |
+| `_managed/generated/` | The rules and reading indexes your agents use, including `SKILLS.md`. |
 
 Installed skills live outside it, in the target folders at the repository root. For the complete layout, see [Project files](/reference/files/). Once the vendor snapshots are stored, `trailguide project build` can regenerate guidance and installed skills without network access.
 
@@ -39,7 +39,7 @@ Every source has a `ref`, so Trail Guide never takes a repository from an unknow
 
 ## What gets copied
 
-Each source has a **source name** in your configuration, such as `team`. Trail Guide stores its vendor snapshot under `vendor/team/`.
+Each source has a **source name** in your configuration, such as `team`. Trail Guide stores its vendor snapshot under `_managed/vendor/team/`.
 
 From a library, the snapshot includes:
 
@@ -78,7 +78,7 @@ Skills don't belong to rule groups, so including a rule group's rules never inst
 
 1. The skills the library [requires](/reference/configuration/#skill-levels), whatever `skills.include` says.
 2. The skills `skills.include` adds: the recommended ones for `recommended`, every one the source offers for `"*"`, and each skill it names.
-3. Every skill those skills call, transitively, from the same repository and revision: each skill named in a skill's `trailguide-skills-used` list, plus each skill your configuration's [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls) adds. A skill reached only this way is installed because another skill uses it, and the records and `generated/SKILLS.md` say which skill. A library's own skill can also call a skill the library curates from another repository, such as `anthropic:skills/skill-creator`. That skill installs too, with its files taken from the other repository at the commit your project resolved for it.
+3. Every skill those skills call, transitively, from the same repository and revision: each skill named in a skill's `trailguide-skills-used` list, plus each skill your configuration's [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls) adds. A skill reached only this way is installed because another skill uses it, and the records and `_managed/generated/SKILLS.md` say which skill. A library's own skill can also call a skill the library curates from another repository, such as `anthropic:skills/skill-creator`. That skill installs too, with its files taken from the other repository at the commit your project resolved for it.
 
 It also imports each skill your [`skills.forks`](/reference/configuration/#fork-a-skill) entries name, when the revision has it, so updates can compare it with your fork. It then removes the skills your `skills.exclude` and `skills.forks` entries name, which can't include a required skill, adds the authored skills your forks name as `as`, applies your [renames](/reference/configuration/#rename-a-skill), and adds your authored skills in `skills/` and the skills they call. Each skill's `trailguide-skills-used` and `trailguide-rules-used` lists come from the revision the project installs. When two installed skills would have the same install name, sync fails with `skill-name-clash`.
 
@@ -90,7 +90,7 @@ Trail Guide does not read rule text to detect contradictory instructions. Two so
 
 ## Where agents read the result
 
-Trail Guide writes the active rules and reading indexes to `generated/`. Agents start at `generated/RULES.md`, open relevant rule groups, and read the applicable rules in full.
+Trail Guide writes the active rules and reading indexes to `_managed/generated/`. Agents start at `_managed/generated/RULES.md`, open relevant rule groups, and read the applicable rules in full.
 
 The generated files also include library summaries, retained license files, and the [provenance](/reference/provenance/) of each rule and skill: where it came from, which rule it replaced and why, and which library required, recommended, or offered each skill. Rule group descriptions remain labeled by source so you can see which library supplied them.
 
@@ -131,17 +131,17 @@ Links to original files on GitHub.com and GitLab.com use the recorded commit, so
 
 Trail Guide preserves rule attribution in both vendored and generated files and keeps attribution links valid. It verifies and retains the license and notice files declared in the library manifest, includes them in integrity checks, and reports their changes during updates.
 
-Generated rules link to retained terms under `generated/libraries/<source-name>/licenses/`. See [License rules](/guides/license-rules/) for how library authors declare those files.
+Generated rules link to retained terms under `_managed/generated/libraries/<source-name>/licenses/`. See [License rules](/guides/license-rules/) for how library authors declare those files.
 
 ## Non-library sources
 
 A source whose repository has no library manifest at the revision Trail Guide reads is a **non-library source**. It supplies only skills, and has no release tags, versions, or change notes:
 
 - **Revision.** `ref` is required. `trailguide project sync` reads the commit recorded in `lock.json`, and `trailguide project update` resolves `ref` again: a branch's newest commit, or a tag's commit. A bare name, such as `main`, can name a branch or a tag. Either way, `lock.json` records the exact commit, and every skill from the source comes from it.
-- **Skills.** Each folder in the repository that has a `SKILL.md` file is a skill, offered at no level, with its folder's path from the repository root as its ID. Trail Guide copies each installed skill's folder, as Git tracks it, to its path under `vendor/<source-name>/`, such as `vendor/pstack/skills/architect/`.
+- **Skills.** Each folder in the repository that has a `SKILL.md` file is a skill, offered at no level, with its folder's path from the repository root as its ID. Trail Guide copies each installed skill's folder, as Git tracks it, to its path under `_managed/vendor/<source-name>/`, such as `_managed/vendor/pstack/skills/architect/`.
 - **Calls.** A skill's `trailguide-skills-used` list names skills in the same repository. Declare calls it leaves out with [`skills.uses`](/reference/configuration/#declare-the-skills-a-skill-calls). Its `trailguide-rules-used` list is ignored, because the repository has no rules.
 - **Validation.** Lenient: where a skill doesn't follow the Agent Skills format, such as a `name` that doesn't match its folder, a missing `description`, or a link outside the skill's folder, sync warns and installs the skill as it is. The checks that protect your project still fail: unsafe paths, symbolic links, submodules, Git LFS pointers, and the [source limits](#source-limits-and-version-errors).
-- **Licenses.** Trail Guide looks for terms in this order: the skill's `license` field in `SKILL.md`, a `LICENSE*` file in the skill's folder, and `LICENSE*` and `NOTICE*` files at the repository root. It retains the root files, when present, under `generated/libraries/<source-name>/licenses/`, like a library's declared files. When a skill has none of these, sync fails with `license-not-found`.
+- **Licenses.** Trail Guide looks for terms in this order: the skill's `license` field in `SKILL.md`, a `LICENSE*` file in the skill's folder, and `LICENSE*` and `NOTICE*` files at the repository root. It retains the root files, when present, under `_managed/generated/libraries/<source-name>/licenses/`, like a library's declared files. When a skill has none of these, sync fails with `license-not-found`.
 
 `rules` is rejected on a non-library source.
 

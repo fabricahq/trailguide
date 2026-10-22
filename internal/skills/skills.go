@@ -52,6 +52,11 @@ var Lists = append(slices.Clone(Levels), Dependencies)
 // and, in a library's vendor snapshot, the skills the library publishes.
 const Directory = "skills"
 
+// Guide is the file directly in Directory that explains the folder to people, the only file there outside a skill's
+// folder. Init and add skill write it when it's missing; nothing reads it as a skill, and a library doesn't publish
+// it.
+const Guide = "README.md"
+
 // ValidName reports whether name follows the Agent Skills name grammar: 1 to 64 lowercase letters, digits, and
 // hyphens, without a hyphen at either end or two in a row.
 func ValidName(name string) bool {

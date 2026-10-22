@@ -277,7 +277,7 @@ func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVe
 		if existingWorkflow == nil {
 			files = append(files, filetxn.File{Path: checkWorkflowPath, Content: workflow})
 		}
-		return files, nil
+		return withSkillsGuide(ctx, root, files)
 	})
 	if err != nil {
 		return AuthoringResult{}, err

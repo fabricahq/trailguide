@@ -113,7 +113,7 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 		if guide != nil {
 			files = append(files, *guide)
 		}
-		return files, nil
+		return withSkillsGuide(ctx, root, files)
 	})
 	result, err := authoringResult(changes, err)
 	if err != nil {
@@ -280,6 +280,6 @@ func failure(code, problem string, cause error) error {
 }
 
 func groupFiles(directory, id string, metadata []byte, projectGuideName string) []filetxn.File {
-	instructions := fmt.Sprintf("## Add or edit rules\n\nFollow [the project guide](../../../%s) for commands to run from the project root.\nUse `trailguide project add rule %s/<rule-name>` to add a rule. Edit existing rule files directly.\nRun trailguide project build and trailguide project check from the project root after local changes, then inspect [the resolved rules](../../../generated/RULES.md).\nUse the resolved rules when working on the project: they include imported guidance and apply exclusions and replacements.\n", projectGuideName, id)
+	instructions := fmt.Sprintf("## Add or edit rules\n\nFollow [the project guide](../../../%s) for commands to run from the project root.\nUse `trailguide project add rule %s/<rule-name>` to add a rule. Edit existing rule files directly.\nRun trailguide project build and trailguide project check from the project root after local changes, then inspect [the resolved rules](../../../%s/RULES.md).\nUse the resolved rules when working on the project: they include imported guidance and apply exclusions and replacements.\n", projectGuideName, id, librarytree.Generated)
 	return []filetxn.File{{Path: path.Join(directory, "_group.yaml"), Content: metadata}, {Path: path.Join(directory, "README.md"), Content: rules.GroupGuide(id, instructions)}}
 }

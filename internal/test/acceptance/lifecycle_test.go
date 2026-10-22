@@ -53,7 +53,7 @@ func TestPilotRejectsWritingChecks(t *testing.T) {
 	for _, change := range []string{"printf unexpected > unrelated-user-file.txt", "/bin/mkdir unexpected-empty-directory"} {
 		t.Run(change, func(t *testing.T) {
 			wrapper := filepath.Join(t.TempDir(), "wrapper")
-			script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = project ] && [ \"$2\" = check ]; then\n IFS= read -r line < .trailguide/generated/RULES.md\n if [ \"$line\" = 'Stale output' ]; then %s; fi\nfi\nexec '%s' \"$@\"\n", change, binary)
+			script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = project ] && [ \"$2\" = check ]; then\n IFS= read -r line < .trailguide/_managed/generated/RULES.md\n if [ \"$line\" = 'Stale output' ]; then %s; fi\nfi\nexec '%s' \"$@\"\n", change, binary)
 			if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +63,7 @@ func TestPilotRejectsWritingChecks(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "read-only check changed project") {
 				t.Fatal("mutation not detected", err)
 			}
-			if string(report.Files[".trailguide/generated/RULES.md"]) != "Stale output" {
+			if string(report.Files[".trailguide/_managed/generated/RULES.md"]) != "Stale output" {
 				t.Fatal("failed pilot omitted observed project files", report.Files)
 			}
 		})
@@ -77,7 +77,7 @@ func TestPilotRejectsSilentRefusal(t *testing.T) {
 		t.Fatal(err, string(data))
 	}
 	wrapper := filepath.Join(t.TempDir(), "wrapper")
-	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = project ] && [ \"$2\" = build ] && [ -f .trailguide/vendor/team/LICENSE.md ]; then\n IFS= read -r line < .trailguide/vendor/team/LICENSE.md\n if [ \"$line\" = 'Manual edit' ]; then exit 1; fi\nfi\nexec '%s' \"$@\"\n", binary)
+	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = project ] && [ \"$2\" = build ] && [ -f .trailguide/_managed/vendor/team/LICENSE.md ]; then\n IFS= read -r line < .trailguide/_managed/vendor/team/LICENSE.md\n if [ \"$line\" = 'Manual edit' ]; then exit 1; fi\nfi\nexec '%s' \"$@\"\n", binary)
 	if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}

@@ -152,16 +152,16 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	if err := contains("configuration", string(files[".trailguide/config.yaml"]), pin, "      exclude:\n        - id: techs/go/panics\n          reason: "+reason+"\n"); err != nil {
 		return err
 	}
-	if !bytes.Equal(files[".trailguide/vendor/team/rules/techs/go/errors.md"], errorsV1) || !strings.Contains(string(files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") {
+	if !bytes.Equal(files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], errorsV1) || !strings.Contains(string(files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"]), "Version: 1.0.0") {
 		return fmt.Errorf("the kept rule didn't stay at 1.0.0")
 	}
-	if !strings.Contains(string(files[".trailguide/generated/rules/team/techs/go/wrapping.md"]), "Version: 1.0.0") {
+	if !strings.Contains(string(files[".trailguide/_managed/generated/rules/team/techs/go/wrapping.md"]), "Version: 1.0.0") {
 		return fmt.Errorf("the new rule wasn't added at 1.0.0")
 	}
-	if files[".trailguide/vendor/team/rules/techs/go/naming.md"] != nil || files[".trailguide/generated/rules/team/techs/go/naming.md"] != nil {
+	if files[".trailguide/_managed/vendor/team/rules/techs/go/naming.md"] != nil || files[".trailguide/_managed/generated/rules/team/techs/go/naming.md"] != nil {
 		return fmt.Errorf("the retired rule wasn't dropped")
 	}
-	if files[".trailguide/vendor/team/rules/techs/go/panics.md"] == nil || files[".trailguide/generated/rules/team/techs/go/panics.md"] != nil {
+	if files[".trailguide/_managed/vendor/team/rules/techs/go/panics.md"] == nil || files[".trailguide/_managed/generated/rules/team/techs/go/panics.md"] != nil {
 		return fmt.Errorf("the excluded rule should be imported but not generated")
 	}
 	if err := check("Check the applied update"); err != nil {
@@ -210,10 +210,10 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(files[".trailguide/vendor/team/rules/techs/go/errors.md"], errorsV2) || !strings.Contains(string(files[".trailguide/generated/rules/team/techs/go/errors.md"]), "Version: 2.0.0") {
+	if !bytes.Equal(files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], errorsV2) || !strings.Contains(string(files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"]), "Version: 2.0.0") {
 		return fmt.Errorf("the scoped update didn't move techs/go/errors to 2.0.0")
 	}
-	if !bytes.Equal(files[".trailguide/vendor/team/rules/techs/go/wrapping.md"], wrappingV1) || !strings.Contains(string(files[".trailguide/generated/rules/team/techs/go/wrapping.md"]), "Version: 1.0.0") {
+	if !bytes.Equal(files[".trailguide/_managed/vendor/team/rules/techs/go/wrapping.md"], wrappingV1) || !strings.Contains(string(files[".trailguide/_managed/generated/rules/team/techs/go/wrapping.md"]), "Version: 1.0.0") {
 		return fmt.Errorf("the scoped update moved another rule")
 	}
 	if err := check("Check the scoped update"); err != nil {
@@ -242,13 +242,13 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	if err := contains("forked rule", string(files[".trailguide/rules/techs/go/errors.md"]), "Wrap every failure with the operation that failed.", "![diagram](assets/errors/diagram.bin)"); err != nil {
 		return err
 	}
-	if !bytes.Equal(files[".trailguide/rules/techs/go/assets/errors/diagram.bin"], files[".trailguide/vendor/team/rules/techs/go/assets/errors/diagram.bin"]) {
+	if !bytes.Equal(files[".trailguide/rules/techs/go/assets/errors/diagram.bin"], files[".trailguide/_managed/vendor/team/rules/techs/go/assets/errors/diagram.bin"]) {
 		return fmt.Errorf("the fork didn't copy the rule's asset")
 	}
 	if err := contains("configuration", string(files[".trailguide/config.yaml"]), "        - id: techs/go/errors\n          reason: "+forkReason+"\n          replacedBy: techs/go/errors\n          basedOn: \"2.0.0\"\n"); err != nil {
 		return err
 	}
-	if files[".trailguide/generated/rules/local/techs/go/errors.md"] == nil || files[".trailguide/generated/rules/team/techs/go/errors.md"] != nil {
+	if files[".trailguide/_managed/generated/rules/local/techs/go/errors.md"] == nil || files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"] != nil {
 		return fmt.Errorf("generated guidance doesn't replace the imported rule with the fork")
 	}
 	if err := check("Check the fork"); err != nil {
@@ -279,7 +279,7 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 		return project()
 	}
 	wrappingAt := func(files map[string][]byte, document []byte, version string) error {
-		if !bytes.Equal(files[".trailguide/vendor/team/rules/techs/go/wrapping.md"], document) || !strings.Contains(string(files[".trailguide/generated/rules/team/techs/go/wrapping.md"]), "Version: "+version+"\n") {
+		if !bytes.Equal(files[".trailguide/_managed/vendor/team/rules/techs/go/wrapping.md"], document) || !strings.Contains(string(files[".trailguide/_managed/generated/rules/team/techs/go/wrapping.md"]), "Version: "+version+"\n") {
 			return fmt.Errorf("techs/go/wrapping isn't at %s", version)
 		}
 		return nil
@@ -397,10 +397,10 @@ func lifecycleScenario(ctx context.Context, report *Report, invoke invocation, f
 	if files, err = project(); err != nil {
 		return err
 	}
-	if !bytes.Equal(files[".trailguide/rules/techs/go/errors.md"], fork) || files[".trailguide/generated/rules/team/techs/go/errors.md"] != nil || files[".trailguide/generated/rules/local/techs/go/errors.md"] == nil {
+	if !bytes.Equal(files[".trailguide/rules/techs/go/errors.md"], fork) || files[".trailguide/_managed/generated/rules/team/techs/go/errors.md"] != nil || files[".trailguide/_managed/generated/rules/local/techs/go/errors.md"] == nil {
 		return fmt.Errorf("the update changed the fork, or generated the replaced rule")
 	}
-	if !bytes.Equal(files[".trailguide/vendor/team/rules/techs/go/errors.md"], errorsV3) {
+	if !bytes.Equal(files[".trailguide/_managed/vendor/team/rules/techs/go/errors.md"], errorsV3) {
 		return fmt.Errorf("the update didn't import the replaced rule's new version")
 	}
 	if err := wrappingAt(files, wrappingV2, "1.1.0"); err != nil {

@@ -75,7 +75,7 @@ func TestSync_InstallsADependencyOnlyWithTheSkillsThatUseIt(t *testing.T) {
 			if skill := lockedEntry(t, options, "team").Skills["skills/format-skill"]; skill.Level == nil || *skill.Level != "dependency" || skill.Included || !slices.Equal(skill.UsedBy, []string{"skills/add-skill"}) {
 				t.Fatalf("format-skill's record = %+v; want a dependency installed because add-skill uses it", skill)
 			}
-			index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
+			index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
 			for _, want := range []string{"- **Level:** dependency by `team`, release 1, which installs it only with the skills that use it", "- **Installed because:** used by `add-skill`"} {
 				if !strings.Contains(index, want) {
 					t.Errorf("SKILLS.md doesn't say %q:\n%s", want, index)

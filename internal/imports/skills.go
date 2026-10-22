@@ -276,7 +276,7 @@ func (r *repository) skillUses(ctx context.Context, source rules.Source, folders
 			if err != nil {
 				return nil, err
 			}
-			metadata, err := skills.ReadMetadata(data, "vendor/"+source.Name+"/"+file)
+			metadata, err := skills.ReadMetadata(data, librarytree.Vendor+"/"+source.Name+"/"+file)
 			if err != nil {
 				return nil, err
 			}
@@ -584,7 +584,7 @@ func (r *repository) skillUsers(ctx context.Context, source rules.Source, folder
 			if err != nil {
 				return nil, err
 			}
-			metadata, err := skills.ReadMetadata(data, "vendor/"+source.Name+"/"+file)
+			metadata, err := skills.ReadMetadata(data, librarytree.Vendor+"/"+source.Name+"/"+file)
 			if err != nil {
 				return nil, err
 			}

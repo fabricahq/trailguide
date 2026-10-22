@@ -17,7 +17,7 @@ func TestGuideTransactionRollback(t *testing.T) {
 		t.Run(string(guide), func(t *testing.T) {
 			root := openProject(t)
 			writeFixture(t, root, string(guide), "old guide")
-			writeFixture(t, root, "generated/old", "old output")
+			writeFixture(t, root, "_managed/generated/old", "old output")
 			err := WithWriter(context.Background(), root, func(w *Writer) error {
 				rename := w.rename
 				w.rename = func(from, to string) error {
@@ -31,7 +31,7 @@ func TestGuideTransactionRollback(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected failure")
 			}
-			for name, want := range map[string]string{string(guide): "old guide", "generated/old": "old output"} {
+			for name, want := range map[string]string{string(guide): "old guide", "_managed/generated/old": "old output"} {
 				data, err := root.ReadFile(name)
 				if err != nil || string(data) != want {
 					t.Fatal(name, string(data), err)
@@ -139,7 +139,7 @@ func TestKilledGuideWriterRecovers(t *testing.T) {
 	for _, stop := range []string{transactionName + "/rename-check/README.md", transactionName + "/old-README.md", "README.md"} {
 		t.Run(stop, func(t *testing.T) {
 			root := openProject(t)
-			writeFixture(t, root, "generated/old", "old output")
+			writeFixture(t, root, "_managed/generated/old", "old output")
 			writeFixture(t, root, "README.md", "old guide")
 			child := exec.Command(os.Args[0], "-test.run=^TestKilledGuideWriterRecovers$")
 			child.Env = append(os.Environ(), "TRAILGUIDE_GUIDE_CHILD="+root.Name(), "TRAILGUIDE_GUIDE_STOP="+stop)
@@ -151,7 +151,7 @@ func TestKilledGuideWriterRecovers(t *testing.T) {
 			if err := WithWriter(context.Background(), root, func(*Writer) error { return nil }); err != nil {
 				t.Fatal(err)
 			}
-			for name, want := range map[string]string{"README.md": "old guide", "generated/old": "old output"} {
+			for name, want := range map[string]string{"README.md": "old guide", "_managed/generated/old": "old output"} {
 				data, err := root.ReadFile(name)
 				if err != nil || string(data) != want {
 					t.Fatal(name, string(data), err)

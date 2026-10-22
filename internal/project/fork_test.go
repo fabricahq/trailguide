@@ -145,14 +145,14 @@ func TestFork_ReplacesAnImportedRuleWithAnOlderVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	generated := f.files(t)
-	if _, ok := generated["generated/rules/local/techs/go/errors.md"]; !ok {
+	if _, ok := generated["_managed/generated/rules/local/techs/go/errors.md"]; !ok {
 		t.Fatal("the build has no fork")
 	}
 	// The fork's page names the version it's based on and the imported rule it replaces.
-	if page := string(generated["generated/rules/local/techs/go/errors.md"]); !strings.Contains(page, "Replaces: `team:techs/go/errors`, based on version 1.0.0.\n\nReason: Our services need the original wording.\n") {
+	if page := string(generated["_managed/generated/rules/local/techs/go/errors.md"]); !strings.Contains(page, "Replaces: `team:techs/go/errors`, based on version 1.0.0.\n\nReason: Our services need the original wording.\n") {
 		t.Fatalf("fork page:\n%s", page)
 	}
-	if _, ok := generated["generated/rules/team/techs/go/errors.md"]; ok {
+	if _, ok := generated["_managed/generated/rules/team/techs/go/errors.md"]; ok {
 		t.Fatal("the build still has the imported rule")
 	}
 }
@@ -468,7 +468,7 @@ func TestFork_KeepsTheLibrarysGroupDescription(t *testing.T) {
 	if _, err := Build(context.Background(), f.options); err != nil {
 		t.Fatal(err)
 	}
-	if page := string(f.files(t)["generated/groups/practices/testing.md"]); !strings.Contains(page, "Tests.") || !strings.Contains(page, "rules/practices/testing/verify") {
+	if page := string(f.files(t)["_managed/generated/groups/practices/testing.md"]); !strings.Contains(page, "Tests.") || !strings.Contains(page, "rules/practices/testing/verify") {
 		t.Fatalf("group page:\n%s", page)
 	}
 }
@@ -517,7 +517,7 @@ func TestUpdate_KeepsTheGroupMetadataAForkOfARetiredRuleNeeds(t *testing.T) {
 	if got := string(f.files(t)[metadata]); got != "# Go metadata, described again.\n"+projectMetadata+"\n" {
 		t.Fatalf("metadata %q, want release 3's", got)
 	}
-	if page := string(f.files(t)["generated/groups/techs/go.md"]); !strings.Contains(page, "Go guidance.") || !strings.Contains(page, "rules/techs/go/errors") {
+	if page := string(f.files(t)["_managed/generated/groups/techs/go.md"]); !strings.Contains(page, "Go guidance.") || !strings.Contains(page, "rules/techs/go/errors") {
 		t.Fatalf("group page:\n%s", page)
 	}
 	requireCurrent(t, f.options)

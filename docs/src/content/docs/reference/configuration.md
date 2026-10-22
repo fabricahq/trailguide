@@ -192,7 +192,7 @@ skills:
       reason: Release Planner writes our release notes.
 ```
 
-An excluded skill isn't installed into the target folders, and `generated/SKILLS.md` lists it under its excluded skills with your reason. An entry takes only an `id` and a `reason`; to install your own skill in its place, [fork it](#fork-a-skill) instead.
+An excluded skill isn't installed into the target folders, and `_managed/generated/SKILLS.md` lists it under its excluded skills with your reason. An entry takes only an `id` and a `reason`; to install your own skill in its place, [fork it](#fork-a-skill) instead.
 
 Excluding a [required skill](#skill-levels) fails validation and names the library that requires it. To stop using a required skill, stop using the source.
 
@@ -295,7 +295,7 @@ A library release ref such as `release/4` records which release the project is a
 
 Sync resolves a branch, tag, or commit to a commit when it first reads the source, records that commit in [`.trailguide/lock.json`](/reference/provenance/#inspect-the-lockfile), and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the lockfile records the release and each rule's version, and sync keeps them too. Sync never moves a source: only `trailguide project update` does, after a preview.
 
-`latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move in `.trailguide/lock.json`, `vendor/`, and `generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.
+`latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move in `.trailguide/lock.json`, `_managed/vendor/`, and `_managed/generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.
 
 ### Change a ref
 
@@ -307,7 +307,7 @@ Error: sources.fabrica.ref names release/7, but the project records library rele
 
 `trailguide project update fabrica` then previews and takes release 7, and no further, even when the library has published a newer one. The preview says so, such as `Release 9 is available; run trailguide project update fabrica again to move to it.`, and the next update, with `ref` unchanged, moves the source to the newest release.
 
-Update moves a source only forward. To go back to an older release, restore `.trailguide/config.yaml`, `.trailguide/lock.json`, and `vendor/<source-name>/` from the commit that recorded it, such as with `git revert`, then run `trailguide project sync`.
+Update moves a source only forward. To go back to an older release, restore `.trailguide/config.yaml`, `.trailguide/lock.json`, and `_managed/vendor/<source-name>/` from the commit that recorded it, such as with `git revert`, then run `trailguide project sync`.
 
 A source without a `ref` fails `trailguide project sync`, `update`, `build`, and `check` with `ref-required`, and nothing is written. For a library, the error names the release to write: the one the project records, or for a new source, the library's newest:
 
@@ -332,7 +332,7 @@ All of a source's skills come from its one recorded revision, so skills that cal
 
 ### Take one revision
 
-Taking a library at a revision other than a library release, such as a tag or commit with unreleased changes, opts that source out of versions for what changed: rules and skills whose files match a published version record that version, and the rest record `null`, have no version to cite, and update previews list the files that changed but no summaries of the changes. `trailguide project sync` and `trailguide project update` warn about such a source, naming its unreleased rules and skills, and the generated library summary in `generated/libraries/<source-name>/README.md` says so. `trailguide project check` still passes. Update doesn't move a library source whose `ref` is a tag other than a library release, or a commit; change `ref` and run `trailguide project sync` to take another revision. A library source whose `ref` names a branch moves to the branch's newest commit, as [Refs](#refs) describes.
+Taking a library at a revision other than a library release, such as a tag or commit with unreleased changes, opts that source out of versions for what changed: rules and skills whose files match a published version record that version, and the rest record `null`, have no version to cite, and update previews list the files that changed but no summaries of the changes. `trailguide project sync` and `trailguide project update` warn about such a source, naming its unreleased rules and skills, and the generated library summary in `_managed/generated/libraries/<source-name>/README.md` says so. `trailguide project check` still passes. Update doesn't move a library source whose `ref` is a tag other than a library release, or a commit; change `ref` and run `trailguide project sync` to take another revision. A library source whose `ref` names a branch moves to the branch's newest commit, as [Refs](#refs) describes.
 
 Pins need a `ref` that names a library release, or `latest-release`. A branch, another tag, or a commit imports one revision, so `rules.pins` with one of those fails; set `ref` to a library release to pin individual rules.
 
@@ -379,7 +379,7 @@ skillTargets: [claude, agents]
 
 `trailguide project init` writes `[claude, agents]`; `--skill-targets claude`, `agents`, or `none` changes it. Each value can appear once.
 
-`skillTargets: []` is valid, and so is leaving the field out. With no targets, Trail Guide still records every skill the repository includes, required skills too, lists them in `generated/SKILLS.md`, and checks them, but writes no installed copies, and sync warns that it installed nothing. Use it to record what your sources require before you choose agent folders.
+`skillTargets: []` is valid, and so is leaving the field out. With no targets, Trail Guide still records every skill the repository includes, required skills too, lists them in `_managed/generated/SKILLS.md`, and checks them, but writes no installed copies, and sync warns that it installed nothing. Use it to record what your sources require before you choose agent folders.
 
 Each installed skill gets a folder `<target>/<install-name>/`. Trail Guide writes and removes only the skill folders it installed, and leaves every other folder in the target alone, such as a skill another tool installed. Trail Guide never writes to your home directory. See [Who owns the target folders](/reference/sync/#who-owns-the-target-folders).
 
@@ -393,7 +393,7 @@ manageAgentsFile: false
 sources: {}
 ```
 
-Commands then neither write nor check `AGENTS.md`. They don't remove a section they wrote earlier: delete it yourself, along with its markers, and tell your agent to read `.trailguide/generated/RULES.md` in your own words.
+Commands then neither write nor check `AGENTS.md`. They don't remove a section they wrote earlier: delete it yourself, along with its markers, and tell your agent to read `.trailguide/_managed/generated/RULES.md` in your own words.
 
 ## Library manifest
 
@@ -534,14 +534,14 @@ SCP paths are literal Git paths, so percent signs in that form are not URI escap
 Syntax validation does not fetch or authenticate a repository.
 
 Generated source links use pinned GitHub.com or GitLab.com URLs for recognized standard endpoints.
-For other hosts, they point to the retained source file under `vendor/<source>/`.
+For other hosts, they point to the retained source file under `_managed/vendor/<source>/`.
 If a relative document or image is missing from that snapshot, generation fails with instructions to retain it or supply an explicit URL.
 Trail Guide does not infer a host's web interface from its name. See [How sources work](/reference/imports/).
 
 ## Source names and IDs
 
 Choose stable source names such as `fabrica` or `acme`.
-Names must match `[a-z][a-z0-9-]*`. `techs` and `practices` are reserved, because authored rules use those names in `generated/rules/`.
+Names must match `[a-z][a-z0-9-]*`. `techs` and `practices` are reserved, because authored rules use those names in `_managed/generated/rules/`.
 Declare each repository once.
 
 Inside a source's configuration, rule and skill IDs are relative to that source, without its name. Everywhere else, in generated files, provenance, review findings, and commands such as `trailguide project update fabrica:skills/build-feature`, an included rule or skill has a **project ID** that starts with its source name:
@@ -573,7 +573,7 @@ Each rule and skill in a library has its own [version](/reference/rule-versions/
 
 `trailguide project sync` never moves a source. When you change its `ref` to another library release, sync fails and names `trailguide project update SOURCE`, which takes it; when you change it to a branch, tag, or commit, sync takes the revision the new `ref` names. A rule or skill you newly include comes from the release `ref` names, or from the recorded commit. When it isn't there, such as a skill the library published after your last update, sync fails and names the command that moves the source, `trailguide project update SOURCE`.
 
-A project chooses rule versions one by one, with pins, but not skill versions. All of a source's skills come from its one recorded revision, and move together when it moves. A skill's version still says what changed, in release notes, `generated/SKILLS.md`, the installed copy's marker line, provenance, and the update preview.
+A project chooses rule versions one by one, with pins, but not skill versions. All of a source's skills come from its one recorded revision, and move together when it moves. A skill's version still says what changed, in release notes, `_managed/generated/SKILLS.md`, the installed copy's marker line, provenance, and the update preview.
 
 ### Where each rule's files come from
 

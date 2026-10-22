@@ -137,7 +137,7 @@ func TestCLIProcess(t *testing.T) {
 	if code != 1 || diagnostic != "" || json.Unmarshal([]byte(out), &response) != nil || response.Value.Status != "out-of-date" || len(response.Value.Problems) == 0 {
 		t.Fatalf("stale check: %d %s %s", code, out, diagnostic)
 	}
-	if _, err := os.Stat(filepath.Join(root, "generated")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "_managed/generated")); !os.IsNotExist(err) {
 		t.Fatal("check created output", err)
 	}
 	out, diagnostic, code = runCLI(t, binary, dir, "project", "build", "--json")

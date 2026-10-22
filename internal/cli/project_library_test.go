@@ -69,7 +69,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	run("project", "sync")
 	run("project", "build")
 	run("project", "check")
-	rules, err := os.ReadFile(filepath.Join(dir, ".trailguide", "generated", "RULES.md"))
+	rules, err := os.ReadFile(filepath.Join(dir, ".trailguide", "_managed/generated", "RULES.md"))
 	if err != nil || !strings.Contains(string(rules), "techs/go") || !strings.Contains(string(rules), "practices/testing") {
 		t.Fatalf("generated guidance lacks the imported or the project's own group: %v\n%s", err, rules)
 	}
@@ -114,7 +114,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 		t.Fatal(code, out, diagnostic)
 	}
 	imported := []string{}
-	vendor := filepath.Join(consumer, ".trailguide", "vendor", "team")
+	vendor := filepath.Join(consumer, ".trailguide", "_managed/vendor", "team")
 	if err := filepath.WalkDir(vendor, func(path string, entry os.DirEntry, err error) error {
 		if err == nil && !entry.IsDir() {
 			relative, _ := filepath.Rel(vendor, path)
@@ -140,7 +140,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	}
 	run("project", "update", "--yes")
 	run("project", "check")
-	vendored, err := os.ReadFile(filepath.Join(dir, ".trailguide", "vendor", "upstream", "rules", "techs", "go", "errors.md"))
+	vendored, err := os.ReadFile(filepath.Join(dir, ".trailguide", "_managed/vendor", "upstream", "rules", "techs", "go", "errors.md"))
 	if err != nil || !strings.Contains(string(vendored), "wrapped") {
 		t.Fatalf("update didn't import upstream's release/2: %v\n%s", err, vendored)
 	}

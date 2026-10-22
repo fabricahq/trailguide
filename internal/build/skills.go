@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -108,7 +109,7 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			}
 			skill := sourceSkill(source, snapshot, id)
 			skill.Files = SkillFiles{snapshot.SkillFiles(id), snapshot.SkillExecutable(id)}
-			if err := describeSkill(&skill, source.SkillRename[id], "vendor/"+source.Name+"/"+skill.Vendored+"/"+skills.File); err != nil {
+			if err := describeSkill(&skill, source.SkillRename[id], librarytree.Vendor+"/"+source.Name+"/"+skill.Vendored+"/"+skills.File); err != nil {
 				return nil, nil, err
 			}
 			result = append(result, skill)
@@ -333,6 +334,9 @@ func renderSkills(resolved []resolvedSkill, excluded []excludedSkill) (map[strin
 // which folders in the skill targets it owns.
 const InstalledSkillsFile = "installed-skills.json"
 
+// skillsIndexPath is SKILLS.md's path from the repository root, which its links are relative to.
+const skillsIndexPath = librarytree.Directory + "/" + librarytree.Generated + "/SKILLS.md"
+
 // InstalledFolders reads the folders an installed-skills.json record lists, by path from the repository root,
 // sorted. A record it can't read lists none, so no folder counts as installed by Trail Guide.
 func InstalledFolders(data []byte) []string {
@@ -452,7 +456,7 @@ func skillsIndex(resolved []resolvedSkill, excluded []excludedSkill) string {
 		} else if len(skill.Cited) > 0 {
 			lines := []string{}
 			for _, cited := range skill.Cited {
-				lines = append(lines, "  - "+citedLine(cited, ".trailguide/generated/SKILLS.md"))
+				lines = append(lines, "  - "+citedLine(cited, skillsIndexPath))
 			}
 			facts = append(facts, "- **Applies:**\n"+strings.Join(lines, "\n"))
 		}
@@ -460,14 +464,14 @@ func skillsIndex(resolved []resolvedSkill, excluded []excludedSkill) string {
 		if len(skill.Targets) == 0 {
 			source := ".trailguide/" + skill.Folder + "/" + skills.File
 			if skill.Source != "" {
-				source = ".trailguide/vendor/" + skill.Source + "/" + skill.Vendored + "/" + skills.File
+				source = librarytree.Directory + "/" + librarytree.Vendor + "/" + skill.Source + "/" + skill.Vendored + "/" + skills.File
 			}
-			facts = append(facts, "- **Installed at:** nowhere, because the project has no skill targets. Read it at ["+source+"]("+rules.RelativeLink(".trailguide/generated/SKILLS.md", source)+").")
+			facts = append(facts, "- **Installed at:** nowhere, because the project has no skill targets. Read it at ["+source+"]("+rules.RelativeLink(skillsIndexPath, source)+").")
 		} else {
 			links := []string{}
 			for _, target := range skill.Targets {
 				file := target + "/" + skills.File
-				links = append(links, "["+file+"]("+rules.RelativeLink(".trailguide/generated/SKILLS.md", file)+")")
+				links = append(links, "["+file+"]("+rules.RelativeLink(skillsIndexPath, file)+")")
 			}
 			facts = append(facts, "- **Installed at:** "+strings.Join(links, ", "))
 		}

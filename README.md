@@ -126,8 +126,9 @@ Build the guidance your agent reads:
 
 ```console
 $ trailguide project build
-Build complete: 5 added, 0 changed, 0 removed.
-Paths relative to .trailguide/generated:
+Build complete: 6 added, 0 changed, 0 removed.
+Paths relative to .trailguide/_managed/generated:
+  Add: .gitattributes
   Add: RULES.md
   Add: groups/README.md
   Add: groups/practices/testing.md
@@ -181,7 +182,7 @@ sources:
         - techs/go/*
 ```
 
-`trailguide project sync` imports each rule's newest version, snapshots them into `.trailguide/vendor/` with their versions, and rebuilds. Improve a rule in the library and publish it in a library release: each project picks up the improvement when it runs `trailguide project update`, on its own schedule. Update previews every changed, new, and retired rule, and applies them only after you confirm.
+`trailguide project sync` imports each rule's newest version, snapshots them into `.trailguide/_managed/vendor/` with their versions, and rebuilds. Improve a rule in the library and publish it in a library release: each project picks up the improvement when it runs `trailguide project update`, on its own schedule. Update previews every changed, new, and retired rule, and applies them only after you confirm.
 
 ➡️ [Create your first library](https://trailguide.fabricahq.com/start-here/create-library/) · [Include rules](https://trailguide.fabricahq.com/guides/select-rules/) · [Update rules and skills](https://trailguide.fabricahq.com/guides/update/)
 

@@ -5,10 +5,12 @@ package project
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,8 +21,8 @@ import (
 )
 
 // authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, each with
-// its files by path in its folder. It fails for a file directly in skills/, a folder name that breaks the skill name
-// grammar, and a folder without a SKILL.md. A nil tree has none.
+// its files by path in its folder, leaving out the folder's guide. It fails for any other file directly in skills/, a
+// folder name that breaks the skill name grammar, and a folder without a SKILL.md. A nil tree has none.
 func authoredSkills(tree *filetxn.Tree) (map[string]build.SkillFiles, error) {
 	result := map[string]build.SkillFiles{}
 	if tree == nil {
@@ -34,6 +36,9 @@ func authoredSkills(tree *filetxn.Tree) (map[string]build.SkillFiles, error) {
 	}
 	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
 		folder, _, inFolder := strings.Cut(name, "/")
+		if !inFolder && name == skills.Guide {
+			continue
+		}
 		if !inFolder {
 			return nil, &ValidationError{Location: ".trailguide/skills/" + name, Problem: "skills/ holds one folder per skill, each with a SKILL.md; move this file into a skill's folder"}
 		}
@@ -238,7 +243,7 @@ func noSkillTargetsWarning(output build.Output, targets []string) string {
 	if len(targets) > 0 || len(output.SkillIDs) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("The project has no skill targets, so no copy of its %d skill(s) was installed. Agents can find them through .trailguide/generated/SKILLS.md. To install copies, set skillTargets in .trailguide/config.yaml, such as [claude, agents], then run trailguide project build.", len(output.SkillIDs))
+	return fmt.Sprintf("The project has no skill targets, so no copy of its %d skill(s) was installed. Agents can find them through .trailguide/_managed/generated/SKILLS.md. To install copies, set skillTargets in .trailguide/config.yaml, such as [claude, agents], then run trailguide project build.", len(output.SkillIDs))
 }
 
 // renameWarnings returns one warning for each skill output installs under the name skills.rename gives it, saying
@@ -268,4 +273,21 @@ func clashFailure(err error) error {
 		return failure("skill-name-clash", clash.Error(), nil)
 	}
 	return err
+}
+
+// skillsGuide explains the skills/ folder to people: what's theirs there, where installed copies go, and how to change
+// a source's skill.
+//
+//go:embed skills-guide.md
+var skillsGuide string
+
+// withSkillsGuide returns files with skills/README.md, the folder's guide, added when the project at root has none, so
+// a project that authors skills explains its skills/ folder. It never replaces a guide, which the project may edit.
+func withSkillsGuide(ctx context.Context, root *os.Root, files []filetxn.File) ([]filetxn.File, error) {
+	name := path.Join(skills.Directory, skills.Guide)
+	existing, err := filetxn.ReadOptional(ctx, root, name)
+	if err != nil || existing != nil {
+		return files, err
+	}
+	return append(files, filetxn.File{Path: name, Content: []byte(skillsGuide)}), nil
 }

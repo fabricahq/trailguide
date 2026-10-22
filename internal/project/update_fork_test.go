@@ -143,7 +143,7 @@ func TestUpdate_ReplacesAForkWithItsNewestVersion(t *testing.T) {
 	if !slices.Contains(applied.Changed, "rules/techs/go/errors.md") || !slices.Contains(applied.Changed, "config.yaml") || !slices.Contains(applied.Added, "rules/techs/go/assets/errors/table.md") || !slices.Contains(applied.Removed, "rules/techs/go/assets/errors/mine.md") {
 		t.Fatalf("reported %+v", applied.FileChanges)
 	}
-	if !strings.Contains(string(after["generated/rules/local/techs/go/errors.md"]), "Read [the table]") {
+	if !strings.Contains(string(after["_managed/generated/rules/local/techs/go/errors.md"]), "Read [the table]") {
 		t.Fatal("the generated output doesn't have the new fork")
 	}
 	// A teammate who pulls the update and syncs gets exactly the same files.

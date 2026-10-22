@@ -99,7 +99,7 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/scripts/run.sh", "../.claude/skills/check-release/SKILL.md", "vendor/team/skills/review/SKILL.md", "generated/SKILLS.md", "generated/installed-skills.json"} {
+	for _, name := range []string{"../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/scripts/run.sh", "../.claude/skills/check-release/SKILL.md", "_managed/vendor/team/skills/review/SKILL.md", "_managed/generated/SKILLS.md", "_managed/generated/installed-skills.json"} {
 		if !slices.Contains(changes.Added, name) {
 			t.Errorf("sync didn't report adding %s: %v", name, changes.Added)
 		}
@@ -117,12 +117,12 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 			t.Errorf("authored copy:\n%s", authored)
 		}
 	}
-	rulesIndex := readRepositoryFile(t, options, ".trailguide/generated/RULES.md")
+	rulesIndex := readRepositoryFile(t, options, ".trailguide/_managed/generated/RULES.md")
 	if !strings.Contains(rulesIndex, "This project also installs agent skills. See [SKILLS.md](SKILLS.md)") {
 		t.Errorf("RULES.md doesn't point to SKILLS.md:\n%s", rulesIndex)
 	}
-	index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md")
-	for _, want := range []string{"### build-feature", "Build a feature from a spec.", "**Skill:** `team:skills/build-feature`, from release/1, commit `" + commit + "`", "**Level:** offered by `team`, release 1", "**Type:** playbook", "[.claude/skills/build-feature/SKILL.md](../../.claude/skills/build-feature/SKILL.md)", "**Skill:** `skills/check-release`, authored in this project"} {
+	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
+	for _, want := range []string{"### build-feature", "Build a feature from a spec.", "**Skill:** `team:skills/build-feature`, from release/1, commit `" + commit + "`", "**Level:** offered by `team`, release 1", "**Type:** playbook", "[.claude/skills/build-feature/SKILL.md](../../../.claude/skills/build-feature/SKILL.md)", "**Skill:** `skills/check-release`, authored in this project"} {
 		if !strings.Contains(index, want) {
 			t.Errorf("SKILLS.md lacks %q:\n%s", want, index)
 		}
@@ -157,7 +157,7 @@ func TestSync_RemovesTheFoldersOfSkillsNoLongerIncluded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(changes.Removed, "../.claude/skills/build-feature/scripts/run.sh") || !slices.Contains(changes.Removed, "vendor/team/skills/build-feature/SKILL.md") {
+	if !slices.Contains(changes.Removed, "../.claude/skills/build-feature/scripts/run.sh") || !slices.Contains(changes.Removed, "_managed/vendor/team/skills/build-feature/SKILL.md") {
 		t.Fatalf("removed = %v", changes.Removed)
 	}
 	if exists(t, options, ".claude/skills/build-feature") || !exists(t, options, ".claude/skills/review/SKILL.md") {
@@ -167,7 +167,7 @@ func TestSync_RemovesTheFoldersOfSkillsNoLongerIncluded(t *testing.T) {
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	if exists(t, options, ".claude/skills") || exists(t, options, ".trailguide/generated/SKILLS.md") {
+	if exists(t, options, ".claude/skills") || exists(t, options, ".trailguide/_managed/generated/SKILLS.md") {
 		t.Fatal("sync left an emptied skill target or SKILLS.md behind")
 	}
 }
@@ -188,7 +188,7 @@ func TestSync_RefusesToReplaceAFolderTrailGuideDidNotInstall(t *testing.T) {
 	if !strings.Contains(err.Error(), ".claude/skills/review already exists, and Trail Guide didn't install it") {
 		t.Fatalf("got %v", err)
 	}
-	if readRepositoryFile(t, options, ".claude/skills/review/SKILL.md") != "My own review.\n" || exists(t, options, ".trailguide/vendor/team") {
+	if readRepositoryFile(t, options, ".claude/skills/review/SKILL.md") != "My own review.\n" || exists(t, options, ".trailguide/_managed/vendor/team") {
 		t.Fatal("refused sync changed files")
 	}
 }
@@ -223,7 +223,7 @@ func TestSync_InstallsSkillsFromARepositoryThatIsNotALibrary(t *testing.T) {
 	if record := lockedEntry(t, options, "skills"); record.Kind != "non-library" || record.Skills["tools/review"].UsedBy == nil {
 		t.Fatalf("lock entry: %+v", record)
 	}
-	installed := readRepositoryFile(t, options, ".trailguide/generated/installed-skills.json")
+	installed := readRepositoryFile(t, options, ".trailguide/_managed/generated/installed-skills.json")
 	if !strings.Contains(installed, `"commit": "`+f.FirstCommit+`"`) {
 		t.Fatalf("installed-skills.json:\n%s", installed)
 	}
@@ -293,10 +293,10 @@ func TestSync_RecordsSkillsWithoutSkillTargetsAndWarns(t *testing.T) {
 			if len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "The project has no skill targets, so no copy of its 2 skill(s) was installed.") {
 				t.Fatalf("warnings = %v", changes.Warnings)
 			}
-			if exists(t, options, ".claude") || exists(t, options, ".agents") || !exists(t, options, ".trailguide/vendor/team/skills/review/SKILL.md") {
+			if exists(t, options, ".claude") || exists(t, options, ".agents") || !exists(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md") {
 				t.Fatal("sync installed copies or didn't record the skills")
 			}
-			if index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md"); !strings.Contains(index, "**Installed at:** nowhere, because the project has no skill targets. Read it at [.trailguide/vendor/team/skills/review/SKILL.md](../vendor/team/skills/review/SKILL.md).") {
+			if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "**Installed at:** nowhere, because the project has no skill targets. Read it at [.trailguide/_managed/vendor/team/skills/review/SKILL.md](../vendor/team/skills/review/SKILL.md).") {
 				t.Fatalf("SKILLS.md:\n%s", index)
 			}
 		})
@@ -336,10 +336,10 @@ func TestSync_RenamesAClashingSkillAndWarnsThatMentionsKeepTheOldName(t *testing
 	if !strings.Contains(readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"), "# Our review") {
 		t.Fatal("the authored skill isn't installed under its own name")
 	}
-	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/vendor/team/skills/review/SKILL.md"), "name: review\n") {
+	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md"), "name: review\n") {
 		t.Fatal("the rename changed the vendored copy")
 	}
-	if index := readRepositoryFile(t, options, ".trailguide/generated/SKILLS.md"); !strings.Contains(index, "### team-review\n\nReview a change.\n\n- **Skill:** `team:skills/review`, from release/1") || !strings.Contains(index, "- **Renamed from:** `review`, by the project's configuration. Its own text and other skills from `team` may still call it `review`; they mean this skill.") {
+	if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "### team-review\n\nReview a change.\n\n- **Skill:** `team:skills/review`, from release/1") || !strings.Contains(index, "- **Renamed from:** `review`, by the project's configuration. Its own text and other skills from `team` may still call it `review`; they mean this skill.") {
 		t.Fatalf("SKILLS.md:\n%s", index)
 	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
@@ -377,12 +377,12 @@ func TestBuild_InstallsAuthoredSkillsOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(changes.Added, "../../.claude/skills/tidy/SKILL.md") || !slices.Contains(changes.Added, "SKILLS.md") {
+	if !slices.Contains(changes.Added, "../../../.claude/skills/tidy/SKILL.md") || !slices.Contains(changes.Added, "SKILLS.md") {
 		t.Fatalf("added = %v", changes.Added)
 	}
 	writeFixture(t, root, "skills/tidy/SKILL.md", "---\nname: tidy\n---\n# Tidy up\n")
 	changes, err = Build(ctx, options)
-	if err != nil || !slices.Contains(changes.Changed, "../../.claude/skills/tidy/SKILL.md") {
+	if err != nil || !slices.Contains(changes.Changed, "../../../.claude/skills/tidy/SKILL.md") {
 		t.Fatalf("rebuild = %+v, %v", changes, err)
 	}
 	if !strings.Contains(readRepositoryFile(t, options, ".claude/skills/tidy/SKILL.md"), "# Tidy up") {

@@ -68,7 +68,7 @@ Not a violation: generated output that shows a rule's validated Markdown read th
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/never-show-git-diagnostics.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/never-show-git-diagnostics.md)
 
 ### Source metadata
 

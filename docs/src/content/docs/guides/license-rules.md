@@ -43,7 +43,7 @@ library:
     notices: []
 ```
 
-Paths resolve from the repository root and identify source files only. Trail Guide copies the contents unchanged to `generated/libraries/<source-name>/licenses/LICENSE.md` and `generated/libraries/<source-name>/licenses/notices/001.md`, `002.md`, and so on. Notice numbering follows unique declaration order; output destinations are not configurable.
+Paths resolve from the repository root and identify source files only. Trail Guide copies the contents unchanged to `_managed/generated/libraries/<source-name>/licenses/LICENSE.md` and `_managed/generated/libraries/<source-name>/licenses/notices/001.md`, `002.md`, and so on. Notice numbering follows unique declaration order; output destinations are not configurable.
 For example, list `NOTICE.md` in `notices` when the library supplies a notice that must accompany copies of its content.
 No extra notice file is required when the license and rule files already contain the necessary notices.
 The [file reference](/reference/library-format/#license-metadata) defines these fields.
@@ -66,18 +66,19 @@ The consuming project retains them alongside the vendored rules:
 
 ```text
 .trailguide/
-  vendor/
-    fabrica/
-      LICENSE.md
-      config.yaml
-      rules/practices/testing/...
-  generated/
-    RULES.md
-    libraries/fabrica/
-      README.md
-      licenses/LICENSE.md
-    groups/practices/testing.md
-    rules/fabrica/practices/testing/verify-retry-limits.md
+  _managed/
+    vendor/
+      fabrica/
+        LICENSE.md
+        config.yaml
+        rules/practices/testing/...
+    generated/
+      RULES.md
+      libraries/fabrica/
+        README.md
+        licenses/LICENSE.md
+      groups/practices/testing.md
+      rules/fabrica/practices/testing/verify-retry-limits.md
 ```
 
 Preserve copyright notices and per-rule attribution in both the vendored source and the generated rule file.
@@ -86,7 +87,7 @@ Project build and check verify snapshot digests to detect changed files. The off
 Sync reports changed license files. A semantic update report that highlights license changes is not available yet.
 
 Each individual resolved rule identifies its source and applicable preserved license.
-For example, `generated/rules/fabrica/practices/testing/verify-retry-limits.md` includes this source footer after its guidance.
+For example, `_managed/generated/rules/fabrica/practices/testing/verify-retry-limits.md` includes this source footer after its guidance.
 The repository and commit in this example are illustrative.
 
 ```markdown
@@ -101,7 +102,7 @@ The repository and commit in this example are illustrative.
 
 Guidance precedes this footer; preserved source metadata follows it. Every rule from a source displays its library's declaration; explicit attribution citations also appear in the footer.
 Generated rule files link to these standardized license and notice copies, and the originals stay in the source's vendor snapshot.
-The library summary in `generated/libraries/<source-name>/README.md` lists the declared license expression and the retained files.
+The library summary in `_managed/generated/libraries/<source-name>/README.md` lists the declared license expression and the retained files.
 When a rule group includes rules from multiple libraries, retain each rule's licensing information instead of assigning one library's license to the rule group.
 Copied rule text remains subject to its applicable terms even when the project changes its wording or replaces a library's rule with an adaptation.
 Maintain third-party adaptations in a compatible library with the applicable library-wide declaration. A project's own rules and replacements are for original project guidance; an ID alone cannot establish licensing.
@@ -120,7 +121,7 @@ Warning: skills/build-feature/SKILL.md: license is Apache-2.0, but the library d
 
 Make the field match the library's expression, or leave it out. A skill whose material needs different terms belongs in a separate library, as a rule's would. A license or notice file inside a skill folder is part of the skill's content, not a declared library file; a library can't declare a file in a skill folder as its license or notice file.
 
-Sync retains the library's license and notice files for skills exactly as it does for rules, at the same generated paths, and `generated/libraries/<source-name>/README.md` lists the source's installed skills with its declared terms. Forking a skill with `trailguide project add skill --from` copies its text into `.trailguide/skills/`, where the library's license still applies to it.
+Sync retains the library's license and notice files for skills exactly as it does for rules, at the same generated paths, and `_managed/generated/libraries/<source-name>/README.md` lists the source's installed skills with its declared terms. Forking a skill with `trailguide project add skill --from` copies its text into `.trailguide/skills/`, where the library's license still applies to it.
 
 A skill a library [curates](/reference/configuration/#curated-skills) from another repository keeps that repository's terms, not the curating library's: Trail Guide finds them from that repository's own declaration when it's a library, and otherwise as it does for a non-library source, below.
 
@@ -132,7 +133,7 @@ A non-library source, a repository without a manifest, has no license declaratio
 2. A file whose name starts with `LICENSE` in the skill's own folder, such as `LICENSE.txt`.
 3. Files whose names start with `LICENSE` or `NOTICE` at the repository root.
 
-Trail Guide records what it finds in [provenance](/reference/provenance/), and retains the root files, when present, under `generated/libraries/<source-name>/licenses/`, like a library's declared files. It doesn't infer an SPDX identifier from a file name, or decide whether the terms permit your use. See [Non-library sources](/reference/imports/#non-library-sources).
+Trail Guide records what it finds in [provenance](/reference/provenance/), and retains the root files, when present, under `_managed/generated/libraries/<source-name>/licenses/`, like a library's declared files. It doesn't infer an SPDX identifier from a file name, or decide whether the terms permit your use. See [Non-library sources](/reference/imports/#non-library-sources).
 
 When a skill has none of these, `trailguide project sync` fails with `license-not-found`, names the source and the skill, and writes nothing:
 

@@ -265,7 +265,7 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 	if got := recordedCommit(t, options); got != moved || !strings.Contains(readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"), "carefully") {
 		t.Fatalf("update recorded %s; want %s and the skill from it", got, moved)
 	}
-	if rule := readRepositoryFile(t, options, ".trailguide/vendor/skills/rules/techs/go/errors.md"); !strings.Contains(rule, "wrapped") {
+	if rule := readRepositoryFile(t, options, ".trailguide/_managed/vendor/skills/rules/techs/go/errors.md"); !strings.Contains(rule, "wrapped") {
 		t.Fatalf("update left the vendored rule %q; want the rule from %s", rule, moved)
 	}
 }

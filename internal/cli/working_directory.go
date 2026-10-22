@@ -112,7 +112,7 @@ const legacyDirectoryWarning = `this project keeps its files in .code-rules/, th
 
   git mv .code-rules .trailguide
 
-In a project that isn't in a Git repository, use mv instead of git mv. Then point the line in AGENTS.md or CLAUDE.md that sends agents to .code-rules/generated/RULES.md at .trailguide/generated/RULES.md, and run trailguide project build.`
+In a project that isn't in a Git repository, use mv instead of git mv. Then point the line in AGENTS.md or CLAUDE.md that sends agents to .code-rules/generated/RULES.md at .trailguide/_managed/generated/RULES.md, and run trailguide project sync, which moves vendor/ and generated/ under _managed/.`
 
 // warnLegacyDirectory warns, for a project command, when root, the project root, has no Trail Guide directory but has
 // one under the name Code Rules used, which the project package then opens.

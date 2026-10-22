@@ -57,7 +57,7 @@ func importedProject(t *testing.T) (*os.Root, Options) {
 		t.Fatal(err)
 	}
 	for name, data := range vendor {
-		writeFixture(t, root, filepath.Join("vendor", name), string(data))
+		writeFixture(t, root, filepath.Join("_managed/vendor", name), string(data))
 	}
 	writeFixture(t, root, lockFile, string(lock))
 	return root, options
@@ -98,11 +98,11 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 				t.Fatalf("build/check differ: %+v %+v", changes, stale)
 			}
 			for i, problem := range stale.Problems[:last] {
-				if problem.Kind != MissingFile || problem.Path != "generated/"+changes.Added[i] || problem.Repair != Rebuild {
+				if problem.Kind != MissingFile || problem.Path != "_managed/generated/"+changes.Added[i] || problem.Repair != Rebuild {
 					t.Fatalf("unexpected initial problem: %+v", problem)
 				}
 			}
-			tree, err := filetxn.ReadTree(context.Background(), root, "generated")
+			tree, err := filetxn.ReadTree(context.Background(), root, "_managed/generated")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,9 +117,9 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 			if err != nil || !clean.Current() {
 				t.Fatalf("clean check: %+v %v", clean, err)
 			}
-			writeFixture(t, root, "generated/RULES.md", "stale")
-			writeFixture(t, root, "generated/extra.md", "extra")
-			if err := root.Remove("generated/groups/techs/go.md"); err != nil {
+			writeFixture(t, root, "_managed/generated/RULES.md", "stale")
+			writeFixture(t, root, "_managed/generated/extra.md", "extra")
+			if err := root.Remove("_managed/generated/groups/techs/go.md"); err != nil {
 				t.Fatal(err)
 			}
 			before, err = filetxn.ReadTree(context.Background(), root, ".")
@@ -130,7 +130,7 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(differences.Problems, []Problem{{Kind: MissingFile, Path: "generated/groups/techs/go.md", Repair: Rebuild}, {Kind: StaleContents, Path: "generated/RULES.md", Repair: Rebuild}, {Kind: UnexpectedFile, Path: "generated/extra.md", Repair: Rebuild}}) {
+			if !reflect.DeepEqual(differences.Problems, []Problem{{Kind: MissingFile, Path: "_managed/generated/groups/techs/go.md", Repair: Rebuild}, {Kind: StaleContents, Path: "_managed/generated/RULES.md", Repair: Rebuild}, {Kind: UnexpectedFile, Path: "_managed/generated/extra.md", Repair: Rebuild}}) {
 				t.Fatalf("diffs: %+v", differences)
 			}
 			after, err = filetxn.ReadTree(context.Background(), root, ".")
@@ -143,17 +143,17 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 
 // TestOfflineFailuresPreserveOutput checks invalid rules/vendor content, pending recovery, and cancellation.
 func TestOfflineFailuresPreserveOutput(t *testing.T) {
-	for _, kind := range []string{"local", "vendor", "recovery", "cancel"} {
+	for _, kind := range []string{"local", "_managed/vendor", "recovery", "cancel"} {
 		t.Run(kind, func(t *testing.T) {
 			root, options := importedProject(t)
-			writeFixture(t, root, "generated/keep", "existing output")
+			writeFixture(t, root, "_managed/generated/keep", "existing output")
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			switch kind {
 			case "local":
 				writeFixture(t, root, "rules/techs/go/bad.md", "invalid rule")
-			case "vendor":
-				writeFixture(t, root, "vendor/team/rules/techs/go/errors.md", "modified imported rule")
+			case "_managed/vendor":
+				writeFixture(t, root, "_managed/vendor/team/rules/techs/go/errors.md", "modified imported rule")
 			case "recovery":
 				writeFixture(t, root, ".trailguide-transaction"+"/journal.json", `{"formatVersion":99}`)
 			case "cancel":
@@ -175,7 +175,7 @@ func TestOfflineFailuresPreserveOutput(t *testing.T) {
 			} else if kind == "cancel" && !errors.Is(err, context.Canceled) {
 				t.Fatalf("lost cancellation: %v", err)
 			}
-			if b, _ := root.ReadFile("generated/keep"); string(b) != "existing output" {
+			if b, _ := root.ReadFile("_managed/generated/keep"); string(b) != "existing output" {
 				t.Fatal("lost existing output")
 			}
 		})
@@ -185,7 +185,7 @@ func TestOfflineFailuresPreserveOutput(t *testing.T) {
 // TestOfflineRejectsSemanticCorruptionBeyondDigests validates catalog content even with self-consistent hashes.
 func TestOfflineRejectsSemanticCorruptionBeyondDigests(t *testing.T) {
 	root, options := importedProject(t)
-	writeFixture(t, root, "vendor/team/rules/techs/go/errors.md", "invalid but rehashed")
+	writeFixture(t, root, "_managed/vendor/team/rules/techs/go/errors.md", "invalid but rehashed")
 	rewriteEntry(t, root, "team", func(record *sourceRecord) {
 		record.Files["techs/go/errors.md"] = digest([]byte("invalid but rehashed"))
 	})
@@ -206,13 +206,13 @@ func TestOfflineRejectsRuleFilesTheRecordDoesntDescribe(t *testing.T) {
 			rewriteEntry(t, root, "team", func(record *sourceRecord) {
 				if move[0] != "" {
 					delete(record.Files, move[0])
-					if err := root.Remove("vendor/team/rules/" + move[0]); err != nil {
+					if err := root.Remove("_managed/vendor/team/rules/" + move[0]); err != nil {
 						t.Fatal(err)
 					}
 				}
 				record.Files[move[1]] = digest([]byte(projectRule))
 			})
-			writeFixture(t, root, "vendor/team/rules/"+move[1], projectRule)
+			writeFixture(t, root, "_managed/vendor/team/rules/"+move[1], projectRule)
 			_, err := Check(context.Background(), options)
 			projectCode(t, err, "invalid-snapshot")
 		})
@@ -248,11 +248,11 @@ func TestBuild_LinksAuthoredRulesInRulesToSharedAssetsInAssets(t *testing.T) {
 	if _, err := Build(context.Background(), options); err != nil {
 		t.Fatal(err)
 	}
-	generated, err := root.ReadFile("generated/rules/local/techs/go/errors.md")
+	generated, err := root.ReadFile("_managed/generated/rules/local/techs/go/errors.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"[the retry lifecycle](../../../../../assets/retry.svg)", "**Rule source:** [Original rule](../../../../../rules/techs/go/errors.md)"} {
+	for _, want := range []string{"[the retry lifecycle](../../../../../../assets/retry.svg)", "**Rule source:** [Original rule](../../../../../../rules/techs/go/errors.md)"} {
 		if !strings.Contains(string(generated), want) {
 			t.Errorf("missing %q in %s", want, generated)
 		}
@@ -278,7 +278,7 @@ func TestBuild_RefusesMisplacedSharedAssets(t *testing.T) {
 			} else {
 				writeFixture(t, root, "rules/assets/retry.svg", "<svg/>")
 			}
-			before, err := filetxn.ReadTree(context.Background(), root, "generated")
+			before, err := filetxn.ReadTree(context.Background(), root, "_managed/generated")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -287,7 +287,7 @@ func TestBuild_RefusesMisplacedSharedAssets(t *testing.T) {
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location || validation.ValidationProblem() != test.problem {
 				t.Fatal(err)
 			}
-			after, err := filetxn.ReadTree(context.Background(), root, "generated")
+			after, err := filetxn.ReadTree(context.Background(), root, "_managed/generated")
 			if err != nil || after.Digest() != before.Digest() {
 				t.Fatal("changed generated output", err)
 			}
@@ -335,7 +335,7 @@ func TestOfflineRendersOnlyVerifiedSnapshotBytes(t *testing.T) {
 			if strings.HasSuffix(file, ".yaml") {
 				changed = strings.ReplaceAll(projectMetadata, "Go guidance.", "Unverified text.")
 			}
-			writeFixture(t, root, "vendor/team/"+file, changed)
+			writeFixture(t, root, "_managed/vendor/team/"+file, changed)
 			output, err := prepareProject(context.Background(), state, options)
 			if err != nil {
 				t.Fatal(err)

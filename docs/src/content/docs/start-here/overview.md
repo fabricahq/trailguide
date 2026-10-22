@@ -71,7 +71,7 @@ Finally, you probably want to include some pre-existing rules and skills from a 
 
 ### RULES.md
 
-Trail Guide combines your own rules and the ones you include from sources into guidance under `.trailguide/generated/`. Agents start with `RULES.md`, an index that tells them which rule groups to read.
+Trail Guide combines your own rules and the ones you include from sources into guidance under `.trailguide/_managed/generated/`. Agents start with `RULES.md`, an index that tells them which rule groups to read.
 
 An abbreviated `RULES.md` entry:
 
@@ -87,7 +87,7 @@ The linked rule group page contains the rules in full, or links to their full de
 
 ### Installed skills
 
-Trail Guide writes each installed skill into `.claude/skills/` and `.agents/skills/`, where coding agents find skills, and lists them in `.trailguide/generated/SKILLS.md`. Each installed skill that cites rules ends with links to your project's version of every rule it applies. See [Skill](/concepts/skill/#how-agents-use-installed-skills).
+Trail Guide writes each installed skill into `.claude/skills/` and `.agents/skills/`, where coding agents find skills, and lists them in `.trailguide/_managed/generated/SKILLS.md`. Each installed skill that cites rules ends with links to your project's version of every rule it applies. See [Skill](/concepts/skill/#how-agents-use-installed-skills).
 
 ## What Trail Guide does not do
 

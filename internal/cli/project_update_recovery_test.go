@@ -68,7 +68,7 @@ func interruptedUpdate(t *testing.T, blocked filetxn.Target) updateFixture {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	blocker := filepath.Join(".trailguide-transaction", "old-"+string(blocked))
+	blocker := filepath.Join(".trailguide-transaction", "old-"+strings.ReplaceAll(string(blocked), "/", "+"))
 	err = filetxn.WithWriter(context.Background(), root, func(w *filetxn.Writer) error {
 		// Apply calls this after staging every target and before writing its journal.
 		return w.Apply(output, func() error { return root.MkdirAll(filepath.Join(blocker, "blocker"), 0700) })
@@ -80,14 +80,14 @@ func interruptedUpdate(t *testing.T, blocked filetxn.Target) updateFixture {
 	if err := root.RemoveAll(blocker); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"journal.json", "old-vendor", "new-" + string(blocked)} {
+	for _, name := range []string{"journal.json", "old-_managed+vendor", "new-" + strings.ReplaceAll(string(blocked), "/", "+")} {
 		if _, err := root.Stat(filepath.Join(".trailguide-transaction", name)); err != nil {
 			t.Fatalf("the interrupted transaction lacks %s: %v", name, err)
 		}
 	}
 	// Replacement began: vendor/ already holds the update's output.
-	if vendor, err := filetxn.ReadTree(context.Background(), root, "vendor"); err != nil || !maps.EqualFunc(vendor.Files, output[filetxn.Vendor], bytes.Equal) {
-		t.Fatalf("vendor/ isn't the update's output: %v", err)
+	if vendor, err := filetxn.ReadTree(context.Background(), root, "_managed/vendor"); err != nil || !maps.EqualFunc(vendor.Files, output[filetxn.Vendor], bytes.Equal) {
+		t.Fatalf("_managed/vendor/ isn't the update's output: %v", err)
 	}
 	return u
 }

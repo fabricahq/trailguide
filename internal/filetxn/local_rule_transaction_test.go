@@ -27,8 +27,8 @@ func writeForkProject(t *testing.T, root *os.Root) {
 	writeFixture(t, root, "rules/techs/go/assets/fork/extra/data.bin", "old data")
 	writeFixture(t, root, "rules/techs/go/other.md", "other rule")
 	writeFixture(t, root, "rules/techs/go/assets/other/notes.md", "other notes")
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 }
 
 // forkUpdate replaces the fork and its assets with assets, which nil removes, and the managed trees with new output.
@@ -58,7 +58,7 @@ func localFiles(t *testing.T, root *os.Root) map[string]string {
 // requireForkProject checks that rules/ holds exactly want and the managed trees the matching output.
 func requireForkProject(t *testing.T, root *os.Root, state string, want map[string]string) {
 	t.Helper()
-	for name, suffix := range map[string]string{"vendor/team/rule.md": " rule", "generated/RULES.md": " output"} {
+	for name, suffix := range map[string]string{"_managed/vendor/team/rule.md": " rule", "_managed/generated/RULES.md": " output"} {
 		data, err := root.ReadFile(name)
 		if err != nil || string(data) != state+suffix {
 			t.Fatalf("%s: got %q, want %q: %v", name, data, state+suffix, err)
@@ -120,8 +120,8 @@ func TestApply_CreatesALocalRuleAssetDirectoryAndItsParent(t *testing.T) {
 	setup := func(t *testing.T) *os.Root {
 		root := openProject(t)
 		writeFixture(t, root, "rules/techs/go/fork.md", "old fork")
-		writeFixture(t, root, "vendor/team/rule.md", "old rule")
-		writeFixture(t, root, "generated/RULES.md", "old output")
+		writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+		writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 		return root
 	}
 	t.Run("applied", func(t *testing.T) {
@@ -152,8 +152,8 @@ func TestApply_CreatesALocalRuleAssetDirectoryAndItsParent(t *testing.T) {
 func TestApply_ChangesNoLiveDirectoryBeforeTheInputsAreChecked(t *testing.T) {
 	root := openProject(t)
 	writeFixture(t, root, "rules/techs/go/fork.md", "old fork")
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 	before, err := ReadTree(context.Background(), root, "rules")
 	if err != nil {
 		t.Fatal(err)
@@ -175,8 +175,8 @@ func TestApply_ChangesNoLiveDirectoryBeforeTheInputsAreChecked(t *testing.T) {
 func writeAssetFreeFork(t *testing.T, root *os.Root) {
 	t.Helper()
 	writeFixture(t, root, "rules/techs/go/fork.md", "old fork")
-	writeFixture(t, root, "vendor/team/rule.md", "old rule")
-	writeFixture(t, root, "generated/RULES.md", "old output")
+	writeFixture(t, root, "_managed/vendor/team/rule.md", "old rule")
+	writeFixture(t, root, "_managed/generated/RULES.md", "old output")
 }
 
 // requireEmptyDirectory fails unless name is an empty directory.
@@ -210,7 +210,7 @@ func TestKilledWriterLeavesTheParentsItCreated(t *testing.T) {
 			}
 			w.rename = func(from, to string) error {
 				err := rename(from, to)
-				if err == nil && stop == "after replacing vendor" && to == "vendor" {
+				if err == nil && stop == "after replacing vendor" && to == "_managed/vendor" {
 					os.Exit(42)
 				}
 				return err
@@ -370,8 +370,8 @@ func TestKilledForkWriterRecovers(t *testing.T) {
 		want               map[string]string
 	}{
 		{"probe", renameCheck + "/rules+techs+go+fork.md", "yes", "old", oldLocal},
-		{"vendor", "vendor", "yes", "old", oldLocal},
-		{"generated", "generated", "yes", "old", oldLocal},
+		{"_managed/vendor", "_managed/vendor", "yes", "old", oldLocal},
+		{"_managed/generated", "_managed/generated", "yes", "old", oldLocal},
 		{"rule", "rules/techs/go/fork.md", "yes", "old", oldLocal},
 		{"assets backed up", assetsBackup, "yes", "old", oldLocal},
 		{"assets", "rules/techs/go/assets/fork", "yes", "old", oldLocal},

@@ -3,4 +3,4 @@
 
 # Resolved rules
 
-These files contain the complete resolved definitions after exclusions, replacements, and local additions. Start with [RULES.md](../RULES.md). [lock.json](../../lock.json) records each source's revision and rule versions. Edit source inputs and rebuild.
+These files contain the complete resolved definitions after exclusions, replacements, and local additions. Start with [RULES.md](../RULES.md). [lock.json](../../../lock.json) records each source's revision and rule versions. Edit source inputs and rebuild.

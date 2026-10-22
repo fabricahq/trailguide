@@ -30,48 +30,54 @@ The tree below shows the **repository root**, the top-level directory of your co
   - config.yaml
   - README.md
   - rules/
+    - README.md
     - practices/testing/
       - _group.yaml
       - test-failure-paths.md
   - skills/
+    - README.md
     - fix-bug/
+      - SKILL.md
+    - release-checklist/
       - SKILL.md
   - assets/
     - retry-lifecycle.svg
-  - skills/
-    - release-checklist/
-      - SKILL.md
   - lock.json
-  - vendor/
-    - fabrica/
-      - config.yaml
-      - rules/
-        - practices/testing/
-          - ...
-      - assets/
-        - ...
-      - skills/
-        - build-feature/
-          - ...
-      - curated/
-        - mattpocock/
-          - skills/engineering/to-spec/
+  - _managed/
+    - vendor/
+      - fabrica/
+        - config.yaml
+        - rules/
+          - practices/testing/
             - ...
-    - pstack/
-      - skills/architect/
+        - assets/
+          - ...
+        - skills/
+          - build-feature/
+            - ...
+        - curated/
+          - mattpocock/
+            - skills/engineering/to-spec/
+              - ...
+      - pstack/
+        - skills/architect/
+          - ...
+        - skills/build-feature/
+          - SKILL.md
+    - generated/
+      - .gitattributes
+      - RULES.md
+      - SKILLS.md
+      - groups/
         - ...
-      - skills/build-feature/
-        - SKILL.md
-  - generated/
-    - RULES.md
-    - SKILLS.md
-    - groups/
-      - ...
-    - rules/
-      - ...
-    - libraries/
-      - ...
-    - installed-skills.json
+      - rules/
+        - fabrica/
+          - ...
+        - local/
+          - ...
+      - libraries/
+        - ...
+      - installed-skills.json
 
 </FileTree>
 
@@ -81,16 +87,16 @@ Initialize from the repository root. In Git repositories, other commands find th
 
 ## Authored, vendored, and generated content
 
-The Trail Guide directory holds three kinds of content:
+The Trail Guide directory holds three kinds of content. Everything Trail Guide writes for you sits under `_managed/`, so anything outside it, apart from `lock.json` and `README.md`, is yours to edit:
 
 - **Authored content: `rules/`, `skills/`, and `assets/`.** The rules, rule group metadata, skills, and shared assets written in this repository. Add your own rules and skills here, including replacements and forks of rules and skills you include from sources. You maintain these files; sync preserves them. A library publishes exactly this content.
-- **Vendor snapshots: `vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with a `config.yaml` that holds only the [published manifest](/reference/library-format/#what-a-librarys-consumers-read), the `library` section and its curated sources' repositories and refs, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
-- **Generated guidance: `generated/`.** The resolved rules your agents read. Trail Guide combines the included and authored rules according to `config.yaml`, applies exclusions and replacements, and writes the reading indexes, including `SKILLS.md`. Do not edit this directory; rebuild it after changing your inputs.
+- **Vendor snapshots: `_managed/vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with a `config.yaml` that holds only the [published manifest](/reference/library-format/#what-a-librarys-consumers-read), the `library` section and its curated sources' repositories and refs, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
+- **Generated guidance: `_managed/generated/`.** The resolved rules your agents read. Trail Guide combines the included and authored rules according to `config.yaml`, applies exclusions and replacements, and writes the reading indexes, including `SKILLS.md`. Do not edit this directory; rebuild it after changing your inputs. Its `.gitattributes` marks every file in it as generated, so GitHub collapses them in pull request diffs. Vendor snapshots stay expanded, so reviewers see what changed in a source.
 
 Installed skills are output too: Trail Guide writes a copy of each installed skill into every target folder, such as `.claude/skills/build-feature/`, from its vendored or authored source. See [Installed skills](#installed-skills).
 
-Think of authored content and `vendor/` as inputs, and `generated/` and the installed skills as the output for your agents.
-For example, when you replace a library rule, its vendored copy stays in `vendor/`, your replacement lives in `rules/`, and `generated/` presents the replacement to your agent.
+Think of authored content and `_managed/vendor/` as inputs, and `_managed/generated/` and the installed skills as the output for your agents.
+For example, when you replace a library rule, its vendored copy stays in `_managed/vendor/`, your replacement lives in `rules/`, and `_managed/generated/` presents the replacement to your agent.
 
 ## What to edit
 
@@ -102,12 +108,12 @@ For example, when you replace a library rule, its vendored copy stays in `vendor
 | `.trailguide/rules/`, `skills/`, and `assets/` | You | Add authored rules, rule group metadata, replacements, skills, and shared assets. |
 | `.trailguide/README.md` | `trailguide project init`, `trailguide project build`, and `trailguide project sync` | Explain the repository's rule setup and commands. |
 | `.trailguide/lock.json` | `trailguide project sync` and `trailguide project update` | Record each source's revision, each rule's version, each installed skill, and every vendored file's digest. |
-| `.trailguide/vendor/` | `trailguide project sync` and `trailguide project update` | Store vendor snapshots of the files `lock.json` records. |
-| `.trailguide/generated/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide resolved rules, indexes, and the record of installed skills. |
+| `.trailguide/_managed/vendor/` | `trailguide project sync` and `trailguide project update` | Store vendor snapshots of the files `lock.json` records. |
+| `.trailguide/_managed/generated/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide resolved rules, indexes, and the record of installed skills. |
 | Skill folders that Trail Guide installed in `.claude/skills/` and `.agents/skills/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide installed copies of skills where agents look for them. |
 | Other folders in `.claude/skills/` and `.agents/skills/` | You, or the tool that installed them | Trail Guide never changes or removes them. |
 
-Keep your changes in configuration and authored content. Edits in `vendor/`, `generated/`, or an installed skill folder will be replaced or removed. To change a skill you include from a source, [fork it](/reference/cli/#fork-a-skill) into `skills/`.
+Keep your changes in configuration and authored content. Edits in `_managed/vendor/`, `_managed/generated/`, or an installed skill folder will be replaced or removed. To change a skill you include from a source, [fork it](/reference/cli/#fork-a-skill) into `skills/`.
 Commit configuration, authored content, `lock.json`, both managed directories, and the installed skill folders, so your team, CI, and every fresh checkout use the same rules and skills offline.
 Commit the project instructions and README as well.
 If your `.gitignore` excludes a target folder, such as with `/.claude/`, change the line to `/.claude/*` and add the exception `!/.claude/skills/`, or `trailguide project check` reports the missing folders. Git can't re-include a folder inside an excluded folder, so `!/.claude/skills/` alone doesn't work after `/.claude/`.
@@ -116,7 +122,7 @@ Use `trailguide project build` to regenerate guidance from stored inputs, and `t
 Missing or mismatched vendor snapshots require `trailguide project sync`.
 For recovery and file ownership details, see [Sync and recovery](/reference/sync/).
 
-Generated Markdown and the managed Trail Guide guide include a "Generated by Trail Guide" notice and regeneration instructions. `generated/installed-skills.json` stores that notice in `generatedNotice`. Copied license and notice files retain their original bytes. An installed `SKILL.md` carries a [marker line](#installed-skills) instead, because its frontmatter must start at the first byte.
+Generated Markdown and the managed Trail Guide guide include a "Generated by Trail Guide" notice and regeneration instructions. `_managed/generated/installed-skills.json` stores that notice in `generatedNotice`. Copied license and notice files retain their original bytes. An installed `SKILL.md` carries a [marker line](#installed-skills) instead, because its frontmatter must start at the first byte.
 
 ## Project and rule group guides
 
@@ -130,14 +136,16 @@ Creating a rule group also writes a `README.md` beside `_group.yaml`. Rule group
 
 ## Where agents start
 
-The Trail Guide section of `AGENTS.md` points your agent to `.trailguide/generated/RULES.md`. It lists the rule groups and explains when to read each one.
+The Trail Guide section of `AGENTS.md` points your agent to `.trailguide/_managed/generated/RULES.md`. It lists the rule groups and explains when to read each one.
 Agents then open relevant rule groups and read the applicable rules in full.
 When the repository installs skills, `RULES.md` also has one line pointing to `SKILLS.md`, so the same instructions reach agents whose tools don't load skills from the target folders.
 See [Plan, write, and review](/for-agents/) for the section's text and a workflow built on it.
 
 The commands that write the section create `AGENTS.md` when it's missing, and add the section after your text. Each refresh replaces only the lines between the markers. The begin marker records the Trail Guide version that wrote the section and a digest of its lines, so build, sync, update, and init refuse to replace a section edited by hand: move your text outside the markers and delete the section, then rerun the command. `trailguide project check` reports a missing or outdated section. To manage `AGENTS.md` yourself, set [`manageAgentsFile: false`](/reference/configuration/#agentsmd-section).
 
-When `AGENTS.md` already points to `.trailguide/generated/RULES.md` outside the markers, as the section that earlier versions asked you to paste does, Trail Guide leaves the file alone and `trailguide project check` accepts it. To switch to the maintained section, delete your pasted section and run `trailguide project build`.
+When `AGENTS.md` already points to `.trailguide/_managed/generated/RULES.md` outside the markers, Trail Guide leaves the file alone and `trailguide project check` accepts it. To switch to the maintained section, delete your own pointer and run `trailguide project build`.
+
+Trail Guide 0.6 and earlier asked you to paste a pointer to `.trailguide/generated/RULES.md`, where it kept generated guidance then. That file no longer exists, so while `AGENTS.md` has that pointer outside the markers, the commands that write or check the section fail with `agents-pointer-outdated`. Change the path to `.trailguide/_managed/generated/RULES.md`, or delete the pasted section and rerun the command so Trail Guide adds the maintained section in its place.
 
 | Generated path | Contents |
 | --- | --- |
@@ -151,8 +159,8 @@ When `AGENTS.md` already points to `.trailguide/generated/RULES.md` outside the 
 Large indexes can span multiple pages. Follow the page directory and navigation links before selecting rules, and complete any truncated reads.
 Full rule definitions are never shortened to fit an index.
 
-A rule's source name appears in its generated path. For example, `fabrica:practices/testing/test-failure-paths` lives at `rules/fabrica/practices/testing/test-failure-paths.md` under `generated/`.
-Authored rules and replacements have no source name, so `practices/testing/test-failure-paths` lives at `rules/practices/testing/test-failure-paths.md`. Excluded rules and replaced rule bodies have no generated rule file.
+A rule's source name appears in its generated path. For example, `fabrica:practices/testing/test-failure-paths` lives at `rules/fabrica/practices/testing/test-failure-paths.md` under `_managed/generated/`.
+Authored rules and replacements have no source name, so they sit under `local/` beside the sources: `practices/testing/test-failure-paths` lives at `rules/local/practices/testing/test-failure-paths.md`. Excluded rules and replaced rule bodies have no generated rule file.
 A rule that only an installed skill cites has a generated rule file at the same kind of path, but no rule group page or `RULES.md` entry lists it.
 
 For rule versions, replacement history, and retained license records, see [Provenance](/reference/provenance/).
@@ -189,8 +197,8 @@ Second, a generated section is appended to the end of `SKILL.md`. When the skill
 
 Read each rule in full before the step that applies it.
 
-- `fabrica:practices/testing/test-behavior-not-implementation` 2.0.0: [.trailguide/generated/rules/fabrica/practices/testing/test-behavior-not-implementation.md](../../../.trailguide/generated/rules/fabrica/practices/testing/test-behavior-not-implementation.md)
-- `practices/verification/verify-in-staging`, which replaces `fabrica:practices/verification/verify-on-the-surface-users-touch`: [.trailguide/generated/rules/practices/verification/verify-in-staging.md](../../../.trailguide/generated/rules/practices/verification/verify-in-staging.md)
+- `fabrica:practices/testing/test-behavior-not-implementation` 2.0.0: [.trailguide/_managed/generated/rules/fabrica/practices/testing/test-behavior-not-implementation.md](../../../.trailguide/_managed/generated/rules/fabrica/practices/testing/test-behavior-not-implementation.md)
+- `practices/verification/verify-in-staging`, which replaces `fabrica:practices/verification/verify-on-the-surface-users-touch`: [.trailguide/_managed/generated/rules/practices/verification/verify-in-staging.md](../../../.trailguide/_managed/generated/rules/practices/verification/verify-in-staging.md)
 
 Skills this skill uses: `tdd`
 ```
@@ -203,7 +211,7 @@ Links are relative to the installed `SKILL.md`, so they work from either target.
 
 The copy in `.agents/skills/`, which Codex reads, can also get a generated `agents/openai.yaml` with the text Codex shows for the skill, from the [interface metadata](/reference/skill-format/#text-agents-show) in its `SKILL.md`. A skill that declares none of it gets no file, and a skill that ships its own `agents/openai.yaml` keeps it unchanged, in every target.
 
-Trail Guide records what it installed in `generated/installed-skills.json`:
+Trail Guide records what it installed in `_managed/generated/installed-skills.json`:
 
 ```json
 {
@@ -239,7 +247,7 @@ This record is how Trail Guide knows which folders it owns: it replaces and remo
 
 ### SKILLS.md: find a skill
 
-`generated/SKILLS.md` has one entry per installed skill, so people, and agents whose tools don't load skills from the target folders, can see what's installed, where it came from, and why:
+`_managed/generated/SKILLS.md` has one entry per installed skill, so people, and agents whose tools don't load skills from the target folders, can see what's installed, where it came from, and why:
 
 ```md
 ### build-feature
@@ -255,7 +263,7 @@ Build a feature from an agreed spec, one slice at a time. Use when starting impl
 - **Installed because:** included
 ```
 
-**Level** names the skill's [level](/reference/configuration/#skill-levels) and the library and library release that set it, such as `required by fabrica, release 7`. It's absent for an authored skill, and for one the repository named directly from a non-library source. A skill installed only because another one calls it says so, such as `**Installed because:** used by build-feature`. **Type** is absent for a skill without one, and **Uses** for a skill that calls none. A renamed skill's heading is its install name, and its entry adds `**Renamed from:** review-change`. A skill from a non-library source shows its commit in place of a version. With no skill targets, **Installed at** gives the skill's source folder in `vendor/` or `skills/` instead, and **Applies** lists the generated file of each rule it cites, because no installed copy carries that list.
+**Level** names the skill's [level](/reference/configuration/#skill-levels) and the library and library release that set it, such as `required by fabrica, release 7`. It's absent for an authored skill, and for one the repository named directly from a non-library source. A skill installed only because another one calls it says so, such as `**Installed because:** used by build-feature`. **Type** is absent for a skill without one, and **Uses** for a skill that calls none. A renamed skill's heading is its install name, and its entry adds `**Renamed from:** review-change`. A skill from a non-library source shows its commit in place of a version. With no skill targets, **Installed at** gives the skill's source folder in `_managed/vendor/` or `skills/` instead, and **Applies** lists the generated file of each rule it cites, because no installed copy carries that list.
 
 `SKILLS.md` lists skills; it doesn't tell agents to prefer them over skills a person installed. See [Personal skills with the same name](/reference/sync/#personal-skills-with-the-same-name).
 
@@ -271,7 +279,7 @@ These abbreviated excerpts show how an agent finds an authored rule. The full ge
 
 ### RULES.md: choose a rule group
 
-`.trailguide/generated/RULES.md` is the starting point. Each entry tells the agent when to open a rule group:
+`.trailguide/_managed/generated/RULES.md` is the starting point. Each entry tells the agent when to open a rule group:
 
 ```md
 ### Testing
@@ -283,7 +291,7 @@ These abbreviated excerpts show how an agent finds an authored rule. The full ge
 
 ### Rule group page: find the rules
 
-`.trailguide/generated/groups/practices/testing.md` contains the rule group's rules. Small rule groups include full rule text; larger ones use summaries like this, linking to each full definition:
+`.trailguide/_managed/generated/groups/practices/testing.md` contains the rule group's rules. Small rule groups include full rule text; larger ones use summaries like this, linking to each full definition:
 
 ```md
 ### Test changed behavior
@@ -307,7 +315,7 @@ Authored rules have no version.
 
 ### Rule file: read the guidance
 
-`.trailguide/generated/rules/practices/testing/test-changed-behavior.md` contains the rule the agent follows:
+`.trailguide/_managed/generated/rules/practices/testing/test-changed-behavior.md` contains the rule the agent follows:
 
 ```md
 # Test changed behavior

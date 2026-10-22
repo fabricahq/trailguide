@@ -192,7 +192,7 @@ func (p *SkillPlan) Commit(ctx context.Context, description, kind string) (Autho
 		if err := checkNewSkill(ctx, root, p.name); err != nil {
 			return nil, err
 		}
-		return []filetxn.File{{Path: path.Join(skillsDirectory, p.name, skills.File), Content: data}}, nil
+		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(skillsDirectory, p.name, skills.File), Content: data}})
 	})
 	return authoringResult(changes, err)
 }

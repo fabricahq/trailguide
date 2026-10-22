@@ -115,7 +115,7 @@ Not a violation: a separate `main` package, such as `cmd/package-binaries`, prin
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/let-the-cli-own-the-command-contract.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/let-the-cli-own-the-command-contract.md)
 
 ### Source metadata
 

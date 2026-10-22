@@ -26,7 +26,7 @@ trailguide project init
 
 This creates the **Trail Guide directory**, `.trailguide/`, with your **project configuration** in `.trailguide/config.yaml` and a place for the rules and skills you write yourself in `rules/` and `skills/`. The configuration also sets `skillTargets: [claude, agents]`, so skills you install later are written where Claude Code and other agents look for them. It also adds a section to your project's `AGENTS.md`, creating the file if needed, which you'll look at in step 6. Initializing Trail Guide doesn't change your project's `README.md` or your own text in `AGENTS.md`.
 
-Later, when you add a library, Trail Guide saves a copy of its files, at the rule versions your configuration chooses, in `vendor/`. Trail Guide prepares your own rules and the ones you include from libraries in `generated/`, with a `RULES.md` index that helps agents find the rules to read.
+Later, when you add a library, Trail Guide saves a copy of its files, at the rule versions your configuration chooses, in `_managed/vendor/`. Trail Guide prepares your own rules and the ones you include from libraries in `_managed/generated/`, with a `RULES.md` index that helps agents find the rules to read.
 
 Run the commands below from the project root. After initialization, you can also run project commands from its Git subdirectories. See [Project files](/reference/files/) for the layout.
 
@@ -87,7 +87,7 @@ Run:
 trailguide project build
 ```
 
-`trailguide project build` reads your rules and `.trailguide/config.yaml`, validates them, and writes the results into `.trailguide/generated/`. It:
+`trailguide project build` reads your rules and `.trailguide/config.yaml`, validates them, and writes the results into `.trailguide/_managed/generated/`. It:
 
 - **Applies your choices:** includes the rules your configuration names, leaves out rules you've excluded, and substitutes your own replacements for library rules where configured.
 - **Organizes the rules for reading:** creates `RULES.md` and rule group indexes with links and instructions that help agents find and read relevant rules. See [a sample `RULES.md` and the files it links to](/reference/files/#example-follow-a-rule-from-the-index).
@@ -95,9 +95,9 @@ trailguide project build
 
 If two rules give conflicting advice, you decide which to exclude or replace in configuration. `trailguide project build` applies those decisions; it doesn't detect or resolve contradictory advice on its own.
 
-For this first build, open `.trailguide/generated/RULES.md` and follow its links to the Testing rule group and your rule. You've turned your source rule into part of the organized guidance your agent will use.
+For this first build, open `.trailguide/_managed/generated/RULES.md` and follow its links to the Testing rule group and your rule. You've turned your source rule into part of the organized guidance your agent will use.
 
-Keep editing rules in `.trailguide/rules/`, then build again to update the agent's copy. Don't edit `generated/` directly.
+Keep editing rules in `.trailguide/rules/`, then build again to update the agent's copy. Don't edit `_managed/generated/` directly.
 
 You can verify that the generated files match your source files:
 
@@ -132,7 +132,7 @@ trailguide project sync
 trailguide project check
 ```
 
-Open `.trailguide/generated/RULES.md` again. You'll now see your own Testing rule group and the library's "Code design" rule group. Your rule remains yours to edit. Each rule from the library shows its version and retains its source and license information.
+Open `.trailguide/_managed/generated/RULES.md` again. You'll now see your own Testing rule group and the library's "Code design" rule group. Your rule remains yours to edit. Each rule from the library shows its version and retains its source and license information.
 
 ## 5. Install a skill
 
@@ -162,7 +162,7 @@ trailguide project check
 
 Trail Guide writes the skill to `.claude/skills/build-feature/` and `.agents/skills/build-feature/`, where your coding agent finds skills. It also installs any skill that `build-feature` uses, and takes the rules it cites, even from rule groups you didn't include, so its links always work. The skill comes from the same library release as your rules: sync never moves a source, so it takes new rules and skills from the library release it recorded in step 4. If the library also requires skills of every project, sync installs those too; `trailguide project list skills` shows each skill's level. Those rules are there for the skill to reference; they don't join `RULES.md`.
 
-Open `.claude/skills/build-feature/SKILL.md`. The steps come from the library. The section at the end, **Rules this skill applies**, is generated for your project: it links to your project's version of each rule the skill cites. `.trailguide/generated/SKILLS.md` lists every installed skill. To edit a skill, don't change the installed copy, which `trailguide project check` would reject; see [Install skills](/guides/install-skills/) to fork it.
+Open `.claude/skills/build-feature/SKILL.md`. The steps come from the library. The section at the end, **Rules this skill applies**, is generated for your project: it links to your project's version of each rule the skill cites. `.trailguide/_managed/generated/SKILLS.md` lists every installed skill. To edit a skill, don't change the installed copy, which `trailguide project check` would reject; see [Install skills](/guides/install-skills/) to fork it.
 
 ## 6. Give the rules to your agent
 
@@ -173,12 +173,12 @@ Your own rules and the library's are now available in the repository. Your codin
 
 Before planning, implementing, reviewing, testing, or debugging a change:
 
-1. Read `.trailguide/generated/RULES.md` and follow its instructions to
-   select relevant groups and read their rules in full, including linked
-   files and additional index pages.
-2. If `.trailguide/generated/SKILLS.md` exists, read it and use the skills
-   relevant to the task. Read each skill's instructions and the rules it
-   cites before performing the steps that apply them.
+1. Read `.trailguide/_managed/generated/RULES.md` and follow its
+   instructions to select relevant groups and read their rules in full,
+   including linked files and additional index pages.
+2. If `.trailguide/_managed/generated/SKILLS.md` exists, read it and use
+   the skills relevant to the task. Read each skill's instructions and the
+   rules it cites before performing the steps that apply them.
 3. Follow the applicable rules and their exceptions while doing the work.
 4. Before finishing, check your work against those rules and run the
    relevant validation. Briefly report what you verified and any gaps.

@@ -67,7 +67,7 @@ A runner that reads any address from configuration or a library must be `gitexec
 
 ## Source and attribution
 
-**Rule source:** [Original rule](../../../../../rules/techs/go/choose-the-git-runner-by-repository-owner.md)
+**Rule source:** [Original rule](../../../../../../rules/techs/go/choose-the-git-runner-by-repository-owner.md)
 
 ### Source metadata
 

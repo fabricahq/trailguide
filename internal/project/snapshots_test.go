@@ -109,11 +109,11 @@ func TestSnapshotRuleLinkToSharedAssetResolvesInVendor(t *testing.T) {
 	if _, ok := encoded[rule]; !ok {
 		t.Fatalf("no vendored rule at vendor/%s; got %v", rule, slices.Sorted(maps.Keys(encoded)))
 	}
-	target, _, local, err := rules.RelativeTarget(link, "vendor/"+rule)
-	if err != nil || !local || !strings.HasPrefix(target, "vendor/team/") {
+	target, _, local, err := rules.RelativeTarget(link, "_managed/vendor/"+rule)
+	if err != nil || !local || !strings.HasPrefix(target, "_managed/vendor/team/") {
 		t.Fatalf("link resolves to %q, %v, %v; want a file in vendor/team/", target, local, err)
 	}
-	if _, ok := encoded[strings.TrimPrefix(target, "vendor/")]; !ok {
+	if _, ok := encoded[strings.TrimPrefix(target, "_managed/vendor/")]; !ok {
 		t.Fatalf("link resolves to %s, which the snapshot doesn't have", target)
 	}
 	got, err := decodeStored(config, encoded)
@@ -502,7 +502,7 @@ func TestSnapshotOfALibraryInTheLayoutBeforeVersion2IsUnsupported(t *testing.T) 
 func TestSnapshotFormatOneIsUnsupported(t *testing.T) {
 	config, _ := snapshotFixture(t)
 	vendor := map[string][]byte{"team/_source.json": []byte(`{"formatVersion":1,"repository":"https://github.com/acme/rules","ref":"v1.0.0","resolvedCommit":"` + releaseOne + `","groups":["techs/go"],"files":{}}`)}
-	_, err := readRecords(config, nil, vendor, true, nil)
+	_, err := readRecords(config, nil, vendor, currentLayout, true, nil)
 	var validation errs.ValidationError
 	if !errors.As(err, &validation) || !strings.Contains(validation.ValidationProblem(), "delete .trailguide/vendor/ and run trailguide project sync") {
 		t.Errorf("sync: %v", err)
@@ -524,7 +524,7 @@ func TestRecordedSnapshotsReadRecordsWithoutCheckingConfiguration(t *testing.T) 
 	changed := snapshotConfig(t, `"rules":{"include":["*"]}`)
 	lock := vendor[lockFile]
 	delete(vendor, lockFile)
-	stored, err := readRecords(changed, lock, vendor, true, nil)
+	stored, err := readRecords(changed, lock, vendor, currentLayout, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -534,7 +534,7 @@ func TestRecordedSnapshotsReadRecordsWithoutCheckingConfiguration(t *testing.T) 
 	if !reflect.DeepEqual(recorded["team"], want) {
 		t.Fatalf("got %+v, want %+v", recorded["team"], want)
 	}
-	stored, err = readRecords(changed, nil, map[string][]byte{}, true, nil)
+	stored, err = readRecords(changed, nil, map[string][]byte{}, currentLayout, true, nil)
 	if recorded := recordedSnapshots(changed, stored); err != nil || len(recorded) != 0 {
 		t.Fatalf("new source: %v, %v", recorded, err)
 	}
@@ -699,7 +699,7 @@ func TestSnapshotsRoundTripSkillsAndSourcesThatAreNotLibraries(t *testing.T) {
 	if err := verifyExecutable(got, &filetxn.Tree{Files: map[string][]byte{}, Executable: []string{"team/skills/build/run.sh"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := verifyExecutable(got, &filetxn.Tree{Files: map[string][]byte{}}); err == nil || !strings.Contains(err.Error(), "vendor/team/skills/build/run.sh") {
+	if err := verifyExecutable(got, &filetxn.Tree{Files: map[string][]byte{}}); err == nil || !strings.Contains(err.Error(), "_managed/vendor/team/skills/build/run.sh") {
 		t.Fatalf("got %v; want the vendored script's lost executable bit reported", err)
 	}
 }
