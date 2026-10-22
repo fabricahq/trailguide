@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -186,11 +187,12 @@ func TestUpdates(t *testing.T) {
 		"techs/go/errors":  *version("1.1.0"),
 		"techs/go/logging": *version("1.2.0"),
 	}
-	// The lockfile already records naming as retired, so its retirement is no news; tests' is.
+	// The project still holds naming, which a pin keeps at its last version, and tests, both retired.
 	got := view.Updates("fabrica", current, map[string]bool{"techs/go/naming": true, "techs/go/tests": true})
 	want := projectview.Updates{
 		Active: []projectview.RuleUpdate{
 			{ID: "fabrica:techs/go/draft", Path: "techs/go/draft", Current: version("1.0.0")},
+			{ID: "fabrica:techs/go/naming", Path: "techs/go/naming", Held: version("1.0.0"), Pinned: true},
 			{ID: "fabrica:techs/go/tests", Path: "techs/go/tests", Held: version("2.0.0")},
 		},
 		// The replacement is based on 1.0.0, so 1.1.0 is news to it even though the project holds 1.1.0.
@@ -203,5 +205,51 @@ func TestUpdates(t *testing.T) {
 	}
 	if none := view.Updates("tools", nil, nil); len(none.Active)+len(none.ReplacementBasis)+len(none.Excluded) != 0 {
 		t.Errorf("a source with no rules has updates: %+v", none)
+	}
+}
+
+// TestUpdatesListsARetirementTheLockfileRecords checks that a rule the lockfile records as retired, but the project
+// still holds, is a pending update even when the caller doesn't pass the library's retirements: trailguide project
+// update would remove it.
+func TestUpdatesListsARetirementTheLockfileRecords(t *testing.T) {
+	config := strings.Replace(fixtureConfig, "      pins:\n        - id: techs/go/naming\n          version: \"1.0.0\"\n          reason: Waiting on the rename.\n", "", 1)
+	view, err := projectview.Read([]byte(config), fixtureLock(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := view.Updates("fabrica", map[string]trailguide.RuleVersion{"techs/go/tests": *version("2.0.0")}, nil)
+	want := []projectview.RuleUpdate{{ID: "fabrica:techs/go/naming", Path: "techs/go/naming", Held: version("1.0.0")}}
+	if !reflect.DeepEqual(got.Active, want) {
+		data, _ := json.MarshalIndent(got.Active, "", "  ")
+		t.Errorf("active updates =\n%s", data)
+	}
+}
+
+// TestReadKeepsAReplacementOfARemovedRule checks that an authored rule replacing a rule the source no longer holds,
+// such as one an update removed after its library retired it, stays in the view with what it replaces.
+func TestReadKeepsAReplacementOfARemovedRule(t *testing.T) {
+	lock, err := trailguide.ParseLock(fixtureLock(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := lock.Sources["fabrica"]
+	delete(entry.Rules, "techs/go/errors")
+	entry.RetiredRules = []string{"techs/go/errors", "techs/go/naming"}
+	lock.Sources["fabrica"] = entry
+	data, err := lock.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := projectview.Read([]byte(fixtureConfig), data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := projectview.Rule{ID: "local:techs/go/wrap-errors", Path: "techs/go/wrap-errors", Active: true,
+		Replaces: &projectview.Replacement{ID: "fabrica:techs/go/errors", BasedOn: version("1.0.0")}}
+	if i := slices.IndexFunc(view.Rules, func(rule projectview.Rule) bool { return rule.ID == want.ID }); i < 0 || !reflect.DeepEqual(view.Rules[i], want) {
+		t.Errorf("rules = %+v, want %+v among them", view.Rules, want)
+	}
+	if slices.ContainsFunc(view.Rules, func(rule projectview.Rule) bool { return rule.ID == "fabrica:techs/go/errors" }) {
+		t.Error("the view lists a rule the source no longer holds")
 	}
 }

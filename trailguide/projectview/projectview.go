@@ -69,7 +69,10 @@ type Rule struct {
 	Release *int                    `json:"release,omitempty"`
 	// Commit is the commit the project's copy of the rule comes from; it is empty for an authored rule.
 	Commit string `json:"commit,omitempty"`
-	// Active is true when agents receive the rule in the project's generated guidance.
+	// Active is true when the configuration includes the rule in the project's guidance: a source's rule the
+	// project holds and doesn't exclude, or an authored rule that replaces one. It describes the two files Read
+	// takes, so it doesn't say whether the generated guidance is current, or whether a replacement's file exists and
+	// builds.
 	Active bool `json:"active"`
 	// Pin is the project's pin of the rule, or nil.
 	Pin *Pin `json:"pin,omitempty"`
@@ -79,7 +82,8 @@ type Rule struct {
 	ReplacedBy string `json:"replacedBy,omitempty"`
 	// Replaces describes, on an authored rule, the source's rule it replaces; it is nil on every other rule.
 	Replaces *Replacement `json:"replaces,omitempty"`
-	// Retired is true when the rule's library has retired it.
+	// Retired is true when the rule's library has retired it. A source's rule the project still holds while
+	// retired stays until trailguide project update removes it, or a pin keeps it.
 	Retired bool `json:"retired"`
 }
 
@@ -150,13 +154,19 @@ func Read(config, lock []byte) (View, error) {
 				rule.Exclusion = &Exclusion{Reason: exclusion.Reason}
 				if exclusion.ReplacedBy != "" {
 					rule.ReplacedBy = LocalSource + ":" + exclusion.ReplacedBy
-					view.Rules = append(view.Rules, Rule{
-						ID: rule.ReplacedBy, Path: exclusion.ReplacedBy, Active: true,
-						Replaces: &Replacement{ID: rule.ID, BasedOn: exclusion.BasedOn},
-					})
 				}
 			}
 			view.Rules = append(view.Rules, rule)
+		}
+		// A replacement comes from the configuration alone, so it stays when the source no longer holds the rule it
+		// replaces, such as after an update removed a retired rule.
+		for _, path := range slices.Sorted(maps.Keys(source.Exclude)) {
+			if exclusion := source.Exclude[path]; exclusion.ReplacedBy != "" {
+				view.Rules = append(view.Rules, Rule{
+					ID: LocalSource + ":" + exclusion.ReplacedBy, Path: exclusion.ReplacedBy, Active: true,
+					Replaces: &Replacement{ID: source.Name + ":" + path, BasedOn: exclusion.BasedOn},
+				})
+			}
 		}
 	}
 	slices.SortFunc(view.Rules, func(a, b Rule) int { return strings.Compare(a.ID, b.ID) })
@@ -193,7 +203,9 @@ type RuleUpdate struct {
 }
 
 // Updates compares the rules the view holds of source with its library's current state: current, each current
-// rule's version by its ID in the library, and retired, the IDs of the rules it has retired. A rule the library
+// rule's version by its ID in the library, and retired, the IDs of the rules it has retired. A rule the project still
+// holds after its library retired it is listed, whether the lockfile or retired says so, since trailguide project
+// update would remove it unless it's pinned. A rule the library
 // neither holds nor retired, such as one dropped from its history, isn't listed. A rule held at an unreleased version
 // is listed when the library holds it at all, since any published version differs from it. Rules the library added
 // aren't listed: the view can't tell whether the project's selectors would include them.
@@ -219,7 +231,7 @@ func (v View) Updates(source string, current map[string]trailguide.RuleVersion, 
 				continue
 			}
 			update.Current = &version
-		} else if !retired[rule.Path] || rule.Retired {
+		} else if !retired[rule.Path] && !rule.Retired {
 			continue
 		}
 		switch {
