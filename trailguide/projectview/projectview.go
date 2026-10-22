@@ -80,7 +80,9 @@ type Rule struct {
 	Exclusion *Exclusion `json:"exclusion,omitempty"`
 	// ReplacedBy is the project ID of the authored rule agents receive instead, or empty.
 	ReplacedBy string `json:"replacedBy,omitempty"`
-	// Replaces describes, on an authored rule, the source's rule it replaces; it is nil on every other rule.
+	// Replaces describes, on an authored rule, the source's rule the configuration says it replaces, even when the
+	// source no longer holds that rule, though the rule's generated page then no longer names it; it is nil on every
+	// other rule.
 	Replaces *Replacement `json:"replaces,omitempty"`
 	// Retired is true when the rule's library has retired it. A source's rule the project still holds while
 	// retired stays until trailguide project update removes it, or a pin keeps it.
@@ -121,6 +123,9 @@ func Read(config, lock []byte) (View, error) {
 		return View{}, err
 	}
 	view := View{Sources: []Source{}, Rules: []Rule{}}
+	// replacements maps each authored rule's project ID to the rule it replaces, and held records the ones whose
+	// replaced rule the source still holds.
+	replacements, held := map[string]Rule{}, map[string]bool{}
 	for _, source := range configuration.Sources {
 		entry, ok := locked.Sources[source.Name]
 		if !ok {
@@ -159,16 +164,27 @@ func Read(config, lock []byte) (View, error) {
 			view.Rules = append(view.Rules, rule)
 		}
 		// A replacement comes from the configuration alone, so it stays when the source no longer holds the rule it
-		// replaces, such as after an update removed a retired rule.
+		// replaces, such as after an update removed a retired rule. An authored rule is listed once: build fails when
+		// it replaces two rules the project holds, so it keeps the one it replaces that the source holds, or else
+		// the first the configuration names.
 		for _, path := range slices.Sorted(maps.Keys(source.Exclude)) {
-			if exclusion := source.Exclude[path]; exclusion.ReplacedBy != "" {
-				view.Rules = append(view.Rules, Rule{
-					ID: LocalSource + ":" + exclusion.ReplacedBy, Path: exclusion.ReplacedBy, Active: true,
-					Replaces: &Replacement{ID: source.Name + ":" + path, BasedOn: exclusion.BasedOn},
-				})
+			exclusion := source.Exclude[path]
+			if exclusion.ReplacedBy == "" {
+				continue
 			}
+			id := LocalSource + ":" + exclusion.ReplacedBy
+			_, holds := entry.Rules[path]
+			if _, listed := replacements[id]; listed && (held[id] || !holds) {
+				continue
+			}
+			replacements[id] = Rule{
+				ID: id, Path: exclusion.ReplacedBy, Active: true,
+				Replaces: &Replacement{ID: source.Name + ":" + path, BasedOn: exclusion.BasedOn},
+			}
+			held[id] = holds
 		}
 	}
+	view.Rules = slices.AppendSeq(view.Rules, maps.Values(replacements))
 	slices.SortFunc(view.Rules, func(a, b Rule) int { return strings.Compare(a.ID, b.ID) })
 	return view, nil
 }

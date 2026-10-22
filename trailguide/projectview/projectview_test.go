@@ -253,3 +253,48 @@ func TestReadKeepsAReplacementOfARemovedRule(t *testing.T) {
 		t.Error("the view lists a rule the source no longer holds")
 	}
 }
+
+// TestReadListsAnAuthoredRuleOnceWhenItReplacesTwoRules: an authored rule that two exclusions name is listed once,
+// replacing the rule the source holds, which is the one build uses, or else the first the configuration names.
+func TestReadListsAnAuthoredRuleOnceWhenItReplacesTwoRules(t *testing.T) {
+	config := strings.Replace(fixtureConfig, "        - id: techs/go/logging\n          reason: We log through our platform.\n",
+		"        - id: techs/go/a-old\n          reason: Retired.\n          replacedBy: techs/go/wrap-errors\n        - id: techs/go/logging\n          reason: We log through our platform.\n", 1)
+	for name, test := range map[string]struct {
+		removed  []string
+		replaces string
+	}{
+		"one held":  {[]string{"techs/go/a-old"}, "fabrica:techs/go/errors"},
+		"none held": {[]string{"techs/go/a-old", "techs/go/errors"}, "fabrica:techs/go/a-old"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			lock, err := trailguide.ParseLock(fixtureLock(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			entry := lock.Sources["fabrica"]
+			for _, id := range test.removed {
+				delete(entry.Rules, id)
+			}
+			entry.RetiredRules = append(slices.Clone(test.removed), "techs/go/naming")
+			slices.Sort(entry.RetiredRules)
+			lock.Sources["fabrica"] = entry
+			data, err := lock.Encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			view, err := projectview.Read([]byte(config), data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var listed []projectview.Rule
+			for _, rule := range view.Rules {
+				if rule.ID == "local:techs/go/wrap-errors" {
+					listed = append(listed, rule)
+				}
+			}
+			if len(listed) != 1 || listed[0].Replaces.ID != test.replaces {
+				t.Errorf("listed %+v, want one replacing %s", listed, test.replaces)
+			}
+		})
+	}
+}
