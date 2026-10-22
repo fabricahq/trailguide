@@ -30,6 +30,10 @@ func TestGenerateCompleteOutput(t *testing.T) {
 			t.Errorf("missing generated file %s", name)
 		}
 	}
+	// A project without sources has no lockfile to point to.
+	if readme := string(output.Files["rules/README.md"]); strings.Contains(readme, "lock.json") {
+		t.Errorf("rules/README.md points to a lockfile a project without sources doesn't have:\n%s", readme)
+	}
 	if !strings.Contains(string(output.Files["rules/local/techs/go/errors.md"]), "Return the error.\r\n") {
 		t.Fatal("rule body bytes changed")
 	}

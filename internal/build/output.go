@@ -55,7 +55,12 @@ func prepare(resolved resolution, options Options) (Output, error) {
 		}
 		files["libraries/"+source.Name+"/README.md"] = []byte(generatedMarkdown(libraryReadme(source)))
 	}
-	files["rules/README.md"] = []byte(generatedMarkdown("# Resolved rules\n\nThese files contain the complete resolved definitions after exclusions, replacements, and local additions. Start with [RULES.md](../RULES.md). [lock.json](../../lock.json) records each source's revision and rule versions. Edit source inputs and rebuild.\n"))
+	// Only a project with sources has a lockfile to point to.
+	lock := ""
+	if len(resolved.Sources) > 0 {
+		lock = " [lock.json](../../lock.json) records each source's revision and rule versions."
+	}
+	files["rules/README.md"] = []byte(generatedMarkdown("# Resolved rules\n\nThese files contain the complete resolved definitions after exclusions, replacements, and local additions. Start with [RULES.md](../RULES.md)." + lock + " Edit source inputs and rebuild.\n"))
 	files["groups/README.md"] = []byte(generatedMarkdown("# Rule groups\n\nStart with [RULES.md](../RULES.md), then open relevant group indexes and read each applicable rule in full. Each group page provides reading instructions and either complete rules or summaries with explicit links to the full definitions.\n"))
 	folders, skillFiles, err := renderSkills(resolved.Skills, excludedSkills(resolved.Sources))
 	if err != nil {

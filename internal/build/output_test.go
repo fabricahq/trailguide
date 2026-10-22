@@ -52,7 +52,8 @@ func TestPrepareRetainsTermsWithoutActiveRules(t *testing.T) {
 }
 
 // TestPrepareNamesTheReplacedRule puts the library rule a replacement replaces, its basis, and the reason on the
-// replacement's page, which declares no library license, and writes no provenance file.
+// replacement's page, which declares no library license, points rules/README.md to the lockfile, and writes no
+// provenance file.
 func TestPrepareNamesTheReplacedRule(t *testing.T) {
 	config, libraries := fixture(t, `[{"id":"techs/go/errors","reason":"Project policy","replacedBy":"techs/go/custom","basedOn":"1.0.0"}]`)
 	lib := libraries["team"]
@@ -73,6 +74,9 @@ func TestPrepareNamesTheReplacedRule(t *testing.T) {
 	}
 	if strings.Contains(page, "Declared license") || strings.Contains(page, "licenses/") {
 		t.Errorf("the replacement inherited the library's license:\n%s", page)
+	}
+	if readme := string(got.Files["rules/README.md"]); !strings.Contains(readme, "[lock.json](../../lock.json)") {
+		t.Errorf("rules/README.md doesn't point to the lockfile:\n%s", readme)
 	}
 	if _, written := got.Files["provenance.json"]; written {
 		t.Error("wrote provenance.json")
