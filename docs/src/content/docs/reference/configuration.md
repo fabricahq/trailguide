@@ -291,6 +291,8 @@ Every source has a `ref`, which says which revision of its repository the projec
 | Another tag, such as `v1.2` or `refs/tags/v1.2` | The recorded commit. | For a non-library source, the commit the tag names now, warning when the tag moved since the last update. A library source stays. |
 | A full 40-character commit SHA | That commit. | Nowhere; it never moves. |
 
+A library release ref such as `release/4` records which release the project is at. It isn't a pin: the next `trailguide project update` moves the source to the newest release and rewrites `ref` to match. To hold one rule at its version through updates, [pin it](#pin-a-rule). To hold the whole source, don't update it.
+
 Sync resolves a branch, tag, or commit to a commit when it first reads the source, records that commit in the source's vendor snapshot, and keeps it on every later `trailguide project sync` and `trailguide project build`, so installs stay reproducible. For a library release, the snapshot records the release and each rule's version, and sync keeps them too. Sync never moves a source: only `trailguide project update` does, after a preview.
 
 `latest-release` names the newest library release, not the newest commit on a branch such as `main`. It moves like a branch: sync keeps the release the project records, and each update moves the source to the newest release. `config.yaml` then doesn't say which release the project is at, so a reviewer finds the move only in `vendor/` and `generated/`. Use a release, such as `release/4`, when you want the release in `config.yaml`.

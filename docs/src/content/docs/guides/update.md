@@ -388,7 +388,7 @@ Sync refuses the changed `ref`, because sync never moves a source. Update the so
 trailguide project update vendor-rules
 ```
 
-The update previews and takes exactly what release 5 published, and leaves the rules you pinned where they are. When the library has published a newer release, the preview says so, and running the update again moves the source to it. Update moves a source only forward; to go back to an older release, revert the commit that moved it.
+The update previews and takes exactly what release 5 published, and leaves the rules you pinned where they are. `ref: release/5` doesn't keep the source there, though: the next update, with `ref` unchanged, moves it to the newest release and rewrites `ref`. When the library has published a newer release, the preview says so, and running the update again moves the source to it. Update moves a source only forward; to go back to an older release, revert the commit that moved it.
 
 A project that wants each update to take the newest release, without naming it in `config.yaml`, can set `ref: latest-release`. Sync keeps the release the project records, and each `trailguide project update` moves the source to the newest release, leaving `ref` as it is. `latest-release` means the newest library release, not the newest commit on `main`.
 
