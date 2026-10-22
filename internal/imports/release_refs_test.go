@@ -1,3 +1,5 @@
+// Exercise library release refs across source imports and updates.
+
 package imports
 
 import (
@@ -183,5 +185,28 @@ func TestPlanUpdate_EditedReleaseRefWithoutAnyReleaseTagsFails(t *testing.T) {
 	requireCode(t, err, "version-not-found")
 	if !strings.Contains(err.Error(), "sources.team.ref names release/2, which the library doesn't have. The repository has no release/<number> tags now") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// TestPlanUpdate_EditedReleaseRefWithANewRuleStopsAtThatRelease: an edit to release/2 that also selects a rule
+// release 2 added still takes release 2, not the newest, although choosing that rule already raises the plan to
+// release 2.
+func TestPlanUpdate_EditedReleaseRefWithANewRuleStopsAtThatRelease(t *testing.T) {
+	h := newHistory(t)
+	one, err := h.sync(t, h.source(t, `"ref":"release/1","rules":{"include":["techs/go/a"]}`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := h.source(t, `"ref":"release/2","rules":{"include":["techs/go/a","techs/go/d"]}`)
+	update, err := h.plan(t, config, &one.Snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview := update.Sources[0]; preview.Available != 3 {
+		t.Fatalf("preview %+v", preview)
+	}
+	installed := h.install(t, update, config)
+	if want := map[string]string{"techs/go/a": "1.1.0@2", "techs/go/d": "1.0.0@2"}; !reflect.DeepEqual(versions(installed.Snapshot), want) || installed.Snapshot.Release != 2 {
+		t.Fatalf("installed %v, release %d", versions(installed.Snapshot), installed.Snapshot.Release)
 	}
 }

@@ -764,6 +764,12 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	}()
 	p := newPlanner(ctx, repo, source, recorded)
 	p.again, p.updating = followsRef(source, p.recorded), true
+	// A ref edited to name another library release than the record's is decided against the record, since newly
+	// selected rules can raise the plan's own release to the one the ref names.
+	edited := 0
+	if number := source.Ref.Release(); number != 0 && p.recorded != nil && !p.recorded.NonLibrary && p.recorded.Release != 0 && p.recorded.Release != number {
+		edited = number
+	}
 	before, err := p.choose()
 	if err != nil {
 		return plannedSource{}, SourceUpdate{}, nil, err
@@ -772,7 +778,7 @@ func planSourceUpdate(ctx context.Context, source rules.Source, recorded *librar
 	// was edited to name another release than the record's, which the update takes.
 	p.ceiling = 0
 	available := 0
-	if number := source.Ref.Release(); before.followsReleases && number != 0 && number != before.release {
+	if number := edited; number != 0 && before.followsReleases {
 		history, err := p.releases()
 		if err != nil {
 			return plannedSource{}, SourceUpdate{}, nil, err
