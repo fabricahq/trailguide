@@ -285,7 +285,7 @@ func secondSkillRelease(t *testing.T, f *gitfixture.Fixture) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	return commit
@@ -565,7 +565,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+			if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := PlanUpdate(ctx, options, git, nil, nil)
@@ -601,7 +601,7 @@ func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	options, git := skillProject(t, f, "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team:\n    repository: REPOSITORY\n    skills:\n      forks:\n        skills/build-feature:\n          as: skills/build-feature\n          basedOn: \""+commit+"\"\n          reason: We build with make.\n")

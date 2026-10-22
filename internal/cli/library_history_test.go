@@ -17,7 +17,7 @@ import (
 )
 
 // releaseOne publishes rules a and b at 1.0.0, as the first library release must.
-const releaseOne = "Library release 1.\n---\nformatVersion: 1\nrelease: 1\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: new\n    summaries:\n      - Add a.\n  practices/testing/b:\n    change: new\n    summaries:\n      - Add b.\n"
+const releaseOne = "Library release 1.\n---\nschemaVersion: 1\nrelease: 1\nrules:\n  practices/testing/a: 1.0.0\n  practices/testing/b: 1.0.0\nchanges:\n  practices/testing/a:\n    change: new\n    summaries:\n      - Add a.\n  practices/testing/b:\n    change: new\n    summaries:\n      - Add b.\n"
 
 // libraryRule returns a complete rule document with one line of guidance.
 func libraryRule(guidance string) string {

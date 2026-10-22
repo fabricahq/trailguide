@@ -80,7 +80,7 @@ func TestProjectGuideExamples(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if err := fixture.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/shared: 1.0.0\nchanges:\n  techs/go/shared: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+			if err := fixture.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/shared: 1.0.0\nchanges:\n  techs/go/shared: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 				t.Fatal(err)
 			}
 			updated := false
@@ -112,7 +112,7 @@ func TestProjectGuideExamples(t *testing.T) {
 					if _, err := fixture.Commit(ctx, fixture.Worktree(), "Clarify shared", gitfixture.Library(map[string][]byte{"techs/go/shared.md": []byte(rule + "\nWrap them with context.\n")})); err != nil {
 						t.Fatal(err)
 					}
-					if err := fixture.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/shared: 1.1.0\nchanges:\n  techs/go/shared: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
+					if err := fixture.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/shared: 1.1.0\nchanges:\n  techs/go/shared: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n"); err != nil {
 						t.Fatal(err)
 					}
 					updated = true

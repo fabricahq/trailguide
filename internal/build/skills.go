@@ -319,7 +319,7 @@ func renderSkills(resolved []resolvedSkill, excluded []excludedSkill) (map[strin
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(struct {
-		FormatVersion   int      `json:"formatVersion"`
+		SchemaVersion   int      `json:"schemaVersion"`
 		GeneratedNotice string   `json:"generatedNotice"`
 		Skills          []record `json:"skills"`
 	}{1, generatedNotice + " " + strings.ReplaceAll(regenerationNotice, "`", ""), records}); err != nil {
@@ -371,6 +371,8 @@ type InstalledSkill struct {
 // are a skill target's folder holding a validly named skill folder. A record it can't read lists none.
 func InstalledSkills(data []byte) []InstalledSkill {
 	var record struct {
+		SchemaVersion int `json:"schemaVersion"`
+		// FormatVersion is the field's spelling before Trail Guide 0.8.0, which the next sync rewrites.
 		FormatVersion int `json:"formatVersion"`
 		Skills        []struct {
 			Name    string   `json:"name"`
@@ -378,7 +380,7 @@ func InstalledSkills(data []byte) []InstalledSkill {
 			Targets []string `json:"targets"`
 		} `json:"skills"`
 	}
-	if json.Unmarshal(data, &record) != nil || record.FormatVersion != 1 {
+	if json.Unmarshal(data, &record) != nil || max(record.SchemaVersion, record.FormatVersion) != 1 {
 		return []InstalledSkill{}
 	}
 	result := []InstalledSkill{}

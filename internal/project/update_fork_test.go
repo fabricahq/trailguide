@@ -33,10 +33,10 @@ func thirdRelease(t *testing.T, f *gitfixture.Fixture, retire bool) {
 		"techs/go/assets/errors/data.bin": nil,
 		"assets/diagrams/new.svg":         []byte("<svg id=\"new\"/>"),
 	}
-	record := "formatVersion: 1\nrelease: 3\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/added: 1.0.0\n  techs/go/errors: 2.0.0\n  techs/go/licensed: 1.0.0\nchanges:\n  techs/go/errors: {change: major, from: 1.1.0, summaries: [Require a table.]}\n"
+	record := "schemaVersion: 1\nrelease: 3\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/added: 1.0.0\n  techs/go/errors: 2.0.0\n  techs/go/licensed: 1.0.0\nchanges:\n  techs/go/errors: {change: major, from: 1.1.0, summaries: [Require a table.]}\n"
 	if retire {
 		files = map[string][]byte{"techs/go/errors.md": nil, "techs/go/assets/errors/notes.md": nil, "techs/go/assets/errors/data.bin": nil}
-		record = "formatVersion: 1\nrelease: 3\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/added: 1.0.0\n  techs/go/licensed: 1.0.0\nchanges: {}\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [No longer needed.]}\n"
+		record = "schemaVersion: 1\nrelease: 3\nrules:\n  practices/testing/verify: 1.0.0\n  techs/go/added: 1.0.0\n  techs/go/licensed: 1.0.0\nchanges: {}\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [No longer needed.]}\n"
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Third release", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)

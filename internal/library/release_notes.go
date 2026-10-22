@@ -451,7 +451,7 @@ func normalizedRecord(record trailguide.ReleaseRecord) trailguide.ReleaseRecord 
 	return record
 }
 
-// encodeReleaseRecord writes the record's YAML, starting with its formatVersion, with sorted keys, leaving out
+// encodeReleaseRecord writes the record's YAML, starting with its schemaVersion, with sorted keys, leaving out
 // empty changes, retired, and libraryFiles sections, and the skills section when the record has none. rules, and
 // skills.versions in a skills section, are always present, since the parser requires them.
 func encodeReleaseRecord(record trailguide.ReleaseRecord) ([]byte, error) {
@@ -505,7 +505,7 @@ func encodeReleaseRecord(record trailguide.ReleaseRecord) ([]byte, error) {
 		}
 		return fields
 	}
-	document := mapping(text("formatVersion"), number(trailguide.ReleaseRecordFormat), text("release"), number(record.Release), text("rules"), versions(record.Rules))
+	document := mapping(text("schemaVersion"), number(trailguide.ReleaseRecordSchemaVersion), text("release"), number(record.Release), text("rules"), versions(record.Rules))
 	document.Content = append(document.Content, changeEntries(record.Changes, record.Retired)...)
 	if len(record.LibraryFiles) > 0 {
 		document.Content = append(document.Content, text("libraryFiles"), list(record.LibraryFiles))

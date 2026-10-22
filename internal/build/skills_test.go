@@ -81,19 +81,28 @@ func TestGenerateRejectsASourceSkillAndAnAuthoredSkillWithOneInstallName(t *test
 }
 
 func TestInstalledSkillIDsNamesTheSkillInEachFolder(t *testing.T) {
-	record := `{"formatVersion":1,"skills":[{"id":"skills/tidy","targets":[".agents/skills/tidy",".claude/skills/tidy"]},{"id":"team:skills/review","targets":[".claude/skills/review"]}]}`
+	record := `{"schemaVersion":1,"skills":[{"id":"skills/tidy","targets":[".agents/skills/tidy",".claude/skills/tidy"]},{"id":"team:skills/review","targets":[".claude/skills/review"]}]}`
 	want := map[string]string{".agents/skills/tidy": "skills/tidy", ".claude/skills/tidy": "skills/tidy", ".claude/skills/review": "team:skills/review"}
 	if got := build.InstalledSkillIDs([]byte(record)); !maps.Equal(got, want) {
 		t.Fatalf("installed skills = %v, want %v", got, want)
 	}
 }
 
+// A record from before Trail Guide 0.8.0 spells its schema version formatVersion, and is still read until the next sync
+// rewrites it.
+func TestInstalledFoldersReadsARecordWithTheEarlierSpelling(t *testing.T) {
+	record := `{"formatVersion":1,"skills":[{"id":"skills/tidy","targets":[".claude/skills/tidy"]}]}`
+	if got := build.InstalledFolders([]byte(record)); !slices.Equal(got, []string{".claude/skills/tidy"}) {
+		t.Fatalf("installed folders = %v", got)
+	}
+}
+
 func TestInstalledFoldersListsOnlySkillTargetFolders(t *testing.T) {
-	record := `{"formatVersion":1,"skills":[{"targets":[".claude/skills/tidy","../outside/tidy",".claude/skills/../../x",".github/skills/tidy",".agents/skills/Bad_Name",".agents/skills/tidy"]}]}`
+	record := `{"schemaVersion":1,"skills":[{"targets":[".claude/skills/tidy","../outside/tidy",".claude/skills/../../x",".github/skills/tidy",".agents/skills/Bad_Name",".agents/skills/tidy"]}]}`
 	if got := build.InstalledFolders([]byte(record)); !slices.Equal(got, []string{".agents/skills/tidy", ".claude/skills/tidy"}) {
 		t.Fatalf("installed folders = %v", got)
 	}
-	for _, unreadable := range []string{"", "{", `{"formatVersion":2,"skills":[{"targets":[".claude/skills/tidy"]}]}`} {
+	for _, unreadable := range []string{"", "{", `{"schemaVersion":2,"skills":[{"targets":[".claude/skills/tidy"]}]}`} {
 		if got := build.InstalledFolders([]byte(unreadable)); len(got) != 0 {
 			t.Errorf("InstalledFolders(%q) = %v, want none", unreadable, got)
 		}

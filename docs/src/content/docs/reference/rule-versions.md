@@ -25,9 +25,9 @@ A skill version covers the skill's whole folder, `.trailguide/skills/<name>/`:
 - Every file in the folder that Git tracks, including `SKILL.md`, scripts, references, and assets. Files Git ignores aren't part of any version, and a folder whose `SKILL.md` Git ignores isn't one of the library's skills.
 - Each file's executable bit, so making a script executable, or no longer executable, is a change to the skill.
 
-A project that installs a skill version gets exactly these files, with their modes, as they were in that version. Unlike a rule's, a skill's version isn't chosen on its own: a project installs all of a source's skills from the library release that supplies its library-wide files, described next, and the skill's version tells you what changed. The skills it uses come from that library release too. The rules it cites aren't part of its version: each has its own version, and a project takes each at the version its configuration chooses. A skill's [level](/reference/library-format/#skill-levels) isn't part of its version either, nor is the fork a source's `skills.forks` records for it: both are set in the manifest, a library-wide file. The release notes still name a skill whose level or fork changed; see [GitHub Release pages](#github-release-pages).
+A project that installs a skill version gets exactly these files, with their modes, as they were in that version. Unlike a rule's, a skill's version isn't chosen on its own: a project installs all of a source's skills from the library release that supplies its library-wide files, described next, and the skill's version tells you what changed. The skills it uses come from that library release too. The rules it cites aren't part of its version: each has its own version, and a project takes each at the version its configuration chooses. A skill's [level](/reference/library-schema/#skill-levels) isn't part of its version either, nor is the fork a source's `skills.forks` records for it: both are set in the manifest, a library-wide file. The release notes still name a skill whose level or fork changed; see [GitHub Release pages](#github-release-pages).
 
-Everything else is a **library-wide file**: the [manifest](/reference/library-format/#the-manifest) in `.trailguide/config.yaml`, with its library schema version, skill levels, curated sources, and license declaration, of which only what the library publishes counts, not its project settings; rule group metadata; shared files in `.trailguide/assets/`; and license and notice files. Every file is rule content, skill content, or a library-wide file, so a library can't declare a rule's Markdown file, a file in a rule's asset directory, or a file in a skill folder as a license or notice file; see [License metadata](/reference/library-format/#license-metadata). Library-wide files aren't part of any rule or skill version, and changing them needs no change note. A project receives them from one library release, which is never older than the library release of any rule version it takes, or from the revision its `ref` names. A new source takes them from the newest library release; `trailguide project update` moves them to the newest library release, even when no rule changes; and `trailguide project sync` keeps the library release recorded in `.trailguide/lock.json`, also when you include more rules or skills. The source's skills and skill levels always come from that same library release, so they move whenever it does. A rule pinned to an older version can therefore link to a newer copy of a shared file, so keep everything that defines a rule's obligation in the rule itself, and use shared files only to explain and illustrate.
+Everything else is a **library-wide file**: the [manifest](/reference/library-schema/#the-manifest) in `.trailguide/config.yaml`, with its library schema version, skill levels, curated sources, and license declaration, of which only what the library publishes counts, not its project settings; rule group metadata; shared files in `.trailguide/assets/`; and license and notice files. Every file is rule content, skill content, or a library-wide file, so a library can't declare a rule's Markdown file, a file in a rule's asset directory, or a file in a skill folder as a license or notice file; see [License metadata](/reference/library-schema/#license-metadata). Library-wide files aren't part of any rule or skill version, and changing them needs no change note. A project receives them from one library release, which is never older than the library release of any rule version it takes, or from the revision its `ref` names. A new source takes them from the newest library release; `trailguide project update` moves them to the newest library release, even when no rule changes; and `trailguide project sync` keeps the library release recorded in `.trailguide/lock.json`, also when you include more rules or skills. The source's skills and skill levels always come from that same library release, so they move whenever it does. A rule pinned to an older version can therefore link to a newer copy of a shared file, so keep everything that defines a rule's obligation in the rule itself, and use shared files only to explain and illustrate.
 
 ## Library releases
 
@@ -45,7 +45,7 @@ The tag's message is the library release's permanent record. It has two parts, s
 2. A YAML record that Trail Guide reads:
 
 ```yaml
-formatVersion: 1
+schemaVersion: 1
 release: 4
 rules:
   practices/code-design/organize-code-by-feature: 1.1.0
@@ -81,7 +81,7 @@ libraryFiles:
 
 | Field | Meaning |
 | --- | --- |
-| `formatVersion` | The release record format, `1`. Required. |
+| `schemaVersion` | The release record schema version, `1`. Required. |
 | `release` | The release number. |
 | `rules` | Every current rule and its version after this library release. |
 | `changes` | Each rule this library release changed or added: its `change` (`new`, `major`, `minor`, or `patch`), its previous version as `from` (absent for a new rule), and its `summaries`: a list with one summary per change note that named the rule, in note order. |
@@ -91,7 +91,7 @@ libraryFiles:
 
 Each `summaries` list has at least one item, and each item follows the rules of a [change note's](#change-notes) `summary`: one non-blank line without control characters.
 
-Release records are read by every later version of Trail Guide, so the format is forward compatible. Readers ignore fields they don't know, at any level and whatever their values, such as timestamps, so a later Trail Guide can add fields that older versions skip. `formatVersion` changes only for an incompatible change; readers check it before anything else in the record, and a Trail Guide that finds a higher `formatVersion` than it reads stops with `unsupported-release-record` and asks you to install a newer Trail Guide. The whole record still uses one YAML document without duplicate keys, anchors, aliases, or explicit tags, and every field above keeps its rules; for example, a summary that YAML reads as a date must be quoted. Change notes, which people write by hand, stay strict: unknown fields fail.
+Release records are read by every later version of Trail Guide, so their schema is forward compatible. Readers ignore fields they don't know, at any level and whatever their values, such as timestamps, so a later Trail Guide can add fields that older versions skip. `schemaVersion` changes only for an incompatible change; readers check it before anything else in the record, and a Trail Guide that finds a higher `schemaVersion` than it reads stops with `unsupported-release-record` and asks you to install a newer Trail Guide. The whole record still uses one YAML document without duplicate keys, anchors, aliases, or explicit tags, and every field above keeps its rules; for example, a summary that YAML reads as a date must be quoted. Change notes, which people write by hand, stay strict: unknown fields fail.
 
 A rule's version is plain `major.minor.patch` numbers, each at most 999,999,999, without prerelease or build suffixes. A new rule starts at `1.0.0`. The rule ID is the rule's path in `.trailguide/rules/` without `.md`.
 
@@ -102,7 +102,7 @@ A rule's full history is the `changes` entries for it across every `release/<num
 A library that has skills records them in one top-level `skills` field, beside the rule fields. This release record publishes a new skill, a major change to another, and a retirement:
 
 ```yaml
-formatVersion: 1
+schemaVersion: 1
 release: 5
 rules:
   practices/code-design/organize-code-by-feature: 1.1.0
@@ -142,7 +142,7 @@ skills:
 
 `skills.changes` and `skills.retired` are left out when they're empty. A skill's version, ID, and history follow the rules for a rule's: plain `major.minor.patch` numbers, starting at `1.0.0`; the ID is `skills/<name>`; and its full history is the `skills.changes` entries for it across every `release/<number>` tag. The first library release that publishes skills lists every one of them as `new`; when it's the library's first library release, each skill's summary is the placeholder `Add the skill.`, as each rule's is `Add the rule.`
 
-Skills never appear in `rules`, `changes`, or `retired`, and rules never appear in `skills`, so `formatVersion` stays `1`. A Trail Guide that doesn't know skills, and other tools that read release records, such as catalogs, ignore the `skills` field as they ignore any unknown field, and keep reading the library's rules.
+Skills never appear in `rules`, `changes`, or `retired`, and rules never appear in `skills`, so `schemaVersion` stays `1`. A Trail Guide that doesn't know skills, and other tools that read release records, such as catalogs, ignore the `skills` field as they ignore any unknown field, and keep reading the library's rules.
 
 Trail Guide writes `skills` in every library release it publishes once the library has, or has had, a skill. A library release that a Trail Guide without skill support published later has no `skills` field. Trail Guide then takes skill versions, and the commit to compare skills with, from the newest library release whose record has the field, and warns, for example: `release/6 has no skills field, because a Trail Guide without skill support published it. Skill versions come from release/5. Raise the Trail Guide version this library's CI uses before publishing skills.` Projects that take from the library get the same warning from `trailguide project sync` and `trailguide project update`. To avoid it, raise the Trail Guide version your library's CI pins before you publish skills; see [Check changes in CI](/guides/version-rules/#check-changes-in-ci).
 

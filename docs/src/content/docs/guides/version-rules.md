@@ -259,7 +259,7 @@ A skill can only be replaced by a skill, and a rule only by a rule. Remove the r
 
 ### Change a shared file, rule group description, or skill level
 
-Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-format/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
+Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-schema/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
 
 The release notes still name a skill whose level changes, such as offered to recommended, and a skill that becomes a fork or whose fork moves to another `basedOn` commit, so projects can see what the change means for them, even when the skill's files didn't change.
 
@@ -276,7 +276,7 @@ Earlier versions of Trail Guide kept a library's files at the repository root. L
 3. Add one `../` to each relative link from a rule to a shared asset, and two to each link to a license file at the repository root. Links that start with `/assets/` keep working.
 4. Record each rule whose links changed with `trailguide library change RULE_ID --bump patch --summary '...'`.
 
-Rule IDs and versions don't change, and rules you didn't edit need no note. Publish a library release once the pull request merges: projects can't import a library release made in the earlier layout, so they need one from the new layout. See [Libraries in the earlier layout](/reference/library-format/#libraries-in-the-earlier-layout).
+Rule IDs and versions don't change, and rules you didn't edit need no note. Publish a library release once the pull request merges: projects can't import a library release made in the earlier layout, so they need one from the new layout. See [Libraries in the earlier layout](/reference/library-schema/#libraries-in-the-earlier-layout).
 
 ### Check your changes
 

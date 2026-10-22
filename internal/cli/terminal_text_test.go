@@ -40,7 +40,7 @@ func TestUpdate_KeepsControlCharactersOffTheTerminal(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -54,7 +54,7 @@ func TestUpdate_KeepsControlCharactersOffTheTerminal(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(map[string][]byte{"techs/go/errors.md": updateRule("errors 1.1.0")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [\"\\e[2J\\e[HNo risky changes.\\x9b\"]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [\"\\e[2J\\e[HNo risky changes.\\x9b\"]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	// A release record's summaries can't hold control characters, so the library release is refused.

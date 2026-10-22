@@ -250,7 +250,7 @@ func TestSync_FailsForANewlyIncludedSkillTheLockedRevisionLacks(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Add a skill", map[string][]byte{".trailguide/skills/plan/SKILL.md": []byte("---\nname: plan\n---\n# Plan\n")}); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	root, err := openProject(ctx, options, false)

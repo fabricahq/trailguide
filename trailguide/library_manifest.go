@@ -21,7 +21,7 @@ import (
 // LibrarySchemaVersion is the library schema version this version of Trail Guide reads and writes, which every
 // library declares in its manifest's library.schemaVersion. The library schema covers everything a library publishes:
 // the manifest, the repository and ref of each source it curates skills from, rule files, group metadata, and the
-// library's layout. Release records have their own format, ReleaseRecordFormat.
+// library's layout. Release records have their own schema version, ReleaseRecordSchemaVersion.
 //
 // Consumers ignore fields they don't know in the manifest, so a later Trail Guide can add a field without a new
 // schema version when ignoring it keeps every reader correct. A change that readers must interpret, even an optional

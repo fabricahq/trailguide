@@ -29,7 +29,7 @@ func secondRelease(t *testing.T, f *gitfixture.Fixture) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)
 	}
-	record := "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/extra: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n  techs/go/extra: {change: new, summaries: [Add the rule.]}\n"
+	record := "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/extra: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n  techs/go/extra: {change: new, summaries: [Add the rule.]}\n"
 	if err := f.Release(ctx, 2, record); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestSync_ExplicitSelectionImportsAGroupTheWildcardSnapshotLacked(t *testing
 			if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(files)); err != nil {
 				t.Fatal(err)
 			}
-			if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  practices/testing/verify: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n  practices/testing/verify: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+			if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  practices/testing/verify: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add wrapping.]}\n  practices/testing/verify: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 				t.Fatal(err)
 			}
 			configure(t, options, f, `"rules":{"include":`+test.include+`}`)
@@ -295,7 +295,7 @@ func TestSync_RecordsTheRetirementOfANewlyPinnedRule(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire extra", gitfixture.Library(map[string][]byte{"techs/go/extra.md": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/extra","version":"1.0.0","reason":"Keep it."}]}`)
@@ -330,7 +330,7 @@ func TestSync_KeepsAPinnedRetiredRuleAtItsLastVersion(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire errors", gitfixture.Library(map[string][]byte{"techs/go/errors.md": nil, "techs/go/assets/errors/data.bin": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/extra: 1.0.0\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [Covered by extra.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/extra: 1.0.0\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [Covered by extra.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/errors","version":"1.1.0","reason":"Keep it."}]}`)
@@ -364,7 +364,7 @@ func TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire errors", gitfixture.Library(map[string][]byte{"techs/go/errors.md": nil, "techs/go/assets/errors/data.bin": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/extra: 1.0.0\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [Covered by extra.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/extra: 1.0.0\nretired:\n  techs/go/errors: {lastVersion: 1.1.0, summaries: [Covered by extra.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	root, err := openProject(ctx, options, false)
@@ -385,7 +385,7 @@ func TestSync_KeepsRecordedRetirementsWhenOnlyAnExclusionChanged(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire extra", gitfixture.Library(map[string][]byte{"techs/go/extra.md": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 4, "formatVersion: 1\nrelease: 4\nrules: {}\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
+	if err := f.Release(ctx, 4, "schemaVersion: 1\nrelease: 4\nrules: {}\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	recorded := projectTree(t, options).Files[lockFile]
@@ -415,7 +415,7 @@ func TestSync_RecordsTheRetirementOfANewlyExcludedRule(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire extra", gitfixture.Library(map[string][]byte{"techs/go/extra.md": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [No longer needed.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"],"exclude":[{"id":"techs/go/extra","reason":"Retired upstream."}]}`)
@@ -446,7 +446,7 @@ func TestBuild_HandEditedExclusionsKeepTheSourceRecordCurrent(t *testing.T) {
 	if _, err := f.Commit(ctx, f.Worktree(), "Retire extra", gitfixture.Library(map[string][]byte{"techs/go/extra.md": nil})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nchanges: {}\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [Covered by errors.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\nchanges: {}\nretired:\n  techs/go/extra: {lastVersion: 1.0.0, summaries: [Covered by errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	configure(t, options, f, `"rules":{"include":["techs/go/*"]}`)
@@ -608,13 +608,13 @@ func TestSync_StoresOlderRulesAtTheirLibraryPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n  techs/go/naming: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n  techs/go/naming: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Second release", gitfixture.Library(map[string][]byte{"techs/go/naming.md": []byte(projectRule + "\nMore.\n")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.1.0\nchanges:\n  techs/go/naming: {change: minor, from: 1.0.0, summaries: [Add more.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.1.0\nchanges:\n  techs/go/naming: {change: minor, from: 1.0.0, summaries: [Add more.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	_, options, _ := syncProject(t)
@@ -807,7 +807,7 @@ func TestSync_RefusesARecordChangedOutsideSync(t *testing.T) {
 			if _, err := f.Commit(ctx, f.Worktree(), "Third release", map[string][]byte{"README.md": []byte("Library.\n")}); err != nil {
 				t.Fatal(err)
 			}
-			if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/extra: 1.0.0\n"); err != nil {
+			if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/extra: 1.0.0\n"); err != nil {
 				t.Fatal(err)
 			}
 			fields := `"rules":{"include":["techs/go/*"]}`

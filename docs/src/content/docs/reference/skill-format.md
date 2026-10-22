@@ -191,7 +191,7 @@ Trail Guide checks Markdown links, images, reference definitions, and the `href`
 
 ## Licenses
 
-A library's license, declared in its [manifest](/reference/library-format/#license-metadata), covers its skills as it covers its rules. The `license` field in `SKILL.md` is informational: Trail Guide preserves it, and when it differs from the library's SPDX expression, `trailguide library check` warns. Skills from a non-library source have no library declaration, so their license comes from the skill or the repository instead. See [License rules](/guides/license-rules/#license-skills).
+A library's license, declared in its [manifest](/reference/library-schema/#license-metadata), covers its skills as it covers its rules. The `license` field in `SKILL.md` is informational: Trail Guide preserves it, and when it differs from the library's SPDX expression, `trailguide library check` warns. Skills from a non-library source have no library declaration, so their license comes from the skill or the repository instead. See [License rules](/guides/license-rules/#license-skills).
 
 ## Validation
 
@@ -297,5 +297,5 @@ A repository without a library manifest, such as a third party's skill collectio
 
 - [Skill](/concepts/skill/) explains what a skill is and how it relates to rules.
 - [Write a skill](/guides/write-skills/) walks through writing, checking, and versioning a skill.
-- [Library format](/reference/library-format/) covers where skills live in a library.
+- [Library schema](/reference/library-schema/) covers where skills live in a library.
 - [Rule and skill versions](/reference/rule-versions/) defines what a skill version covers.

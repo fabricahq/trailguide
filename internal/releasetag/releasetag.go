@@ -53,7 +53,7 @@ type Release struct {
 
 // RecordError reports a release tag whose message isn't release notes followed by a release record this version of
 // Trail Guide can read, including a record whose number differs from the tag's. Err is the parser's error: a
-// *trailguide.UnsupportedReleaseRecordError for a record in a newer format, which callers report separately, and
+// *trailguide.UnsupportedReleaseRecordError for a record in a newer schema version, which callers report separately, and
 // otherwise an errs.ValidationError with its location.
 type RecordError struct {
 	Tag string

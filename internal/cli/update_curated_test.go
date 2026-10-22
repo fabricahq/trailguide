@@ -39,7 +39,7 @@ func newCuratedUpdateFixture(t *testing.T) (updateFixture, string, string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = team.Close() })
-	if err := team.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := team.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	if team.Environment, err = team.Route(map[string]*gitfixture.Fixture{"team": team, "pocock": pocock}); err != nil {

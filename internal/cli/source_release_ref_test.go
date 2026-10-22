@@ -55,7 +55,7 @@ func TestUpdate_TakesTheEditedReleaseWithANewRuleAndNoFurther(t *testing.T) {
 	if _, err := u.fixture.Commit(ctx, u.fixture.Worktree(), "Third release", gitfixture.Library(map[string][]byte{"techs/go/verify.md": updateRule("verify 1.1.0")})); err != nil {
 		t.Fatal(err)
 	}
-	if err := u.fixture.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.1.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.1.0\nchanges:\n  techs/go/verify: {change: minor, from: 1.0.0, summaries: [Add a case.]}\n"); err != nil {
+	if err := u.fixture.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/backoff: 2.0.0\n  techs/go/errors: 2.0.0\n  techs/go/format: 1.0.1\n  techs/go/loaders: 1.1.0\n  techs/go/naming: 1.1.0\n  techs/go/verify: 1.1.0\nchanges:\n  techs/go/verify: {change: minor, from: 1.0.0, summaries: [Add a case.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u.write(t, "config.yaml", "schemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/2\n    rules:\n      include:\n        - techs/go/errors\n        - techs/go/verify\n")
