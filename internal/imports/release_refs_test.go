@@ -1,3 +1,5 @@
+// Exercise library release refs across source imports and updates.
+
 package imports
 
 import (

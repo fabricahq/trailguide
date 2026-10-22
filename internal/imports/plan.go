@@ -254,6 +254,14 @@ func (p *planner) planReleases() (sourcePlan, error) {
 		p.ceiling = number
 		return p.planVersions()
 	}
+	// A release-shaped tag of a repository that isn't a library names one revision, as planRevision imports it.
+	if ref.Release() != 0 && (recorded == nil || recorded.NonLibrary || recorded.Release == 0) {
+		if _, nonLibrary, err := p.nonLibraryTag(); err != nil {
+			return sourcePlan{}, err
+		} else if nonLibrary {
+			return p.planRevision()
+		}
+	}
 	history, err := p.releases()
 	if err != nil {
 		return sourcePlan{}, err
@@ -622,6 +630,9 @@ func (p *planner) resolveRef() (resolvedRef, error) {
 					return resolvedRef{}, err
 				}
 			}
+			if resolved, nonLibrary, err := p.nonLibraryTag(); err != nil || nonLibrary {
+				return resolved, err
+			}
 			history, err := p.releases()
 			if err != nil {
 				return resolvedRef{}, err
@@ -635,6 +646,21 @@ func (p *planner) resolveRef() (resolvedRef, error) {
 	}
 	commit, kind, err := p.repo.fetchRef(p.ctx, p.source)
 	return resolvedRef{commit: commit, kind: kind}, err
+}
+
+// nonLibraryTag reports whether the tag the source's ref names, shaped like a library release, is in a repository
+// with no library manifest at that tag, such as a skills repository's own release/2, which names one revision as any
+// other tag does; it then returns the tag's commit.
+func (p *planner) nonLibraryTag() (resolvedRef, bool, error) {
+	commit, kind, err := p.repo.fetchRef(p.ctx, p.source)
+	if err != nil {
+		return resolvedRef{}, false, err
+	}
+	isLibrary, err := p.repo.isLibrary(p.ctx, commit)
+	if err != nil || isLibrary {
+		return resolvedRef{}, false, err
+	}
+	return resolvedRef{commit: commit, kind: kind}, true, nil
 }
 
 // revisionVersion chooses the version of rule id imported at the plan's revision.
