@@ -286,7 +286,7 @@ func parseLocal(files map[string][]byte, groups map[string]*resolvedGroup) (map[
 			ensureGroup(groups, id).Guidance = append(ensureGroup(groups, id).Guidance, groupGuidance{Source: "local", Metadata: metadata})
 			continue
 		}
-		if !strings.HasSuffix(file, ".md") || strings.HasPrefix(path.Base(file), "_") {
+		if !authoredRuleFile(file) {
 			continue
 		}
 		if rules.HasDraftMarker(files[file]) {
@@ -299,6 +299,26 @@ func parseLocal(files map[string][]byte, groups map[string]*resolvedGroup) (map[
 		result[file] = parsed
 	}
 	return result, nil
+}
+
+// authoredRuleFile reports whether file, a path in the project's rules/ folder, is an authored rule rather than a
+// README, group metadata, or an asset.
+func authoredRuleFile(file string) bool {
+	return strings.HasSuffix(file, ".md") && !strings.HasPrefix(path.Base(file), "_") && file != "README.md" &&
+		!librarytree.IsGroupReadme(file) && !slices.Contains(strings.Split(file, "/"), "assets")
+}
+
+// AuthoredRules returns the IDs of the authored rules among files, the paths in the project's rules/ folder, such as
+// techs/go/errors for techs/go/errors.md, sorted. It doesn't parse the rules; build does.
+func AuthoredRules(files []string) []string {
+	ids := []string{}
+	for _, file := range files {
+		if authoredRuleFile(file) {
+			ids = append(ids, strings.TrimSuffix(file, ".md"))
+		}
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 // validateLocalLinks checks local rules and Markdown attachments against the shared destination policy, resolving

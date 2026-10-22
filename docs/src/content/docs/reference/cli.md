@@ -370,6 +370,38 @@ Source skills are sorted by project ID, and authored skills follow them. To inst
 
 JSON output lists the skills in `value.skills`, each with its `id`, `status`, and, where they apply, `source`, `level`, `setBy` (the `source`, `release`, and `commit` that set the level), and `replacedBy`.
 
+### project list rules
+
+```sh
+trailguide project list rules
+```
+
+List the rules in the project: every rule it holds of its sources, with its version and how the project uses it, and the project's own authored rules. Lists never write files.
+
+Like `list skills`, the listing reads `.trailguide/config.yaml` and `.trailguide/lock.json`, so it works offline and shows the versions the project holds, not newer ones. After changing the configuration, run `trailguide project sync` first. To see what a newer library release changes, run `trailguide project update SOURCE`, which previews the changes before writing anything.
+
+```text
+$ trailguide project list rules
+RULE                                                 VERSION  FROM                STATUS
+fabrica:practices/testing/check-retries              1.2.0    fabrica, release 7  replaced by local:practices/testing/service-retries
+fabrica:practices/testing/cover-boundary-cases       1.1.0    fabrica, release 7  active
+fabrica:practices/testing/test-observable-behavior   1.0.1    fabrica, release 3  active, pinned at 1.0.1
+fabrica:techs/go/use-context-loggers                 1.0.0    fabrica, release 2  excluded
+local:practices/testing/service-retries              -        this project        active, replaces fabrica:practices/testing/check-retries
+local:techs/go/name-errors                           -        this project        active
+```
+
+Each row shows:
+
+- **RULE:** the rule's project ID. A rule from a source starts with the source name; an authored rule starts with `local:`.
+- **VERSION:** the version the project holds, or `-` for an authored rule or a rule file with unreleased changes.
+- **FROM:** the source and the library release that published the version, or the commit for a rule with unreleased changes; or `this project` for an authored rule.
+- **STATUS:** `active` for a rule agents receive; `excluded` for one an exclusion leaves out; or `replaced by` and the authored rule agents receive instead. It adds `replaces` and the rule an authored rule replaces, `pinned at` and the version a pin keeps, and `retired` for a rule its library has retired.
+
+Rules are sorted by project ID. To add or remove rules, edit the source's `rules.include` or `rules.exclude` and run `trailguide project sync`.
+
+JSON output lists the rules in `value.rules`, each with its `id`, `path`, `active`, and `retired`, and, where they apply, `source`, `version`, `release`, `commit`, `pin` (its `version` and `reason`), `exclusion` (its `reason`), `replacedBy`, and `replaces` (the replaced rule's `id` and the `basedOn` version). Tools written in Go can compute the same view from a project's configuration and lockfile with the `github.com/fabricahq/trailguide/trailguide/projectview` package; see [Read a project from a tool](/reference/provenance/#read-a-project-from-a-tool).
+
 ## Library commands
 
 `trailguide library` manages a **library**, a repository whose [manifest](/reference/library-format/#the-manifest) publishes its authored rule groups and skills for projects to take. Library commands use the same `.trailguide/` directory and `config.yaml` as project commands, so a repository can be both. Initialize from the repository root. Other library commands find that root from subdirectories. Use `--directory PATH` to target another library; see [Working directories](#working-directories).
@@ -672,7 +704,7 @@ Authoring commands accept `--non-interactive`. Without it, commands can prompt f
 
 Invalid interactive answers repeat the same question while retaining earlier answers; for a choice, such as `[yes/no]`, the error lists the valid answers. Without a terminal, or with `--json` or `--non-interactive`, a missing required input fails with exit code `2` and names the flag to pass, such as `--summary`. Explicit flags are validated without prompting for replacement values. Existing rule groups, rules, skills, and source names fail before prompts.
 
-Both init commands, both check commands, `trailguide project list skills`, and `trailguide library release` run without prompts. Of these, `trailguide library check` and `trailguide library release` accept `--non-interactive`; `trailguide project check`, `trailguide project sync`, `trailguide project update`, `trailguide project build`, and `trailguide project list skills` do not need or accept it.
+Both init commands, both check commands, `trailguide project list skills`, `trailguide project list rules`, and `trailguide library release` run without prompts. Of these, `trailguide library check` and `trailguide library release` accept `--non-interactive`; `trailguide project check`, `trailguide project sync`, `trailguide project update`, `trailguide project build`, `trailguide project list skills`, and `trailguide project list rules` do not need or accept it.
 
 String options accept one value and cannot be repeated, except `--rules`, `--skills`, `--skill-targets`, `--keep`, `--exclude`, `--update-fork`, and `--merge-fork`, which accept repeated values. For a value beginning with `-`, use the equals form, such as `--description='-prefixed text'`.
 
