@@ -49,9 +49,9 @@ Homepage composition lives in `src/components/HomePage.astro` and its illustrati
 
 ### Brand assets
 
-The Trail Guide mark is the Corner check: a rule card with an open corner and a clear checkmark.
-The [brand reference](src/content/docs/reference/brand.mdx) explains how to use it and links every downloadable logo export in `public/brand/`.
-The homepage hero shows the horizontal logo exports, switching between the dark and white files by theme, and `src/components/BrandAsset.astro` renders the reference page's previews.
+The Trailguide mark is a folded map with two rule lines in its center panel.
+The [brand reference](src/content/docs/reference/brand.mdx) explains how to use it and links the downloadable logo exports in `public/brand/`.
+The header uses a text-only product name. The homepage hero uses the approved compact horizontal SVGs, switching between dark and light ink by theme, and `src/components/BrandAsset.astro` renders the reference page's previews.
 The site's favicons at the root of `public/` (`favicon.svg`, `favicon.ico`, and `apple-touch-icon.png`) come from the brand package; its favicon and app icon exports are deliberately not published for download because they identify Trail Guide itself.
 
 ### Styling

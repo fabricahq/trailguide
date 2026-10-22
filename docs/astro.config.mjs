@@ -33,7 +33,7 @@ export default defineConfig({
     description: 'The package manager for your agent skills and rules',
     favicon: '/favicon.svg',
     head: [
-      { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '32x32' } },
+      { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48 64x64' } },
       { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
       // The Web Analytics site token is public and grants no access.
       cloudflareWebAnalytics({ host: new URL(site).hostname, token: 'ad5e47e228f942f7a16b047a95854176' }),
