@@ -308,7 +308,7 @@ func Run(ctx context.Context, binary, scenario string) (report Report, err error
 		if _, err := fixture.Commit(ctx, fixture.Worktree(), "Change the errors rule", gitfixture.Library(map[string][]byte{"techs/go/errors.md": document})); err != nil {
 			return report, err
 		}
-		secondRelease := "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add updated wording.]}\n"
+		secondRelease := "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Add updated wording.]}\n"
 		if err := fixture.Release(ctx, 2, secondRelease); err != nil {
 			return report, err
 		}

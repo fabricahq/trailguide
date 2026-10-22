@@ -212,10 +212,10 @@ trailguide library add skill fix-bug \
   --type playbook
 ```
 
-Complete `.trailguide/skills/fix-bug/SKILL.md`, list the rules its steps apply, such as `practices/error-handling/make-errors-actionable`, in its `trailguide-rules-used` metadata, and run `trailguide library check`. The skill is offered: projects install it only when they name it. To recommend it to every project, or require it, add it to the manifest's `library.skills` levels; see [Skill levels](/reference/library-format/#skill-levels). Your library has published its first library release, so record the new skill with `trailguide library change skills/fix-bug --summary '...'` before you publish the next one. [Write a skill](/guides/write-skills/) walks through each step.
+Complete `.trailguide/skills/fix-bug/SKILL.md`, list the rules its steps apply, such as `practices/error-handling/make-errors-actionable`, in its `trailguide-rules-used` metadata, and run `trailguide library check`. The skill is offered: projects install it only when they name it. To recommend it to every project, or require it, add it to the manifest's `library.skills` levels; see [Skill levels](/reference/library-schema/#skill-levels). Your library has published its first library release, so record the new skill with `trailguide library change skills/fix-bug --summary '...'` before you publish the next one. [Write a skill](/guides/write-skills/) walks through each step.
 
 ## Next steps
 
 As your library grows, [write focused rules](/guides/write-rules/) and [skills](/guides/write-skills/), record each change with `trailguide library change`, and [publish them in library releases](/guides/version-rules/). Projects [choose when to take updates](/guides/update/).
 
-For metadata and supporting files, see [Rule and rule group format](/reference/rule-format/), [Skill format](/reference/skill-format/), and [Library format](/reference/library-format/).
+For metadata and supporting files, see [Rule and rule group format](/reference/rule-format/), [Skill format](/reference/skill-format/), and [Library schema](/reference/library-schema/).

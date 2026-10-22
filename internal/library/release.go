@@ -264,7 +264,7 @@ func (g *libraryGit) requireUnpublishedTag(ctx context.Context, tag releasetag.T
 	// A newer Trail Guide may have created the tag and stopped before pushing it; this version can't compare it.
 	var unsupported *trailguide.UnsupportedReleaseRecordError
 	if errors.As(err, &unsupported) {
-		return unsupportedRecord(name, unsupported.FormatVersion)
+		return unsupportedRecord(name, unsupported.SchemaVersion)
 	}
 	if err == nil && !planned.empty && release.Notes == planned.notes && reflect.DeepEqual(release.Record, planned.record) {
 		return nil

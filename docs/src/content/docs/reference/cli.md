@@ -36,7 +36,7 @@ Init does not fetch sources or generate rule guidance. It refuses to overwrite a
 trailguide project add source NAME [options]
 ```
 
-Record a source in configuration without fetching its files. `NAME` is the source name, such as `team`. Run `trailguide project sync` afterward to take the included rules and install the included skills. The same command adds a library or any other Git repository with skill folders: you don't declare which it is, and sync detects whether the repository has a [manifest](/reference/library-format/#the-manifest).
+Record a source in configuration without fetching its files. `NAME` is the source name, such as `team`. Run `trailguide project sync` afterward to take the included rules and install the included skills. The same command adds a library or any other Git repository with skill folders: you don't declare which it is, and sync detects whether the repository has a [manifest](/reference/library-schema/#the-manifest).
 
 | Option | Meaning |
 | --- | --- |
@@ -406,7 +406,7 @@ JSON output lists the rules in `value.rules`, each with its `id`, `path`, `activ
 
 ## Library commands
 
-`trailguide library` manages a **library**, a repository whose [manifest](/reference/library-format/#the-manifest) publishes its authored rule groups and skills for projects to take. Library commands use the same `.trailguide/` directory and `config.yaml` as project commands, so a repository can be both. Initialize from the repository root. Other library commands find that root from subdirectories. Use `--directory PATH` to target another library; see [Working directories](#working-directories).
+`trailguide library` manages a **library**, a repository whose [manifest](/reference/library-schema/#the-manifest) publishes its authored rule groups and skills for projects to take. Library commands use the same `.trailguide/` directory and `config.yaml` as project commands, so a repository can be both. Initialize from the repository root. Other library commands find that root from subdirectories. Use `--directory PATH` to target another library; see [Working directories](#working-directories).
 
 ### library init
 
@@ -414,7 +414,7 @@ JSON output lists the rules in `value.rules`, each with its `id`, `path`, `activ
 trailguide library init [options]
 ```
 
-Add a `library` section, the [manifest](/reference/library-format/#the-manifest), to `.trailguide/config.yaml`, creating the configuration with `schemaVersion: 2` and `sources: {}` when it doesn't exist, and create the authored `rules/` and `skills/` directories, an authoring README, and a GitHub Actions workflow, without overwriting existing authored files. Optionally copy explicitly supplied license terms into the library and declare them in `library.license`. A configuration that already has a `library` section keeps it.
+Add a `library` section, the [manifest](/reference/library-schema/#the-manifest), to `.trailguide/config.yaml`, creating the configuration with `schemaVersion: 2` and `sources: {}` when it doesn't exist, and create the authored `rules/` and `skills/` directories, an authoring README, and a GitHub Actions workflow, without overwriting existing authored files. Optionally copy explicitly supplied license terms into the library and declare them in `library.license`. A configuration that already has a `library` section keeps it.
 
 The workflow, `.github/workflows/trailguide.yml`, runs `trailguide library check` on every pull request, using the Trail Guide version that created it. A development build, which no release published, writes a workflow that finds the latest release's version when it runs and uses that instead. Either way, the workflow installs only that version's archive, after verifying it against the release's attested `SHA256SUMS`, and prints the version it installed in the job's log and summary. Rerunning `trailguide library init` never changes an existing workflow; to move it to the Trail Guide version you run, delete the workflow and run `trailguide library init` again. See [Check changes in CI](/guides/version-rules/#check-changes-in-ci).
 
@@ -472,7 +472,7 @@ Create the rule group first with `trailguide library add group`; rule creation d
 trailguide library add skill NAME [options]
 ```
 
-Create a skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `fix-bug`; the skill's ID is `skills/NAME`. A new skill that the manifest's levels don't list is offered; to require or recommend it, add it to `library.skills`. See [Skill levels](/reference/library-format/#skill-levels).
+Create a skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `fix-bug`; the skill's ID is `skills/NAME`. A new skill that the manifest's levels don't list is offered; to require or recommend it, add it to `library.skills`. See [Skill levels](/reference/library-schema/#skill-levels).
 
 | Option | Meaning |
 | --- | --- |
@@ -552,7 +552,7 @@ Reports rule group, rule, and skill counts, `value.groupCount`, `value.ruleCount
 
 Check validates every skill folder and its `SKILL.md`: the folder's name and contents, the frontmatter fields, the `trailguide-skill-type`, `trailguide-rules-used`, and `trailguide-skills-used` metadata keys, and links. It lists every skill problem it finds and fails with the code `invalid-skill`. It warns when a skill's `license` differs from the library's SPDX expression, and about a file in a skill folder that Git neither tracks nor ignores. [Validation](/reference/skill-format/#validation) lists each check and its message.
 
-Check also validates the manifest's skill levels. It fails when a level lists a skill the library doesn't have, a skill appears in two levels, or two listed skills, authored or curated, have the same name. To check curated skills, it reads each curated source at the `ref` the library's configuration names, so it needs access to those repositories; see [Name clashes](/reference/library-format/#name-clashes). Levels are library-wide settings, so changing one needs no change note.
+Check also validates the manifest's skill levels. It fails when a level lists a skill the library doesn't have, a skill appears in two levels, or two listed skills, authored or curated, have the same name. To check curated skills, it reads each curated source at the `ref` the library's configuration names, so it needs access to those repositories; see [Name clashes](/reference/library-schema/#name-clashes). Levels are library-wide settings, so changing one needs no change note.
 
 Check also compares each skill the library [forked](#fork-a-skill-into-the-library) from one of its sources, a `skills.forks` entry with `basedOn` in that source's configuration, with the source's copy at the revision its `ref` names now. For each one that differs, it lists the files that changed since `basedOn`, or says the source no longer has the skill, and the `basedOn` value to set once your fork has the changes you want; in JSON, `value.forkedSkills` lists each with its `source`, `id`, `skill`, `basedOn`, `commit`, `revision`, `files`, and `removed`. The listing doesn't fail check, and check never changes the fork. `trailguide library release --dry-run` shows the same list. This also needs access to the sources' repositories.
 
@@ -641,7 +641,7 @@ If that push succeeds, delete the test tag from the remote with `git push origin
 | `remote-changed` | Someone pushed to the branch, or changed a release tag, while the command ran. |
 | `release-tag-mismatch` | A release tag in the clone differs from the remote's, exists only in the clone without being the next one on this commit, or doesn't publish what this commit would. |
 | `invalid-release-tag` | A release tag reachable from the commit isn't a valid annotated tag with a release record. |
-| `unsupported-release-record` | A release tag uses a newer release record format. Upgrade Trail Guide. |
+| `unsupported-release-record` | A release tag uses a newer release record schema version. Upgrade Trail Guide. |
 | `uncommitted-changes` | Library files, or a skill file's executable bit, differ from the checked-out commit. |
 | `change-notes` | Change notes don't match the rule or skill changes, as `trailguide library check` reports; other check failures keep their own codes, such as `invalid-skill`. |
 | `version-limit` | A change would take a rule's or skill's version past the largest version number. |

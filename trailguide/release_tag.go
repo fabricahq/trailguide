@@ -36,7 +36,7 @@ func ParseReleaseTag(name string) (int, error) {
 // may contain --- lines themselves, and it ignores a signature that Git appends to a signed tag's message. The
 // record must be valid, as ParseReleaseRecord requires, and its release number must match the tag's. It fails
 // with an error that wraps ErrNotReleaseTag when tag isn't a release tag name, and with
-// *UnsupportedReleaseRecordError for a record in a newer format.
+// *UnsupportedReleaseRecordError for a record in a newer schema version.
 func ParseReleaseMessage(tag string, message []byte) (string, ReleaseRecord, error) {
 	number, err := ParseReleaseTag(tag)
 	if err != nil {

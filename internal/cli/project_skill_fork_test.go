@@ -51,7 +51,7 @@ func newSkillForkFixtureWith(t *testing.T, extra map[string][]byte) (updateFixtu
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -97,7 +97,7 @@ func TestForkSkill_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := u.fixture.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+	if err := u.fixture.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	out, diagnostic, code = u.run(t, "project", "update")

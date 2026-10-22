@@ -28,7 +28,7 @@ func TestClone_PushesCommitsAndTagsToTheFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := "Notes.\n\n---\nformatVersion: 1\nrelease: 1\nrules: {}\n"
+	message := "Notes.\n\n---\nschemaVersion: 1\nrelease: 1\nrules: {}\n"
 	if err := f.Tag(ctx, checkout, "release/1", message); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestRelease_TagsARecordThatParses(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules: {}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 	object, err := f.Command(ctx, "cat-file", "tag", "release/1")

@@ -32,7 +32,7 @@ Have the chosen terms reviewed for the rights and restrictions you intend before
 The Trail Guide format does not require a particular license.
 
 Keep the actual license text in `LICENSE.md` at the repository root, or another explicitly named file.
-The `library.license` section of the [manifest](/reference/library-format/#the-manifest), in `.trailguide/config.yaml`, identifies the terms for the whole library and any accompanying notice files:
+The `library.license` section of the [manifest](/reference/library-schema/#the-manifest), in `.trailguide/config.yaml`, identifies the terms for the whole library and any accompanying notice files:
 
 ```yaml
 library:
@@ -46,7 +46,7 @@ library:
 Paths resolve from the repository root and identify source files only. Trail Guide copies the contents unchanged to `_managed/generated/libraries/<source-name>/licenses/LICENSE.md` and `_managed/generated/libraries/<source-name>/licenses/notices/001.md`, `002.md`, and so on. Notice numbering follows unique declaration order; output destinations are not configurable.
 For example, list `NOTICE.md` in `notices` when the library supplies a notice that must accompany copies of its content.
 No extra notice file is required when the license and rule files already contain the necessary notices.
-The [file reference](/reference/library-format/#license-metadata) defines these fields.
+The [file reference](/reference/library-schema/#license-metadata) defines these fields.
 
 Use an SPDX expression for standard terms and a distinct `LicenseRef-…` for custom or modified terms. The [SPDX expression specification](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/) defines identifiers and compound expressions. The identifier supplements the retained text. Trail Guide validates the `library.license.spdxExpression` syntax and identifiers and preserves your declaration. It does not verify that the declaration matches the retained terms or grants the permissions you need.
 

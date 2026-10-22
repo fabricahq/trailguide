@@ -39,7 +39,7 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "First release", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -62,7 +62,7 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "Make setup.sh executable", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.1.0\nchanges:\n  techs/go/errors: {change: minor, from: 1.0.0, summaries: [Wrap errors.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	return u
@@ -178,7 +178,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "First release", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n  techs/go/naming: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 1.0.0\nchanges:\n  techs/go/errors: {change: new, summaries: [Add the rule.]}\n  techs/go/naming: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	u := updateFixture{binary: buildCLI(t), directory: t.TempDir(), fixture: f}
@@ -199,7 +199,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	if _, err := f.Commit(ctx, f.Worktree(), "Make setup.sh executable", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 2.0.0\nchanges:\n  techs/go/naming: {change: major, from: 1.0.0, summaries: [Rename everything.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n  techs/go/naming: 2.0.0\nchanges:\n  techs/go/naming: {change: major, from: 1.0.0, summaries: [Rename everything.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Remove the setup script", gitfixture.Library(map[string][]byte{
@@ -208,7 +208,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 3, "formatVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 2.0.0\n  techs/go/naming: 2.0.0\nchanges:\n  techs/go/errors: {change: major, from: 1.0.0, summaries: [Wrap every error.]}\n"); err != nil {
+	if err := f.Release(ctx, 3, "schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/errors: 2.0.0\n  techs/go/naming: 2.0.0\nchanges:\n  techs/go/errors: {change: major, from: 1.0.0, summaries: [Wrap every error.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	return u

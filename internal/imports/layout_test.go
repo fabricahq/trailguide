@@ -40,7 +40,7 @@ func movedHistory(t *testing.T) history {
 	}
 	t.Cleanup(func() { _ = f.Close() })
 	h := history{fixture: f, commits: map[int]string{1: f.LatestCommit}}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\n  techs/go/c: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n  techs/go/c: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\n  techs/go/c: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n  techs/go/c: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	moved := map[string][]byte{"rule-library.yaml": nil, "techs/go/_group.yaml": nil, "techs/go/a.md": nil, "techs/go/b.md": nil, "techs/go/c.md": nil, "assets/guide.md": nil}
@@ -57,7 +57,7 @@ func movedHistory(t *testing.T) history {
 		t.Fatal(err)
 	}
 	h.commits[2] = commit
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.1\n  techs/go/c: 1.0.0\nchanges:\n  techs/go/b: {change: patch, from: 1.0.0, summaries: [Link to the moved guide.]}\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.1\n  techs/go/c: 1.0.0\nchanges:\n  techs/go/b: {change: patch, from: 1.0.0, summaries: [Link to the moved guide.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	return h
@@ -151,7 +151,7 @@ func TestImport_ReadsALibraryThatIsAlsoAProject(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	h := history{fixture: f, commits: map[int]string{}}
@@ -177,7 +177,7 @@ func TestImport_RefusesARepositoryWithoutALibrarySection(t *testing.T) {
 		"techs/go/_group.yaml": groupMetadata,
 		"techs/go/a.md":        versionedRule("a 1.0.0"),
 	})
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	h := history{fixture: f, commits: map[int]string{}}
@@ -201,7 +201,7 @@ func legacyLibrary(t *testing.T, manifest string, files map[string][]byte) histo
 	}
 	t.Cleanup(func() { _ = f.Close() })
 	h := history{fixture: f, commits: map[int]string{1: f.LatestCommit}}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	moved := map[string][]byte{}
@@ -217,7 +217,7 @@ func legacyLibrary(t *testing.T, manifest string, files map[string][]byte) histo
 		t.Fatal(err)
 	}
 	h.commits[2] = commit
-	if err := f.Release(ctx, 2, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n"); err != nil {
+	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n"); err != nil {
 		t.Fatal(err)
 	}
 	return h

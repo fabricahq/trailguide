@@ -26,6 +26,7 @@ export default defineConfig({
     '/start-here/use-rules/': '/start-here/set-up-project/',
     '/guides/create-library/': '/start-here/create-library/',
     '/reference/rule-library-format/': '/reference/rule-format/',
+    '/reference/library-format/': '/reference/library-schema/',
   },
   markdown: { processor: unified({ rehypePlugins: [accessibleAsideTitles] }) },
   integrations: [starlight({
@@ -91,7 +92,7 @@ export default defineConfig({
           { label: 'Rule and rule group format', slug: 'reference/rule-format' },
           { label: 'Rule rubric and template', slug: 'reference/rule-authoring' },
           { label: 'Skill format', slug: 'reference/skill-format' },
-          { label: 'Library format', slug: 'reference/library-format' },
+          { label: 'Library schema', slug: 'reference/library-schema' },
           { label: 'Rule and skill versions', slug: 'reference/rule-versions' },
         ] },
         { label: 'CLI commands', slug: 'reference/cli' },

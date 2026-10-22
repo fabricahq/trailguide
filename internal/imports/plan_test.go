@@ -58,11 +58,11 @@ func newHistory(t *testing.T) history {
 		"techs/empty/_group.yaml":       groupMetadata,
 	})
 	h := history{fixture: f, commits: map[int]string{}}
-	h.release(t, 1, nil, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n  practices/testing/c: {change: new, summaries: [Add the rule.]}\n")
+	h.release(t, 1, nil, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n  practices/testing/c: {change: new, summaries: [Add the rule.]}\n")
 	h.release(t, 2, map[string][]byte{"techs/go/a.md": versionedRule("a 1.1.0"), "techs/go/assets/a/diagram.bin": {1, 1}, "techs/go/d.md": versionedRule("d 1.0.0")},
-		"formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.1.0\n  techs/go/b: 1.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n  techs/go/d: {change: new, summaries: [Add the rule.]}\n")
+		"schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.1.0\n  techs/go/b: 1.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n  techs/go/d: {change: new, summaries: [Add the rule.]}\n")
 	h.release(t, 3, map[string][]byte{"techs/go/a.md": versionedRule("a 2.0.0"), "techs/go/b.md": nil},
-		"formatVersion: 1\nrelease: 3\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: major, from: 1.1.0, summaries: [Require more.]}\nretired:\n  techs/go/b: {lastVersion: 1.0.0, replacedBy: techs/go/d, summaries: [Covered by d.]}\n")
+		"schemaVersion: 1\nrelease: 3\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/go/a: {change: major, from: 1.1.0, summaries: [Require more.]}\nretired:\n  techs/go/b: {lastVersion: 1.0.0, replacedBy: techs/go/d, summaries: [Covered by d.]}\n")
 	return h
 }
 
@@ -435,13 +435,13 @@ func TestImport_KeptRuleWhoseGroupWasRemovedKeepsItsGroupMetadata(t *testing.T) 
 		"techs/go/y.md":         versionedRule("y 1.0.0"),
 	})
 	h := history{fixture: f, commits: map[int]string{}}
-	h.release(t, 1, nil, "formatVersion: 1\nrelease: 1\nrules:\n  techs/old/x: 1.0.0\n  techs/go/y: 1.0.0\nchanges:\n  techs/old/x: {change: new, summaries: [Add the rule.]}\n  techs/go/y: {change: new, summaries: [Add the rule.]}\n")
+	h.release(t, 1, nil, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/old/x: 1.0.0\n  techs/go/y: 1.0.0\nchanges:\n  techs/old/x: {change: new, summaries: [Add the rule.]}\n  techs/go/y: {change: new, summaries: [Add the rule.]}\n")
 	first, err := h.sync(t, h.source(t, `"rules":{"include":["techs/go/*","techs/old/*"]}`), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	h.release(t, 2, map[string][]byte{"techs/old/x.md": nil, "techs/old/_group.yaml": nil, "techs/go/y.md": versionedRule("y 1.1.0")},
-		"formatVersion: 1\nrelease: 2\nrules:\n  techs/go/y: 1.1.0\nchanges:\n  techs/go/y: {change: minor, from: 1.0.0, summaries: [Add an example.]}\nretired:\n  techs/old/x: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n")
+		"schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/y: 1.1.0\nchanges:\n  techs/go/y: {change: minor, from: 1.0.0, summaries: [Add an example.]}\nretired:\n  techs/old/x: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n")
 	imported, err := h.sync(t, h.source(t, `"rules":{"include":["techs/go/*","techs/old/*"],"pins":[{"id":"techs/go/y","version":"1.1.0","reason":"Adopt."}]}`), &first.Snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -469,7 +469,7 @@ func TestImport_IgnoresUnselectedGroupMetadata(t *testing.T) {
 	if _, err := f.Command(ctx, "commit", "--quiet", "--message", "Add a submodule where metadata belongs"); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Release(ctx, 1, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/y: 1.0.0\nchanges:\n  techs/go/y: {change: new, summaries: [Add the rule.]}\n"); err != nil {
+	if err := f.Release(ctx, 1, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/y: 1.0.0\nchanges:\n  techs/go/y: {change: new, summaries: [Add the rule.]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	h := history{fixture: f, commits: map[int]string{}}
@@ -491,12 +491,12 @@ func TestImport_RefusesALibraryReleaseDeclaringTermsInsideARulesVersion(t *testi
 		"techs/go/b.md":                     versionedRule("b 1.0.0"),
 	})
 	h := history{fixture: f, commits: map[int]string{}}
-	h.release(t, 1, nil, "formatVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n")
+	h.release(t, 1, nil, "schemaVersion: 1\nrelease: 1\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.0.0\nchanges:\n  techs/go/a: {change: new, summaries: [Add the rule.]}\n  techs/go/b: {change: new, summaries: [Add the rule.]}\n")
 	h.release(t, 2, map[string][]byte{
 		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":".trailguide/rules/techs/go/assets/a/requirements.md","notices":[]}}}`),
 		"techs/go/assets/a/requirements.md": []byte("Replacement requirements.\n"),
 		"techs/go/b.md":                     versionedRule("b 1.1.0"),
-	}, "formatVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.1.0\nchanges:\n  techs/go/b: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n")
+	}, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/a: 1.0.0\n  techs/go/b: 1.1.0\nchanges:\n  techs/go/b: {change: minor, from: 1.0.0, summaries: [Add an example.]}\n")
 	imported, err := h.sync(t, h.source(t, `"rules":{"include":["techs/go/*"],"pins":[{"id":"techs/go/a","version":"1.0.0","reason":"Keep."}]}`), nil)
 	var invalid errs.ValidationError
 	if !errors.As(err, &invalid) || !strings.Contains(invalid.ValidationLocation(), ".trailguide/config.yaml: library.license.file") || !strings.Contains(invalid.ValidationProblem(), "rule's version") {
@@ -529,7 +529,7 @@ func TestImport_SourceWithoutRulesGetsTheNewestLibraryRelease(t *testing.T) {
 	if err != nil || imported.Snapshot.Release != 3 || imported.Snapshot.Commit != h.commits[3] || len(imported.Snapshot.Rules) != 0 {
 		t.Fatalf("snapshot %+v, %v", imported.Snapshot, err)
 	}
-	h.release(t, 4, nil, "formatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nlibraryFiles:\n  - techs/empty/_group.yaml\n")
+	h.release(t, 4, nil, "schemaVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nlibraryFiles:\n  - techs/empty/_group.yaml\n")
 	again, err := h.sync(t, config, &imported.Snapshot)
 	if err != nil || again.Snapshot.Release != 3 {
 		t.Fatalf("snapshot %+v, %v", again.Snapshot, err)
@@ -587,19 +587,19 @@ func TestImport_RejectsAReleaseTagWithoutARecord(t *testing.T) {
 	}
 }
 
-// TestImport_AsksToUpgradeForANewerReleaseRecordFormat refuses a release record written in a later format with
-// its own code, telling the user to upgrade Trail Guide, and reads a record with fields it doesn't know.
-func TestImport_AsksToUpgradeForANewerReleaseRecordFormat(t *testing.T) {
+// TestImport_AsksToUpgradeForANewerReleaseRecordSchema refuses a release record written in a later schema version
+// with its own code, telling the user to upgrade Trail Guide, and reads a record with fields it doesn't know.
+func TestImport_AsksToUpgradeForANewerReleaseRecordSchema(t *testing.T) {
 	h := newHistory(t)
 	record := "release: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nsignedBy: {name: A later field}\n"
-	h.release(t, 4, nil, "formatVersion: 1\n"+record)
+	h.release(t, 4, nil, "schemaVersion: 1\n"+record)
 	if _, err := h.sync(t, h.source(t, `"rules":{"include":["techs/go/*"]}`), nil); err != nil {
 		t.Fatal(err)
 	}
-	h.release(t, 5, nil, "formatVersion: 2\n"+strings.Replace(record, "release: 4", "release: 5", 1))
+	h.release(t, 5, nil, "schemaVersion: 2\n"+strings.Replace(record, "release: 4", "release: 5", 1))
 	_, err := h.sync(t, h.source(t, `"rules":{"include":["techs/go/*"]}`), nil)
 	requireCode(t, err, "unsupported-release-record")
-	if !strings.Contains(err.Error(), "release/5 uses release record format 2") || !strings.Contains(err.Error(), "Upgrade Trail Guide") {
+	if !strings.Contains(err.Error(), "release/5 uses release record schema version 2") || !strings.Contains(err.Error(), "Upgrade Trail Guide") {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -615,7 +615,7 @@ func TestImport_RejectsAReleaseTagOfSomethingOtherThanACommit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			record := "formatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\n"
+			record := "schemaVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\n"
 			if _, err := h.fixture.Command(ctx, "tag", "--annotate", "--cleanup=verbatim", "--message", "Notes.\n\n---\n"+record, "release/4", object); err != nil {
 				t.Fatal(err)
 			}
@@ -664,7 +664,7 @@ func TestImport_FailsWhenARecordedLibraryReleaseMoved(t *testing.T) {
 func TestImport_RefusesAHostileReleaseRecordWithinTheDeadline(t *testing.T) {
 	h := newHistory(t)
 	var message strings.Builder
-	message.WriteString("Library release 4.\n\n---\nformatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nlibraryFiles:\n")
+	message.WriteString("Library release 4.\n\n---\nschemaVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nlibraryFiles:\n")
 	for i := range 100_000 {
 		fmt.Fprintf(&message, "  - assets/f%d.md\n", i)
 	}
@@ -773,9 +773,9 @@ func TestImport_RecordsTheRetiredRulesOfAnExclusionSelector(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.release(t, 4, map[string][]byte{"techs/empty/x.md": versionedRule("x 1.0.0")},
-		"formatVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  techs/empty/x: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/empty/x: {change: new, summaries: [Add the rule.]}\n")
+		"schemaVersion: 1\nrelease: 4\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  techs/empty/x: 1.0.0\n  practices/testing/c: 1.0.0\nchanges:\n  techs/empty/x: {change: new, summaries: [Add the rule.]}\n")
 	h.release(t, 5, map[string][]byte{"techs/empty/x.md": nil},
-		"formatVersion: 1\nrelease: 5\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nretired:\n  techs/empty/x: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n")
+		"schemaVersion: 1\nrelease: 5\nrules:\n  techs/go/a: 2.0.0\n  techs/go/d: 1.0.0\n  practices/testing/c: 1.0.0\nretired:\n  techs/empty/x: {lastVersion: 1.0.0, summaries: [No longer recommended.]}\n")
 	imported, err := h.sync(t, h.source(t, include+`,"exclude":[{"id":"techs/empty/*","reason":"Old."}]}`), &recorded.Snapshot)
 	if err != nil {
 		t.Fatal(err)

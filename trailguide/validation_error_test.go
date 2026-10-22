@@ -23,28 +23,28 @@ func TestParsers_ReportInvalidInputAsValidationError(t *testing.T) {
 	}{
 		{
 			name: "duplicate key", location: "release/2.release", problem: "duplicate field",
-			parse: record("formatVersion: 1\nrelease: 2\nrelease: 2\nrules: {}\n"),
+			parse: record("schemaVersion: 1\nrelease: 2\nrelease: 2\nrules: {}\n"),
 		},
 		{
 			name: "explicit tag", location: "release/2.release", problem: "anchors, aliases, and explicit tags are not supported",
-			parse: record("formatVersion: 1\nrelease: !!int 2\nrules: {}\n"),
+			parse: record("schemaVersion: 1\nrelease: !!int 2\nrules: {}\n"),
 		},
 		{
 			name: "multi-line summary", location: "release/2.changes.techs/go/a.summaries[0]", problem: "expected one line",
-			parse: record("formatVersion: 1\nrelease: 2\nrules: {techs/go/a: 1.0.1}\nchanges:\n  techs/go/a: {change: patch, from: 1.0.0, summaries: [\"One\\nTwo\"]}\n"),
+			parse: record("schemaVersion: 1\nrelease: 2\nrules: {techs/go/a: 1.0.1}\nchanges:\n  techs/go/a: {change: patch, from: 1.0.0, summaries: [\"One\\nTwo\"]}\n"),
 		},
 		{
 			name: "invalid rule ID", location: "release/2.rules.techs/Go/a", problem: "invalid group ID",
-			parse: record("formatVersion: 1\nrelease: 2\nrules: {techs/Go/a: 1.0.0}\n"),
+			parse: record("schemaVersion: 1\nrelease: 2\nrules: {techs/Go/a: 1.0.0}\n"),
 		},
 		{
 			name: "uncontained library file", location: "release/2.libraryFiles[0]", problem: "expected a contained relative path",
-			parse: record("formatVersion: 1\nrelease: 2\nrules: {}\nlibraryFiles: [../outside.md]\n"),
+			parse: record("schemaVersion: 1\nrelease: 2\nrules: {}\nlibraryFiles: [../outside.md]\n"),
 		},
 		{
 			name: "invalid Unicode in a release message", location: "release/2", problem: "expected UTF-8 YAML",
 			parse: func() error {
-				_, _, err := trailguide.ParseReleaseMessage("release/2", []byte("Notes.\n---\nformatVersion: 1\nrelease: 2\nrules: {}\n#\xff\n"))
+				_, _, err := trailguide.ParseReleaseMessage("release/2", []byte("Notes.\n---\nschemaVersion: 1\nrelease: 2\nrules: {}\n#\xff\n"))
 				return err
 			},
 		},
