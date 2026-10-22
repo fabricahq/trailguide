@@ -62,9 +62,6 @@ func TestSync_LeavesOutAnExcludedSkill(t *testing.T) {
 	if !strings.Contains(index, "## Excluded skills") || !strings.Contains(index, "- `team:skills/review`: We review in CI.") || strings.Contains(index, "### review") {
 		t.Fatalf("SKILLS.md doesn't list the excluded skill with its reason:\n%s", index)
 	}
-	if readme := readRepositoryFile(t, options, ".trailguide/_managed/generated/libraries/team/README.md"); !strings.Contains(readme, "- `skills/review`: excluded") {
-		t.Fatalf("source README:\n%s", readme)
-	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
 		t.Fatalf("check after sync = %+v, %v", result, err)
 	}

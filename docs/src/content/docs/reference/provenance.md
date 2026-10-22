@@ -17,7 +17,7 @@ This page shows where the records live, how Trail Guide creates them, and how to
 | `config.yaml` | Which sources, rules, and skills you include, and your pins, exclusions, replacements, renames, and the reason for each. See [Configuration](/reference/configuration/). |
 | `_managed/generated/rules/<source-name>/…` and `_managed/generated/rules/local/…` | Each active rule's ID, version, the rule it replaces and why, a link to its original file, and its declared license and credits. |
 | `_managed/generated/SKILLS.md` | Each installed skill's source, release and commit, level and the library that set it, why it's installed, the skill it replaces and why, and where it's installed. |
-| `_managed/generated/libraries/<source-name>/README.md` | A readable summary of the library release or commit taken, rule versions and pins, skills, and declared license terms. |
+| `_managed/generated/libraries/<source-name>/README.md` | The source's declared license, with links to the retained license and notice files. |
 | `_managed/generated/installed-skills.json` | Which skill folders Trail Guide installed in the target folders. See [Installed skills](/reference/files/#installed-skills). |
 
 These paths are relative to the Trail Guide directory. The **source name** is the name you gave a source in your configuration, such as `team`.
