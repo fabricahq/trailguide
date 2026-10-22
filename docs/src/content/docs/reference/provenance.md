@@ -38,7 +38,7 @@ Trail Guide 0.6 and earlier also wrote `generated/provenance.json`, a report tha
 
 ## Trace a rule to its source
 
-Open the rule's page in `_managed/generated/rules/`. A rule from a source is at `_managed/generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`. An authored rule is under `_managed/generated/rules/local/`, and its page shows its ID with the `local:` prefix, such as `local:practices/testing/service-retries`; in configuration, such as an exclusion's `replacedBy`, you write it without the prefix.
+To see every rule at once, with its version, where it comes from, and whether the project pins, excludes, or replaces it, run [`trailguide project list rules`](/reference/cli/#project-list-rules). For a single rule, open the rule's page in `_managed/generated/rules/`. A rule from a source is at `_managed/generated/rules/<source-name>/<rule-path>.md`, and its project ID starts with its source name, such as `team:practices/testing/check-retries`. An authored rule is under `_managed/generated/rules/local/`, and its page shows its ID with the `local:` prefix, such as `local:practices/testing/service-retries`; in configuration, such as an exclusion's `replacedBy`, you write it without the prefix.
 
 Below its title, the page shows:
 
@@ -330,6 +330,12 @@ trailguide project sync --retake fabrica
 For every source, offline checks first verify the entry's [`integrity`](#integrity), so an entry changed outside Trail Guide fails until you restore the entry Trail Guide wrote or take the source again. They also verify that `rules` and `skills` list exactly the rules and skills your selectors, the levels, and the skills' dependencies reach, that each skill's dependencies and cited rules match its recorded version's metadata, and that generated guidance and installed skills show the same versions and levels. Each exclusion must name a rule in `rules` or `retiredRules`; any other exclusion could be a typo that leaves the rule you meant active, so the check reports that it names no rule the library supplies and asks you to run `trailguide project sync`, which checks it against the library.
 
 Offline checks cannot prove that a recorded version was the newest available, or that recorded versions match the library's release tags; `trailguide project update` checks the latter against the release records before it records anything. These records also cannot authenticate files against the remote repository if someone changed both the local files and their records.
+
+## Read a project from a tool
+
+A tool written in Go, such as a catalog that shows which library versions a project holds, can read a project's rules with the `github.com/fabricahq/trailguide/trailguide/projectview` package, whose Go documentation describes its API. Its `Read` function takes the bytes of `.trailguide/config.yaml` and `.trailguide/lock.json`, and needs no other file, and no Git, filesystem, or network access, so a tool can call it on two files it fetched from a hosting service. It returns each source's revision and each rule's version, release, commit, pin, exclusion, and replacement, the same view `trailguide project list rules --json` shows. It refuses a lockfile that doesn't record what the configuration asks for, such as after someone edits a source's ref or pins without running sync, so a tool never reports a state the project hasn't taken. Given a library's current rule versions, the view's `Updates` method separates updates to active rules, updates to rules that an authored rule replaces, and updates to excluded rules, so a tool doesn't count a change the project doesn't use.
+
+The view lists the rules of the project's sources and the authored rules that replace them. Other authored rules exist only as files in `.trailguide/rules/`, so a tool that needs them reads that folder too. The package follows Trail Guide's version, and its API may change before Trail Guide 1.0.0.
 
 ## Find declared licenses and source credits
 

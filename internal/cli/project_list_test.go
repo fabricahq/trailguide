@@ -1,13 +1,19 @@
-// Test how project list skills and the update preview show skill levels.
+// Test how project list skills, project list rules, and the update preview show skills and rules.
 
 package cli
 
 import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/fabricahq/trailguide/internal/imports"
 	"github.com/fabricahq/trailguide/internal/project"
+	"github.com/fabricahq/trailguide/trailguide"
+	"github.com/fabricahq/trailguide/trailguide/projectview"
 )
 
 func TestFormatSkillListing_AlignsLevelsAndWhoSetThem(t *testing.T) {
@@ -29,6 +35,76 @@ skills/check-release  -         this project               installed
 	}
 	if got := formatSkillListing(project.SkillListing{}); got != "The project has no skills, and its sources offer none.\n" {
 		t.Fatalf("empty listing: %q", got)
+	}
+}
+
+func TestFormatRuleListing_SummarizesEachRulesStatus(t *testing.T) {
+	v1, v2 := trailguide.RuleVersion{Major: 1}, trailguide.RuleVersion{Major: 2}
+	one, three := 1, 3
+	listing := project.RuleListing{Rules: []project.ListedRule{
+		{Rule: projectview.Rule{ID: "team:techs/go/errors", Source: "team", Path: "techs/go/errors", Version: &v1, Release: &one, Exclusion: &projectview.Exclusion{Reason: "Ours."}, ReplacedBy: "local:techs/go/errors"}},
+		{Rule: projectview.Rule{ID: "team:techs/go/logging", Source: "team", Path: "techs/go/logging", Version: &v2, Release: &three, Exclusion: &projectview.Exclusion{Reason: "No."}}},
+		{Rule: projectview.Rule{ID: "team:techs/go/naming", Source: "team", Path: "techs/go/naming", Version: &v1, Release: &one, Active: true, Pin: &projectview.Pin{Version: v1, Reason: "Wait."}, Retired: true}},
+		{Rule: projectview.Rule{ID: "team:techs/go/draft", Source: "team", Path: "techs/go/draft", Commit: strings.Repeat("b", 40), Active: true}},
+		{Rule: projectview.Rule{ID: "local:techs/go/errors", Path: "techs/go/errors", Active: true, Replaces: &projectview.Replacement{ID: "team:techs/go/errors", BasedOn: &v1}}},
+		{Rule: projectview.Rule{ID: "local:techs/go/wip", Path: "techs/go/wip"}, Draft: true},
+	}}
+	want := `RULE                   VERSION  FROM                       STATUS
+team:techs/go/errors   1.0.0    team, release 1            replaced by local:techs/go/errors
+team:techs/go/logging  2.0.0    team, release 3            excluded
+team:techs/go/naming   1.0.0    team, release 1            active, pinned at 1.0.0, retired
+team:techs/go/draft    -        team, commit bbbbbbbbbbbb  active
+local:techs/go/errors  -        this project               active, replaces team:techs/go/errors
+local:techs/go/wip     -        this project               draft, not built
+`
+	if got := formatRuleListing(listing); got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+	if got := formatRuleListing(project.RuleListing{}); got != "The project holds no rules.\n" {
+		t.Fatalf("empty listing: %q", got)
+	}
+}
+
+// TestProjectListRules_ListsAuthoredRulesInBothOutputModes runs the command on a project with one authored rule and
+// one draft, in human and JSON output.
+func TestProjectListRules_ListsAuthoredRulesInBothOutputModes(t *testing.T) {
+	ctx := context.Background()
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "body.md"), []byte("Return failures to callers.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"project", "init"},
+		{"project", "add", "group", "techs/go", "--name", "Go", "--description", "Go guidance.", "--when-to-read", "When editing Go."},
+		{"project", "add", "rule", "techs/go/errors", "--title", "Return errors", "--impact", "HIGH", "--impact-description", "Preserve failures.", "--when-to-read", "When calling functions.", "--body-file", "body.md"},
+		{"project", "add", "rule", "techs/go/naming", "--title", "Name things", "--impact", "LOW", "--impact-description", "Read easily.", "--when-to-read", "When naming."},
+	} {
+		if out, diagnostic, code := invokeReport(t, ctx, directory, append(args, "--non-interactive")...); code != 0 {
+			t.Fatalf("%v: exit %d\n%s%s", args, code, out, diagnostic)
+		}
+	}
+	out, diagnostic, code := invokeReport(t, ctx, directory, "project", "list", "rules")
+	want := `RULE                   VERSION  FROM          STATUS
+local:techs/go/errors  -        this project  active
+local:techs/go/naming  -        this project  draft, not built
+`
+	if code != 0 || out != want {
+		t.Fatalf("exit %d, got:\n%s%s\nwant:\n%s", code, out, diagnostic, want)
+	}
+	out, diagnostic, code = invokeReport(t, ctx, directory, "project", "list", "rules", "--json")
+	var response struct {
+		OK    bool
+		Value struct {
+			Rules []struct {
+				ID     string
+				Active bool
+				Draft  bool
+			}
+		}
+	}
+	if err := json.Unmarshal([]byte(out), &response); err != nil || code != 0 || !response.OK || len(response.Value.Rules) != 2 ||
+		!response.Value.Rules[0].Active || response.Value.Rules[1].Active || !response.Value.Rules[1].Draft {
+		t.Fatalf("exit %d, %v:\n%s%s", code, err, out, diagnostic)
 	}
 }
 

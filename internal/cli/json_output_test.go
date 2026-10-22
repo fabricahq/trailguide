@@ -54,6 +54,7 @@ func TestJSONOutput_ListsAreAlwaysPresent(t *testing.T) {
 		{project, []string{"project", "build"}, []string{"added", "changed", "removed", "warnings"}},
 		{project, []string{"project", "sync"}, []string{"added", "changed", "removed", "warnings"}},
 		{project, []string{"project", "check"}, []string{"problems"}},
+		{project, []string{"project", "list", "rules"}, []string{"rules"}},
 		{library, []string{"library", "init"}, []string{"added", "changed", "warnings", "nextSteps"}},
 		{library, []string{"library", "add", "group", "techs/go", "--name", "Go", "--description", "Go guidance.", "--when-to-read", "When editing Go."}, []string{"added", "changed", "warnings", "nextSteps"}},
 		{library, []string{"library", "check"}, []string{"warnings"}},
