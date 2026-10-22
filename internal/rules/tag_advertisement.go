@@ -2,7 +2,13 @@
 
 package rules
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
+
+// lowercaseCommit matches a full commit SHA as Git advertises it.
+var lowercaseCommit = regexp.MustCompile(`^[a-f0-9]{40}$`)
 
 // TagAdvertisementKind identifies why a tag listing was refused.
 type TagAdvertisementKind string
@@ -44,7 +50,7 @@ func ParseTagAdvertisement(text string) (map[string]string, error) {
 		}
 		object, ref, ok := strings.Cut(line, "\t")
 		tag := strings.TrimPrefix(ref, "refs/tags/")
-		if !ok || len(object) != 40 || !commitRef.MatchString(object) || object != strings.ToLower(object) || tag == ref || tag == "" || strings.ContainsAny(tag, "\t\r") {
+		if !ok || len(object) != 40 || !lowercaseCommit.MatchString(object) || object != strings.ToLower(object) || tag == ref || tag == "" || strings.ContainsAny(tag, "\t\r") {
 			return nil, &TagAdvertisementError{Kind: InvalidTagAdvertisement, Problem: "Git returned an unsupported tag advertisement."}
 		}
 		records[tag] = object

@@ -32,7 +32,7 @@ func newSkillForkFixtureWith(t *testing.T, extra map[string][]byte) (updateFixtu
 	t.Helper()
 	ctx := context.Background()
 	files := map[string][]byte{
-		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml":                            []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":                              updateRule("Wrap errors."),
 		".trailguide/skills/build-feature/SKILL.md":       []byte(forkedSkill),

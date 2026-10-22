@@ -19,7 +19,7 @@ func usingCurated(name string, used ...string) string {
 }
 
 // curatingLibraryConfig curates pocock's deploy skill.
-const curatingLibraryConfig = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  skills:\n    offered: [pocock:skills/ops/deploy, pocock:skills/grill]\n"
+const curatingLibraryConfig = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  formatVersion: 1\n  skills:\n    offered: [pocock:skills/ops/deploy, pocock:skills/grill]\n"
 
 // TestLibraryCheck_ExplainsAUseOfASkillTheLibraryDoesNotCurate covers, in human and JSON output, the diagnostics for
 // a skill's use of a curated skill whose source name is wrong, and for a use that leaves out the curated skill's source.

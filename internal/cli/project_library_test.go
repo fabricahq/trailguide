@@ -23,7 +23,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	binary := buildCLI(t)
 	ctx := context.Background()
 	upstream := versionedLibrary(t, true)
-	config := "schemaVersion: 2\nsources:\n  upstream:\n    repository: git@fixture.invalid:upstream\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\nlibrary: {}\n"
+	config := "schemaVersion: 2\nsources:\n  upstream:\n    repository: git@fixture.invalid:upstream\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\nlibrary: {formatVersion: 1}\n"
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
 		"config.yaml":                   []byte(config),
 		"practices/testing/_group.yaml": []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
@@ -127,7 +127,7 @@ func TestRepository_IsBothAProjectAndALibrary(t *testing.T) {
 	if want := []string{"config.yaml", "rules/practices/testing/_group.yaml", "rules/practices/testing/a.md", "rules/practices/testing/b.md"}; !slices.Equal(imported, want) {
 		t.Fatalf("imported %v, want %v", imported, want)
 	}
-	if manifest, err := os.ReadFile(filepath.Join(vendor, "config.yaml")); err != nil || string(manifest) != `{"library":{},"schemaVersion":2,"sources":{}}`+"\n" {
+	if manifest, err := os.ReadFile(filepath.Join(vendor, "config.yaml")); err != nil || string(manifest) != `{"library":{"formatVersion":1},"sources":{}}`+"\n" {
 		t.Fatalf("imported a manifest with more than the library section: %v\n%s", err, manifest)
 	}
 

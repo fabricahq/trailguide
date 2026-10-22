@@ -3,6 +3,7 @@
 package project
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -48,7 +49,7 @@ func snapshotFixture(t *testing.T) (rules.Configuration, map[string]snapshot) {
 	return config, map[string]snapshot{"team": {Repository: config.Sources[0].Repository, RetiredRules: []string{}, Release: 2, Commit: releaseTwo, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{},
 		Rules: map[string]library.ImportedRule{"techs/go/errors": {Version: &two, Release: 2, Commit: releaseTwo}, "techs/go/naming": {Version: &one, Release: 1, Commit: releaseOne, LegacyLayout: true}},
 		Files: map[string][]byte{
-			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 			"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go rules","whenToRead":"When editing Go."}`),
 			"techs/go/errors.md":   []byte(projectRule),
 			"techs/go/naming.md":   []byte(projectRule),
@@ -561,7 +562,7 @@ func TestSnapshotRefChecks(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			config := snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"`+test.ref+`"`)
-			files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{}}`), "techs/go/_group.yaml": []byte(`{}`)}
+			files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`), "techs/go/_group.yaml": []byte(`{}`)}
 			item := snapshot{Repository: config.Sources[0].Repository, Ref: gitRef(t, test.ref), Release: test.release, Commit: test.commit, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{}, Rules: test.rules, Files: files}
 			_, err := encodeStored(config, map[string]snapshot{"team": item})
 			if (err == nil) != test.ok {
@@ -754,6 +755,52 @@ func TestSnapshotRecordsRejectInvalidSkills(t *testing.T) {
 			}
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("got %v; want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// TestSnapshotManifestIsReadAsTheLibrarysConsumer loads a snapshot's library offline, as build and check do, reading its
+// manifest as the library's consumers read it: whatever the project schema version, project settings, or manifest
+// fields this version doesn't know, but never without a supported library format.
+func TestSnapshotManifestIsReadAsTheLibrarysConsumer(t *testing.T) {
+	for name, test := range map[string]struct {
+		manifest, location string
+		unsupported        bool
+	}{
+		"the published contract":    {manifest: `{"library":{"formatVersion":1},"sources":{}}`},
+		"project settings":          {manifest: `{"schemaVersion":9,"skillTargets":["future"],"sources":{"own":{"repository":"not an address"}},"library":{"formatVersion":1}}`},
+		"an unknown manifest field": {manifest: `{"library":{"formatVersion":1,"description":"Shared rules."},"sources":{}}`},
+		"no format":                 {manifest: `{"library":{},"sources":{}}`, location: "team/.trailguide/config.yaml: library.formatVersion"},
+		"a malformed format":        {manifest: `{"library":{"formatVersion":"1"},"sources":{}}`, location: "team/.trailguide/config.yaml: library.formatVersion"},
+		"another format":            {manifest: `{"library":{"formatVersion":2},"sources":{}}`, unsupported: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config, input := snapshotFixture(t)
+			team := input["team"]
+			team.Files["config.yaml"] = []byte(test.manifest)
+			encoded, err := encodeStored(config, input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded, err := decodeStored(config, encoded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = library.LoadSource(context.Background(), decoded["team"].Source(), "team", config.Sources[0].Groups, nil)
+			var validation errs.ValidationError
+			var unsupported *trailguide.UnsupportedLibraryFormatError
+			switch {
+			case test.unsupported:
+				if !errors.As(err, &unsupported) || unsupported.FormatVersion != 2 {
+					t.Fatalf("got %v; want an unsupported library format", err)
+				}
+			case test.location != "":
+				if !errors.As(err, &validation) || validation.ValidationLocation() != test.location {
+					t.Fatalf("got %v; want a validation error at %s", err, test.location)
+				}
+			case err != nil:
+				t.Fatal(err)
 			}
 		})
 	}

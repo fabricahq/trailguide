@@ -27,7 +27,7 @@ func skillLibrary(t *testing.T) (*gitfixture.Fixture, string) {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml":                            []byte(projectMetadata),
 		"techs/go/errors.md":                              []byte(projectRule),
 		".trailguide/skills/build-feature/SKILL.md":       []byte(buildSkill),

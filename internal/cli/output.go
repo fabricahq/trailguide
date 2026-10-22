@@ -18,6 +18,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/gitexec"
+	"github.com/fabricahq/trailguide/trailguide"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -133,11 +134,14 @@ func classifyError(err error) *responseError {
 	var validation errs.ValidationError
 	var domain *filetxn.Error
 	var git *gitexec.Error
+	var format *trailguide.UnsupportedLibraryFormatError
 	switch {
 	case errors.As(err, &domain):
 		result.Code = domain.Code
 	case errors.As(err, &git):
 		result.Code = git.Code
+	case errors.As(err, &format):
+		result.Code = "unsupported-library-format"
 	}
 	switch {
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):

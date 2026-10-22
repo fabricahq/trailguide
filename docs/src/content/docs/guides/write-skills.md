@@ -240,6 +240,7 @@ In a library, decide how strongly projects should take the skill, and list it in
 
 ```yaml
 library:
+  formatVersion: 1
   skills:
     required: [skills/ship-service]
     recommended: [skills/fix-bug, skills/review-tests]

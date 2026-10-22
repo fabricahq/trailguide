@@ -100,7 +100,7 @@ func curateSkills(ctx context.Context, configuration rules.Configuration, source
 	if imported.Snapshot.NonLibrary {
 		return nil
 	}
-	manifest, err := rules.ParseLibraryManifest(imported.Snapshot.Files[librarytree.Manifest], source.Name+"/"+librarytree.RepositoryPath(librarytree.Manifest))
+	manifest, err := rules.ParsePublishedManifest(imported.Snapshot.Files[librarytree.Manifest], source.Name+"/"+librarytree.RepositoryPath(librarytree.Manifest))
 	if err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func (l curatedSource) missing(id string, revision library.CuratedSource, kept b
 // resolved, by curated source name, leaving out overridden ones, and a preview row for each curated source whose
 // commit or skills differ from those recorded, including one the project no longer takes any skills from.
 func planCurated(ctx context.Context, configuration rules.Configuration, source rules.Source, manifest []byte, used map[string][]string, recorded *library.Snapshot, keep bool, overridden map[string]library.Snapshot, only func(name string, override *rules.Source) bool, options Options) (map[string]library.CuratedSource, []CuratedUpdate, error) {
-	parsed, err := rules.ParseLibraryManifest(manifest, source.Name+"/"+librarytree.RepositoryPath(librarytree.Manifest))
+	parsed, err := rules.ParsePublishedManifest(manifest, source.Name+"/"+librarytree.RepositoryPath(librarytree.Manifest))
 	if err != nil {
 		return nil, nil, err
 	}

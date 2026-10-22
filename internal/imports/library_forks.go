@@ -32,7 +32,7 @@ func ReadSourceSkill(ctx context.Context, name string, declared rules.CuratedSou
 			if err != nil {
 				return err
 			}
-			declaration, err := rules.ParseLibraryManifest(manifest, "sources."+name)
+			declaration, err := rules.ParsePublishedManifest(manifest, "sources."+name)
 			if err != nil {
 				return err
 			}

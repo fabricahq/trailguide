@@ -126,7 +126,7 @@ func TestSync_InstallsEverySkillAnIncludedSkillUsesFromTheSameSource(t *testing.
 func TestSync_InstallsTheSkillsALibrarySkillUses(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                              []byte(`{"schemaVersion":2,"sources":{},"library":{}}`),
+		"config.yaml":                              []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`),
 		"techs/go/_group.yaml":                     []byte(projectMetadata),
 		"techs/go/errors.md":                       []byte(projectRule),
 		".trailguide/skills/fix-bug/SKILL.md":      usingSkill("fix-bug", "skills/review-tests"),

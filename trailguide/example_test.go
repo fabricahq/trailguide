@@ -93,7 +93,8 @@ Check every error a function returns.
 }
 
 // ExampleParseLibraryManifest reads the manifest of a library release: the library section of the configuration at
-// the tagged commit, which also configures the repository as a project. It reads only what the library publishes.
+// the tagged commit, which also configures the repository as a project. It reads only what the library publishes,
+// and reports a library in a newer format separately, so a catalog can skip that one library.
 func ExampleParseLibraryManifest() {
 	// The configuration at the tagged commit, read with go-git from trailguide.RepositoryPath(trailguide.Manifest).
 	config := `schemaVersion: 2
@@ -103,6 +104,7 @@ sources:
     repository: https://github.com/anthropics/skills.git
     ref: main
 library:
+  formatVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -113,6 +115,11 @@ library:
 `
 	location := "acme/rules/" + trailguide.RepositoryPath(trailguide.Manifest)
 	library, err := trailguide.ParseLibraryManifest([]byte(config), location)
+	var unsupported *trailguide.UnsupportedLibraryFormatError
+	if errors.As(err, &unsupported) {
+		fmt.Println("needs a newer reader for format", unsupported.FormatVersion)
+		return
+	}
 	if err != nil {
 		fmt.Println("invalid manifest:", err)
 		return
@@ -124,9 +131,11 @@ library:
 	fmt.Println(location)
 	fmt.Println(*library.License.SPDXExpression, library.License.Files)
 	fmt.Println(library.Skills.Required, library.Skills.Level("skills/build-feature"))
+	fmt.Println(library.Curated["anthropic"].Repository, library.Curated["anthropic"].Ref)
 
 	// Output:
 	// acme/rules/.trailguide/config.yaml
 	// MIT [LICENSE.md]
 	// [anthropic:skills/skill-creator] recommended
+	// https://github.com/anthropics/skills.git main
 }

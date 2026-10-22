@@ -489,8 +489,9 @@ func (g *libraryGit) pendingLibraryFiles(ctx context.Context, latest *publishedR
 }
 
 // releasedTerms returns the library paths of the license and notice files the latest library release's manifest
-// declared. A library release made before the layout of version 2 kept its manifest in rule-library.yaml, whose
-// declared paths are library paths; its terms are read without validation, which that release passed.
+// declared, which that library release validated when it was published. They're read without validating the
+// manifest again, so a library release made in an earlier format, or in the layout before version 2, whose
+// rule-library.yaml declared library paths, still compares with the working tree.
 func (g *libraryGit) releasedTerms(ctx context.Context, latest *publishedRelease) ([]string, error) {
 	manifest, legacy, err := g.releasedManifest(ctx, latest)
 	if err != nil {
@@ -500,14 +501,18 @@ func (g *libraryGit) releasedTerms(ctx context.Context, latest *publishedRelease
 		return LegacyTerms(manifest), nil
 	}
 	location := latest.tagName() + ":" + manifestPath
-	declaration, err := rules.ParseLibraryManifest(manifest, location)
-	if err != nil {
-		return nil, err
+	var published struct {
+		Library *struct {
+			License *releasedLicense `json:"license"`
+		} `json:"library"`
 	}
-	if declaration == nil {
+	if _, data, err := decode.YAML(manifest, location); err != nil || json.Unmarshal(data, &published) != nil || published.Library == nil {
 		return nil, failure("invalid-library", location+": the configuration has no library section", nil)
 	}
-	return rules.LicensePaths(declaration.License), nil
+	return published.Library.License.paths(func(path string) string {
+		library, _ := librarytree.LibraryPath(librarytree.Upgrade(path))
+		return library
+	}), nil
 }
 
 // releasedManifest returns the manifest of the latest library release, and whether it's a rule-library.yaml from
@@ -540,15 +545,30 @@ func LegacyTerms(manifest []byte) []string {
 		return nil
 	}
 	var parsed struct {
-		License struct {
-			File    string   `json:"file"`
-			Notices []string `json:"notices"`
-		} `json:"license"`
+		License *releasedLicense `json:"license"`
 	}
-	if json.Unmarshal(data, &parsed) != nil || parsed.License.File == "" {
+	if json.Unmarshal(data, &parsed) != nil {
 		return nil
 	}
-	declaration := &trailguide.LicenseDeclaration{Files: []string{parsed.License.File}, AttributionFiles: parsed.License.Notices}
+	return parsed.License.paths(func(path string) string { return path })
+}
+
+// releasedLicense is a license declaration as a released manifest wrote it, which its library release validated.
+type releasedLicense struct {
+	File    string   `json:"file"`
+	Notices []string `json:"notices"`
+}
+
+// paths returns the library paths, as library maps each declared path, of the license and notice files, in the
+// order LicensePaths gives, or none when t is nil or declares no file.
+func (t *releasedLicense) paths(library func(path string) string) []string {
+	if t == nil || t.File == "" {
+		return nil
+	}
+	declaration := &trailguide.LicenseDeclaration{Files: []string{library(t.File)}}
+	for _, notice := range t.Notices {
+		declaration.AttributionFiles = append(declaration.AttributionFiles, library(notice))
+	}
 	return rules.LicensePaths(declaration)
 }
 

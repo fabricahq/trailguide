@@ -41,6 +41,7 @@ Declare one license covering the whole library in the manifest, the `library` se
 schemaVersion: 2
 sources: {}
 library:
+  formatVersion: 1
   license:
     spdxExpression: MIT
     file: LICENSE.md

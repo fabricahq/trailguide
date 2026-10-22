@@ -29,7 +29,7 @@ func releasedLibrary(t *testing.T) (*gitfixture.Fixture, string) {
 	t.Helper()
 	ctx := context.Background()
 	fixture, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {}\n"),
+		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n"),
 		"practices/testing/_group.yaml": []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
 		"practices/testing/a.md":        []byte(libraryRule("Test the retry limit.")),
 		"practices/testing/b.md":        []byte(libraryRule("Test the backoff.")),
@@ -230,7 +230,7 @@ func TestLibraryChange_RejectsInvalidRequests(t *testing.T) {
 		t.Fatal("wrote notes", notes)
 	}
 	unreleased := t.TempDir()
-	writeFiles(t, unreleased, map[string]string{"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary: {}\n", "practices/testing/_group.yaml": "name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n", "practices/testing/a.md": libraryRule("Test.")})
+	writeFiles(t, unreleased, map[string]string{"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n", "practices/testing/_group.yaml": "name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n", "practices/testing/a.md": libraryRule("Test.")})
 	out, _, code = runCLI(t, binary, unreleased, "library", "change", "practices/testing/a", "--summary", "Add a.", "--json")
 	if err := json.Unmarshal([]byte(out), &response); err != nil || code != 1 || response.Error.Code != "no-library-release" {
 		t.Fatal(err, code, out)
@@ -395,7 +395,7 @@ func TestLibraryCheck_SaysTheFirstReleasePublishesTheLibraryWideFiles(t *testing
 	binary := buildCLI(t)
 	ctx := context.Background()
 	fixture, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {}\n"),
+		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n"),
 		"practices/testing/_group.yaml": []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
 	}))
 	if err != nil {

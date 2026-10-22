@@ -273,7 +273,7 @@ func (r *repository) terms(ctx context.Context, source string, tree map[string]t
 	if err != nil {
 		return nil, err
 	}
-	declaration, err := rules.ParseLibraryManifest(data, source+"/"+librarytree.RepositoryPath(librarytree.Manifest))
+	declaration, err := rules.ParsePublishedManifest(data, source+"/"+librarytree.RepositoryPath(librarytree.Manifest))
 	if err != nil || declaration == nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ func forkingLibrary(t *testing.T, listed string) (string, *gitfixture.Fixture, [
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	config := "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  skills:\n" + listed
+	config := "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  formatVersion: 1\n  skills:\n" + listed
 	file := filepath.Join(directory, ".trailguide", "config.yaml")
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		t.Fatal(err)
