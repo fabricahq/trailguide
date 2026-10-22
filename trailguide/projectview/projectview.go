@@ -102,9 +102,11 @@ type Replacement struct {
 }
 
 // Read returns the view of a project from its configuration, the bytes of .trailguide/config.yaml, and its lockfile,
-// the bytes of .trailguide/lock.json. It fails when either is invalid, or when the lockfile has no entry for a source
-// the configuration declares, which trailguide project sync adds. It ignores lockfile entries for sources the
-// configuration no longer declares.
+// the bytes of .trailguide/lock.json. It fails when either is invalid, or when the lockfile doesn't record what the
+// configuration asks for: it has no entry for a declared source, or an entry whose repository, ref, rule or skill
+// selectors, or pinned versions differ from the source's, until trailguide project sync or update writes it again. It
+// ignores lockfile entries for sources the configuration no longer declares. An exclusion or replacement changes no
+// lockfile entry, so the view applies the configuration's, as the next build does.
 func Read(config, lock []byte) (View, error) {
 	configuration, err := rules.ParseConfigurationYAML(config)
 	if err != nil {
@@ -119,6 +121,9 @@ func Read(config, lock []byte) (View, error) {
 		entry, ok := locked.Sources[source.Name]
 		if !ok {
 			return View{}, &trailguide.ValidationError{Location: trailguide.LockFile + ".sources." + source.Name, Problem: "the lockfile has no entry for this source; run trailguide project sync"}
+		}
+		if err := matchEntry(source, entry); err != nil {
+			return View{}, err
 		}
 		view.Sources = append(view.Sources, Source{
 			Name: source.Name, Kind: entry.Kind, Repository: entry.Repository, Ref: entry.Ref, Commit: entry.Commit,
@@ -214,7 +219,7 @@ func (v View) Updates(source string, current map[string]trailguide.RuleVersion, 
 				continue
 			}
 			update.Current = &version
-		} else if !retired[rule.Path] {
+		} else if !retired[rule.Path] || rule.Retired {
 			continue
 		}
 		switch {
@@ -227,6 +232,32 @@ func (v View) Updates(source string, current map[string]trailguide.RuleVersion, 
 		}
 	}
 	return result
+}
+
+// matchEntry checks that entry, a source's lockfile entry, records what source's configuration asks for: the same
+// repository, ref, and rule and skill selectors, and each pinned rule at its pinned version, unless its library retired
+// it. Otherwise the configuration changed since sync or update last wrote the entry.
+func matchEntry(source rules.Source, entry trailguide.LockedSource) error {
+	unsynced := &trailguide.ValidationError{
+		Location: trailguide.LockFile + ".sources." + source.Name,
+		Problem:  "the entry doesn't record what sources." + source.Name + " in the configuration asks for; run trailguide project sync, or trailguide project update " + source.Name + " for a changed ref",
+	}
+	ref, err := rules.ParseGitRef(entry.Ref, "ref")
+	if err != nil || entry.Repository != source.Repository || !source.Ref.Equal(ref) ||
+		!slices.Equal(entry.Selectors.Rules, source.Rules) || !slices.Equal(entry.Selectors.Skills, source.Skills) {
+		return unsynced
+	}
+	var groups rules.GroupSelection
+	if len(entry.Selectors.Groups) > 0 && groups.UnmarshalJSON(entry.Selectors.Groups) != nil || !groups.Equal(source.Groups) {
+		return unsynced
+	}
+	for id, pin := range source.Pins {
+		rule, held := entry.Rules[id]
+		if held && (rule.Version == nil || *rule.Version != pin.Version) || !held && !slices.Contains(entry.RetiredRules, id) {
+			return unsynced
+		}
+	}
+	return nil
 }
 
 // translate returns err with an internal validation error replaced by a *trailguide.ValidationError with the same

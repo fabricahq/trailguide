@@ -154,6 +154,11 @@ func TestReadRefusesInvalidInput(t *testing.T) {
 		"an invalid configuration":    {[]byte("schemaVersion: 2\nsources: []\n"), lock, "sources"},
 		"a source the lockfile lacks": {[]byte(strings.Replace(fixtureConfig, "  tools:", "  other:\n    repository: https://github.com/acme/other.git\n    ref: main\n    skills:\n      include:\n        - \"*\"\n  tools:", 1)), lock, "lock.json.sources.other"},
 		"an edited lockfile":          {[]byte(fixtureConfig), []byte(strings.Replace(string(lock), `"release/2"`, `"release/3"`, 1)), "lock.json.sources.fabrica"},
+		"a changed ref":               {[]byte(strings.Replace(fixtureConfig, "ref: release/2", "ref: release/3", 1)), lock, "lock.json.sources.fabrica"},
+		"a changed repository":        {[]byte(strings.Replace(fixtureConfig, "public-library.git", "other-library.git", 1)), lock, "lock.json.sources.fabrica"},
+		"a changed rule selector":     {[]byte(strings.Replace(fixtureConfig, "        - techs/go/*\n", "        - techs/*\n", 1)), lock, "lock.json.sources.fabrica"},
+		"a changed skill selector":    {[]byte(strings.Replace(fixtureConfig, `        - "*"`, "        - tools/plan", 1)), lock, "lock.json.sources.tools"},
+		"a changed pin":               {[]byte(strings.Replace(fixtureConfig, `version: "1.0.0"`, `version: "1.1.0"`, 1)), lock, "lock.json.sources.fabrica"},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -180,13 +185,13 @@ func TestUpdates(t *testing.T) {
 		"techs/go/draft":   *version("1.0.0"),
 		"techs/go/errors":  *version("1.1.0"),
 		"techs/go/logging": *version("1.2.0"),
-		"techs/go/tests":   *version("2.0.0"),
 	}
-	got := view.Updates("fabrica", current, map[string]bool{"techs/go/naming": true})
+	// The lockfile already records naming as retired, so its retirement is no news; tests' is.
+	got := view.Updates("fabrica", current, map[string]bool{"techs/go/naming": true, "techs/go/tests": true})
 	want := projectview.Updates{
 		Active: []projectview.RuleUpdate{
 			{ID: "fabrica:techs/go/draft", Path: "techs/go/draft", Current: version("1.0.0")},
-			{ID: "fabrica:techs/go/naming", Path: "techs/go/naming", Held: version("1.0.0"), Pinned: true},
+			{ID: "fabrica:techs/go/tests", Path: "techs/go/tests", Held: version("2.0.0")},
 		},
 		// The replacement is based on 1.0.0, so 1.1.0 is news to it even though the project holds 1.1.0.
 		ReplacementBasis: []projectview.RuleUpdate{{ID: "fabrica:techs/go/errors", Path: "techs/go/errors", Held: version("1.0.0"), Current: version("1.1.0")}},

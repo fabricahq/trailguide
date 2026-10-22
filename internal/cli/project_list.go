@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/project"
-	"github.com/fabricahq/trailguide/trailguide/projectview"
 	"github.com/spf13/cobra"
 )
 
@@ -70,9 +69,11 @@ func formatRuleListing(listing project.RuleListing) string {
 }
 
 // ruleStatus summarizes a listed rule's fields for people, such as "active, pinned at 1.0.0".
-func ruleStatus(rule projectview.Rule) string {
+func ruleStatus(rule project.ListedRule) string {
 	var parts []string
 	switch {
+	case rule.Draft:
+		parts = append(parts, "draft, not built")
 	case rule.ReplacedBy != "":
 		parts = append(parts, "replaced by "+rule.ReplacedBy)
 	case rule.Exclusion != nil:

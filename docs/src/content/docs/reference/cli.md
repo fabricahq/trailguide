@@ -378,7 +378,7 @@ trailguide project list rules
 
 List the rules in the project: every rule it holds of its sources, with its version and how the project uses it, and the project's own authored rules. Lists never write files.
 
-Like `list skills`, the listing reads `.trailguide/config.yaml` and `.trailguide/lock.json`, so it works offline and shows the versions the project holds, not newer ones. After changing the configuration, run `trailguide project sync` first. To see what a newer library release changes, run `trailguide project update SOURCE`, which previews the changes before writing anything.
+Like `list skills`, the listing reads `.trailguide/config.yaml` and `.trailguide/lock.json`, so it works offline and shows the versions the project holds, not newer ones. After changing a source's repository, ref, selectors, or pins, run `trailguide project sync` first; until then, the listing refuses the lockfile. To see what a newer library release changes, run `trailguide project update SOURCE`, which previews the changes before writing anything.
 
 ```text
 $ trailguide project list rules
@@ -396,11 +396,11 @@ Each row shows:
 - **RULE:** the rule's project ID. A rule from a source starts with the source name; an authored rule starts with `local:`.
 - **VERSION:** the version the project holds, or `-` for an authored rule or a rule file with unreleased changes.
 - **FROM:** the source and the library release that published the version, or the commit for a rule with unreleased changes; or `this project` for an authored rule.
-- **STATUS:** `active` for a rule agents receive; `excluded` for one an exclusion leaves out; or `replaced by` and the authored rule agents receive instead. It adds `replaces` and the rule an authored rule replaces, `pinned at` and the version a pin keeps, and `retired` for a rule its library has retired.
+- **STATUS:** `active` for a rule agents receive; `excluded` for one an exclusion leaves out; `replaced by` and the authored rule agents receive instead; or `draft, not built` for an authored rule that still has its draft marker, which build refuses until you complete it. It adds `replaces` and the rule an authored rule replaces, `pinned at` and the version a pin keeps, and `retired` for a rule its library has retired.
 
 Rules are sorted by project ID. To add or remove rules, edit the source's `rules.include` or `rules.exclude` and run `trailguide project sync`.
 
-JSON output lists the rules in `value.rules`, each with its `id`, `path`, `active`, and `retired`, and, where they apply, `source`, `version`, `release`, `commit`, `pin` (its `version` and `reason`), `exclusion` (its `reason`), `replacedBy`, and `replaces` (the replaced rule's `id` and the `basedOn` version). Tools written in Go can compute the same view from a project's configuration and lockfile with the `github.com/fabricahq/trailguide/trailguide/projectview` package; see [Read a project from a tool](/reference/provenance/#read-a-project-from-a-tool).
+JSON output lists the rules in `value.rules`, each with its `id`, `path`, `active`, and `retired`, and, where they apply, `source`, `version`, `release`, `commit`, `pin` (its `version` and `reason`), `exclusion` (its `reason`), `replacedBy`, `replaces` (the replaced rule's `id` and the `basedOn` version), and `draft`. Tools written in Go can compute the same view from a project's configuration and lockfile with the `github.com/fabricahq/trailguide/trailguide/projectview` package; see [Read a project from a tool](/reference/provenance/#read-a-project-from-a-tool).
 
 ## Library commands
 
