@@ -41,7 +41,7 @@ func newForkFixture(t *testing.T, repository string) forkFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1,"license":{"file":"LICENSE","notices":[]}}}`),
+		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":"LICENSE","notices":[]}}}`),
 		"LICENSE":                         []byte("Terms\n"),
 		"techs/go/_group.yaml":            []byte("# Go metadata.\n" + projectMetadata + "\n"),
 		"techs/go/errors.md":              []byte(forkedRule("Read [the guide](../../../assets/guide.md), [notes](assets/errors/notes.md), and [data](assets/errors/data.bin#top).")),

@@ -51,7 +51,7 @@ func importedProject(t *testing.T) (*os.Root, Options) {
 	commit := strings.Repeat("a", 40)
 	imported := snapshot{Repository: config.Sources[0].Repository, Ref: gitRef(t, "v1.0.0"), Commit: commit, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{},
 		Rules: map[string]library.ImportedRule{"techs/go/errors": {Commit: commit}},
-		Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`), "techs/go/_group.yaml": []byte(projectMetadata), "techs/go/errors.md": []byte(projectRule)}}
+		Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`), "techs/go/_group.yaml": []byte(projectMetadata), "techs/go/errors.md": []byte(projectRule)}}
 	vendor, lock, err := encodeSnapshots(config, map[string]snapshot{"team": imported}, sourceRecords{})
 	if err != nil {
 		t.Fatal(err)

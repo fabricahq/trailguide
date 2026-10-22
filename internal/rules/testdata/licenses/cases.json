@@ -3,7 +3,7 @@
     "id": "license-unspecified",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -19,7 +19,7 @@
     "id": "license-mit",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -53,7 +53,7 @@
     "id": "license-expression-2",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"Apache-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"Apache-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -87,7 +87,7 @@
     "id": "license-expression-3",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(MIT OR Apache-2.0) AND BSD-2-Clause\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(MIT OR Apache-2.0) AND BSD-2-Clause\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -121,7 +121,7 @@
     "id": "license-expression-4",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0+\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0+\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -155,7 +155,7 @@
     "id": "license-expression-5",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0-only WITH Classpath-exception-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0-only WITH Classpath-exception-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -189,7 +189,7 @@
     "id": "license-expression-6",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -223,7 +223,7 @@
     "id": "license-expression-7",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Other:LicenseRef-Team\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Other:LicenseRef-Team\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -257,7 +257,7 @@
     "id": "license-expression-8",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT or Apache-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT or Apache-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -291,7 +291,7 @@
     "id": "license-expression-9",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \" MIT \"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \" MIT \"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -325,7 +325,7 @@
     "id": "license-unidentified",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -359,7 +359,7 @@
     "id": "license-deduplicate",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\", \"LICENSE\", \"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\", \"LICENSE\", \"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -393,7 +393,7 @@
     "id": "license-no-notices",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [], \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [], \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -455,7 +455,7 @@
     "id": "license-null-license",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": null}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": null}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -471,7 +471,7 @@
     "id": "license-null-notices",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": null, \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": null, \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -487,7 +487,7 @@
     "id": "license-traversal",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"../LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"../LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -503,7 +503,7 @@
     "id": "license-unknown",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\", \"future\": true}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\", \"future\": true}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -519,7 +519,7 @@
     "id": "license-expression-field",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\", \"expression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\", \"expression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -535,7 +535,7 @@
     "id": "license-blank",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \" \"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \" \"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -551,7 +551,7 @@
     "id": "license-multiline",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\\n\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT\\n\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -567,7 +567,7 @@
     "id": "license-invalid-25",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"mit\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"mit\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -583,7 +583,7 @@
     "id": "license-invalid-26",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"Unreal-1.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"Unreal-1.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -599,7 +599,7 @@
     "id": "license-invalid-27",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT OR\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT OR\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -615,7 +615,7 @@
     "id": "license-invalid-28",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -631,7 +631,7 @@
     "id": "license-invalid-29",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT +\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT +\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -647,7 +647,7 @@
     "id": "license-invalid-30",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -663,7 +663,7 @@
     "id": "license-invalid-31",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT WITH Unknown\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT WITH Unknown\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -679,7 +679,7 @@
     "id": "license-invalid-32",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT \"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT \"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -695,7 +695,7 @@
     "id": "license-invalid-33",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0-only WITH classpath-exception-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"GPL-2.0-only WITH classpath-exception-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -711,7 +711,7 @@
     "id": "license-custom-exception",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team WITH Classpath-exception-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team WITH Classpath-exception-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -745,7 +745,7 @@
     "id": "license-document-exception",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Other:LicenseRef-Team with Classpath-exception-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Other:LicenseRef-Team with Classpath-exception-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -779,7 +779,7 @@
     "id": "license-custom-exception-invalid",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team WITH MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team WITH MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -795,7 +795,7 @@
     "id": "license-custom-exception-plus",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team+ WITH Classpath-exception-2.0\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"LicenseRef-Team+ WITH Classpath-exception-2.0\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -811,7 +811,7 @@
     "id": "license-unclosed-open",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"(\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -827,7 +827,7 @@
     "id": "license-incomplete-document",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Team:  \"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"DocumentRef-Team:  \"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -843,7 +843,7 @@
     "id": "license-incomplete-nested",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT AND (\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT AND (\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -859,7 +859,7 @@
     "id": "license-newer-identifier",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MVT-1.1\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MVT-1.1\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -888,7 +888,7 @@
     "id": "license-newer-exception",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT WITH PCRE2-exception\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\"], \"spdxExpression\": \"MIT WITH PCRE2-exception\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -917,7 +917,7 @@
     "id": "license-file-is-a-rule",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/errors.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/errors.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -933,7 +933,7 @@
     "id": "license-file-in-a-group-assets-directory",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/assets/LICENSE\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/assets/LICENSE\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -949,7 +949,7 @@
     "id": "license-notice-in-a-rules-assets",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\", \".trailguide/rules/practices/testing/assets/verify/nested/NOTICE.md\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE\", \"notices\": [\"NOTICE\", \".trailguide/rules/practices/testing/assets/verify/nested/NOTICE.md\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -965,7 +965,7 @@
     "id": "license-library-wide-paths-in-groups",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/LICENSE.md\", \"notices\": [\".trailguide/assets/NOTICE.md\", \".trailguide/rules/techs/go/README.md\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/rules/techs/go/LICENSE.md\", \"notices\": [\".trailguide/assets/NOTICE.md\", \".trailguide/rules/techs/go/README.md\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -999,7 +999,7 @@
     "id": "library-with-sources",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {\"team\": {\"repository\": \"https://github.com/acme/rules\", \"rules\": {\"include\": [\"techs/go/*\"]}}}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE.md\", \"notices\": [], \"spdxExpression\": \"MIT\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {\"team\": {\"repository\": \"https://github.com/acme/rules\", \"rules\": {\"include\": [\"techs/go/*\"]}}}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE.md\", \"notices\": [], \"spdxExpression\": \"MIT\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1017,7 +1017,7 @@
     "id": "license-in-docs-folder",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"docs/LICENSE.md\", \"notices\": [\"docs/NOTICE.md\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"docs/LICENSE.md\", \"notices\": [\"docs/NOTICE.md\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1053,7 +1053,7 @@
     "id": "library-skills",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"skills\": {\"required\": \"skills/ship\"}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"required\": \"skills/ship\"}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1069,7 +1069,7 @@
     "id": "library-unknown",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"rules\": \"rules/\"}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"rules\": \"rules/\"}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1085,7 +1085,7 @@
     "id": "license-root-rule-folder",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"techs/go/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"techs/go/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1101,7 +1101,7 @@
     "id": "license-root-assets",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"assets/NOTICE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"assets/NOTICE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1117,7 +1117,7 @@
     "id": "license-root-changes",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"changes/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"changes/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1133,7 +1133,7 @@
     "id": "license-root-config",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"config.yaml\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"config.yaml\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1149,7 +1149,7 @@
     "id": "license-root-rules-folder-notice",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"LICENSE.md\", \"notices\": [\"rules/techs/go/a.md\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"LICENSE.md\", \"notices\": [\"rules/techs/go/a.md\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1165,7 +1165,7 @@
     "id": "license-root-rules-folder-any-case",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"Rules/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"Rules/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1181,7 +1181,7 @@
     "id": "license-root-skills-folder",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"skills/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"skills/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1197,7 +1197,7 @@
     "id": "license-root-curated-folder",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"curated/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"curated/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1213,7 +1213,7 @@
     "id": "license-root-source-record",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"_source.json\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"_source.json\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1229,7 +1229,7 @@
     "id": "license-nested-rules-folder",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \"docs/rules/LICENSE.md\", \"notices\": [\"rules.md\"]}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \"docs/rules/LICENSE.md\", \"notices\": [\"rules.md\"]}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1249,7 +1249,7 @@
     "id": "license-manifest",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/config.yaml\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/config.yaml\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1265,7 +1265,7 @@
     "id": "license-change-note",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/changes/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/changes/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1281,7 +1281,7 @@
     "id": "license-vendor",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/vendor/team/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/vendor/team/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1297,7 +1297,7 @@
     "id": "license-generated",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/generated/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/generated/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {
@@ -1313,7 +1313,7 @@
     "id": "license-rules-readme",
     "operation": "licenses",
     "input": {
-      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"formatVersion\": 1, \"license\": {\"file\": \".trailguide/rules/LICENSE.md\", \"notices\": []}}}"
+      "manifest": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"file\": \".trailguide/rules/LICENSE.md\", \"notices\": []}}}"
     },
     "location": "library/.trailguide/config.yaml",
     "expected": {

@@ -22,7 +22,7 @@ func legacyLibrary(t *testing.T) (*gitfixture.Fixture, string) {
 	ctx := context.Background()
 	files := map[string][]byte{}
 	for name, data := range gitfixture.Library(map[string][]byte{
-		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {formatVersion: 1}\n"),
+		"config.yaml":                   []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n"),
 		"practices/testing/_group.yaml": []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
 		"practices/testing/a.md":        []byte(libraryRule("Test the retry limit.")),
 		"practices/testing/b.md":        []byte(libraryRule("Test the backoff.")),

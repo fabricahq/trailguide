@@ -45,7 +45,7 @@ func legacyLayoutProblem(paths []string) string {
   schemaVersion: 2
   sources: {}
   library:
-    formatVersion: 1
+    schemaVersion: 1
     license:
       spdxExpression: MIT
       file: LICENSE.md

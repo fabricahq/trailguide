@@ -134,14 +134,14 @@ func classifyError(err error) *responseError {
 	var validation errs.ValidationError
 	var domain *filetxn.Error
 	var git *gitexec.Error
-	var format *trailguide.UnsupportedLibraryFormatError
+	var schema *trailguide.UnsupportedLibrarySchemaError
 	switch {
 	case errors.As(err, &domain):
 		result.Code = domain.Code
 	case errors.As(err, &git):
 		result.Code = git.Code
-	case errors.As(err, &format):
-		result.Code = "unsupported-library-format"
+	case errors.As(err, &schema):
+		result.Code = "unsupported-library-schema"
 	}
 	switch {
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):

@@ -63,7 +63,7 @@ func TestInventoryStopsAtOversizedAsset(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(directory, librarytree.RepositoryPath(librarytree.Manifest)), []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, librarytree.RepositoryPath(librarytree.Manifest)), []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	file, err := os.Create(filepath.Join(directory, librarytree.RepositoryPath("assets/large.bin")))
@@ -103,7 +103,7 @@ func TestInventoryPreservesPortablePaths(t *testing.T) {
 				if err := os.Mkdir(filepath.Join(directory, librarytree.Directory), 0700); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(filepath.Join(directory, librarytree.RepositoryPath(librarytree.Manifest)), []byte(`{"schemaVersion":2,"sources":{},"library":{"formatVersion":1}}`), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(directory, librarytree.RepositoryPath(librarytree.Manifest)), []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`), 0600); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.Mkdir(filepath.Join(directory, librarytree.RepositoryPath("assets")), 0700); err != nil {
