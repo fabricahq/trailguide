@@ -63,6 +63,33 @@ func (g *libraryGit) releaseSkillContext(ctx context.Context, latest *publishedR
 	return result, nil
 }
 
+// publishedSkillContext rebuilds the levels and forks that release, a published library release, reported: those of
+// its own manifest, compared with those of the library release before it. A library release without skills, or whose
+// manifest this version can't read, reports none, and one whose previous library release can't be read reports no
+// level or fork changes.
+func (g *libraryGit) publishedSkillContext(ctx context.Context, release *publishedRelease) (skillContext, error) {
+	if release.record.Skills == nil {
+		return skillContext{}, nil
+	}
+	manifest, legacy, err := g.releasedManifest(ctx, release)
+	if err != nil || legacy {
+		return skillContext{}, err
+	}
+	var result skillContext
+	if result.levels, result.forks, err = skillLevelsAndForks(manifest, slices.Sorted(maps.Keys(release.record.Skills.Versions))); err != nil {
+		return skillContext{}, nil
+	}
+	if release.number == 1 {
+		return result, nil
+	}
+	previous := &publishedRelease{number: release.number - 1}
+	previous.object = "refs/tags/" + previous.tagName()
+	if context, err := g.releaseSkillContext(ctx, previous, manifest, slices.Sorted(maps.Keys(release.record.Skills.Versions))); err == nil {
+		result = context
+	}
+	return result, nil
+}
+
 // skillLevelsAndForks returns the level manifest gives each of ids, the library's own skills, and the fork of each
 // that a source's skills.forks records. A manifest without a library section gives every skill offered.
 func skillLevelsAndForks(manifest []byte, ids []string) (map[string]string, map[string]skillFork, error) {

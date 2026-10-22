@@ -163,7 +163,7 @@ func formatPendingRows(out *strings.Builder, rules []library.PendingRule, skills
 }
 
 // pendingSkillDetail shows a pending skill's versions, as pendingVersions shows a rule's, then its level, or its
-// level change, and the source skill it newly forks or whose fork moved.
+// level change, and the source skill it newly forks, whose fork moved, or that it stopped forking.
 func pendingSkillDetail(skill library.PendingSkill) string {
 	detail := pendingVersions(library.PendingRule{From: skill.From, To: skill.To, LastVersion: skill.LastVersion, ReplacedBy: skill.ReplacedBy})
 	switch {
@@ -179,6 +179,8 @@ func pendingSkillDetail(skill library.PendingSkill) string {
 			detail += ", forked from " + source + " at " + shortCommit(fork.BasedOn)
 		case fork.Added:
 			detail += ", forked from " + source
+		case fork.Removed:
+			detail += ", no longer a fork of " + source
 		case fork.BasedOn != "":
 			detail += ", fork of " + source + " now based on " + shortCommit(fork.BasedOn)
 		default:

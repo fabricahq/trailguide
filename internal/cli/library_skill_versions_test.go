@@ -62,3 +62,14 @@ func TestLibrarySkillVersions_ReportsANewRecommendedSkillInCheckAndRelease(t *te
 		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
 	}
 }
+
+// TestLibraryAddSkill_NextStepsIncludeTheChangeNote after the first library release.
+func TestLibraryAddSkill_NextStepsIncludeTheChangeNote(t *testing.T) {
+	binary := buildCLI(t)
+	fixture, dir := releasedLibrary(t)
+	out, diagnostic, code := runCLIWithEnvironment(t, binary, dir, fixture.Environment, "library", "add", "skill", "review", "--description", "Review a change.", "--non-interactive")
+	want := "add skills/review to library.skills. After the first library release, every new skill\nneeds a change note. After writing the steps, record it with a summary for project maintainers:\n  trailguide library change skills/review --summary '<what the skill does>'\n\nThen validate the library:\n  trailguide library check\n"
+	if code != 0 || diagnostic != "" || !strings.HasSuffix(out, want) {
+		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
+	}
+}

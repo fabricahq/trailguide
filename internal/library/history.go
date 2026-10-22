@@ -310,8 +310,8 @@ func (g *libraryGit) libraryFiles(ctx context.Context, treeish string, paths []s
 
 // manifestDigest identifies what a library publishes of its manifest, data, which is a .trailguide/config.yaml or,
 // in a library release made before the layout of version 2, a rule-library.yaml: its library section, as
-// rules.PublishedManifest gives it, so a change to only the sources the repository uses as a project, or to a
-// comment, isn't a library-wide change. A manifest that doesn't parse, which library check reports, is identified
+// rules.PublishedManifest gives it, and the skill forks its release notes report, so a change to only the rest of
+// the sources the repository uses as a project, or to a comment, isn't a library-wide change. A manifest that doesn't parse, which library check reports, is identified
 // by its bytes.
 func manifestDigest(data []byte) string {
 	published := data
@@ -326,13 +326,41 @@ func manifestDigest(data []byte) string {
 			}
 			if section != nil {
 				if manifest, err := rules.PublishedManifestOf(section, fields["sources"]); err == nil {
-					published = manifest
+					published = append(manifest, skillForks(fields["sources"])...)
 				}
 			}
 		}
 	}
 	sum := sha256.Sum256(published)
 	return "manifest:" + hex.EncodeToString(sum[:])
+}
+
+// skillForks returns, as JSON with sorted keys, what release notes report of each skill fork that sources, a
+// configuration's sources given as JSON, records: the skill installed in its place and the commit it's based on. It
+// returns nothing when no source records a fork.
+func skillForks(sources json.RawMessage) []byte {
+	type fork struct {
+		As      string `json:"as"`
+		BasedOn string `json:"basedOn,omitempty"`
+	}
+	var declared map[string]json.RawMessage
+	_ = json.Unmarshal(sources, &declared)
+	forks := map[string]map[string]fork{}
+	for name, data := range declared {
+		var source struct {
+			Skills struct {
+				Forks map[string]fork `json:"forks"`
+			} `json:"skills"`
+		}
+		if json.Unmarshal(data, &source) == nil && len(source.Skills.Forks) > 0 {
+			forks[name] = source.Skills.Forks
+		}
+	}
+	if len(forks) == 0 {
+		return nil
+	}
+	encoded, _ := json.Marshal(forks)
+	return encoded
 }
 
 // treeEntry is one entry of a recursive tree listing: a blob, including a symbolic link, or a submodule.

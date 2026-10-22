@@ -143,7 +143,11 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	switch latest := checked.changes.history.latest; {
 	case unpushed == 0 && latest != nil && latest.commit == result.Commit:
 		// The remote already has this commit's library release; finish only what's missing.
-		describe(&result, latest.record, latest.notes, skillContext{})
+		skills, err := git.publishedSkillContext(ctx, latest)
+		if err != nil {
+			return ReleaseResult{}, err
+		}
+		describe(&result, latest.record, latest.notes, skills)
 		result.Published = true
 		object = latest.object
 		if err = requireGitHubCLI(); err != nil {

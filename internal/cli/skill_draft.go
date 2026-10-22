@@ -104,17 +104,23 @@ Example description:
 `
 }
 
-// skillCreatedReport lists the draft's files and says how to complete it and what to run next.
-func skillCreatedReport(added, changed, warnings []string, name string, scope authoringScope) commandReport {
+// skillCreatedReport lists the draft's files and says how to complete it and what to run next; changeNote adds
+// recording the skill's change note in a released library.
+func skillCreatedReport(added, changed, warnings []string, name string, scope authoringScope, changeNote bool) commandReport {
 	var out strings.Builder
 	out.WriteString("Skill draft created.\n")
 	formatAuthored(&out, added, changed, warnings, scope.workdir)
 	instruction := "Next: Open SKILL.md above in your editor.\nKeep the frontmatter between the --- lines at the top. Below it:\n  - Number the steps, in the order the agent takes them.\n  - Name the rules each step applies, and list their IDs in metadata.trailguide-rules-used.\n  - Replace <...> placeholders and remove the sections you don't need." +
 		"\n  - Remove the " + rules.DraftMarker + " marker when the skill is complete."
 	steps := []nextStep{{Instruction: instruction}}
-	if scope.library {
+	switch {
+	case scope.library && changeNote:
+		steps = append(steps,
+			nextStep{Instruction: "The skill is offered: projects install it only when they name it. To require or recommend it,\nadd skills/" + name + " to library.skills. After the first library release, every new skill\nneeds a change note. After writing the steps, record it with a summary for project maintainers:", Commands: []string{scope.command("change skills/" + name + " --summary '<what the skill does>'")}},
+			nextStep{Instruction: "Then validate the library:", Commands: []string{scope.command("check")}})
+	case scope.library:
 		steps = append(steps, nextStep{Instruction: "The skill is offered: projects install it only when they name it. To require or recommend it,\nadd skills/" + name + " to library.skills. After writing the steps, run:", Commands: []string{scope.command("check")}})
-	} else {
+	default:
 		steps = append(steps, nextStep{Instruction: "Project skills are discovered automatically when you build; you don't need to list them in\nconfig.yaml. After writing the steps, to install the skill, run:", Commands: []string{scope.command("build"), scope.command("check")}})
 	}
 	return authoredReport(&out, added, changed, warnings, steps)

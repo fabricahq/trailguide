@@ -47,7 +47,7 @@ type PendingSkill struct {
 	Level         string `json:"level,omitempty"`
 	PreviousLevel string `json:"previousLevel,omitempty"`
 	// Fork is the source skill the skill forks, when it's new and a fork, or became a fork, or its fork moved to
-	// another commit; it is nil otherwise.
+	// another commit, or the source skill it stopped forking; it is nil otherwise.
 	Fork *SkillForkChange `json:"fork,omitempty"`
 }
 
@@ -56,9 +56,11 @@ type SkillForkChange struct {
 	// Source names the library's source, and ID is the skill's ID in it.
 	Source string `json:"source"`
 	ID     string `json:"id"`
-	// Added reports that the skill is new, or wasn't a fork of this source skill in the latest library release;
-	// otherwise its fork moved from PreviousBasedOn to BasedOn. Each is a commit, or empty when the fork records none.
+	// Added reports that the skill is new, or wasn't a fork of this source skill in the latest library release, and
+	// Removed that it no longer forks the source skill it forked there; otherwise its fork moved from PreviousBasedOn
+	// to BasedOn. Each is a commit, or empty when the fork records none.
 	Added           bool   `json:"added"`
+	Removed         bool   `json:"removed,omitempty"`
 	BasedOn         string `json:"basedOn,omitempty"`
 	PreviousBasedOn string `json:"previousBasedOn,omitempty"`
 }
@@ -99,14 +101,15 @@ func releaseSkills(record trailguide.ReleaseRecord, context skillContext) []Pend
 		if previous, known := context.previousLevels[id]; known && !isNew && previous != skill.Level {
 			skill.PreviousLevel = previous
 		}
-		if fork, forked := context.forks[id]; forked {
-			previous, wasForked := context.previousForks[id]
-			switch {
-			case isNew || !wasForked || previous.source != fork.source || previous.id != fork.id:
-				skill.Fork = &SkillForkChange{Source: fork.source, ID: fork.id, Added: true, BasedOn: fork.basedOn}
-			case previous.basedOn != fork.basedOn:
-				skill.Fork = &SkillForkChange{Source: fork.source, ID: fork.id, BasedOn: fork.basedOn, PreviousBasedOn: previous.basedOn}
-			}
+		fork, forked := context.forks[id]
+		previous, wasForked := context.previousForks[id]
+		switch {
+		case forked && (isNew || !wasForked || previous.source != fork.source || previous.id != fork.id):
+			skill.Fork = &SkillForkChange{Source: fork.source, ID: fork.id, Added: true, BasedOn: fork.basedOn}
+		case forked && previous.basedOn != fork.basedOn:
+			skill.Fork = &SkillForkChange{Source: fork.source, ID: fork.id, BasedOn: fork.basedOn, PreviousBasedOn: previous.basedOn}
+		case !forked && wasForked && !isNew:
+			skill.Fork = &SkillForkChange{Source: previous.source, ID: previous.id, Removed: true}
 		}
 		if changed || skill.PreviousLevel != "" || skill.Fork != nil {
 			list = append(list, skill)
@@ -145,7 +148,14 @@ func releaseRules(record trailguide.ReleaseRecord) []PendingRule {
 // Library-wide files are never listed.
 func renderReleaseNotes(record trailguide.ReleaseRecord, context skillContext) string {
 	var out strings.Builder
-	out.WriteString(countLine(record))
+	skills := releaseSkills(record, context)
+	contextOnly := 0
+	for _, skill := range skills {
+		if skill.Change == "" {
+			contextOnly++
+		}
+	}
+	out.WriteString(countLine(record, contextOnly))
 	sections := []struct {
 		change  trailguide.Change
 		heading string
@@ -189,7 +199,7 @@ func renderReleaseNotes(record trailguide.ReleaseRecord, context skillContext) s
 		}
 		out.WriteString(strings.Join(items, "\n"))
 	}
-	writeSkills(&out, record.Release, releaseSkills(record, context))
+	writeSkills(&out, record.Release, skills)
 	if record.Release > 1 && len(record.LibraryFiles) > 0 && len(record.Changes)+len(record.Retired)+skillChanges(record) > 0 {
 		out.WriteString("\n\n" + sharedFilesSentence)
 	}
@@ -271,6 +281,9 @@ func forkPhrase(fork SkillForkChange) string {
 		}
 		return phrase
 	}
+	if fork.Removed {
+		return ", no longer a fork of " + source
+	}
 	phrase := ", fork of " + source
 	if fork.BasedOn != "" {
 		phrase += " now based on `" + shortCommit(fork.BasedOn) + "`"
@@ -298,10 +311,10 @@ func skillChanges(record trailguide.ReleaseRecord) int {
 
 // countLine opens the notes, such as "Library release 4 changes 4 rules: 3 new and 1 major.", on one line, counting
 // each kind of change in the order of the sections, and adding a sentence that counts the skill changes the same way.
-// A library release that changes only skills counts those instead, one that changes no rules or skills says it updates
-// shared files instead, and the first library release says how many rules and skills it publishes, since they are all
-// new.
-func countLine(record trailguide.ReleaseRecord) string {
+// A library release that changes only skills counts those instead. One that changes no versions counts contextOnly,
+// the skills whose only change is their level or fork, or, when there are none, says it updates shared files. The
+// first library release says how many rules and skills it publishes, since they are all new.
+func countLine(record trailguide.ReleaseRecord, contextOnly int) string {
 	skillCount := 0
 	if record.Skills != nil {
 		skillCount = len(record.Skills.Changes)
@@ -332,6 +345,8 @@ func countLine(record trailguide.ReleaseRecord) string {
 		return heading + rules + "."
 	case skills != "":
 		return heading + skills + "."
+	case contextOnly > 0:
+		return heading + "no rule or skill versions. It changes the level or fork of " + counted(contextOnly, "skill") + "."
 	case record.Skills != nil:
 		return heading + "no rules or skills. It updates shared files, such as group descriptions or shared assets."
 	}

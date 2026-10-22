@@ -72,6 +72,41 @@ func TestRelease_NamesANewForkedSkillMadeRecommendedWithoutRuleChanges(t *testin
 	if len(result.Rules) != 0 || len(result.Skills) != 1 || result.Skills[0].Level != "recommended" || !slices.Equal(result.LibraryFiles, []string{"NOTICE.md", "config.yaml"}) {
 		t.Fatalf("%+v", result)
 	}
+	// Run again on the published commit, the release reports the skill as it did when it published it.
+	rerun, err := Release(ctx, ReleaseRequest{Options: options})
+	if err != nil || !rerun.Published || len(rerun.Skills) != 1 || rerun.Skills[0].Level != "recommended" || rerun.Skills[0].Fork == nil || !rerun.Skills[0].Fork.Added || rerun.Skills[0].Fork.BasedOn != forkBase {
+		t.Fatalf("%+v: %v", rerun, err)
+	}
+}
+
+// TestRelease_PublishesAMovedAndARemovedFork moves a fork to another commit, then stops forking, without changing the
+// skill's files: each publishes a library release whose notes name the fork's change.
+func TestRelease_PublishesAMovedAndARemovedFork(t *testing.T) {
+	ctx := context.Background()
+	files := ratchetLibrary()
+	files["config.yaml"] = ratchetConfig(forkBase, "recommended")
+	files[".trailguide/skills/ratchet-files/SKILL.md"] = []byte(ratchetSkill)
+	fixture, options := authorClone(t, files)
+	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
+		t.Fatal(err)
+	}
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": ratchetConfig(movedBase, "recommended")})
+	result, err := Release(ctx, ReleaseRequest{Options: options})
+	if err != nil || !slices.Equal(result.LibraryFiles, []string{"config.yaml"}) {
+		t.Fatalf("%+v: %v", result, err)
+	}
+	moved := "Library release 2 changes no rule or skill versions. It changes the level or fork of 1 skill.\n\n## Skills\n\n- **skills/ratchet-files** `1.0.0`, recommended, fork of **dzhng:skills/engineering/ratchet-files** now based on `1f2e3d4`, was `8105a34`\n\n<details>"
+	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); !strings.HasPrefix(message, moved) {
+		t.Fatalf("tag message:\n%s\nwant it to start with:\n%s", message, moved)
+	}
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    recommended: [skills/ratchet-files]\n")})
+	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
+		t.Fatal(err)
+	}
+	removed := "Library release 3 changes no rule or skill versions. It changes the level or fork of 1 skill.\n\n## Skills\n\n- **skills/ratchet-files** `1.0.0`, recommended, no longer a fork of **dzhng:skills/engineering/ratchet-files**\n\n<details>"
+	if message := tagMessage(t, fixture, remoteDir(fixture), "release/3"); !strings.HasPrefix(message, removed) {
+		t.Fatalf("tag message:\n%s\nwant it to start with:\n%s", message, removed)
+	}
 }
 
 // TestRelease_VersionsChangedSkillsFromTheirNotes changes one skill's script mode, moves its fork, and raises its
