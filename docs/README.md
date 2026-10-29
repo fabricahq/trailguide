@@ -53,6 +53,7 @@ The Trailguide mark is a folded map with two rule lines in its center panel.
 The [brand reference](src/content/docs/reference/brand.mdx) explains how to use it and links the downloadable logo exports in `public/brand/`.
 The header uses a text-only product name. The homepage hero uses the approved compact horizontal SVGs, switching between dark and light ink by theme, and `src/components/BrandAsset.astro` renders the reference page's previews.
 The site's favicons at the root of `public/` (`favicon.svg`, `favicon.ico`, and `apple-touch-icon.png`) come from the brand package; its favicon and app icon exports are deliberately not published for download because they identify Trail Guide itself.
+Pages link only `favicon.svg`, which switches ink with the browser's color scheme. Don't link `favicon.ico` too: Chrome prefers an ICO that lists its sizes and shows its dark tile in light mode. `favicon.ico` stays at the site root for browsers and tools that request it by convention.
 
 ### Styling
 
