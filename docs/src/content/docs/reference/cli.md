@@ -646,7 +646,7 @@ If that push succeeds, delete the test tag from the remote with `git push origin
 | `release-tag-mismatch` | A release tag in the clone differs from the remote's, exists only in the clone without being the next one on this commit, or doesn't publish what this commit would. |
 | `invalid-release-tag` | A release tag reachable from the commit isn't a valid annotated tag with a release record. |
 | `unsupported-release-record` | A release tag uses a newer release record schema version. Upgrade Trail Guide. |
-| `uncommitted-changes` | Library files, or a skill file's executable bit, differ from the checked-out commit. |
+| `uncommitted-changes` | Library files, files a skill links to, or a skill file's executable bit differ from the checked-out commit. Projects keep the files a skill links to from the published commit, so it must hold them as check read them. |
 | `change-notes` | Change notes don't match the rule or skill changes, as `trailguide library check` reports; other check failures keep their own codes, such as `invalid-skill`. |
 | `version-limit` | A change would take a rule's or skill's version past the largest version number. |
 | `git-identity` | Git doesn't know your name and email for the tag's tagger. |

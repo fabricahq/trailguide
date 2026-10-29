@@ -96,7 +96,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = requireLeveledSkills(input.skills, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
-	if err = requireSkillReferences(ctx, root, git, input.skills); err != nil {
+	if input.references, err = requireSkillReferences(ctx, root, git, input.skills); err != nil {
 		return checkedLibrary{}, err
 	}
 	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
@@ -368,6 +368,8 @@ type checkInput struct {
 	license      *trailguide.LicenseDeclaration
 	// notes maps each change note, by its library path under changes/, to its bytes; notes stay out of catalogs and snapshots.
 	notes map[string][]byte
+	// references maps each file outside skills/ that skills' links reach, by repository path, to the bytes check read.
+	references map[string][]byte
 }
 
 // libraryCheckInput captures every manifest, term, library-owned file, and change note considered by a complete check.

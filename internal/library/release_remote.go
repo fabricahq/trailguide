@@ -356,6 +356,15 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 	if err != nil {
 		return fmt.Errorf("list the skills of commit=%s: %w", head, err)
 	}
+	// Projects that install a skill retain the files its links reach from the published commit, so it must hold them.
+	referenced := slices.Sorted(maps.Keys(input.references))
+	if len(referenced) > 0 {
+		referenceEntries, err := g.treeEntries(ctx, head, referenced)
+		if err != nil {
+			return fmt.Errorf("list the files skills link to in commit=%s: %w", head, err)
+		}
+		maps.Copy(skillEntries, referenceEntries)
+	}
 	format, err := g.runner.Output(ctx, g.dir, []string{"rev-parse", "--show-object-format"}, 4096)
 	if err != nil {
 		return fmt.Errorf("find the library's object format: %w", err)
@@ -370,6 +379,7 @@ func (g *libraryGit) requireCommitted(ctx context.Context, head string, input ch
 			captured[librarytree.RepositoryPath(name)] = data
 		}
 	}
+	maps.Copy(captured, input.references)
 	// Check dropped the skill files Git ignores, such as a cache a script wrote, which aren't part of a skill.
 	executable := map[string]bool{}
 	if input.skills != nil {

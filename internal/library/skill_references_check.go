@@ -29,10 +29,11 @@ const maxReferencedBytes = 8 << 20
 // have, a folder, a symbolic link, a file outside the repository, or one a project's snapshot can't hold: projects
 // that install any of the skills retain every file their links reach, from the same revision. A file Git ignores
 // counts as missing, since a library release doesn't have it; git is nil outside Git. It reads only what the links
-// reach.
-func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit, tree *filetxn.Tree) error {
+// reach, and returns the bytes of each reached file outside skills/, by repository path, so that a library release
+// can require its commit to hold exactly those bytes, as it does for the library's own files.
+func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit, tree *filetxn.Tree) (map[string][]byte, error) {
 	if tree == nil {
-		return nil
+		return nil, nil
 	}
 	view := &workingTreeView{ctx: ctx, root: root, git: git, skills: tree, read: map[string][]byte{}, folders: map[string]bool{}}
 	for name := range tree.Files {
@@ -54,8 +55,20 @@ func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit,
 			retention.Start = append(retention.Start, skillsDirectory+"/"+name)
 		}
 	}
-	_, err := retention.Retain()
-	return err
+	retained, err := retention.Retain()
+	if err != nil {
+		return nil, err
+	}
+	reached := map[string][]byte{}
+	for _, file := range retained {
+		if strings.HasPrefix(file, skillsDirectory+"/") {
+			continue
+		}
+		if reached[file], err = view.Read(file); err != nil {
+			return nil, err
+		}
+	}
+	return reached, nil
 }
 
 // workingTreeView lends the library's working tree to skillrefs by repository path: the files of its skills/
