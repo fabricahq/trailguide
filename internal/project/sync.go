@@ -269,6 +269,9 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		if err := requireUnchanged(ctx, root, before); err != nil {
 			return err
 		}
+		if err := requireLinkedFilesUnchanged(ctx, before.directory, output.LinkedFiles); err != nil {
+			return err
+		}
 		if err := agents.requireUnchanged(ctx); err != nil {
 			return err
 		}

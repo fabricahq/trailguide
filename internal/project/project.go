@@ -113,6 +113,9 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 			if err := requireUnchanged(ctx, root, before); err != nil {
 				return err
 			}
+			if err := requireLinkedFilesUnchanged(ctx, before.directory, output.LinkedFiles); err != nil {
+				return err
+			}
 			if err := agents.requireUnchanged(ctx); err != nil {
 				return err
 			}
@@ -187,6 +190,9 @@ func checkProjectFiles(ctx context.Context, options Options, expected map[string
 		}
 	}
 	if err := requireCheckUnchanged(ctx, root, before, expected, files); err != nil {
+		return checkedProject{}, err
+	}
+	if err := requireLinkedFilesUnchanged(ctx, before.directory, output.LinkedFiles); err != nil {
 		return checkedProject{}, err
 	}
 	if err := requireSkillFoldersUnchanged(ctx, root, installs); err != nil {
@@ -368,15 +374,13 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	if err != nil {
 		return build.Output{}, err
 	}
-	// Build points installed copies' links at the files they name, so those must be there.
-	if len(state.config.SkillTargets) > 0 {
-		if err := requireAuthoredSkillReferences(ctx, state.directory, state.skills); err != nil {
-			return build.Output{}, err
-		}
-	}
 	output, err := build.Generate(state.config, libraries, authored, build.Options{IndexMaxLines: options.IndexMaxLines, GroupInlineMaxBytes: options.GroupInlineMaxBytes, LocalSkills: local})
 	if err != nil {
 		return build.Output{}, clashFailure(err)
+	}
+	// Installed copies' links point at the files the project's skills name, so those must be there after the write.
+	if output.LinkedFiles, err = requireAuthoredSkillReferences(ctx, state, output); err != nil {
+		return build.Output{}, err
 	}
 	if err := ctx.Err(); err != nil {
 		return build.Output{}, err

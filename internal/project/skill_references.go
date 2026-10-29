@@ -1,8 +1,10 @@
-// Check that every local link in the project's own skills names a file the project's repository has.
+// Check that every local link in the project's own skills names a file the project's repository has once the
+// command writes its output.
 
 package project
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -13,8 +15,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/librarytree"
+	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -26,32 +30,37 @@ const maxReferencedBytes = 8 << 20
 const authoredSkillsDirectory = librarytree.Directory + "/" + skills.Directory
 
 // requireAuthoredSkillReferences fails with a *skillrefs.Error when a link in the Markdown of an authored skill in
-// tree, the project's skills/ folder as the command would leave it, including the forks that replace skills from
-// sources, or of a Markdown file those links reach, names a file the project's repository doesn't have, a folder, a
-// symbolic link, or a file outside the repository. Build points the installed copies' links at the same files, so
-// every agent target reaches them. directory is the Trail Guide directory's path; the repository root holds it.
-func requireAuthoredSkillReferences(ctx context.Context, directory string, tree *filetxn.Tree) error {
-	if tree == nil || len(tree.Files) == 0 {
-		return nil
+// state, the project's skills/ folder as the command would leave it, including the forks that replace skills from
+// sources, or of a Markdown file those links reach, names a file the project's repository won't have once the
+// command writes output, a folder, a symbolic link, or a file outside the repository. Files in the configured skill
+// targets and in _managed/ are the ones output writes, and any other file is the repository's own. Build points the
+// installed copies' links at the same files, so every agent target reaches them. It returns the bytes of each
+// reached file of the repository's own outside skills/, by repository path, for the write to require unchanged.
+func requireAuthoredSkillReferences(ctx context.Context, state projectState, output build.Output) (map[string][]byte, error) {
+	if state.skills == nil || len(state.skills.Files) == 0 {
+		return nil, nil
 	}
-	repository, err := os.OpenRoot(filepath.Dir(directory))
+	repository, err := os.OpenRoot(filepath.Dir(state.directory))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer repository.Close()
-	view := &projectView{ctx: ctx, root: repository, skills: tree, folders: map[string]bool{}}
-	for name := range tree.Files {
+	view := &projectView{ctx: ctx, root: repository, skills: state.skills, output: output, folders: map[string]bool{}}
+	for name := range state.skills.Files {
 		for parent := filepath.ToSlash(filepath.Dir(name)); parent != "."; parent = filepath.ToSlash(filepath.Dir(parent)) {
 			view.folders[parent] = true
 		}
 	}
-	retention := skillrefs.Retention{View: view, Absent: skillrefs.Missing, AbsentProblem: "the project doesn't have. Add the file, or fix the link; every agent target reaches the project's file through the installed copy."}
-	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
+	for _, target := range state.config.SkillTargets {
+		view.targets = append(view.targets, rules.SkillTargetFolders[target])
+	}
+	retention := skillrefs.Retention{View: view, Absent: skillrefs.Missing, AbsentProblem: "the project doesn't have once this command writes its output. Add the file, or fix the link; every agent target reaches the file through the installed copy."}
+	for _, name := range slices.Sorted(maps.Keys(state.skills.Files)) {
 		folder, _, inFolder := strings.Cut(name, "/")
 		if !inFolder {
 			continue
 		}
-		if _, ok := tree.Files[folder+"/"+skills.File]; !ok {
+		if _, ok := state.skills.Files[folder+"/"+skills.File]; !ok {
 			continue
 		}
 		if location := authoredSkillsDirectory + "/" + folder; !slices.Contains(retention.Folders, location) {
@@ -61,23 +70,106 @@ func requireAuthoredSkillReferences(ctx context.Context, directory string, tree 
 			retention.Start = append(retention.Start, authoredSkillsDirectory+"/"+name)
 		}
 	}
-	_, err = retention.Retain()
-	return err
+	retained, err := retention.Retain()
+	if err != nil {
+		return nil, err
+	}
+	linked := map[string][]byte{}
+	for _, file := range retained {
+		if view.written(file) || strings.HasPrefix(file, authoredSkillsDirectory+"/") {
+			continue
+		}
+		if linked[file], err = view.Read(file); err != nil {
+			return nil, err
+		}
+	}
+	return linked, nil
 }
 
-// projectView lends the project's repository to skillrefs by repository path: the files of its skills/ folder from
-// skills, as the command would leave them, and any other file from root, bounded, refusing symbolic links. folders
-// holds the folders skills' paths imply.
+// requireLinkedFilesUnchanged fails with concurrent-change unless each of linked, the files the project's skills
+// link to, by path from the root of the repository that holds the Trail Guide directory at directory, is still a
+// regular file with the same bytes.
+func requireLinkedFilesUnchanged(ctx context.Context, directory string, linked map[string][]byte) error {
+	if len(linked) == 0 {
+		return nil
+	}
+	repository, err := os.OpenRoot(filepath.Dir(directory))
+	if err != nil {
+		return err
+	}
+	defer repository.Close()
+	view := &projectView{ctx: ctx, root: repository}
+	for _, file := range slices.Sorted(maps.Keys(linked)) {
+		if view.Stat(file) != skillrefs.File {
+			return failure("concurrent-change", file+", which a skill links to, changed during the operation; retry after edits finish", nil)
+		}
+		data, err := view.Read(file)
+		if err != nil || !bytes.Equal(data, linked[file]) {
+			return failure("concurrent-change", file+", which a skill links to, changed during the operation; retry after edits finish", err)
+		}
+	}
+	return nil
+}
+
+// projectView lends the project's repository, as the command leaves it, to skillrefs by repository path: the files
+// of its skills/ folder from skills; the files output writes in the skill targets, targets, and in _managed/, of
+// which only generated/ is there to link to; and any other file from root, bounded, refusing symbolic links.
+// folders holds the folders skills' paths imply.
 type projectView struct {
 	ctx     context.Context
 	root    *os.Root
 	skills  *filetxn.Tree
+	output  build.Output
+	targets []string
 	folders map[string]bool
 }
 
-// Stat reports what the repository holds at repository path file.
+// written reports whether output owns repository path file: it is in a skill target's folder or in _managed/.
+func (v *projectView) written(file string) bool {
+	if strings.HasPrefix(file, librarytree.Directory+"/"+librarytree.Managed+"/") {
+		return true
+	}
+	for _, target := range v.targets {
+		if strings.HasPrefix(file, target+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// writtenKind reports what output leaves at repository path file, which written owns.
+func (v *projectView) writtenKind(file string) skillrefs.Kind {
+	if name, ok := strings.CutPrefix(file, librarytree.Directory+"/"+librarytree.Generated+"/"); ok {
+		return kindIn(maps.Keys(v.output.Files), name)
+	}
+	for folder, installed := range v.output.Skills {
+		if name, ok := strings.CutPrefix(file, folder+"/"); ok {
+			return kindIn(maps.Keys(installed.Files), name)
+		}
+		if file == folder {
+			return skillrefs.Folder
+		}
+	}
+	return skillrefs.Absent
+}
+
+// kindIn reports whether name is one of files, a folder holding one, or absent.
+func kindIn(files func(func(string) bool), name string) skillrefs.Kind {
+	kind := skillrefs.Absent
+	for file := range files {
+		if file == name {
+			return skillrefs.File
+		}
+		if strings.HasPrefix(file, name+"/") {
+			kind = skillrefs.Folder
+		}
+	}
+	return kind
+}
+
+// Stat reports what the repository holds at repository path file once the command writes its output.
 func (v *projectView) Stat(file string) skillrefs.Kind {
-	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside {
+	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside && v.skills != nil {
 		if _, ok := v.skills.Files[name]; ok {
 			return skillrefs.File
 		}
@@ -88,6 +180,9 @@ func (v *projectView) Stat(file string) skillrefs.Kind {
 	}
 	if file == authoredSkillsDirectory {
 		return skillrefs.Folder
+	}
+	if v.written(file) {
+		return v.writtenKind(file)
 	}
 	parts := strings.Split(file, "/")
 	for i := range parts {
@@ -113,8 +208,16 @@ func (v *projectView) Read(file string) ([]byte, error) {
 	if err := v.ctx.Err(); err != nil {
 		return nil, err
 	}
-	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside {
+	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside && v.skills != nil {
 		return v.skills.Files[name], nil
+	}
+	if name, ok := strings.CutPrefix(file, librarytree.Directory+"/"+librarytree.Generated+"/"); ok && v.written(file) {
+		return v.output.Files[name], nil
+	}
+	for folder, installed := range v.output.Skills {
+		if name, ok := strings.CutPrefix(file, folder+"/"); ok {
+			return installed.Files[name], nil
+		}
 	}
 	handle, err := v.root.Open(file)
 	if err != nil {

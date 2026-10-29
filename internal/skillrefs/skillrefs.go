@@ -182,17 +182,12 @@ func Rewrite(data []byte, links []Link, to func(Link) string) []byte {
 	return append(result, data[last:]...)
 }
 
-// RepositoryFolder is the folder of a library's snapshot that holds the files a project keeps from outside the
-// library's Trail Guide directory because installed skills link to them, each at its path from the repository root,
-// so that no such file, wherever it is in the repository, takes the place of one of the library's own.
-const RepositoryFolder = "_repository"
-
 // Origin says how a repository's paths map to the paths of the files a project keeps from it in a source's vendor
 // snapshot. A library's snapshot mirrors its Trail Guide directory, so its skills, in .trailguide/skills/, are
 // kept under skills/, and its shared assets under assets/; a file outside .trailguide/ is kept under
-// RepositoryFolder at its path from the repository root. Any other repository's files keep their paths. Prefix is
-// the folder of the snapshot that holds the repository's files: empty for the source's own repository, and
-// curated/<name>/ for one a library curates skills from.
+// librarytree.RepositoryFolder at its path from the repository root. Any other repository's files keep their
+// paths. Prefix is the folder of the snapshot that holds the repository's files: empty for the source's own
+// repository, and curated/<name>/ for one a library curates skills from.
 type Origin struct {
 	Library bool
 	Prefix  string
@@ -211,7 +206,7 @@ func (o Origin) Key(file string) (string, bool) {
 		}
 		return "", false
 	}
-	return o.Prefix + RepositoryFolder + "/" + file, true
+	return o.Prefix + librarytree.RepositoryFolder + "/" + file, true
 }
 
 // Path returns the repository path of the file at path key in the source's snapshot, the inverse of Key, and
@@ -224,7 +219,7 @@ func (o Origin) Path(key string) (string, bool) {
 	if !o.Library {
 		return inside, true
 	}
-	if file, outside := strings.CutPrefix(inside, RepositoryFolder+"/"); outside {
+	if file, outside := strings.CutPrefix(inside, librarytree.RepositoryFolder+"/"); outside {
 		return file, true
 	}
 	if first, _, _ := strings.Cut(inside, "/"); first == "skills" || first == "assets" {

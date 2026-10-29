@@ -35,6 +35,10 @@ type Output struct {
 	// RenamedSkills lists, sorted by project ID, the skills the project installs under a name skills.rename gives
 	// them instead of their own; it is empty, never nil, when it renames none.
 	RenamedSkills []RenamedSkill `json:"renamedSkills"`
+	// LinkedFiles maps each file the project's own skills link to outside skills/, the skill targets, and _managed/,
+	// by path from the repository root, to the bytes the caller checked, so that a write can require them unchanged.
+	// Generate leaves it nil; the caller sets it.
+	LinkedFiles map[string][]byte `json:"-"`
 }
 
 // RenamedSkill is a source's skill that the project installs under another name.

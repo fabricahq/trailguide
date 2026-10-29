@@ -617,3 +617,65 @@ func TestSync_FollowsTheLinksOfAForkThatReplacesALinkedSkill(t *testing.T) {
 		t.Fatalf("build after the linked file was deleted = %v; want a missing reference", err)
 	}
 }
+
+func TestSync_RefusesAnAuthoredLinkToAnInstalledCopyItWouldRemove(t *testing.T) {
+	ctx := context.Background()
+	f := referenceLibrary(t, referenceFiles())
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/principle-build-the-lever"]}}}}`)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nUse [the lever](../../../.claude/skills/principle-build-the-lever/SKILL.md).\n")
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if lever := linkedFile(t, options, ".claude/skills/ours/SKILL.md", "the lever"); lever != ".claude/skills/principle-build-the-lever/SKILL.md" {
+		t.Fatalf("the authored skill links to %s", lever)
+	}
+	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":["claude"],"sources":{}}`)
+	before := projectBytes(t, options)
+	_, err = Sync(ctx, options, git)
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/ours/SKILL.md: links to ../../../.claude/skills/principle-build-the-lever/SKILL.md", "once this command writes its output")
+}
+
+func TestBuild_ChecksAuthoredLinksWithoutSkillTargets(t *testing.T) {
+	ctx := context.Background()
+	root := openTestProject(t)
+	options := Options{Directory: filepath.Dir(root.Name()), ToolVersion: "1.2.3"}
+	if _, err := Initialize(ctx, options); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":[],"sources":{}}`)
+	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nRead [the notes](../../../docs/notes.md).\n")
+	var failure *skillrefs.Error
+	if _, err := Build(ctx, options); !errors.As(err, &failure) || failure.Reason != skillrefs.Missing {
+		t.Fatalf("build = %v; want a missing reference", err)
+	}
+}
+
+func TestRequireLinkedFilesUnchanged_RefusesAChangedOrMissingFile(t *testing.T) {
+	ctx := context.Background()
+	repository := t.TempDir()
+	directory := filepath.Join(repository, ".trailguide")
+	if err := os.MkdirAll(filepath.Join(repository, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	notes := filepath.Join(repository, "docs/notes.md")
+	if err := os.WriteFile(notes, []byte("# Notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	linked := map[string][]byte{"docs/notes.md": []byte("# Notes\n")}
+	if err := requireLinkedFilesUnchanged(ctx, directory, linked); err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []func() error{func() error { return os.WriteFile(notes, []byte("# Edited\n"), 0o644) }, func() error { return os.Remove(notes) }} {
+		if err := change(); err != nil {
+			t.Fatal(err)
+		}
+		if err := requireLinkedFilesUnchanged(ctx, directory, linked); !code("concurrent-change")(err) {
+			t.Errorf("got %v; want concurrent-change", err)
+		}
+	}
+}
