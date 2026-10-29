@@ -55,6 +55,9 @@ func requireAuthoredSkillReferences(ctx context.Context, state projectState, out
 		view.targets = append(view.targets, rules.SkillTargetFolders[target])
 	}
 	retention := skillrefs.Retention{View: view, Absent: skillrefs.Missing, AbsentProblem: "the project doesn't have once this command writes its output. Add the file, or fix the link; every agent target reaches the file through the installed copy."}
+	// A link into the files output writes must name one, but their own links are build's to deliver, such as the
+	// skills index's links into the vendor snapshot when no skill target is configured, so they aren't followed.
+	retention.Folders = append([]string{librarytree.Directory + "/" + librarytree.Managed}, view.targets...)
 	for _, name := range slices.Sorted(maps.Keys(state.skills.Files)) {
 		folder, _, inFolder := strings.Cut(name, "/")
 		if !inFolder {

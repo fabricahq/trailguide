@@ -640,6 +640,30 @@ func TestSync_RefusesAnAuthoredLinkToAnInstalledCopyItWouldRemove(t *testing.T) 
 	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/ours/SKILL.md: links to ../../../.claude/skills/principle-build-the-lever/SKILL.md", "once this command writes its output")
 }
 
+func TestSync_KeepsAnAuthoredLinkToTheSkillsIndexWithoutSkillTargets(t *testing.T) {
+	ctx := context.Background()
+	f := referenceLibrary(t, referenceFiles())
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":[],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/principle-build-the-lever"]}}}}`)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nPick from [the index](../../_managed/generated/SKILLS.md).\n")
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "../vendor/team/") {
+		t.Fatalf("the index doesn't link to the vendor snapshot:\n%s", index)
+	}
+	if _, err := Build(ctx, options); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Check(ctx, options); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBuild_ChecksAuthoredLinksWithoutSkillTargets(t *testing.T) {
 	ctx := context.Background()
 	root := openTestProject(t)
