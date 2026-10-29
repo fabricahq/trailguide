@@ -65,7 +65,7 @@ func TestRewrite_ChangesOnlyLinksWithANewPathAndKeepsFragments(t *testing.T) {
 
 func TestOrigin_MapsALibrarysPathsToItsSnapshotAndBack(t *testing.T) {
 	library := Origin{Library: true, Prefix: "curated/kit/"}
-	for file, key := range map[string]string{".trailguide/skills/a/SKILL.md": "curated/kit/skills/a/SKILL.md", ".trailguide/assets/flow.png": "curated/kit/assets/flow.png", "docs/guide.md": "curated/kit/docs/guide.md"} {
+	for file, key := range map[string]string{".trailguide/skills/a/SKILL.md": "curated/kit/skills/a/SKILL.md", ".trailguide/assets/flow.png": "curated/kit/assets/flow.png", "docs/guide.md": "curated/kit/_repository/docs/guide.md", "assets/notes.md": "curated/kit/_repository/assets/notes.md", "skills/a/SKILL.md": "curated/kit/_repository/skills/a/SKILL.md", "config.yaml": "curated/kit/_repository/config.yaml"} {
 		if got, ok := library.Key(file); !ok || got != key {
 			t.Errorf("Key(%s) = %s, %v; want %s", file, got, ok, key)
 		}
@@ -73,7 +73,7 @@ func TestOrigin_MapsALibrarysPathsToItsSnapshotAndBack(t *testing.T) {
 			t.Errorf("Path(%s) = %s, %v; want %s", key, got, ok, file)
 		}
 	}
-	for _, file := range []string{".trailguide/rules/techs/go/errors.md", ".trailguide/config.yaml", "skills/a/SKILL.md", "config.yaml"} {
+	for _, file := range []string{".trailguide/rules/techs/go/errors.md", ".trailguide/config.yaml"} {
 		if key, ok := library.Key(file); ok {
 			t.Errorf("Key(%s) = %s; want no snapshot path", file, key)
 		}

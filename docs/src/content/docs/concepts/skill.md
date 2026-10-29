@@ -83,6 +83,8 @@ In a library, `trailguide library check` fails when a skill cites a rule that do
 
 A skill's instructions often link to other files: a sibling skill it compares itself with, a shared checklist, or a diagram. Those links keep working wherever the skill is installed. When a project installs the skill, Trail Guide keeps a copy of every file the skill's links reach, and every file those files link to, from the same revision of the same repository. For a skill a library curates, that's the repository the library curates it from. It changes the installed links to point at those copies, in every agent's skills folder.
 
+Your project's own skills, including forks, keep their links working too: Trail Guide checks that each link names a file in your repository, and points the installed copy's link at that file, or at the installed copy of the skill it names.
+
 A linked file is for reading, not a skill to run. Linking to a sibling skill doesn't install it, add it to `SKILLS.md`, or put it in an agent's skills folder; to install it, include it, or have the skill call it with `trailguide-skills-used`. When the linked skill is installed anyway, the link points at its installed copy, under the name the project gives it, or at the project's fork of it.
 
 Trail Guide never overrides your choices to keep a link working. When a link points into a skill your project excludes, or into a fork that lacks the file, sync fails before changing anything and lists the repairs. Web links stay as they are and are never downloaded. See [Links](/reference/skill-format/#links).

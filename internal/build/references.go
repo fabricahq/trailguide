@@ -30,9 +30,9 @@ const generatedRoot = librarytree.Directory + "/" + librarytree.Generated
 // level, fails; and any other is a reading copy in generated/references/. It rewrites the links of the installed
 // copies in resolved, when the project has skill targets, and of the reading copies, to reach the delivered files,
 // and returns the reading copies by path in generated/. aliases maps a project source's skill that
-// withoutCuratedCopies dropped to the curated skill installed in its place. Authored skills' links are the
-// project's own and stay as written. It fails with a *skillrefs.Error for a link whose destination the project
-// can't deliver.
+// withoutCuratedCopies dropped to the curated skill installed in its place. Authored skills' links name the
+// project's own files, which the caller checked, and relocateAuthoredLinks points the installed copies at them. It
+// fails with a *skillrefs.Error for a link whose destination the project can't deliver.
 func deliverReferences(resolved []resolvedSkill, config rules.Configuration, libraries map[string]Library, aliases map[string]string) (map[string][]byte, error) {
 	copies := map[string][]byte{}
 	byID := map[string]int{}
@@ -81,6 +81,7 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 			copies[d.copyPath(key)] = data
 		}
 	}
+	relocateAuthoredLinks(resolved)
 	// Every rewritten link must reach a file the delivery writes, in the layout agents read.
 	for _, from := range slices.Sorted(maps.Keys(links)) {
 		if !strings.HasPrefix(from, generatedRoot+"/") && strings.HasPrefix(from, librarytree.Directory+"/") {
@@ -93,6 +94,49 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 		}
 	}
 	return copies, nil
+}
+
+// relocateAuthoredLinks rewrites each local link in the Markdown of the installed copies of the authored skills in
+// resolved, which the project's repository holds in skills/, so that from every skill target it reaches the same
+// file it names in skills/: the installed copy of an authored skill's file, under its install name, or the
+// project's file in place.
+func relocateAuthoredLinks(resolved []resolvedSkill) {
+	installed := map[string]resolvedSkill{}
+	for _, skill := range resolved {
+		if skill.Source == "" {
+			installed[librarytree.Directory+"/"+skill.Folder] = skill
+		}
+	}
+	for i, skill := range resolved {
+		if skill.Source != "" || len(skill.Targets) == 0 {
+			continue
+		}
+		files := maps.Clone(skill.Files.Files)
+		for name, data := range files {
+			if !skillrefs.IsMarkdown(name) {
+				continue
+			}
+			links, err := skillrefs.Links(librarytree.Directory+"/"+skill.Folder+"/"+name, data)
+			if err != nil {
+				continue
+			}
+			from := skillRoot(skill) + "/" + name
+			files[name] = skillrefs.Rewrite(data, links, func(link skillrefs.Link) string {
+				destination := link.Target
+				for folder, other := range installed {
+					if rest, inside := strings.CutPrefix(link.Target, folder+"/"); inside {
+						destination = skillRoot(other) + "/" + rest
+					}
+				}
+				relative := rules.RelativeLink(from, destination)
+				if decoded, err := url.PathUnescape(relative); err == nil {
+					return decoded
+				}
+				return ""
+			})
+		}
+		resolved[i].Files.Files = files
+	}
 }
 
 // linkDelivery is one link of a delivered file: key is the linking file's path in its source's snapshot, target the

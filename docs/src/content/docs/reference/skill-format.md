@@ -196,7 +196,9 @@ A local link must name a file in the skill's repository. It fails when it names:
 - An absolute path, a path that leaves the repository, or one with backslashes.
 - A rule file, or another file in `.trailguide/` that isn't in a skill folder or `assets/`. Cite rules with `trailguide-rules-used` instead, and the installed copy links to the project's version of each one.
 
-A linked file outside the skill folder isn't a skill: a project keeps it to read and never installs it in an agent's skills folder.
+A linked file can be anywhere else in the repository, including a folder at the repository root that has the name of one in `.trailguide/`, such as `assets/notes.md`. A project keeps each linked file from outside `.trailguide/` under `_repository/` in its copy of the library, at its path from the repository root, so it never takes the place of one of the library's own files. A linked file outside the skill folder isn't a skill: a project keeps it to read and never installs it in an agent's skills folder.
+
+A project's own skills, in its `.trailguide/skills/`, including forks that replace a source's skill, follow the same rules, checked against the project's files. Their installed links point at the project's file where it is, or at the installed copy of another of the project's skills.
 
 ## Licenses
 
@@ -257,7 +259,7 @@ Check fails with these problems:
 | A skill that uses itself | `skills/build-feature/SKILL.md: trailguide-skills-used names the skill itself` |
 | Skills that use each other in a cycle | `skills/build-feature/SKILL.md: trailguide-skills-used forms a cycle: skills/build-feature -> skills/tdd -> skills/build-feature` |
 | A local link to a file the library doesn't have, including one Git ignores, or a link from a file a skill's links reach, with code `reference-missing` | `.trailguide/skills/build-feature/SKILL.md: links to references/slices.md (.trailguide/skills/build-feature/references/slices.md), which the library doesn't have. Add the file, or fix the link; projects that install the skill keep a copy of every file its links reach.` |
-| A link to a folder, a symbolic link, a rule file, or another file a project can't keep, with code `reference-unsupported` | `.trailguide/skills/build-feature/SKILL.md: links to ../../rules/practices/testing/verify-retries.md (.trailguide/rules/practices/testing/verify-retries.md), which isn't a skill's file, a shared asset in .trailguide/assets/, or a file outside .trailguide/ that Trail Guide can keep beside the library's own files. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file.` |
+| A link to a folder, a symbolic link, a rule file, or another file a project can't keep, with code `reference-unsupported` | `.trailguide/skills/build-feature/SKILL.md: links to ../../rules/practices/testing/verify-retries.md (.trailguide/rules/practices/testing/verify-retries.md), which is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file out of .trailguide/.` |
 | An absolute link, or one that leaves the repository, with code `reference-escapes` | `.trailguide/skills/build-feature/SKILL.md: links to /etc/checklist.md, which is an absolute path, so it depends on where the files are read rather than on the repository. Ask the maintainer to link with a path relative to the file.` |
 | A skill that reuses the ID of a retired skill | `skills/triage-bug reuses the ID of a skill that release/5 retired. Retired IDs can't be reused; give the skill a new ID.` |
 

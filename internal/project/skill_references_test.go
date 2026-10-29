@@ -182,11 +182,11 @@ func TestSync_KeepsTheGreenfieldComparisonLinksReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"README.md", "team/docs/checklist.md", "team/docs/images/flow.png", "team/skills/principle-encode-lessons-in-structure/SKILL.md", "team/skills/principle-redesign-from-first-principles/SKILL.md", "team/skills/principle-redesign-from-first-principles/references/steps.md"}; !slices.Equal(references, want) {
+	if want := []string{"README.md", "team/_repository/docs/checklist.md", "team/_repository/docs/images/flow.png", "team/skills/principle-encode-lessons-in-structure/SKILL.md", "team/skills/principle-redesign-from-first-principles/SKILL.md", "team/skills/principle-redesign-from-first-principles/references/steps.md"}; !slices.Equal(references, want) {
 		t.Errorf("reference copies = %v, want %v", references, want)
 	}
 	entry := lockedEntry(t, options, "team")
-	if entry.Files["docs/checklist.md"] == "" || entry.Files["docs/unreferenced.md"] != "" || len(entry.Skills) != 2 {
+	if entry.Files["_repository/docs/checklist.md"] == "" || entry.Files["_repository/docs/unreferenced.md"] != "" || len(entry.Skills) != 2 {
 		t.Errorf("lock entry = %+v; want the linked files retained beside the two installed skills", entry)
 	}
 	before := projectBytes(t, options)
@@ -443,20 +443,20 @@ func TestCheck_ReportsAChangedOrMissingReferenceCopy(t *testing.T) {
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	copy := filepath.Join(options.Directory, ".trailguide/_managed/generated/references/team/docs/checklist.md")
+	copy := filepath.Join(options.Directory, ".trailguide/_managed/generated/references/team/_repository/docs/checklist.md")
 	if err := os.Remove(copy); err != nil {
 		t.Fatal(err)
 	}
 	result, err := Check(ctx, options)
 	if err != nil || result.Current() || !slices.ContainsFunc(result.Problems, func(problem Problem) bool {
-		return strings.HasSuffix(problem.Path, "references/team/docs/checklist.md")
+		return strings.HasSuffix(problem.Path, "references/team/_repository/docs/checklist.md")
 	}) {
 		t.Fatalf("check after deleting a reference copy = %+v, %v", result, err)
 	}
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	vendored := filepath.Join(options.Directory, ".trailguide/_managed/vendor/team/docs/checklist.md")
+	vendored := filepath.Join(options.Directory, ".trailguide/_managed/vendor/team/_repository/docs/checklist.md")
 	if err := os.WriteFile(vendored, []byte("# Edited\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -527,5 +527,93 @@ func TestSync_FailsWithoutChangingFilesForALinkedFileOverTheImportLimit(t *testi
 	}
 	if !maps.Equal(before, projectBytes(t, options)) {
 		t.Error("the failed sync changed files")
+	}
+}
+
+func TestSync_KeepsLinkedFilesInRootFoldersNamedLikeTheLibrarysOwn(t *testing.T) {
+	ctx := context.Background()
+	files := gitfixture.Library(referenceFiles())
+	files[".trailguide/skills/principle-attack-the-premise/SKILL.md"] = []byte("---\nname: principle-attack-the-premise\ndescription: Attack the premise.\n---\nRead [the notes](../../../assets/notes.md), [the guide](../../../skills/guide.md), [the rules](../../../rules/README.md), [the config](../../../config.yaml), and [the shared asset](../../assets/notes.md).\n")
+	files["assets/notes.md"] = []byte("# Notes at the repository root\n")
+	files["skills/guide.md"] = []byte("# A guide at the repository root\n")
+	files["rules/README.md"] = []byte("# Rules at the repository root\n")
+	files["config.yaml"] = []byte("root: true\n")
+	files[".trailguide/assets/notes.md"] = []byte("# The library's shared notes\n")
+	f, err := gitfixture.New(ctx, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if err := f.Release(ctx, 1, firstRelease); err != nil {
+		t.Fatal(err)
+	}
+	options, git := skillProject(t, f, selectedPrinciples(""))
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	for label, want := range map[string]string{"the notes": "# Notes at the repository root\n", "the guide": "# A guide at the repository root\n", "the rules": "# Rules at the repository root\n", "the config": "root: true\n", "the shared asset": "# The library's shared notes\n"} {
+		for _, target := range []string{".claude/skills", ".agents/skills"} {
+			if got := readRepositoryFile(t, options, linkedFile(t, options, target+"/principle-attack-the-premise/SKILL.md", label)); got != want {
+				t.Errorf("%s in %s reaches %q, want %q", label, target, got, want)
+			}
+		}
+	}
+	if result, err := Check(ctx, options); err != nil || !result.Current() {
+		t.Fatalf("check = %+v, %v", result, err)
+	}
+}
+
+func TestSync_FollowsTheLinksOfAForkThatReplacesALinkedSkill(t *testing.T) {
+	ctx := context.Background()
+	f := referenceLibrary(t, referenceFiles())
+	commit, err := f.Command(ctx, "rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude","agents"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["skills/principle-attack-the-premise"],"forks":{"skills/principle-redesign-from-first-principles":{"as":"skills/our-redesign","basedOn":"`+strings.TrimSpace(commit)+`","reason":"Ours."}}}}}}`)
+	root, err := openProject(ctx, options, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](missing.md).\n")
+	before := projectBytes(t, options)
+	_, err = Sync(ctx, options, git)
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/our-redesign/SKILL.md: links to missing.md", "the project doesn't have")
+	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](../../../docs/notes.md) and [the asset](../../assets/flow.svg).\n")
+	writeFixture(t, root, "assets/flow.svg", "<svg/>\n")
+	if err := os.MkdirAll(filepath.Join(options.Directory, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(options.Directory, "docs/notes.md"), []byte("# Our notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Sync(ctx, options, git); err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{".claude/skills", ".agents/skills"} {
+		redesign := linkedFile(t, options, target+"/principle-attack-the-premise/SKILL.md", "Redesign from First Principles")
+		if !strings.HasSuffix(redesign, "skills/our-redesign/SKILL.md") || !strings.Contains(readRepositoryFile(t, options, redesign), "Our redesign") {
+			t.Errorf("the link reaches %s, want the installed fork", redesign)
+		}
+		if notes := linkedFile(t, options, target+"/our-redesign/SKILL.md", "the notes"); notes != "docs/notes.md" {
+			t.Errorf("the fork's link in %s reaches %s, want the project's docs/notes.md", target, notes)
+		}
+		if asset := linkedFile(t, options, target+"/our-redesign/SKILL.md", "the asset"); asset != ".trailguide/assets/flow.svg" {
+			t.Errorf("the fork's link in %s reaches %s, want the project's shared asset", target, asset)
+		}
+	}
+	if result, err := Check(ctx, options); err != nil || !result.Current() {
+		t.Fatalf("check = %+v, %v", result, err)
+	}
+	if err := os.Remove(filepath.Join(options.Directory, "docs/notes.md")); err != nil {
+		t.Fatal(err)
+	}
+	var failure *skillrefs.Error
+	if _, err := Check(ctx, options); !errors.As(err, &failure) || failure.Reason != skillrefs.Missing {
+		t.Fatalf("check after the linked file was deleted = %v; want a missing reference", err)
+	}
+	if _, err := Build(ctx, options); !errors.As(err, &failure) || failure.Reason != skillrefs.Missing {
+		t.Fatalf("build after the linked file was deleted = %v; want a missing reference", err)
 	}
 }

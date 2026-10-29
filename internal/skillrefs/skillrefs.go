@@ -182,12 +182,17 @@ func Rewrite(data []byte, links []Link, to func(Link) string) []byte {
 	return append(result, data[last:]...)
 }
 
+// RepositoryFolder is the folder of a library's snapshot that holds the files a project keeps from outside the
+// library's Trail Guide directory because installed skills link to them, each at its path from the repository root,
+// so that no such file, wherever it is in the repository, takes the place of one of the library's own.
+const RepositoryFolder = "_repository"
+
 // Origin says how a repository's paths map to the paths of the files a project keeps from it in a source's vendor
 // snapshot. A library's snapshot mirrors its Trail Guide directory, so its skills, in .trailguide/skills/, are
-// kept under skills/, and its shared assets under assets/; a file outside .trailguide/ keeps its path from the
-// repository root. Any other repository's files keep their paths. Prefix is the folder of the snapshot that holds
-// the repository's files: empty for the source's own repository, and curated/<name>/ for one a library curates
-// skills from.
+// kept under skills/, and its shared assets under assets/; a file outside .trailguide/ is kept under
+// RepositoryFolder at its path from the repository root. Any other repository's files keep their paths. Prefix is
+// the folder of the snapshot that holds the repository's files: empty for the source's own repository, and
+// curated/<name>/ for one a library curates skills from.
 type Origin struct {
 	Library bool
 	Prefix  string
@@ -195,8 +200,7 @@ type Origin struct {
 
 // Key returns the path, in the source's snapshot, of the file at repository path file, and false when a library's
 // snapshot can't hold it: a file in .trailguide/ other than a skill's or a shared asset, such as a rule, which
-// installed skills cite instead of linking, or a file outside .trailguide/ whose path would take the place of one
-// of the library's own.
+// installed skills cite instead of linking.
 func (o Origin) Key(file string) (string, bool) {
 	if !o.Library {
 		return o.Prefix + file, true
@@ -207,10 +211,7 @@ func (o Origin) Key(file string) (string, bool) {
 		}
 		return "", false
 	}
-	if _, ok := librarytree.LibraryPath(file); !ok || librarytree.InSnapshotNames(file) {
-		return "", false
-	}
-	return o.Prefix + file, true
+	return o.Prefix + RepositoryFolder + "/" + file, true
 }
 
 // Path returns the repository path of the file at path key in the source's snapshot, the inverse of Key, and
@@ -222,6 +223,9 @@ func (o Origin) Path(key string) (string, bool) {
 	}
 	if !o.Library {
 		return inside, true
+	}
+	if file, outside := strings.CutPrefix(inside, RepositoryFolder+"/"); outside {
+		return file, true
 	}
 	if first, _, _ := strings.Cut(inside, "/"); first == "skills" || first == "assets" {
 		return librarytree.Directory + "/" + inside, true
@@ -303,7 +307,7 @@ func (r Retention) Retain() ([]string, error) {
 			}
 			if failure.Reason == "" && !inFolder(link.Target) {
 				if _, ok := r.Origin.Key(link.Target); !ok {
-					failure.Reason, failure.Problem = Unsupported, "isn't a skill's file, a shared asset in .trailguide/assets/, or a file outside .trailguide/ that Trail Guide can keep beside the library's own files. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file."
+					failure.Reason, failure.Problem = Unsupported, "is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file out of .trailguide/."
 				}
 			}
 			if failure.Reason != "" {

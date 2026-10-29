@@ -239,6 +239,8 @@ type projectState struct {
 	lock                                     []byte
 	layout                                   managedLayout
 	local, assets, skills, vendor, generated *filetxn.Tree
+	// directory is the Trail Guide directory's path, beside the files outside it that authored skills link to.
+	directory string
 }
 
 // records returns the project's records, as readRecords reads them for every command but sync, which alone moves a
@@ -269,7 +271,7 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 	if err != nil {
 		return projectState{}, err
 	}
-	state := projectState{config: config, configBytes: data, lock: lock, layout: layout}
+	state := projectState{config: config, configBytes: data, lock: lock, layout: layout, directory: root.Name()}
 	for _, item := range []struct {
 		name  string
 		value **filetxn.Tree
@@ -365,6 +367,12 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	local, err := authoredSkills(state.skills)
 	if err != nil {
 		return build.Output{}, err
+	}
+	// Build points installed copies' links at the files they name, so those must be there.
+	if len(state.config.SkillTargets) > 0 {
+		if err := requireAuthoredSkillReferences(ctx, state.directory, state.skills); err != nil {
+			return build.Output{}, err
+		}
 	}
 	output, err := build.Generate(state.config, libraries, authored, build.Options{IndexMaxLines: options.IndexMaxLines, GroupInlineMaxBytes: options.GroupInlineMaxBytes, LocalSkills: local})
 	if err != nil {
