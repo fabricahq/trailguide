@@ -179,14 +179,16 @@ type delivery struct {
 	// files maps each followed file's snapshot path to its links' targets, by repository path, and the delivered
 	// file each reaches, by path from the repository root.
 	files map[string]map[string]string
-	// excluded holds, in the order walk finds them, the first link from each installed skill to each skill the
-	// project excludes.
+	// links maps each followed file's snapshot path to its links' destinations, by snapshot path, in document order;
+	// excluded holds, by installed skill, the first link its files and the reading copies they reach make to each
+	// skill the project excludes.
+	links    map[string][]string
 	excluded []ExcludedSkillLink
 }
 
 // walk follows the links of the source's installed skills' Markdown, and of the reading copies they reach.
 func (d *delivery) walk() error {
-	d.copies = map[string]bool{}
+	d.copies, d.links = map[string]bool{}, map[string][]string{}
 	queue := []string{}
 	for _, skill := range d.resolved {
 		if skill.Source != d.source.Name {
@@ -215,9 +217,6 @@ func (d *delivery) walk() error {
 			destination, follow, failure := "", false, (*skillrefs.Error)(nil)
 			if ok {
 				destination, follow, failure = d.classify(target)
-				if id := d.excludedSkill(target); failure == nil && id != "" {
-					d.noteExcluded(key, target, id)
-				}
 			} else {
 				failure = &skillrefs.Error{Reason: skillrefs.NotRetained, Problem: "the project's copy of the source doesn't retain. Run trailguide project sync, which takes the files installed skills link to from the revision .trailguide/lock.json records."}
 			}
@@ -226,6 +225,7 @@ func (d *delivery) walk() error {
 				return d.fail(failure, key)
 			}
 			d.files[key][link.Target] = destination
+			d.links[key] = append(d.links[key], target)
 			if follow {
 				if _, seen := d.via[target]; !seen {
 					d.via[target] = key
@@ -234,6 +234,7 @@ func (d *delivery) walk() error {
 			}
 		}
 	}
+	d.noteExcluded()
 	return nil
 }
 
@@ -290,30 +291,47 @@ func (d *delivery) excludedSkill(key string) string {
 	return ""
 }
 
-// noteExcluded records that the link in the file at path key in the snapshot reaches target, a file of excluded, a
-// skill the project excludes, unless the installed skill whose links reach key already reaches excluded.
-func (d *delivery) noteExcluded(key, target, excluded string) {
-	root := key
-	for d.via[root] != "" {
-		root = d.via[root]
-	}
-	skill := ""
-	for _, installed := range d.resolved {
-		if installed.Source == d.source.Name && strings.HasPrefix(root, installed.Vendored+"/") {
-			skill = installed.ID
+// noteExcluded records, for each of the source's installed skills, the first chain of links from its Markdown,
+// through the reading copies they reach, to each skill the project excludes, so a file several skills reach counts
+// for each of them. A chain goes only through reading copies: another installed skill's files are that skill's to
+// report.
+func (d *delivery) noteExcluded() {
+	for _, skill := range d.resolved {
+		if skill.Source != d.source.Name {
+			continue
+		}
+		via := map[string]string{}
+		queue := []string{}
+		for _, name := range slices.Sorted(maps.Keys(skill.Files.Files)) {
+			if key := skill.Vendored + "/" + name; skillrefs.IsMarkdown(name) {
+				via[key] = ""
+				queue = append(queue, key)
+			}
+		}
+		reached := map[string]bool{}
+		for len(queue) > 0 {
+			key := queue[0]
+			queue = queue[1:]
+			for _, target := range d.links[key] {
+				if excluded := d.excludedSkill(target); excluded != "" && !reached[excluded] {
+					reached[excluded] = true
+					origin := d.snapshot.Origins()[d.snapshot.OriginOf(key)]
+					chain := []string{}
+					for file := key; file != ""; file = via[file] {
+						path, _ := origin.Path(file)
+						chain = append([]string{path}, chain...)
+					}
+					path, _ := origin.Path(target)
+					d.excluded = append(d.excluded, ExcludedSkillLink{Skill: skill.ID, Excluded: excluded, Chain: append(chain, path)})
+				}
+				if _, seen := via[target]; seen || !d.copies[target] || !skillrefs.IsMarkdown(target) {
+					continue
+				}
+				via[target] = key
+				queue = append(queue, target)
+			}
 		}
 	}
-	if skill == "" || slices.ContainsFunc(d.excluded, func(link ExcludedSkillLink) bool { return link.Skill == skill && link.Excluded == excluded }) {
-		return
-	}
-	origin := d.snapshot.Origins()[d.snapshot.OriginOf(key)]
-	chain := []string{}
-	for file := key; file != ""; file = d.via[file] {
-		path, _ := origin.Path(file)
-		chain = append([]string{path}, chain...)
-	}
-	path, _ := origin.Path(target)
-	d.excluded = append(d.excluded, ExcludedSkillLink{Skill: skill, Excluded: excluded, Chain: append(chain, path)})
 }
 
 // copyPath returns the path, in generated/, of the reading copy of the file at path key in the snapshot.

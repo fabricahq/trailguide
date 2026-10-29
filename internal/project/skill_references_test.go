@@ -262,8 +262,10 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 			ctx := context.Background()
 			files := referenceFiles()
 			files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1` + test.levels + `}}`)
-			// Build the Lever reaches Redesign only through a document, twice.
+			// Build the Lever, and Encode Lessons when it's installed too, reach Redesign only through one document,
+			// which links to it twice.
 			files[".trailguide/skills/principle-build-the-lever/SKILL.md"] = []byte(leverSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
+			files[".trailguide/skills/principle-encode-lessons-in-structure/SKILL.md"] = []byte(encodeSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
 			files["docs/compare.md"] = []byte("# Compare\n\nSee [Redesign](../.trailguide/" + redesign + "/SKILL.md) and [its steps](../.trailguide/" + redesign + "/references/steps.md).\n")
 			f := referenceLibrary(t, files)
 			options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude","agents"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":[`+test.include+`],"exclude":`+test.exclude+`}}}}`)
@@ -274,6 +276,9 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 			want := []build.ExcludedSkillLink{
 				{Skill: "team:skills/principle-attack-the-premise", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-attack-the-premise/SKILL.md", ".trailguide/" + redesign + "/SKILL.md"}},
 				{Skill: "team:skills/principle-build-the-lever", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-build-the-lever/SKILL.md", "docs/compare.md", ".trailguide/" + redesign + "/SKILL.md"}},
+			}
+			if test.include == `"*"` {
+				want = append(want, build.ExcludedSkillLink{Skill: "team:skills/principle-encode-lessons-in-structure", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-encode-lessons-in-structure/SKILL.md", "docs/compare.md", ".trailguide/" + redesign + "/SKILL.md"}})
 			}
 			if !reflect.DeepEqual(changes.ExcludedSkillLinks, want) {
 				t.Errorf("excluded skill links = %+v, want %+v", changes.ExcludedSkillLinks, want)
