@@ -25,8 +25,6 @@ const (
 	// from the revision the lockfile records, as when a snapshot was taken by a Trail Guide that didn't retain files
 	// for reading.
 	NotRetained = "reference-not-retained"
-	// Excluded is a destination in a skill the project's configuration excludes.
-	Excluded = "reference-excluded"
 	// ReplacementMissing is a destination in a skill the project forks whose fork has no file at that path.
 	ReplacementMissing = "reference-replacement-missing"
 	// Escapes is a destination outside the repository that supplied the file, or an absolute path.
@@ -256,6 +254,10 @@ type Retention struct {
 	Folders []string
 	// Start lists the repository paths of the Markdown files of the delivered skills, whose links are followed.
 	Start []string
+	// Reading lists the repository paths of the folders, among Folders, of the skills the project excludes: a
+	// project delivers a reading copy of a file in one that a link reaches, so the links of a Markdown file in one
+	// are followed once a link reaches it.
+	Reading []string
 	// Absent is the reason for a destination View doesn't have, Missing or NotRetained, and AbsentProblem says what
 	// to do about it.
 	Absent, AbsentProblem string
@@ -264,13 +266,16 @@ type Retention struct {
 }
 
 // Retain returns, sorted, the repository paths of the files outside Folders that the links in Start reach,
-// directly or through the Markdown files it retains, each once, however many links reach it, so cycles end. A
-// link to a file inside Folders must name a file the View has. It fails with an *Error for the first link, in Start
+// directly or through the Markdown files it retains or reaches in Reading, each once, however many links reach it,
+// so cycles end. A link to a file inside Folders must name a file the View has. It fails with an *Error for the first link, in Start
 // order and then document order, that names a destination the View doesn't have, a folder, a symbolic link or
 // submodule, or a file the snapshot can't hold, and with the View's error when a read fails.
 func (r Retention) Retain() ([]string, error) {
 	inFolder := func(file string) bool {
 		return slices.ContainsFunc(r.Folders, func(folder string) bool { return strings.HasPrefix(file, folder+"/") })
+	}
+	read := func(file string) bool {
+		return slices.ContainsFunc(r.Reading, func(folder string) bool { return strings.HasPrefix(file, folder+"/") })
 	}
 	// via maps each followed file to the file whose link reached it, or "" for a file of Start.
 	via := map[string]string{}
@@ -308,10 +313,14 @@ func (r Retention) Retain() ([]string, error) {
 			if failure.Reason != "" {
 				return nil, r.fail(failure, via)
 			}
-			if inFolder(link.Target) {
+			if _, seen := via[link.Target]; seen {
 				continue
 			}
-			if _, seen := via[link.Target]; seen {
+			if inFolder(link.Target) {
+				if read(link.Target) && IsMarkdown(link.Target) {
+					via[link.Target] = file
+					queue = append(queue, link.Target)
+				}
 				continue
 			}
 			via[link.Target] = file
@@ -345,14 +354,8 @@ func Chain(file string, via map[string]string) []string {
 	return chain
 }
 
-// Problem returns the problem text for reason when a link's destination is outside what the project delivers, with
-// the repairs a project can make, given what: the skill and why it isn't delivered.
-func Problem(reason, what string) string {
-	switch reason {
-	case Excluded:
-		return fmt.Sprintf("is in %s. Trail Guide doesn't override an exclusion to keep a link working. Stop excluding the skill, fork it so the fork supplies the file, ask the source's maintainer to change the link, or exclude the skill that links to it.", what)
-	case ReplacementMissing:
-		return fmt.Sprintf("is in %s, and the fork has no file at that path. Add the file to the fork, ask the source's maintainer to change the link, or exclude the skill that links to it.", what)
-	}
-	return what
+// ReplacementProblem returns the problem text for a link's destination in what, a skill the project forks whose
+// fork has no file at that path, with the repairs a project can make.
+func ReplacementProblem(what string) string {
+	return fmt.Sprintf("is in %s, and the fork has no file at that path. Add the file to the fork, ask the source's maintainer to change the link, or exclude the skill that links to it.", what)
 }

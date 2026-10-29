@@ -87,7 +87,7 @@ Your project's own skills, including forks, keep their links working too: Trail 
 
 A linked file is for reading, not a skill to run. Linking to a sibling skill doesn't install it, add it to `SKILLS.md`, or put it in an agent's skills folder; to install it, include it, or have the skill call it with `trailguide-skills-used`. When the linked skill is installed anyway, the link points at its installed copy, under the name the project gives it, or at the project's fork of it.
 
-Trail Guide never overrides your choices to keep a link working. When a link points into a skill your project excludes, or into a fork that lacks the file, sync fails before changing anything and lists the repairs. Web links stay as they are and are never downloaded. See [Links](/reference/skill-format/#links).
+Excluding a skill is an installation choice. An excluded skill isn't installed in any agent's skills folder or listed among the available skills, but when a skill you install links to it, Trail Guide still keeps the linked files as reading copies, and sync, build, and update warn about it. A reading copy isn't a restriction on what an agent can do: an agent that follows the link reads the excluded skill's text and could act on it. To keep that text out of the project too, exclude the linking skill, or fork it without the link. When a link points into a fork that lacks the file, sync fails before changing anything and lists the repairs. Web links stay as they are and are never downloaded. See [Links](/reference/skill-format/#links).
 
 ## Skills and rules
 

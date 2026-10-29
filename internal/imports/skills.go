@@ -446,7 +446,7 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 	for _, data := range result.files {
 		retained += len(data)
 	}
-	references, err := r.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: isLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), source.SkillExclude, source.SkillForks), files: result.files, retained: retained, source: "sources." + source.Name, revision: plan.commit})
+	references, err := r.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: isLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), source.SkillExclude, source.SkillForks), excluded: excludedSkills(slices.Collect(maps.Keys(taken)), source.SkillExclude), files: result.files, retained: retained, source: "sources." + source.Name, revision: plan.commit})
 	if err != nil {
 		return importedSkills{}, err
 	}

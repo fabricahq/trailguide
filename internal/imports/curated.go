@@ -302,7 +302,7 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	for _, data := range result.files {
 		retained += len(data)
 	}
-	references, err := repo.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: !revision.NonLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), l.exclude, l.forks), files: result.files, retained: retained, source: "sources." + l.library + ", curated from " + l.name, revision: revision.Commit})
+	references, err := repo.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: !revision.NonLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), l.exclude, l.forks), excluded: excludedSkills(slices.Collect(maps.Keys(taken)), l.exclude), files: result.files, retained: retained, source: "sources." + l.library + ", curated from " + l.name, revision: revision.Commit})
 	if err != nil {
 		return importedSkills{}, err
 	}

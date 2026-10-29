@@ -138,13 +138,27 @@ skills:
 
 Trail Guide doesn't search skill text for calls it wasn't told about. See [Declare the skills a skill calls](/reference/configuration/#declare-the-skills-a-skill-calls).
 
-## When a skill links to a file you can't keep
+## When a skill links to a skill you exclude
 
-Sometimes a skill links to a file your project can't deliver: the file doesn't exist at the revision you install, the link names a folder or a rule file, or it points into a skill you exclude. Sync and update check every link before they write anything, so they fail, leave your files as they were, and name the file with the link, the link, the source and revision, and the chain of links that reached it:
+A skill you install can link to one you exclude, such as `attack-the-premise` comparing itself with `redesign`. Excluding `redesign` keeps it out of your agents' skills folders and `SKILLS.md`'s available skills, but the link still works: sync keeps the files the link reaches, from the same revision, as reading copies in `_managed/generated/references/`, and warns, naming both skills:
 
 ```text
 $ trailguide project sync
-Error: sources.fabrica: .trailguide/skills/redesign/SKILL.md: links to ../encode-lessons/SKILL.md (.trailguide/skills/encode-lessons/SKILL.md) at commit 4c1d2e3..., which is in fabrica:skills/encode-lessons, which sources.fabrica.skills.exclude excludes: Not for this team. Trail Guide doesn't override an exclusion to keep a link working. Stop excluding the skill, fork it so the fork supplies the file, ask the source's maintainer to change the link, or exclude the skill that links to it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md.
+...
+Warning: fabrica:skills/attack-the-premise references fabrica:skills/redesign, which this project excludes. fabrica:skills/redesign won't be installed as a skill, but its referenced files will be retained for reading. To leave them out too, exclude fabrica:skills/attack-the-premise or fork it without the link.
+```
+
+When the link is reached through other files, such as a shared checklist, the warning adds the chain of files it goes through. A skill that both calls and links to the skill you exclude gets one warning that says both. Build and update give the same warning, and `--json` output lists each one under `excludedSkillLinks`.
+
+An agent that follows the link reads the excluded skill's text, and could act on it. If you excluded the skill because you don't want agents to see it, exclude or fork the skill that links to it as well.
+
+## When a skill links to a file you can't keep
+
+Sometimes a skill links to a file your project can't deliver: the file doesn't exist at the revision you install, the link names a folder or a rule file, or it points into a fork that lacks the file. Sync and update check every link before they write anything, so they fail, leave your files as they were, and name the file with the link, the link, the source and revision, and the chain of links that reached it:
+
+```text
+$ trailguide project sync
+Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. Ask the source's maintainer to fix the link, or to add the file; trailguide library check reports it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
 ```
 
 Choose the repair the message lists. When the file is missing from the source, the source's maintainer fixes the link; `trailguide library check` reports it in their library.
@@ -247,7 +261,7 @@ sources:
           reason: Release Planner writes our release notes.
 ```
 
-These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `_managed/vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed.
+These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `_managed/vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed. When another installed skill links to it, sync keeps the linked files for reading and warns; see [When a skill links to a skill you exclude](#when-a-skill-links-to-a-skill-you-exclude).
 
 You can't exclude or fork a [required skill](/reference/configuration/#skill-levels): sync fails and names the library that requires it. Required skills are your organization's floor; to diverge from one, stop using the source.
 

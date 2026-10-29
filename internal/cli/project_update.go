@@ -100,6 +100,7 @@ func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command
 		if err != nil {
 			return err
 		}
+		result.FileChanges = withExcludedLinkWarnings(result.FileChanges)
 		output.report = updateReport(result, false, asked, location)
 		return nil
 	}

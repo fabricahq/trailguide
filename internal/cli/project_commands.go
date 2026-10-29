@@ -56,7 +56,7 @@ func newProjectCommand(options Options, output *commandOutput) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output.report = projectChangesReport(name, changes, directory, options.Directory)
+			output.report = projectChangesReport(name, withExcludedLinkWarnings(changes), directory, options.Directory)
 			return nil
 		}
 		command.AddCommand(cmd)

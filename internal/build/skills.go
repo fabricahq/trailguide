@@ -91,13 +91,15 @@ type resolvedSkill struct {
 // an install name isn't valid, when an exclusion or fork is invalid, as skillReplacements checks it, when a rename names a
 // skill the source doesn't install, with *ClashError when two skills share an install name, after renames, and as
 // linkSkillUses does for an authored skill's uses, and as deliverReferences does for a link it can't deliver. It
-// also returns linkSkillUses' warnings about uses of skills the project excludes without a replacement, and the
-// reading copies of the files installed skills link to, by path in generated/, with the installed skills' links
-// pointing to where the project delivers their destinations.
-func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) ([]resolvedSkill, []string, map[string][]byte, error) {
+// also returns linkSkillUses' warnings about uses of skills the project excludes without a replacement, but for a
+// skill that also links to the skill it uses, which the skill's ExcludedSkillLink reports instead; the installed
+// skills' links to skills the project excludes, as deliverReferences reports them; and the reading copies of the
+// files installed skills link to, by path in generated/, with the installed skills' links pointing to where the
+// project delivers their destinations.
+func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) ([]resolvedSkill, []string, []ExcludedSkillLink, map[string][]byte, error) {
 	replacements, err := skillReplacements(config, libraries, local)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	result := []resolvedSkill{}
 	for _, source := range config.Sources {
@@ -112,13 +114,13 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			skill := sourceSkill(source, snapshot, id)
 			skill.Files = SkillFiles{snapshot.SkillFiles(id), snapshot.SkillExecutable(id)}
 			if err := describeSkill(&skill, source.SkillRename[id], librarytree.Vendor+"/"+source.Name+"/"+skill.Vendored+"/"+skills.File); err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			result = append(result, skill)
 		}
 		for _, id := range slices.Sorted(maps.Keys(source.SkillRename)) {
 			if _, installs := snapshot.Skills[id]; !installs {
-				return nil, nil, nil, invalid("sources."+source.Name+".skills.rename."+id, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to rename; name a skill its skills.include selects, or remove the entry", id))
+				return nil, nil, nil, nil, invalid("sources."+source.Name+".skills.rename."+id, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to rename; name a skill its skills.include selects, or remove the entry", id))
 			}
 		}
 	}
@@ -129,7 +131,7 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			skill.Replaces = &replacement
 		}
 		if err := describeSkill(&skill, "", id+"/"+skills.File); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		result = append(result, skill)
 	}
@@ -141,19 +143,28 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			result[i].Targets = append(result[i].Targets, folder+"/"+skill.Name)
 		}
 		if other, taken := names[skill.Name]; taken {
-			return nil, nil, nil, &ClashError{Name: skill.Name, IDs: [2]string{other, skill.ID}}
+			return nil, nil, nil, nil, &ClashError{Name: skill.Name, IDs: [2]string{other, skill.ID}}
 		}
 		names[skill.Name] = skill.ID
 	}
-	warnings, err := linkSkillUses(result, config, aliases)
+	uses, err := linkSkillUses(result, config, aliases)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	references, err := deliverReferences(result, config, libraries, aliases)
+	references, links, err := deliverReferences(result, config, libraries, aliases)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return result, warnings, references, nil
+	warnings := []string{}
+	for _, use := range uses {
+		i := slices.IndexFunc(links, func(link ExcludedSkillLink) bool { return link.Skill == use.skill && link.Excluded == use.excluded })
+		if i < 0 {
+			warnings = append(warnings, use.String())
+			continue
+		}
+		links[i].Uses = true
+	}
+	return result, warnings, links, references, nil
 }
 
 // requestedRef returns the source's ref as generated output shows it: empty for a ref that chooses a library

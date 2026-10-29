@@ -14,13 +14,15 @@ import (
 // referenceInput is the part of one repository revision that retainReferences reads: tree, the revision's files by
 // repository path; origin, how those paths map to the snapshot's; folders, the files of every skill the import
 // takes, by skill ID and snapshot path; delivered, the IDs of the skills whose links a project delivers, which
-// leaves out those its configuration excludes or forks; and files, the bytes of the skills' files already read,
-// by snapshot path, with retained, every byte the source's import has read, which counts toward the limits.
+// leaves out those its configuration excludes or forks; excluded, those it excludes, whose Markdown files the
+// delivered skills' links reach are followed too; and files, the bytes of the skills' files already read, by
+// snapshot path, with retained, every byte the source's import has read, which counts toward the limits.
 type referenceInput struct {
 	tree      map[string]treeEntry
 	origin    skillrefs.Origin
 	folders   map[string]map[string]treeEntry
 	delivered []string
+	excluded  []string
 	files     map[string][]byte
 	retained  int
 	// source and revision identify the revision in errors.
@@ -28,7 +30,7 @@ type referenceInput struct {
 }
 
 // retainReferences reads the files outside the taken skills' folders that the delivered skills' Markdown links
-// reach, directly or through other files it retains, and returns their bytes by snapshot path, without the origin's
+// reach, directly or through other files it retains or the excluded skills' Markdown files they reach, and returns their bytes by snapshot path, without the origin's
 // prefix. It fails as skillrefs.Retention.Retain does, naming a destination the revision lacks as missing, and for a
 // file over the import byte limits.
 func (r *repository) retainReferences(ctx context.Context, in referenceInput) (map[string][]byte, error) {
@@ -38,6 +40,9 @@ func (r *repository) retainReferences(ctx context.Context, in referenceInput) (m
 	for _, id := range slices.Sorted(maps.Keys(in.folders)) {
 		folder, _ := in.origin.Path(id)
 		retention.Folders = append(retention.Folders, folder)
+		if slices.Contains(in.excluded, id) {
+			retention.Reading = append(retention.Reading, folder)
+		}
 	}
 	for _, id := range in.delivered {
 		for key := range in.folders[id] {
@@ -113,4 +118,16 @@ func deliveredSkills[E, F any](installed []string, exclude map[string]E, forks m
 	}
 	slices.Sort(delivered)
 	return delivered
+}
+
+// excludedSkills returns, sorted, the skills of taken that exclude, the exclusions by ID, names.
+func excludedSkills[E any](taken []string, exclude map[string]E) []string {
+	excluded := []string{}
+	for _, id := range taken {
+		if _, ok := exclude[id]; ok {
+			excluded = append(excluded, id)
+		}
+	}
+	slices.Sort(excluded)
+	return excluded
 }

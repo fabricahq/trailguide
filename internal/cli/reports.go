@@ -5,7 +5,7 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
-
+	"slices"
 	"strings"
 
 	"github.com/fabricahq/trailguide/internal/library"
@@ -182,6 +182,29 @@ func groupCreatedReport(added, changed, warnings []string, groupPath string, sco
 
 // agentsActions describes each AGENTS.md change in the human report.
 var agentsActions = map[string]string{"created": "added to a new file", "added": "added", "updated": "updated"}
+
+// withExcludedLinkWarnings returns changes with a warning, after its own, for each of its ExcludedSkillLinks, so
+// human and JSON output report them alike.
+func withExcludedLinkWarnings(changes project.FileChanges) project.FileChanges {
+	changes.Warnings = slices.Clone(changes.Warnings)
+	for _, link := range changes.ExcludedSkillLinks {
+		references := "references"
+		if link.Uses {
+			references = "uses and references"
+		}
+		warning := fmt.Sprintf("%s %s %s, which this project excludes. %s won't be installed as a skill", link.Skill, references, link.Excluded, link.Excluded)
+		if link.Uses {
+			warning += ", so the use is dropped"
+		}
+		warning += ", but its referenced files will be retained for reading."
+		if len(link.Chain) > 2 {
+			warning += " The reference goes through " + strings.Join(link.Chain, " -> ") + "."
+		}
+		warning += fmt.Sprintf(" To leave them out too, exclude %s or fork it without the link.", link.Skill)
+		changes.Warnings = append(changes.Warnings, warning)
+	}
+	return changes
+}
 
 // projectChangesReport lists the files sync, build, or update changed in the project at root, naming their directory
 // relative to workdir, as authoring reports name paths.

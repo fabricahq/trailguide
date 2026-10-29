@@ -52,6 +52,10 @@ type FileChanges struct {
 	// excludes without a replacement. Last, one for each personal skill in Options.Home with the name of a skill the
 	// project installs, which build doesn't report.
 	Warnings []string `json:"warnings"`
+	// ExcludedSkillLinks reports each installed skill whose links reach a skill the project excludes, whose linked
+	// files the project keeps for reading without installing the skill, for the caller to warn about; build.Output
+	// describes them. It is empty, never nil, when there are none.
+	ExcludedSkillLinks []build.ExcludedSkillLink `json:"excludedSkillLinks"`
 	// Recovered reports that the command first recovered an interrupted earlier command, restoring or finishing
 	// that command's files, which the lists above don't include.
 	Recovered bool `json:"recovered"`
@@ -102,6 +106,7 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		defer agents.close()
 		changes = compareFiles(treeFiles(before.generated), output.Files)
 		changes.Warnings = append(retiredCitationWarnings(output), output.ExcludedUses...)
+		changes.ExcludedSkillLinks = output.ExcludedLinks
 		// Build reports paths relative to _managed/generated/, three folders below the repository root.
 		mergeChanges(&changes, prefixChanges(installs.changes, "../../../"))
 		changes.Warnings = append(changes.Warnings, renameWarnings(output)...)
@@ -322,7 +327,10 @@ func prepareProject(ctx context.Context, state projectState, options Options) (b
 // the files its delivered skills link to, which must all be there. A snapshot of a repository that isn't a library
 // has an empty catalog.
 func loadSnapshot(ctx context.Context, source rules.Source, snapshot snapshot) (library.Catalog, error) {
-	references, err := snapshot.ReferenceFiles(source.Name, func(id string) bool { return deliversSkill(source, id) })
+	references, err := snapshot.ReferenceFiles(source.Name, func(id string) bool { return deliversSkill(source, id) }, func(id string) bool {
+		_, excluded := source.SkillExclude[id]
+		return excluded
+	})
 	if err != nil {
 		return library.Catalog{}, err
 	}
@@ -433,7 +441,7 @@ func treeFiles(tree *filetxn.Tree) map[string][]byte {
 
 // compareFiles produces deterministic byte-level changes without treating timestamp changes as output changes.
 func compareFiles(before, after map[string][]byte) FileChanges {
-	changes := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}}
+	changes := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}, ExcludedSkillLinks: []build.ExcludedSkillLink{}}
 	for _, name := range slices.Sorted(maps.Keys(after)) {
 		data, ok := before[name]
 		if !ok {

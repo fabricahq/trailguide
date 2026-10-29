@@ -258,6 +258,7 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 	warnings = append(warnings, personalSkillWarnings(in.options.Home, filepath.Dir(root.Name()), output.Files[build.InstalledSkillsFile])...)
 	warnings = append(warnings, renameWarnings(output)...)
 	changes.Warnings = warnings
+	changes.ExcludedSkillLinks = output.ExcludedLinks
 	if in.edited != nil {
 		targets[filetxn.Config] = map[string][]byte{configurationFile: in.edited}
 		changes.Changed = append(changes.Changed, configurationFile)

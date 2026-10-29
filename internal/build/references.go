@@ -26,15 +26,18 @@ const generatedRoot = librarytree.Directory + "/" + librarytree.Generated
 // deliverReferences resolves every local link in the Markdown of each source's installed skills, in the
 // repository and revision that supplied the file, and in the reading copies those links reach, until no new file
 // is reached. A destination in an installed skill is that skill's installed copy, under its install name; one in a
-// skill the project forks is the fork's file at the same path; one in a skill the project excludes, by ID or by
-// level, fails; and any other is a reading copy in generated/references/. It rewrites the links of the installed
-// copies in resolved, when the project has skill targets, and of the reading copies, to reach the delivered files,
-// and returns the reading copies by path in generated/. aliases maps a project source's skill that
+// skill the project forks is the fork's file at the same path; and any other, including one in a skill the project
+// excludes, by ID or by level, which it doesn't install, is a reading copy in generated/references/. It rewrites the
+// links of the installed copies in resolved, when the project has skill targets, and of the reading copies, to reach
+// the delivered files, and returns the reading copies by path in generated/, and, sorted by skill and then excluded
+// skill, one ExcludedSkillLink for each installed skill whose links reach a skill the project excludes, with the
+// first chain that reaches it. aliases maps a project source's skill that
 // withoutCuratedCopies dropped to the curated skill installed in its place. Authored skills' links name the
 // project's own files, which the caller checked, and relocateAuthoredLinks points the installed copies at them. It
 // fails with a *skillrefs.Error for a link whose destination the project can't deliver.
-func deliverReferences(resolved []resolvedSkill, config rules.Configuration, libraries map[string]Library, aliases map[string]string) (map[string][]byte, error) {
+func deliverReferences(resolved []resolvedSkill, config rules.Configuration, libraries map[string]Library, aliases map[string]string) (map[string][]byte, []ExcludedSkillLink, error) {
 	copies := map[string][]byte{}
+	excluded := []ExcludedSkillLink{}
 	byID := map[string]int{}
 	for i, skill := range resolved {
 		byID[skill.ID] = i
@@ -50,8 +53,9 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 	for _, source := range config.Sources {
 		d := delivery{source: source, snapshot: libraries[source.Name].Snapshot, resolved: resolved, byID: byID, aliases: aliases, via: map[string]string{}, files: map[string]map[string]string{}}
 		if err := d.walk(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		excluded = append(excluded, d.excluded...)
 		for _, key := range slices.Sorted(maps.Keys(d.copies)) {
 			delivered[generatedRoot+"/"+d.copyPath(key)] = true
 		}
@@ -89,11 +93,14 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 		}
 		for _, link := range links[from] {
 			if !delivered[link.destination] {
-				return nil, invalid(from, fmt.Sprintf("links to %s, which the project doesn't deliver; report this as a Trail Guide bug", link.destination))
+				return nil, nil, invalid(from, fmt.Sprintf("links to %s, which the project doesn't deliver; report this as a Trail Guide bug", link.destination))
 			}
 		}
 	}
-	return copies, nil
+	slices.SortFunc(excluded, func(a, b ExcludedSkillLink) int {
+		return strings.Compare(a.Skill+"\x00"+a.Excluded, b.Skill+"\x00"+b.Excluded)
+	})
+	return copies, excluded, nil
 }
 
 // relocateAuthoredLinks rewrites each local link in the Markdown of the installed copies of the authored skills in
@@ -172,6 +179,9 @@ type delivery struct {
 	// files maps each followed file's snapshot path to its links' targets, by repository path, and the delivered
 	// file each reaches, by path from the repository root.
 	files map[string]map[string]string
+	// excluded holds, in the order walk finds them, the first link from each installed skill to each skill the
+	// project excludes.
+	excluded []ExcludedSkillLink
 }
 
 // walk follows the links of the source's installed skills' Markdown, and of the reading copies they reach.
@@ -205,6 +215,9 @@ func (d *delivery) walk() error {
 			destination, follow, failure := "", false, (*skillrefs.Error)(nil)
 			if ok {
 				destination, follow, failure = d.classify(target)
+				if id := d.excludedSkill(target); failure == nil && id != "" {
+					d.noteExcluded(key, target, id)
+				}
 			} else {
 				failure = &skillrefs.Error{Reason: skillrefs.NotRetained, Problem: "the project's copy of the source doesn't retain. Run trailguide project sync, which takes the files installed skills link to from the revision .trailguide/lock.json records."}
 			}
@@ -225,9 +238,9 @@ func (d *delivery) walk() error {
 }
 
 // classify returns the delivered file that the file at path key in the snapshot is, by path from the repository
-// root, and whether its links are followed, which they are for a reading copy of a Markdown file. It fails, with
-// the reason and problem of a *skillrefs.Error, for a file in a skill the project excludes, a fork's missing file,
-// and a file the snapshot doesn't hold.
+// root, and whether its links are followed, which they are for a reading copy of a Markdown file, including one in
+// a skill the project excludes. It fails, with the reason and problem of a *skillrefs.Error, for a fork's missing
+// file and a file the snapshot doesn't hold.
 func (d *delivery) classify(key string) (string, bool, *skillrefs.Error) {
 	for _, id := range slices.Sorted(maps.Keys(d.snapshot.Skills)) {
 		folder := library.SkillFolder(id)
@@ -236,13 +249,13 @@ func (d *delivery) classify(key string) (string, bool, *skillrefs.Error) {
 			continue
 		}
 		installed := d.source.Name + ":" + id
-		if exclusion, excluded := d.source.SkillExclude[id]; excluded {
-			return "", false, &skillrefs.Error{Reason: skillrefs.Excluded, Problem: skillrefs.Problem(skillrefs.Excluded, fmt.Sprintf("%s, which sources.%s.skills.exclude excludes: %s", installed, d.source.Name, exclusion.Reason))}
+		if _, excluded := d.source.SkillExclude[id]; excluded {
+			break
 		}
 		if fork, forked := d.source.SkillForks[id]; forked {
 			installed = fork.As
 			if _, ok := d.resolved[d.byID[fork.As]].Files.Files[name]; !ok {
-				return "", false, &skillrefs.Error{Reason: skillrefs.ReplacementMissing, Problem: skillrefs.Problem(skillrefs.ReplacementMissing, fmt.Sprintf("%s:%s, which the project forks as %s", d.source.Name, id, fork.As))}
+				return "", false, &skillrefs.Error{Reason: skillrefs.ReplacementMissing, Problem: skillrefs.ReplacementProblem(fmt.Sprintf("%s:%s, which the project forks as %s", d.source.Name, id, fork.As))}
 			}
 		} else if alias, ok := d.aliases[installed]; ok {
 			installed = alias
@@ -253,20 +266,54 @@ func (d *delivery) classify(key string) (string, bool, *skillrefs.Error) {
 		}
 		return skillRoot(d.resolved[i]) + "/" + name, false, nil
 	}
-	for _, id := range slices.Sorted(maps.Keys(d.snapshot.AvailableSkills)) {
-		if level := d.snapshot.AvailableSkills[id].Level; strings.HasPrefix(key, library.SkillFolder(id)+"/") && d.source.ExcludesLevel(id, level) {
-			by := "skills.exclude"
-			if level != "" {
-				by += ", which leaves out its level, " + level
-			}
-			return "", false, &skillrefs.Error{Reason: skillrefs.Excluded, Problem: skillrefs.Problem(skillrefs.Excluded, fmt.Sprintf("%s:%s, which sources.%s excludes with %s", d.source.Name, id, d.source.Name, by))}
-		}
-	}
 	if _, ok := d.snapshot.Files[key]; !ok {
 		return "", false, &skillrefs.Error{Reason: skillrefs.NotRetained, Problem: "the project's copy of the source doesn't retain. Run trailguide project sync, which takes the files installed skills link to from the revision .trailguide/lock.json records."}
 	}
 	d.copies[key] = true
 	return generatedRoot + "/" + d.copyPath(key), skillrefs.IsMarkdown(key), nil
+}
+
+// excludedSkill returns the project ID of the skill the project excludes, by ID or by level, whose folder holds the
+// file at path key in the snapshot, or "" when no such skill does.
+func (d *delivery) excludedSkill(key string) string {
+	for id := range d.source.SkillExclude {
+		if strings.HasPrefix(key, library.SkillFolder(id)+"/") {
+			return d.source.Name + ":" + id
+		}
+	}
+	for id, skill := range d.snapshot.AvailableSkills {
+		// A skill the snapshot records is installed, whatever its level.
+		if _, installed := d.snapshot.Skills[id]; !installed && strings.HasPrefix(key, library.SkillFolder(id)+"/") && d.source.ExcludesLevel(id, skill.Level) {
+			return d.source.Name + ":" + id
+		}
+	}
+	return ""
+}
+
+// noteExcluded records that the link in the file at path key in the snapshot reaches target, a file of excluded, a
+// skill the project excludes, unless the installed skill whose links reach key already reaches excluded.
+func (d *delivery) noteExcluded(key, target, excluded string) {
+	root := key
+	for d.via[root] != "" {
+		root = d.via[root]
+	}
+	skill := ""
+	for _, installed := range d.resolved {
+		if installed.Source == d.source.Name && strings.HasPrefix(root, installed.Vendored+"/") {
+			skill = installed.ID
+		}
+	}
+	if skill == "" || slices.ContainsFunc(d.excluded, func(link ExcludedSkillLink) bool { return link.Skill == skill && link.Excluded == excluded }) {
+		return
+	}
+	origin := d.snapshot.Origins()[d.snapshot.OriginOf(key)]
+	chain := []string{}
+	for file := key; file != ""; file = d.via[file] {
+		path, _ := origin.Path(file)
+		chain = append([]string{path}, chain...)
+	}
+	path, _ := origin.Path(target)
+	d.excluded = append(d.excluded, ExcludedSkillLink{Skill: skill, Excluded: excluded, Chain: append(chain, path)})
 }
 
 // copyPath returns the path, in generated/, of the reading copy of the file at path key in the snapshot.

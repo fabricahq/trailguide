@@ -37,9 +37,10 @@ func (s Snapshot) OriginOf(key string) string {
 // ReferenceFiles returns the paths of the files the snapshot holds outside its skills' folders because the links of
 // the skills a project delivers reach them, as skillrefs.Retention.Retain finds them in the snapshot's files.
 // delivered reports whether the project delivers the installed skill with that ID, which it doesn't when it
-// excludes or forks it. source names the source in errors. It fails as Retain does, naming a destination the
+// excludes or forks it, and excluded whether it excludes it, so links reaching its Markdown are followed too. source
+// names the source in errors. It fails as Retain does, naming a destination the
 // snapshot lacks as not retained, so an explicit sync restores it from the recorded revision.
-func (s Snapshot) ReferenceFiles(source string, delivered func(id string) bool) (map[string]bool, error) {
+func (s Snapshot) ReferenceFiles(source string, delivered, excluded func(id string) bool) (map[string]bool, error) {
 	view := snapshotView{files: s.Files, folders: map[string]bool{}}
 	for key := range s.Files {
 		for parent := key; strings.Contains(parent, "/"); {
@@ -63,6 +64,9 @@ func (s Snapshot) ReferenceFiles(source string, delivered func(id string) bool) 
 			}
 			repository, _ := origin.Path(folder)
 			retention.Folders = append(retention.Folders, repository)
+			if excluded(id) {
+				retention.Reading = append(retention.Reading, repository)
+			}
 			if !delivered(id) {
 				continue
 			}

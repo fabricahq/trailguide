@@ -10,10 +10,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/imports"
 	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/internal/test/gitfixture"
@@ -217,8 +219,8 @@ func TestSync_FailsWithoutChangingFilesForALinkItCantDeliver(t *testing.T) {
 		"destination outside the repository": {map[string][]byte{"docs/checklist.md": []byte("[up](../../outside.md)\n")}, "", skillrefs.Escapes, []string{"outside the repository"}},
 		"folder":                             {map[string][]byte{"docs/checklist.md": []byte("[images](images)\n")}, "", skillrefs.Unsupported, []string{"is a folder"}},
 		"rule file":                          {map[string][]byte{"docs/checklist.md": []byte("[rule](../.trailguide/rules/techs/go/errors.md)\n")}, "", skillrefs.Unsupported, []string{"trailguide-rules-used"}},
-		"excluded skill": {nil, `,"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"We redesign our own way."}]`, skillrefs.Excluded, []string{
-			"sources.team.skills.exclude excludes: We redesign our own way.", "Stop excluding the skill",
+		"missing file an excluded skill links to": {map[string][]byte{".trailguide/skills/principle-redesign-from-first-principles/references/steps.md": []byte("See [the gone file](gone.md).\n")}, `,"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"We redesign our own way."}]`, skillrefs.Missing, []string{
+			".trailguide/skills/principle-redesign-from-first-principles/references/steps.md: links to gone.md",
 		}},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -231,7 +233,7 @@ func TestSync_FailsWithoutChangingFilesForALinkItCantDeliver(t *testing.T) {
 				t.Fatal(err)
 			}
 			include := `"skills/principle-attack-the-premise","skills/principle-build-the-lever"`
-			if test.reason == skillrefs.Excluded {
+			if test.fields != "" {
 				include = `"*"`
 			}
 			root, err := openProject(ctx, options, false)
@@ -247,15 +249,85 @@ func TestSync_FailsWithoutChangingFilesForALinkItCantDeliver(t *testing.T) {
 	}
 }
 
-func TestSync_RefusesALinkToASkillItsConfigurationExcludesByLevel(t *testing.T) {
+func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testing.T) {
+	const redesign = "skills/principle-redesign-from-first-principles"
+	for name, test := range map[string]struct {
+		levels, include, exclude string
+	}{
+		// An exclusion by ID names a skill the source's include selects.
+		"excluded by ID":    {"", `"*"`, `[{"id":"` + redesign + `","reason":"We redesign our own way."}]`},
+		"excluded by level": {`,"skills":{"required":["skills/principle-attack-the-premise"],"recommended":["` + redesign + `"]}`, `"skills/principle-attack-the-premise","skills/principle-build-the-lever"`, `[{"id":"recommended","reason":"Not yet."}]`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			files := referenceFiles()
+			files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1` + test.levels + `}}`)
+			// Build the Lever reaches Redesign only through a document, twice.
+			files[".trailguide/skills/principle-build-the-lever/SKILL.md"] = []byte(leverSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
+			files["docs/compare.md"] = []byte("# Compare\n\nSee [Redesign](../.trailguide/" + redesign + "/SKILL.md) and [its steps](../.trailguide/" + redesign + "/references/steps.md).\n")
+			f := referenceLibrary(t, files)
+			options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude","agents"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":[`+test.include+`],"exclude":`+test.exclude+`}}}}`)
+			changes, err := Sync(ctx, options, git)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []build.ExcludedSkillLink{
+				{Skill: "team:skills/principle-attack-the-premise", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-attack-the-premise/SKILL.md", ".trailguide/" + redesign + "/SKILL.md"}},
+				{Skill: "team:skills/principle-build-the-lever", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-build-the-lever/SKILL.md", "docs/compare.md", ".trailguide/" + redesign + "/SKILL.md"}},
+			}
+			if !reflect.DeepEqual(changes.ExcludedSkillLinks, want) {
+				t.Errorf("excluded skill links = %+v, want %+v", changes.ExcludedSkillLinks, want)
+			}
+			copy := ".trailguide/_managed/generated/references/team/" + redesign + "/SKILL.md"
+			for _, target := range []string{".claude/skills", ".agents/skills"} {
+				if linked := linkedFile(t, options, target+"/principle-attack-the-premise/SKILL.md", "Redesign from First Principles"); linked != copy {
+					t.Errorf("%s's attack links to %s, want the reading copy %s", target, linked, copy)
+				}
+				linkedFile(t, options, copy, "the steps")
+				if exists(t, options, target+"/principle-redesign-from-first-principles") {
+					t.Errorf("%s installs the excluded skill", target)
+				}
+			}
+			// SKILLS.md lists the skill among the excluded ones only, and the record of installed skills not at all.
+			if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); strings.Contains(index, "### principle-redesign-from-first-principles") {
+				t.Errorf("SKILLS.md lists the excluded skill as available:\n%s", index)
+			}
+			if record := readRepositoryFile(t, options, ".trailguide/_managed/generated/"+build.InstalledSkillsFile); strings.Contains(record, redesign) {
+				t.Errorf("the installed skills record lists the excluded skill:\n%s", record)
+			}
+			before := projectBytes(t, options)
+			built, err := Build(ctx, options)
+			if err != nil || len(built.Added)+len(built.Changed)+len(built.Removed) != 0 || !reflect.DeepEqual(built.ExcludedSkillLinks, want) {
+				t.Fatalf("build = %+v, %v; want no changes and the same excluded skill links", built, err)
+			}
+			if result, err := Check(ctx, options); err != nil || !result.Current() {
+				t.Fatalf("check = %+v, %v", result, err)
+			}
+			if !maps.Equal(before, projectBytes(t, options)) {
+				t.Error("build or check changed files")
+			}
+		})
+	}
+}
+
+func TestSync_ReportsASkillThatUsesAndLinksToAnExcludedSkillOnce(t *testing.T) {
 	ctx := context.Background()
 	files := referenceFiles()
-	files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/principle-attack-the-premise"],"recommended":["skills/principle-redesign-from-first-principles"]}}}`)
+	files[".trailguide/skills/principle-attack-the-premise/SKILL.md"] = []byte(strings.Replace(attackSkill, "description: Attack the premise.\n", "description: Attack the premise.\nmetadata:\n  trailguide-skills-used: |-\n    skills/principle-redesign-from-first-principles\n", 1))
 	f := referenceLibrary(t, files)
-	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"recommended","reason":"Not yet."}]}}}}`)
-	before := projectBytes(t, options)
-	_, err := Sync(ctx, options, git)
-	requireReferenceFailure(t, options, err, skillrefs.Excluded, before, "team:skills/principle-redesign-from-first-principles, which sources.team excludes with skills.exclude, which leaves out its level, recommended")
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"Ours."}]}}}}`)
+	changes, err := Sync(ctx, options, git)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes.ExcludedSkillLinks) != 1 || !changes.ExcludedSkillLinks[0].Uses {
+		t.Errorf("excluded skill links = %+v; want one that also uses the skill", changes.ExcludedSkillLinks)
+	}
+	for _, warning := range changes.Warnings {
+		if strings.Contains(warning, "principle-redesign-from-first-principles") {
+			t.Errorf("the link's report doesn't replace the use's warning: %s", warning)
+		}
+	}
 }
 
 func TestSync_LinksToTheForkThatReplacesALinkedSkill(t *testing.T) {
