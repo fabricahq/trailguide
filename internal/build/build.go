@@ -91,11 +91,11 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 	if err != nil {
 		return Output{}, err
 	}
-	var excludedUses []string
-	var excludedLinks []ExcludedSkillLink
-	if resolved.Skills, excludedUses, excludedLinks, resolved.References, err = resolveSkills(config, libraries, options.LocalSkills); err != nil {
+	skills, err := resolveSkills(config, libraries, options.LocalSkills)
+	if err != nil {
 		return Output{}, err
 	}
+	resolved.Skills, resolved.References = skills.Skills, skills.References
 	retired, err := citeRules(&resolved, config, libraries)
 	if err != nil {
 		return Output{}, err
@@ -107,6 +107,6 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 	if err != nil {
 		return Output{}, err
 	}
-	output.RetiredCitations, output.ExcludedUses, output.ExcludedLinks = retired, excludedUses, excludedLinks
+	output.RetiredCitations, output.ExcludedUses, output.ExcludedLinks = retired, skills.ExcludedUses, skills.ExcludedLinks
 	return output, nil
 }

@@ -145,3 +145,51 @@ func TestRetain_RejectsFoldersAndFilesTheSnapshotCantHold(t *testing.T) {
 		}
 	}
 }
+
+func TestAnalyze_ReadsEachFileOnceAndReachesSharedFilesFromEveryStart(t *testing.T) {
+	files := memoryView{
+		"a/SKILL.md":     "[shared](../docs/shared.md)\n",
+		"b/SKILL.md":     "[shared](../docs/shared.md)\n",
+		"docs/shared.md": "[x](../x/SKILL.md) and [x again](../x/SKILL.md)\n",
+		"x/SKILL.md":     "[a](../a/SKILL.md)\n",
+	}
+	reads := map[string]int{}
+	reader := countingReader{files, reads}
+	graph, err := Analyze(reader, []string{"a/SKILL.md", "b/SKILL.md"}, func(_ string, link Link) (bool, *Error) {
+		return link.Target == "docs/shared.md", nil
+	}, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a/SKILL.md", "b/SKILL.md", "docs/shared.md"}; !slices.Equal(graph.Files(), want) {
+		t.Errorf("files = %v, want %v", graph.Files(), want)
+	}
+	for file, count := range reads {
+		if count != 1 {
+			t.Errorf("read %s %d times", file, count)
+		}
+	}
+	if chain := graph.Chain("docs/shared.md"); !slices.Equal(chain, []string{"a/SKILL.md", "docs/shared.md"}) {
+		t.Errorf("chain = %v", chain)
+	}
+	if links := graph.Links("docs/shared.md"); len(links) != 2 || string(graph.Data("docs/shared.md")[links[0].Start:links[0].End]) != "../x/SKILL.md" {
+		t.Errorf("links = %+v", links)
+	}
+	for _, start := range []string{"a/SKILL.md", "b/SKILL.md"} {
+		chains := map[string][]string{}
+		graph.Reach([]string{start}, func(string) bool { return true }, func(target string, chain []string) { chains[target] = chain })
+		if want := []string{start, "docs/shared.md"}; !slices.Equal(chains["x/SKILL.md"], want) {
+			t.Errorf("from %s, x is reached through %v, want %v", start, chains["x/SKILL.md"], want)
+		}
+	}
+}
+
+type countingReader struct {
+	files memoryView
+	reads map[string]int
+}
+
+func (r countingReader) Read(file string) ([]byte, error) {
+	r.reads[file]++
+	return r.files.Read(file)
+}

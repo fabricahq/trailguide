@@ -116,8 +116,9 @@ func requireLinkedFilesUnchanged(ctx context.Context, directory string, linked m
 
 // projectView lends the project's repository, as the command leaves it, to skillrefs by repository path: the files
 // of its skills/ folder from skills; the files output writes in the skill targets, targets, and in _managed/, of
-// which only generated/ is there to link to; and any other file from root, bounded, refusing symbolic links.
-// folders holds the folders skills' paths imply.
+// which only generated/ is there to link to; and any other file from root, bounded, refusing symbolic links, as it
+// first reads it, so the bytes a check validates are the ones a write later requires unchanged. folders holds the
+// folders skills' paths imply.
 type projectView struct {
 	ctx     context.Context
 	root    *os.Root
@@ -125,6 +126,7 @@ type projectView struct {
 	output  build.Output
 	targets []string
 	folders map[string]bool
+	read    map[string][]byte
 }
 
 // written reports whether output owns repository path file: it is in a skill target's folder or in _managed/.
@@ -206,7 +208,8 @@ func (v *projectView) Stat(file string) skillrefs.Kind {
 	return skillrefs.File
 }
 
-// Read returns the bytes of the regular file at repository path file, failing for one over maxReferencedBytes.
+// Read returns the bytes of the regular file at repository path file, the same bytes each time, failing for one
+// over maxReferencedBytes.
 func (v *projectView) Read(file string) ([]byte, error) {
 	if err := v.ctx.Err(); err != nil {
 		return nil, err
@@ -222,6 +225,9 @@ func (v *projectView) Read(file string) ([]byte, error) {
 			return installed.Files[name], nil
 		}
 	}
+	if data, ok := v.read[file]; ok {
+		return data, nil
+	}
 	handle, err := v.root.Open(file)
 	if err != nil {
 		return nil, failure("read-failed", "read "+file+", which a skill links to: "+err.Error(), err)
@@ -234,5 +240,9 @@ func (v *projectView) Read(file string) ([]byte, error) {
 	if len(data) > maxReferencedBytes {
 		return nil, failure("limit-exceeded", file+", which a skill links to, exceeds 8 MiB.", errors.New("file too large"))
 	}
+	if v.read == nil {
+		v.read = map[string][]byte{}
+	}
+	v.read[file] = data
 	return data, nil
 }

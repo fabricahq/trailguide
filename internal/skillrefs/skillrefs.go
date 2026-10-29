@@ -1,6 +1,6 @@
 // Package skillrefs owns the local file references in skill Markdown: which links name files, where they resolve
-// in the repository that supplied the file, which files a set of skills needs retained so every link can be read,
-// and the error that explains a link that can't be. It does no file, Git, or network access: callers lend it the
+// in the repository that supplied the file, the graph of files a set of skills' links reach, which files those
+// skills need retained so every link can be read, and the error that explains a link that can't be. It does no file, Git, or network access: callers lend it the
 // files of one repository revision through a View, and decide where retained files are delivered.
 package skillrefs
 
@@ -266,79 +266,172 @@ type Retention struct {
 }
 
 // Retain returns, sorted, the repository paths of the files outside Folders that the links in Start reach,
-// directly or through the Markdown files it retains or reaches in Reading, each once, however many links reach it,
-// so cycles end. A link to a file inside Folders must name a file the View has. It fails with an *Error for the first link, in Start
-// order and then document order, that names a destination the View doesn't have, a folder, a symbolic link or
-// submodule, or a file the snapshot can't hold, and with the View's error when a read fails.
+// directly or through the Markdown files it retains or reaches in Reading, each once. A link to a file inside
+// Folders must name a file the View has. It fails as Analyze does, for the first link, in Start order and then
+// document order, that names a destination the View doesn't have, a folder, a symbolic link or submodule, or a
+// file the snapshot can't hold.
 func (r Retention) Retain() ([]string, error) {
-	inFolder := func(file string) bool {
-		return slices.ContainsFunc(r.Folders, func(folder string) bool { return strings.HasPrefix(file, folder+"/") })
+	within := func(folders []string, file string) bool {
+		return slices.ContainsFunc(folders, func(folder string) bool { return strings.HasPrefix(file, folder+"/") })
 	}
-	read := func(file string) bool {
-		return slices.ContainsFunc(r.Reading, func(folder string) bool { return strings.HasPrefix(file, folder+"/") })
+	graph, err := Analyze(r.View, slices.Sorted(slices.Values(r.Start)), func(_ string, link Link) (bool, *Error) {
+		switch r.View.Stat(link.Target) {
+		case Absent:
+			return false, &Error{Reason: r.Absent, Problem: r.AbsentProblem}
+		case Folder:
+			return false, &Error{Reason: Unsupported, Problem: "is a folder. Trail Guide keeps the files that links name, so ask the maintainer to link to a file in it."}
+		case Other:
+			return false, &Error{Reason: Unsupported, Problem: "is a symbolic link or submodule, which Trail Guide doesn't install. Ask the maintainer to replace it with a file."}
+		}
+		if within(r.Folders, link.Target) {
+			return within(r.Reading, link.Target) && IsMarkdown(link.Target), nil
+		}
+		if _, ok := r.Origin.Key(link.Target); !ok {
+			return false, &Error{Reason: Unsupported, Problem: "is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file out of .trailguide/."}
+		}
+		return IsMarkdown(link.Target), nil
+	}, r.Source, r.Revision)
+	if err != nil {
+		return nil, err
 	}
-	// via maps each followed file to the file whose link reached it, or "" for a file of Start.
-	via := map[string]string{}
-	queue := slices.Sorted(slices.Values(r.Start))
-	for _, file := range queue {
-		via[file] = ""
+	return slices.DeleteFunc(graph.Targets(), func(file string) bool { return within(r.Folders, file) }), nil
+}
+
+// Classify decides what a link in the Markdown file at repository path from means to an analysis: whether
+// Analyze follows the links of its target, a Markdown file, or a failure with the Reason and Problem of an *Error
+// whose other fields Analyze fills.
+type Classify func(from string, link Link) (follow bool, failure *Error)
+
+// Reader lends the bytes of one revision of a repository's files by repository path.
+type Reader interface {
+	Read(file string) ([]byte, error)
+}
+
+// Graph is the analysis of the local links that a set of Markdown files in one repository revision reaches: the
+// bytes and links of each file it followed, read once, and the file whose link first reached each one.
+type Graph struct {
+	files map[string]*analyzed
+	// order lists the followed files in the order Analyze reached them.
+	order []string
+}
+
+// analyzed is one followed file: its bytes, its links in document order, and the file whose link first reached
+// it, or "" for a starting file.
+type analyzed struct {
+	data  []byte
+	links []Link
+	via   string
+}
+
+// Analyze reads each of start, Markdown files, through reader, and each Markdown file their links reach that
+// classify follows, once each, breadth first, so cycles end. It fails with the first *Error, in start order and
+// then document order, that Links returns for a file or classify returns for a link, completed with the link, the
+// source and revision, and the chain of files that reaches it, and with reader's error.
+func Analyze(reader Reader, start []string, classify Classify, source, revision string) (*Graph, error) {
+	g := &Graph{files: map[string]*analyzed{}}
+	queue := []string{}
+	reach := func(file, via string) {
+		if _, seen := g.files[file]; !seen {
+			g.files[file] = &analyzed{via: via}
+			queue = append(queue, file)
+		}
 	}
-	retained := []string{}
+	for _, file := range start {
+		reach(file, "")
+	}
+	fail := func(failure *Error) error {
+		failure.Source, failure.Revision, failure.Chain = source, revision, g.Chain(failure.File)
+		return failure
+	}
 	for len(queue) > 0 {
 		file := queue[0]
 		queue = queue[1:]
-		data, err := r.View.Read(file)
+		g.order = append(g.order, file)
+		data, err := reader.Read(file)
 		if err != nil {
 			return nil, err
 		}
 		links, err := Links(file, data)
 		if err != nil {
-			return nil, r.fail(err.(*Error), via)
+			return nil, fail(err.(*Error))
 		}
+		g.files[file].data, g.files[file].links = data, links
 		for _, link := range links {
-			failure := &Error{File: file, Destination: link.Destination, Target: link.Target}
-			switch r.View.Stat(link.Target) {
-			case Absent:
-				failure.Reason, failure.Problem = r.Absent, r.AbsentProblem
-			case Folder:
-				failure.Reason, failure.Problem = Unsupported, "is a folder. Trail Guide keeps the files that links name, so ask the maintainer to link to a file in it."
-			case Other:
-				failure.Reason, failure.Problem = Unsupported, "is a symbolic link or submodule, which Trail Guide doesn't install. Ask the maintainer to replace it with a file."
+			follow, failure := classify(file, link)
+			if failure != nil {
+				failure.File, failure.Destination, failure.Target = file, link.Destination, link.Target
+				return nil, fail(failure)
 			}
-			if failure.Reason == "" && !inFolder(link.Target) {
-				if _, ok := r.Origin.Key(link.Target); !ok {
-					failure.Reason, failure.Problem = Unsupported, "is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file out of .trailguide/."
-				}
+			if follow {
+				reach(link.Target, file)
 			}
-			if failure.Reason != "" {
-				return nil, r.fail(failure, via)
+		}
+	}
+	return g, nil
+}
+
+// Files returns the files the analysis followed, in the order it reached them.
+func (g *Graph) Files() []string { return slices.Clone(g.order) }
+
+// Data returns the bytes the analysis read of file, a file it followed.
+func (g *Graph) Data(file string) []byte { return g.files[file].data }
+
+// Links returns the links of file, a file the analysis followed, in document order.
+func (g *Graph) Links(file string) []Link { return g.files[file].links }
+
+// Targets returns, sorted, every file a followed file links to, once.
+func (g *Graph) Targets() []string {
+	targets := []string{}
+	for _, file := range g.order {
+		for _, link := range g.files[file].links {
+			targets = append(targets, link.Target)
+		}
+	}
+	slices.Sort(targets)
+	return slices.Compact(targets)
+}
+
+// Chain returns the files whose links first reached file, a file the analysis followed, from a starting file to
+// file itself.
+func (g *Graph) Chain(file string) []string {
+	chain := []string{file}
+	for next := g.files[file]; next != nil && next.via != ""; next = g.files[next.via] {
+		chain = append([]string{next.via}, chain...)
+	}
+	return chain
+}
+
+// Reach walks the links of start, files the analysis followed, breadth first, going on into a followed file only
+// when through accepts it, and calls visit once for each file the walk's links name, with the chain of files from
+// a file of start to the one whose link first names it. Each starting set gets its own walk, so it reports what it
+// reaches through a file that another set's links reached first.
+func (g *Graph) Reach(start []string, through func(file string) bool, visit func(target string, chain []string)) {
+	via := map[string]string{}
+	queue := []string{}
+	for _, file := range start {
+		if _, ok := g.files[file]; ok {
+			via[file] = ""
+			queue = append(queue, file)
+		}
+	}
+	named := map[string]bool{}
+	for len(queue) > 0 {
+		file := queue[0]
+		queue = queue[1:]
+		for _, link := range g.files[file].links {
+			if !named[link.Target] {
+				named[link.Target] = true
+				visit(link.Target, Chain(file, via))
 			}
 			if _, seen := via[link.Target]; seen {
 				continue
 			}
-			if inFolder(link.Target) {
-				if read(link.Target) && IsMarkdown(link.Target) {
-					via[link.Target] = file
-					queue = append(queue, link.Target)
-				}
-				continue
-			}
-			via[link.Target] = file
-			retained = append(retained, link.Target)
-			if IsMarkdown(link.Target) {
+			if _, followed := g.files[link.Target]; followed && through(link.Target) {
+				via[link.Target] = file
 				queue = append(queue, link.Target)
 			}
 		}
 	}
-	slices.Sort(retained)
-	return retained, nil
-}
-
-// fail completes failure with the retention's source and revision and the chain of files that reach its file.
-func (r Retention) fail(failure *Error, via map[string]string) *Error {
-	failure.Source, failure.Revision = r.Source, r.Revision
-	failure.Chain = Chain(failure.File, via)
-	return failure
 }
 
 // Chain returns the files whose links reach file, from the first, which via maps to "", to file itself. via maps

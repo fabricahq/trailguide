@@ -780,3 +780,32 @@ func TestRequireLinkedFilesUnchanged_RefusesAChangedOrMissingFile(t *testing.T) 
 		}
 	}
 }
+
+// The bytes a reference check validates are the ones the write later requires unchanged, so a file that changes
+// after its links were checked fails the write instead of becoming the baseline.
+func TestProjectView_KeepsTheBytesItFirstRead(t *testing.T) {
+	repository := t.TempDir()
+	notes := filepath.Join(repository, "notes.md")
+	if err := os.WriteFile(notes, []byte("[ok](ok.md)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	view := &projectView{ctx: context.Background(), root: root}
+	first, err := view.Read("notes.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(notes, []byte("[broken](gone.md)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := view.Read("notes.md"); err != nil || string(again) != string(first) {
+		t.Fatalf("a second read = %q, %v; want the first read's %q", again, err, first)
+	}
+	if err := requireLinkedFilesUnchanged(context.Background(), filepath.Join(repository, ".trailguide"), map[string][]byte{"notes.md": first}); !code("concurrent-change")(err) {
+		t.Fatalf("got %v; want concurrent-change for the file that changed after it was checked", err)
+	}
+}
