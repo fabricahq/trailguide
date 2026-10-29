@@ -1092,7 +1092,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"techs/go/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"techs/go/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1108,7 +1108,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"assets/NOTICE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"assets/NOTICE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1124,7 +1124,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"changes/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"changes/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1140,7 +1140,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"config.yaml\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"config.yaml\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1156,7 +1156,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.notices[0]: \"rules/techs/go/a.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.notices[0]: \"rules/techs/go/a.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.notices[0]"
       }
     }
@@ -1172,7 +1172,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"Rules/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"Rules/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1188,7 +1188,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"skills/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"skills/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1204,7 +1204,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"curated/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"curated/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1220,7 +1220,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \"_source.json\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \"_source.json\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1256,7 +1256,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/config.yaml\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/config.yaml\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1272,7 +1272,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/changes/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/changes/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1288,7 +1288,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/vendor/team/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/vendor/team/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1304,7 +1304,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/generated/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/generated/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
@@ -1320,7 +1320,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/rules/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
+        "message": "library/.trailguide/config.yaml: library.license.file: \".trailguide/rules/LICENSE.md\" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library",
         "location": "library/.trailguide/config.yaml: library.license.file"
       }
     }
