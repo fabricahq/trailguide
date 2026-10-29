@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
@@ -386,7 +387,9 @@ type importedSkills struct {
 }
 
 // readSkills reads the files of the skills the source installs at the plan's commit, a library's when isLibrary is
-// set: the skills chooseSkills chooses, and every skill they use, transitively, recording why each is installed.
+// set: the skills chooseSkills chooses, and every skill they use, transitively, recording why each is installed,
+// and every file outside those skills' folders that the links of the skills the project delivers reach, as
+// retainReferences reads them, so the skills can be read offline.
 // retained is the bytes the source's import already read, which count toward the same retained limit. It fails for a
 // skill file that is a symbolic link or submodule, over the import byte limits, as installedSkills does for the
 // skills' uses, and as requireSkillBasedOn does for a replacement's basedOn.
@@ -429,15 +432,25 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 		return importedSkills{}, err
 	}
 	entries := map[string]treeEntry{}
+	taken := map[string]map[string]treeEntry{}
 	for _, id := range slices.Sorted(maps.Keys(installed)) {
 		skill := importedSkill(id, levels)
 		skill.Included, skill.UsedBy = installed[id].Included, installed[id].UsedBy
 		result.skills[id] = skill
 		maps.Copy(entries, folders[id])
+		taken[id] = folders[id]
 	}
 	if result.files, result.executable, err = r.readFiles(ctx, source.Name, entries, retained); err != nil {
 		return importedSkills{}, err
 	}
+	for _, data := range result.files {
+		retained += len(data)
+	}
+	references, err := r.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: isLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), source.SkillExclude, source.SkillForks), files: result.files, retained: retained, source: "sources." + source.Name, revision: plan.commit})
+	if err != nil {
+		return importedSkills{}, err
+	}
+	maps.Copy(result.files, references)
 	return result, nil
 }
 

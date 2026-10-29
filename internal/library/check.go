@@ -96,6 +96,9 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = requireLeveledSkills(input.skills, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
+	if err = requireSkillReferences(ctx, root, git, input.skills); err != nil {
+		return checkedLibrary{}, err
+	}
 	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
 	if err != nil {
 		return checkedLibrary{}, err

@@ -69,7 +69,7 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 		return Output{}, err
 	}
 	var excludedUses []string
-	if resolved.Skills, excludedUses, err = resolveSkills(config, libraries, options.LocalSkills); err != nil {
+	if resolved.Skills, excludedUses, resolved.References, err = resolveSkills(config, libraries, options.LocalSkills); err != nil {
 		return Output{}, err
 	}
 	retired, err := citeRules(&resolved, config, libraries)

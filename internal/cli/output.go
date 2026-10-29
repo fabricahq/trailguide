@@ -18,6 +18,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/gitexec"
+	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/trailguide"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -57,6 +58,19 @@ type responseError struct {
 	Kind     string `json:"kind"`
 	Message  string `json:"message"`
 	Location string `json:"location,omitempty"`
+	// Reference describes a skill's link whose destination can't be delivered; it is nil for any other failure.
+	Reference *referenceFailure `json:"reference,omitempty"`
+}
+
+// referenceFailure is the link a reference failure is about, as skillrefs.Error records it: where the linking file
+// comes from, the file and the link, the repository path it names, and the files whose links reach the file.
+type referenceFailure struct {
+	Source      string   `json:"source,omitempty"`
+	Revision    string   `json:"revision,omitempty"`
+	File        string   `json:"file"`
+	Destination string   `json:"destination"`
+	Target      string   `json:"target,omitempty"`
+	Chain       []string `json:"chain"`
 }
 
 // finish emits one response from a completed report or a typed execution error.
@@ -135,7 +149,11 @@ func classifyError(err error) *responseError {
 	var domain *filetxn.Error
 	var git *gitexec.Error
 	var schema *trailguide.UnsupportedLibrarySchemaError
+	var reference *skillrefs.Error
 	switch {
+	case errors.As(err, &reference):
+		result.Code = reference.Reason
+		result.Reference = &referenceFailure{Source: reference.Source, Revision: reference.Revision, File: reference.File, Destination: reference.Destination, Target: reference.Target, Chain: append([]string{}, reference.Chain...)}
 	case errors.As(err, &domain):
 		result.Code = domain.Code
 	case errors.As(err, &git):

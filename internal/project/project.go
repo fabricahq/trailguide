@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -309,15 +310,25 @@ func prepareProject(ctx context.Context, state projectState, options Options) (b
 }
 
 // loadSnapshot validates the library content of a verified snapshot, assembling each rule from the library
-// release that published it, and checks that it holds exactly the recorded rules and files besides its skills'. A
-// snapshot of a repository that isn't a library has an empty catalog.
+// release that published it, and checks that it holds exactly the recorded rules and files besides its skills' and
+// the files its delivered skills link to, which must all be there. A snapshot of a repository that isn't a library
+// has an empty catalog.
 func loadSnapshot(ctx context.Context, source rules.Source, snapshot snapshot) (library.Catalog, error) {
-	if snapshot.NonLibrary {
-		return library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}}, nil
+	references, err := snapshot.ReferenceFiles(source.Name, func(id string) bool { return deliversSkill(source, id) })
+	if err != nil {
+		return library.Catalog{}, err
 	}
 	ruleFiles := snapshot
 	ruleFiles.Files = maps.Clone(snapshot.Files)
 	maps.DeleteFunc(ruleFiles.Files, func(file string, _ []byte) bool { return snapshot.IsSkillFile(file) })
+	if snapshot.NonLibrary {
+		for _, file := range slices.Sorted(maps.Keys(ruleFiles.Files)) {
+			if !references[file] {
+				return library.Catalog{}, invalidSnapshot(librarytree.Vendor+"/"+source.Name+"/"+file, "belongs to no installed skill, and no installed skill links to it; run trailguide project sync")
+			}
+		}
+		return library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}}, nil
+	}
 	snapshot = ruleFiles
 	// An individually selected rule the snapshot doesn't import was retired when it was recorded.
 	individual := []string{}
@@ -330,6 +341,12 @@ func loadSnapshot(ctx context.Context, source rules.Source, snapshot snapshot) (
 	if err != nil {
 		return library.Catalog{}, err
 	}
+	// A file the skills link to is in the catalog too when the library's rules use it.
+	loaded := catalog.Files()
+	maps.DeleteFunc(snapshot.Files, func(file string, _ []byte) bool {
+		_, inCatalog := loaded[file]
+		return references[file] && !inCatalog
+	})
 	if err := verifyLoadedSnapshot(source, catalog, snapshot); err != nil {
 		return library.Catalog{}, err
 	}
@@ -448,4 +465,12 @@ func verifyLoadedSnapshot(source rules.Source, catalog library.Catalog, snapshot
 		}
 	}
 	return nil
+}
+
+// deliversSkill reports whether the project delivers source's installed skill id, which it doesn't when its
+// configuration excludes or forks it.
+func deliversSkill(source rules.Source, id string) bool {
+	_, excluded := source.SkillExclude[id]
+	_, forked := source.SkillForks[id]
+	return !excluded && !forked
 }
