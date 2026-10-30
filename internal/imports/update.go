@@ -679,7 +679,7 @@ func sourceError(source string, err error) error {
 			return err
 		}
 	}
-	if strings.HasPrefix(err.Error(), "sources."+source+".") || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if named := "sources." + source; strings.HasPrefix(err.Error(), named+".") || strings.HasPrefix(err.Error(), named+":") || strings.HasPrefix(err.Error(), named+",") || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
 	return fmt.Errorf("source %s: %w", source, err)

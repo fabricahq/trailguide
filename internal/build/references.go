@@ -14,6 +14,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skillrefs"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // ReferencesDirectory is the folder, in generated/, of the reading copies of the files installed skills link to
@@ -76,10 +77,14 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 // an authored skill's file, under its install name, or the project's file in place. It fails as skillrefs.Links
 // does, which the caller's check of the authored skills' links rules out.
 func authoredLinks(resolved []resolvedSkill) (map[string]map[string][]byte, error) {
+	// A link into skills/<name> names the skill installed as name: the authored skill, or a source's skill, which has
+	// no authored folder, as a fork's link to a sibling skill of its source does.
 	installed := map[string]resolvedSkill{}
 	for _, skill := range resolved {
 		if skill.Source == "" {
 			installed[librarytree.Directory+"/"+skill.Folder] = skill
+		} else if len(skill.Targets) > 0 {
+			installed[librarytree.Directory+"/"+skills.Directory+"/"+skill.Name] = skill
 		}
 	}
 	result := map[string]map[string][]byte{}

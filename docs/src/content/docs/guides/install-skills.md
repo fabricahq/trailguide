@@ -145,10 +145,10 @@ A skill you install can link to one you exclude, such as `attack-the-premise` co
 ```text
 $ trailguide project sync
 ...
-Warning: fabrica:skills/attack-the-premise references fabrica:skills/redesign, which this project excludes. fabrica:skills/redesign won't be installed as a skill, but its referenced files will be retained for reading. To leave them out too, exclude fabrica:skills/attack-the-premise or fork it without the link.
+Warning: fabrica:skills/attack-the-premise references fabrica:skills/redesign, which this project excludes. fabrica:skills/redesign won't be installed as a skill, but its referenced files will be retained for reading. To leave them out too, add skills/attack-the-premise to sources.fabrica.skills.exclude, or fork it without the link.
 ```
 
-When the link is reached through other files, such as a shared checklist, the warning adds the chain of files it goes through. A skill that both calls and links to the skill you exclude gets one warning that says both. Build and update give the same warning, and `--json` output lists each one under `excludedSkillLinks`.
+When the link is reached through other files, such as a shared checklist, the warning adds the chain of files it goes through, by their paths in the source's repository. A skill that both calls and links to the skill you exclude gets one warning that says both. Build and update give the same warning, and `--json` output lists each one under `excludedSkillLinks`.
 
 An agent that follows the link reads the excluded skill's text, and could act on it. If you excluded the skill because you don't want agents to see it, exclude or fork the skill that links to it as well.
 
@@ -158,7 +158,7 @@ Sometimes a skill links to a file your project can't deliver: the file doesn't e
 
 ```text
 $ trailguide project sync
-Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. Ask the source's maintainer to fix the link, or to add the file; trailguide library check reports it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
+Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
 ```
 
 Choose the repair the message lists. When the file is missing from the source, the source's maintainer fixes the link; `trailguide library check` reports it in their library.

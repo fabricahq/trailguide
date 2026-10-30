@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -54,10 +55,17 @@ func requireAuthoredSkillReferences(ctx context.Context, state projectState, out
 	for _, target := range state.config.SkillTargets {
 		view.targets = append(view.targets, rules.SkillTargetFolders[target])
 	}
-	retention := skillrefs.Retention{View: view, Absent: skillrefs.Missing, AbsentProblem: "the project doesn't have once this command writes its output. Add the file, or fix the link; every agent target reaches the file through the installed copy."}
+	retention := skillrefs.Retention{View: view, Absent: skillrefs.Missing, AbsentProblem: "isn't in the project, or among the files Trail Guide installs and generates. Add the file, or fix the link."}
 	// A link into the files output writes must name one, but their own links are build's to deliver, such as the
 	// skills index's links into the vendor snapshot when no skill target is configured, so they aren't followed.
 	retention.Folders = append([]string{librarytree.Directory + "/" + librarytree.Managed}, view.targets...)
+	// A link into skills/<name> for a skill a source installs as name names its installed copy, as a fork's link to
+	// a sibling skill of its source does, and build points it there.
+	for _, folder := range slices.Sorted(maps.Keys(output.Skills)) {
+		if location := authoredSkillsDirectory + "/" + path.Base(folder); !slices.Contains(retention.Folders, location) {
+			retention.Folders = append(retention.Folders, location)
+		}
+	}
 	for _, name := range slices.Sorted(maps.Keys(state.skills.Files)) {
 		folder, _, inFolder := strings.Cut(name, "/")
 		if !inFolder {
@@ -172,8 +180,33 @@ func kindIn(files func(func(string) bool), name string) skillrefs.Kind {
 	return kind
 }
 
+// installedAs returns the installed copy's folder and the rest of file when file, by repository path, is in
+// skills/<name>, where name is a skill the command installs from a source rather than an authored one.
+func (v *projectView) installedAs(file string) (folder, rest string, ok bool) {
+	name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/")
+	if !inside {
+		return "", "", false
+	}
+	skill, rest, _ := strings.Cut(name, "/")
+	if v.skills != nil && v.folders[skill] {
+		return "", "", false
+	}
+	for _, folder := range slices.Sorted(maps.Keys(v.output.Skills)) {
+		if path.Base(folder) == skill {
+			return folder, rest, true
+		}
+	}
+	return "", "", false
+}
+
 // Stat reports what the repository holds at repository path file once the command writes its output.
 func (v *projectView) Stat(file string) skillrefs.Kind {
+	if folder, rest, ok := v.installedAs(file); ok {
+		if rest == "" {
+			return skillrefs.Folder
+		}
+		return kindIn(maps.Keys(v.output.Skills[folder].Files), rest)
+	}
 	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside && v.skills != nil {
 		if _, ok := v.skills.Files[name]; ok {
 			return skillrefs.File
@@ -213,6 +246,9 @@ func (v *projectView) Stat(file string) skillrefs.Kind {
 func (v *projectView) Read(file string) ([]byte, error) {
 	if err := v.ctx.Err(); err != nil {
 		return nil, err
+	}
+	if folder, rest, ok := v.installedAs(file); ok {
+		return v.output.Skills[folder].Files[rest], nil
 	}
 	if name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/"); inside && v.skills != nil {
 		return v.skills.Files[name], nil

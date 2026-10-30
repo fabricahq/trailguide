@@ -656,7 +656,7 @@ func TestSync_FollowsTheLinksOfAForkThatReplacesALinkedSkill(t *testing.T) {
 	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](missing.md).\n")
 	before := projectBytes(t, options)
 	_, err = Sync(ctx, options, git)
-	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/our-redesign/SKILL.md: links to missing.md", "the project doesn't have")
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/our-redesign/SKILL.md: links to missing.md", "isn't in the project")
 	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](../../../docs/notes.md) and [the asset](../../assets/flow.svg).\n")
 	writeFixture(t, root, "assets/flow.svg", "<svg/>\n")
 	if err := os.MkdirAll(filepath.Join(options.Directory, "docs"), 0o755); err != nil {
@@ -714,7 +714,7 @@ func TestSync_RefusesAnAuthoredLinkToAnInstalledCopyItWouldRemove(t *testing.T) 
 	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":["claude"],"sources":{}}`)
 	before := projectBytes(t, options)
 	_, err = Sync(ctx, options, git)
-	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/ours/SKILL.md: links to ../../../.claude/skills/principle-build-the-lever/SKILL.md", "once this command writes its output")
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/ours/SKILL.md: links to ../../../.claude/skills/principle-build-the-lever/SKILL.md", "among the files Trail Guide installs and generates")
 }
 
 func TestSync_KeepsAnAuthoredLinkToTheSkillsIndexWithoutSkillTargets(t *testing.T) {

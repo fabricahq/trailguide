@@ -122,19 +122,19 @@ func Links(file string, data []byte) ([]Link, error) {
 		problem := ""
 		switch {
 		case decodeErr != nil || !utf8.ValidString(decoded) || strings.ContainsFunc(decoded, func(r rune) bool { return r < 32 || r == 127 }):
-			problem = "can't be decoded as a relative path; ask the maintainer to fix the link."
+			problem = "can't be decoded as a relative path. Fix the link."
 		case strings.ContainsRune(decoded, '\\'):
-			problem = "uses backslashes, which only some systems read as path separators; ask the maintainer to use / instead."
+			problem = "uses backslashes, which only some systems read as path separators. Use / instead."
 		}
 		if problem != "" {
 			return nil, &Error{Reason: Unsupported, File: file, Destination: value, Problem: problem}
 		}
 		if strings.HasPrefix(decoded, "/") {
-			return nil, &Error{Reason: Escapes, File: file, Destination: value, Problem: "is an absolute path, so it depends on where the files are read rather than on the repository. Ask the maintainer to link with a path relative to the file."}
+			return nil, &Error{Reason: Escapes, File: file, Destination: value, Problem: "is an absolute path, so it depends on where the files are read rather than on the repository. Link with a path relative to the file."}
 		}
 		target := path.Clean(path.Join(path.Dir(file), decoded))
 		if target == ".." || strings.HasPrefix(target, "../") {
-			return nil, &Error{Reason: Escapes, File: file, Destination: value, Problem: "is outside the repository that supplies the file, so no revision of it can supply the destination. Ask the maintainer to link within the repository, or to a web address."}
+			return nil, &Error{Reason: Escapes, File: file, Destination: value, Problem: "is outside the repository that supplies the file, so no revision of it can supply the destination. Link within the repository, or to a web address."}
 		}
 		links = append(links, Link{Start: start + destination.Start, End: start + destination.End, Destination: value, Target: target, Suffix: suffix})
 	}
@@ -279,15 +279,15 @@ func (r Retention) Retain() ([]string, error) {
 		case Absent:
 			return false, &Error{Reason: r.Absent, Problem: r.AbsentProblem}
 		case Folder:
-			return false, &Error{Reason: Unsupported, Problem: "is a folder. Trail Guide keeps the files that links name, so ask the maintainer to link to a file in it."}
+			return false, &Error{Reason: Unsupported, Problem: "is a folder. Trail Guide keeps the files that links name, so link to a file in it."}
 		case Other:
-			return false, &Error{Reason: Unsupported, Problem: "is a symbolic link or submodule, which Trail Guide doesn't install. Ask the maintainer to replace it with a file."}
+			return false, &Error{Reason: Unsupported, Problem: "is a symbolic link or submodule, which Trail Guide doesn't install. Replace it with a file."}
 		}
 		if within(r.Folders, link.Target) {
 			return within(r.Reading, link.Target) && IsMarkdown(link.Target), nil
 		}
 		if _, ok := r.Origin.Key(link.Target); !ok {
-			return false, &Error{Reason: Unsupported, Problem: "is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Ask the maintainer to cite a rule with trailguide-rules-used instead of linking to it, or to move the file out of .trailguide/."}
+			return false, &Error{Reason: Unsupported, Problem: "is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Cite a rule with trailguide-rules-used instead of linking to it, or move the file out of .trailguide/."}
 		}
 		return IsMarkdown(link.Target), nil
 	}, r.Source, r.Revision)

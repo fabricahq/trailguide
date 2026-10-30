@@ -198,9 +198,10 @@ func withExcludedLinkWarnings(changes project.FileChanges) project.FileChanges {
 		}
 		warning += ", but its referenced files will be retained for reading."
 		if len(link.Chain) > 2 {
-			warning += " The reference goes through " + strings.Join(link.Chain, " -> ") + "."
+			warning += " The reference goes through these files of the source's repository: " + strings.Join(link.Chain, " -> ") + "."
 		}
-		warning += fmt.Sprintf(" To leave them out too, exclude %s or fork it without the link.", link.Skill)
+		source, id, _ := strings.Cut(link.Skill, ":")
+		warning += fmt.Sprintf(" To leave them out too, add %s to sources.%s.skills.exclude, or fork it without the link.", id, source)
 		changes.Warnings = append(changes.Warnings, warning)
 	}
 	return changes

@@ -36,7 +36,7 @@ type referenceInput struct {
 func (r *repository) retainReferences(ctx context.Context, in referenceInput) (map[string][]byte, error) {
 	view := &gitView{input: newGitFiles(ctx, r, in.tree), read: map[string][]byte{}}
 	view.input.total = in.retained
-	retention := skillrefs.Retention{View: view, Origin: in.origin, Absent: skillrefs.Missing, AbsentProblem: "the revision doesn't have. Ask the source's maintainer to fix the link, or to add the file; trailguide library check reports it.", Source: in.source, Revision: in.revision}
+	retention := skillrefs.Retention{View: view, Origin: in.origin, Absent: skillrefs.Missing, AbsentProblem: "the revision doesn't have.", Source: in.source, Revision: in.revision}
 	for _, id := range slices.Sorted(maps.Keys(in.folders)) {
 		folder, _ := in.origin.Path(id)
 		retention.Folders = append(retention.Folders, folder)
@@ -56,6 +56,9 @@ func (r *repository) retainReferences(ctx context.Context, in referenceInput) (m
 		}
 	}
 	retained, err := retention.Retain()
+	if failure, ok := err.(*skillrefs.Error); ok {
+		failure.Problem += " The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it."
+	}
 	if err != nil {
 		return nil, err
 	}

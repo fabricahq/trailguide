@@ -7,15 +7,18 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"net/url"
 	"os"
 	"path"
 	"slices"
 	"strings"
 
+	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
@@ -66,6 +69,9 @@ type SkillForkPlan struct {
 	// fixes says what the author must change in the fork's SKILL.md that Trail Guide couldn't, in which case the
 	// fork's SKILL.md carries the draft marker, so build refuses it until the author fixes it.
 	fixes []string
+	// linksOutside reports that the skill links to files outside every installed skill, which the source's last sync
+	// kept for it, so build refuses them until a sync drops them.
+	linksOutside bool
 }
 
 // PlanSkillFork checks the project and prepares a fork of the skill from names, which can be one the source's
@@ -154,8 +160,24 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return err
 		}
 		executable := snapshot.SkillExecutable(from.Skill)
+		layout, err := readLayout(root)
+		if err != nil {
+			return err
+		}
+		record, err := filetxn.ReadOptional(ctx, root, path.Join(string(layout.generated), build.InstalledSkillsFile))
+		if err != nil {
+			return err
+		}
+		linked, fixes, err := forkLinks(snapshot, source, from.Skill, plan.name, files, build.InstalledSkills(record))
+		if err != nil {
+			return err
+		}
+		plan.fixes, plan.linksOutside = append(plan.fixes, fixes...), len(fixes) > 0
 		for _, name := range slices.Sorted(maps.Keys(files)) {
 			content := files[name]
+			if data, ok := linked[name]; ok {
+				content = data
+			}
 			if name == skills.File {
 				if plan.renamed {
 					content = skills.Rename(content, plan.name)
@@ -201,6 +223,10 @@ func (p *SkillForkPlan) Name() string { return p.name }
 // Fixes says what the author must change in the fork's SKILL.md, which then carries the draft marker, or is empty
 // when the fork is complete.
 func (p *SkillForkPlan) Fixes() []string { return p.fixes }
+
+// LinksOutside reports that the skill links to files outside every skill the project installs, which the source's
+// last sync kept for the skill and the next sync drops, so the fork installs with sync rather than build.
+func (p *SkillForkPlan) LinksOutside() bool { return p.linksOutside }
 
 // BasedOn returns the full commit SHA the fork copies the skill from, which skills.forks records as basedOn.
 func (p *SkillForkPlan) BasedOn() string { return p.commit }
@@ -296,4 +322,63 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 		fixes = append(fixes, "Fix what build reports: "+problem+".")
 	}
 	return text, fixes, nil
+}
+
+// forkLinks returns, by path in the skill's folder, the Markdown files of files, the folder of skill id in snapshot,
+// the snapshot of source, whose links leave the folder, with each link to a skill the project installs, as installed
+// lists them, or forks pointing at it by the name it installs as, so the fork, skills/<name>, reaches that skill's
+// installed copy. A link that reaches any other file outside the folder, such as a shared document, or a skill the
+// project doesn't install, has nothing the fork can reach, so it returns a fix for each.
+func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, files map[string][]byte, installed []build.InstalledSkill) (map[string][]byte, []string, error) {
+	folder := library.SkillFolder(id)
+	origin := snapshot.Origins()[snapshot.OriginOf(folder+"/")]
+	installedAs := map[string]string{}
+	for _, skill := range installed {
+		if other, ok := strings.CutPrefix(skill.ID, source.Name+":"); ok {
+			installedAs[other] = skill.Name
+		}
+	}
+	for other, fork := range source.SkillForks {
+		installedAs[other] = strings.TrimPrefix(fork.As, skills.Directory+"/")
+	}
+	result := map[string][]byte{}
+	fixes := []string{}
+	for _, file := range slices.Sorted(maps.Keys(files)) {
+		if !skillrefs.IsMarkdown(file) {
+			continue
+		}
+		from, _ := origin.Path(folder + "/" + file)
+		links, err := skillrefs.Links(from, files[file])
+		if err != nil {
+			return nil, nil, err
+		}
+		changed := false
+		rewritten := skillrefs.Rewrite(files[file], links, func(link skillrefs.Link) string {
+			key, _ := origin.Key(link.Target)
+			if strings.HasPrefix(key, folder+"/") {
+				return link.Destination
+			}
+			for _, other := range slices.Sorted(maps.Keys(snapshot.Skills)) {
+				rest, inside := strings.CutPrefix(key, library.SkillFolder(other)+"/")
+				if !inside {
+					continue
+				}
+				if as, ok := installedAs[other]; ok && other != id {
+					forked := librarytree.Directory + "/" + skills.AuthoredID(name) + "/" + file
+					relative, err := url.PathUnescape(rules.RelativeLink(forked, librarytree.Directory+"/"+skills.AuthoredID(as)+"/"+rest))
+					if err == nil {
+						changed = changed || relative != link.Destination
+						return relative
+					}
+				}
+				break
+			}
+			fixes = append(fixes, fmt.Sprintf("In %s, replace the link to %s. It reaches %s in %s, which is outside the skill and every skill the project installs, so the fork can't reach it. Copy the file into the fork and link to the copy, or remove the link.", file, link.Destination, link.Target, source.Name))
+			return link.Destination
+		})
+		if changed {
+			result[file] = rewritten
+		}
+	}
+	return result, fixes, nil
 }

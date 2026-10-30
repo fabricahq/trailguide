@@ -8,6 +8,8 @@ A user forks an installed skill with `trailguide project add skill --from SOURCE
 - `fork-install` installs the fork in place of the source's skill after build.
 - `fork-links` points other installed skills' links into the forked skill at the fork's files.
 - `fork-missing` fails build with `reference-replacement-missing` when the fork lacks a file another skill links to, and writes nothing.
+- `fork-sibling` points the fork's links to other installed skills at their installed copies, by install name.
+- `fork-outside` lists each link the fork can't keep, marks the fork as a draft, and installs it with sync once fixed.
 
 ## How to get to it (user POV)
 
@@ -26,6 +28,8 @@ Preconditions:
 - **Install.** Run `TG_LAB=<lab> tg-lab run fork-install -- trailguide project build`, then `TG_LAB=<lab> tg-lab run fork-install-show -- head -8 .claude/skills/review/SKILL.md`. The marker names the fork, not the source's skill.
 - **Links follow the fork.** Edit `.trailguide/skills/review/references/checklist.md`, build, and run `TG_LAB=<lab> tg-lab run fork-links -- sh -c 'cat .claude/skills/audit/SKILL.md'`. The `checklist` link resolves to the installed fork's file, which has the edit.
 - **Missing in fork.** Delete `.trailguide/skills/review/references/checklist.md` and its link from the fork's `SKILL.md`, then run `TG_LAB=<lab> tg-lab run fork-missing -- trailguide project build --json`. Exit 1, `error.code` is `reference-replacement-missing`, and the message names `audit`'s link and the repairs. `git status --short` shows no change under `.claude/` or `.agents/`.
+
+- **Sibling and outside links.** With a remote whose `skills/alpha/SKILL.md` links to `[beta](../beta/SKILL.md)` and `[guide](../../docs/guide.md)`, and a project installing `alpha` and `beta`, run `TG_LAB=<lab> tg-lab run fork-outside -- trailguide project add skill --from SRC:skills/alpha --reason Ours. --non-interactive`. The output lists the `guide` link under `In the fork:`, and the next step is `trailguide project sync`. Remove that link and the `trailguide:draft` line, then run `TG_LAB=<lab> tg-lab run fork-sibling -- trailguide project sync` and `cat .claude/skills/alpha/SKILL.md`: the `beta` link reaches `.claude/skills/beta/SKILL.md`. With `skills.rename` giving beta another name, the fork's link uses that name.
 
 ## Gotchas
 

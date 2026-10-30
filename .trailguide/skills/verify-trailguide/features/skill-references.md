@@ -9,7 +9,8 @@ An installed skill's local Markdown links keep working offline in every target. 
 - `refs-reading-copy` writes a reading copy for a linked file outside every installed skill, and rewrites the link to it.
 - `refs-transitive` follows links in linked Markdown files, so files reached through them are kept too.
 - `refs-offline` builds and checks with no access to the source.
-- `refs-not-retained` fails build and check when the copies are missing, and sync repairs it from the locked revision.
+- `refs-not-retained` fails build and check for a project synced before skill links, and sync repairs it from the locked revision.
+- `refs-copies` restores deleted reading copies with build, offline.
 - `refs-authored` checks links in the project's own skills in `.trailguide/skills/`.
 
 ## How to get to it (user POV)
@@ -37,11 +38,13 @@ Preconditions:
 - **Transitive.** Run `TG_LAB=<lab> tg-lab run refs-transitive -- cat .trailguide/_managed/generated/references/refs/docs/guide.md`. Its `deep` link still reaches `docs/deep/detail.md` beside it.
 - **Sibling installed.** Add `skills/beta` to `sources.refs.skills.include` in `.trailguide/config.yaml`, run `TG_LAB=<lab> tg-lab run refs-sibling -- trailguide project sync`, then `TG_LAB=<lab> tg-lab run refs-sibling-show -- cat .claude/skills/alpha/SKILL.md`. The `beta` link is now `../beta/SKILL.md`, the installed copy, and the reading copy of `skills/beta/SKILL.md` is removed.
 - **Offline.** Move the remote away with `TG_LAB=<lab> tg-lab exec -- mv <lab>/remotes/refs <lab>/remotes/refs.offline`, then run `TG_LAB=<lab> tg-lab run refs-offline-build -- trailguide project build` and `TG_LAB=<lab> tg-lab run refs-offline-check -- trailguide project check`. Both exit 0. Move it back afterwards.
-- **Not retained.** Run `TG_LAB=<lab> tg-lab exec -- rm -rf .trailguide/_managed/generated/references`, then `TG_LAB=<lab> tg-lab run refs-not-retained-build -- trailguide project build`. It writes the copies back from the vendor snapshot and exits 0. Then also remove the snapshot's copy of a linked file, `TG_LAB=<lab> tg-lab exec -- rm .trailguide/_managed/vendor/refs/docs/guide.md`, and run `TG_LAB=<lab> tg-lab run refs-not-retained -- trailguide project build --json`. Exit 1 with error code `reference-not-retained`, and the message names `trailguide project sync`. Run `TG_LAB=<lab> tg-lab run refs-repair -- trailguide project sync`; exit 0, and `project check` passes again.
+- **Not retained.** Only a project synced by a CLI from before skill links can lack the copies; deleting a vendor file by hand trips the lockfile's integrity check instead, which has no `reference-not-retained` code. Build v0.8.0, the last release without skill links, into the lab: `mkdir <lab>/old && git -C <checkout> archive v0.8.0 | tar -x -C <lab>/old && (cd <lab>/old && go build -o <lab>/old/trailguide ./cmd/trailguide)`. In a fresh project with the same source, run `TG_LAB=<lab> tg-lab run refs-old-sync -- <lab>/old/trailguide project sync`, then `TG_LAB=<lab> tg-lab run refs-not-retained -- trailguide project build --json`. Exit 1 with error code `reference-not-retained`, a `reference` object, and a message that names `trailguide project sync`. Run `TG_LAB=<lab> tg-lab run refs-repair -- trailguide project sync`; exit 0, `lock.json` keeps its commit, and `project check` passes again.
+- **Missing reading copies.** Run `TG_LAB=<lab> tg-lab exec -- rm -rf .trailguide/_managed/generated/references`, then `TG_LAB=<lab> tg-lab run refs-copies-check -- trailguide project check` (exit 1) and `TG_LAB=<lab> tg-lab run refs-copies-build -- trailguide project build` (exit 0, writes them back from the vendor snapshot).
 - **Authored skill.** Run `TG_LAB=<lab> tg-lab exec -- trailguide project add skill helper --description "Help with things." --non-interactive`, replace the body of `.trailguide/skills/helper/SKILL.md` (removing the `trailguide:draft` marker) with a link to `[readme](../../../README.md)` after creating `README.md` at the project root, and run `TG_LAB=<lab> tg-lab run refs-authored -- trailguide project build`. Exit 0; the installed copy's link resolves to the project's `README.md`. Change the link to `missing.md` and build again: exit 1 with `reference-missing`.
 
 ## Gotchas
 
+- A fork's link to a sibling skill the project installs is rewritten to that skill's install name; a link to any other file outside the skill is listed for you to replace. See [Fork a skill with links](./fork-skill.md).
 - Sync keeps the locked commit. To pick up a new commit on the remote, run `trailguide project update refs --yes`.
 - Links inside fenced code blocks and web links aren't local links and stay as they are.
 - `_managed/generated/` is rewritten by every build. Look at it after the command, not before.

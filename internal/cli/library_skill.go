@@ -116,7 +116,7 @@ func librarySkillForkedReport(result library.AuthoringResult, from project.Skill
 // make, and then remove the draft marker; consequence says what the marker blocks until then.
 func forkFixesInstruction(fixes []string, consequence string) string {
 	var out strings.Builder
-	fmt.Fprintf(&out, "Finish the fork: Trail Guide couldn't finish adapting the skill's SKILL.md, so it marked\nthe fork as a draft. Until you finish it, %s.\nIn SKILL.md:\n", consequence)
+	fmt.Fprintf(&out, "Finish the fork: Trail Guide couldn't finish adapting the skill, so it marked the fork's\nSKILL.md as a draft. Until you finish it, %s.\nIn the fork:\n", consequence)
 	for _, fix := range fixes {
 		fmt.Fprintf(&out, "  - %s\n", fix)
 	}

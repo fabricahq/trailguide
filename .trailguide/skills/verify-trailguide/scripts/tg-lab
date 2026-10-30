@@ -54,6 +54,8 @@ cmd_new() {
 	local run
 	run="$(mktemp -d "$root/run-$(date -u +%Y%m%dT%H%M%SZ)-XXXX")"
 	local lab="$run/lab"
+	# Until new prints the lab, nothing else can clean it up, so a failure removes the run.
+	trap 'rm -rf "$run"' EXIT
 	mkdir -p "$lab/bin" "$lab/home/.config" "$lab/remotes" "$lab/projects" "$run/evidence"
 	(cd "$checkout" && go build -o "$lab/bin/trailguide" ./cmd/trailguide) || fail "go build failed in $checkout"
 	cat >"$lab/home/.gitconfig" <<EOF
@@ -77,12 +79,8 @@ EOF
 	local commit dirty
 	commit="$(git -C "$checkout" rev-parse HEAD)"
 	dirty="$(git -C "$checkout" status --porcelain | wc -l | tr -d ' ')"
-	cat >"$lab/lab.env" <<EOF
-checkout=$checkout
-commit=$commit
-uncommitted_paths=$dirty
-evidence=$run/evidence
-EOF
+	printf 'checkout=%q\ncommit=%q\nuncommitted_paths=%q\nevidence=%q\n' "$checkout" "$commit" "$dirty" "$run/evidence" >"$lab/lab.env"
+	trap - EXIT
 	echo "Built trailguide from $checkout at $commit ($dirty uncommitted paths)."
 	echo "Evidence: $run/evidence"
 	echo "TG_LAB=$lab"
