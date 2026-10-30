@@ -95,7 +95,15 @@ func (p *UpdatePlan) mergeSkillFork(ctx context.Context, source rules.Source, ro
 	if err != nil {
 		return skillMerge{conflicts: []string{skills.File}}, nil
 	}
-	merged, conflicts, err := imports.MergeSkill(ctx, p.git, base, authoredSkillCopy(p.planned, name), upstream)
+	authored, err := authoredSkills(p.planned.config, p.planned.skills)
+	if err != nil {
+		return skillMerge{}, err
+	}
+	fork := imports.SkillCopy{Files: map[string][]byte{}, Executable: []string{}}
+	if skill, ok := authored[skills.AuthoredID(name)]; ok {
+		fork = imports.SkillCopy{Files: skill.Files, Executable: skill.Executable}
+	}
+	merged, conflicts, err := imports.MergeSkill(ctx, p.git, base, fork, upstream)
 	if err != nil {
 		return skillMerge{}, err
 	}
@@ -135,27 +143,6 @@ func forkedSkillCopy(source rules.Source, row imports.ReplacedSkillUpdate, copy 
 	}
 	files[skills.File] = content
 	return imports.SkillCopy{Files: files, Executable: copy.Executable}, nil
-}
-
-// authoredSkillCopy returns the authored skill named name, by path in its folder, as the project state has it, in
-// whichever origin folder holds it.
-func authoredSkillCopy(state projectState, name string) imports.SkillCopy {
-	result := imports.SkillCopy{Files: map[string][]byte{}, Executable: []string{}}
-	files := treeFiles(state.skills)
-	prefix := skills.Folder(skills.FindLayout(slices.Collect(maps.Keys(files)))[name], name) + "/"
-	for file, data := range files {
-		if relative, ok := strings.CutPrefix(file, prefix); ok {
-			result.Files[relative] = data
-		}
-	}
-	if state.skills != nil {
-		for _, file := range state.skills.Executable {
-			if relative, ok := strings.CutPrefix(file, prefix); ok {
-				result.Executable = append(result.Executable, relative)
-			}
-		}
-	}
-	return result
 }
 
 // previewSkillRow returns the forked skill row of skill id in source, among its own skills' rows and its curated

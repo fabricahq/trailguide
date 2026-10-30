@@ -35,7 +35,7 @@ func generateUsing(t *testing.T, snapshot map[string]library.ImportedSkill, file
 		team.Snapshot.Files[id+"/SKILL.md"] = data
 	}
 	libraries["team"] = team
-	return Generate(config, libraries, nil, Options{LocalSkills: local})
+	return Generate(config, libraries, nil, Options{LocalSkills: locate(config, local)})
 }
 
 func TestGenerateShowsWhichSkillsEachSkillUsesAndWhyItIsInstalled(t *testing.T) {
@@ -125,7 +125,7 @@ func TestGenerateRedirectsAUseOfAnExcludedSkillToItsReplacement(t *testing.T) {
 	}
 	libraries["team"] = team
 	local := map[string]SkillFiles{"skills/our-tdd": {Files: map[string][]byte{"SKILL.md": skillFile("our-tdd")}, Executable: []string{}}}
-	output, err := Generate(config, libraries, nil, Options{LocalSkills: local})
+	output, err := Generate(config, libraries, nil, Options{LocalSkills: locate(config, local)})
 	if err != nil {
 		t.Fatal(err)
 	}

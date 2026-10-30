@@ -23,17 +23,74 @@ func Folder(origin, name string) string {
 	return origin + "/" + name
 }
 
+// SplitFolder returns the origin and name of folder, the path of a skill's folder relative to skills/, such as
+// pstack/show-me-your-work. It reports false unless origin is a valid source name, since an origin folder is named
+// for a library or a source, and name a valid skill name. Every check of a skill folder's path goes through it, so
+// they agree on which origins are valid.
+func SplitFolder(folder string) (origin, name string, ok bool) {
+	origin, name, nested := strings.Cut(folder, "/")
+	return origin, name, nested && ValidSourceName(origin) && ValidName(name)
+}
+
+// Skill is one skill of a skills/ folder, as Read finds it: its name, whose ID is skills/<name>; the origin folder
+// that holds it; and its files, by path in its folder, with the executable ones, sorted.
+type Skill[V any] struct {
+	Name, Origin string
+	Files        map[string]V
+	Executable   []string
+}
+
+// ID returns the skill's ID, skills/<name>, which leaves its origin out, so it stays the same when the skill moves to
+// another origin folder.
+func (s Skill[V]) ID() string { return AuthoredID(s.Name) }
+
+// Folder returns the path of the skill's folder relative to skills/, such as pstack/show-me-your-work.
+func (s Skill[V]) Folder() string { return Folder(s.Origin, s.Name) }
+
+// Read returns the skills of a skills/ folder, by ID, when it has the layout origins give it: files, keyed by path
+// relative to skills/, with executable, the paths of the executable ones, and directories, the paths of its folders,
+// which can be nil when every folder holds a file. When LayoutProblems finds problems, it returns them, every one,
+// and no skills, so a caller can't use a layout that leaves skills out or picks between two with one name.
+func Read[V any](files map[string]V, executable, directories []string, origins Origins) (map[string]Skill[V], []LayoutProblem) {
+	names := slices.Collect(maps.Keys(files))
+	if problems := LayoutProblems(names, directories, origins); len(problems) > 0 {
+		return nil, problems
+	}
+	layout := DiscoverLayout(names)
+	result := map[string]Skill[V]{}
+	for name, origin := range layout {
+		result[AuthoredID(name)] = Skill[V]{Name: name, Origin: origin, Files: map[string]V{}, Executable: []string{}}
+	}
+	for file, value := range files {
+		if name, inside, ok := layout.Split(file); ok {
+			result[AuthoredID(name)].Files[inside] = value
+		}
+	}
+	for _, file := range executable {
+		if name, inside, ok := layout.Split(file); ok {
+			skill := result[AuthoredID(name)]
+			skill.Executable = append(skill.Executable, inside)
+			result[AuthoredID(name)] = skill
+		}
+	}
+	for id, skill := range result {
+		slices.Sort(skill.Executable)
+		result[id] = skill
+	}
+	return result, nil
+}
+
 // Layout maps the name of each skill in a skills/ folder to the origin folder that holds it, empty for a skill
-// directly in skills/. A skill's ID, skills/<name>, leaves its origin out, so a skill's ID stays the same when it
-// moves to another origin folder.
+// directly in skills/, as DiscoverLayout finds it.
 type Layout map[string]string
 
-// FindLayout returns the layout of the skills/ folder whose file paths, relative to skills/, are files: each folder
-// origin/name that holds a SKILL.md, and each folder name directly in skills/ that does, so it reads a skills/ folder
-// of library schema version 1 as well. The origin must be a valid source name, and the skill's folder a valid skill
-// name. A folder inside a skill's folder belongs to that skill, and the first origin, in path order, keeps a name two
-// origins share. LayoutProblems reports everything FindLayout leaves out.
-func FindLayout(files []string) Layout {
+// DiscoverLayout returns the layout of the skills/ folder whose file paths, relative to skills/, are files, without
+// checking it: each folder that SplitFolder accepts and holds a SKILL.md, and each folder name directly in skills/
+// that does, as in a skills/ folder of library schema version 1. A folder inside a skill's folder belongs to that
+// skill, and the first origin, in path order, keeps a name two origins share. It's for content checked when it was
+// written, such as a vendor snapshot or a library release, and for finding any skill with a name; content that must
+// have the layout goes through Read, which reports what DiscoverLayout would leave out or choose between.
+func DiscoverLayout(files []string) Layout {
 	layout := Layout{}
 	sorted := slices.Sorted(slices.Values(files))
 	direct := map[string]bool{}
@@ -47,8 +104,8 @@ func FindLayout(files []string) Layout {
 	}
 	for _, file := range sorted {
 		folder, found := strings.CutSuffix(file, "/"+File)
-		origin, name, nested := strings.Cut(folder, "/")
-		if !found || !nested || direct[origin] || !ValidSourceName(origin) || !ValidName(name) {
+		origin, name, ok := SplitFolder(folder)
+		if !found || !ok || direct[origin] {
 			continue
 		}
 		if _, taken := layout[name]; !taken {
@@ -70,31 +127,6 @@ func (l Layout) Split(file string) (name, inside string, ok bool) {
 		}
 	}
 	return "", "", false
-}
-
-// Flatten returns files, keyed by path relative to skills/, keyed by name/inside instead, the path each would have
-// with every skill directly in skills/. It leaves out the files no skill in l holds.
-func Flatten[V any](l Layout, files map[string]V) map[string]V {
-	result := make(map[string]V, len(files))
-	for file, value := range files {
-		if name, inside, ok := l.Split(file); ok {
-			result[name+"/"+inside] = value
-		}
-	}
-	return result
-}
-
-// FlattenPaths returns the paths of files, relative to skills/, as Flatten keys them, sorted, leaving out the paths
-// no skill in l holds.
-func FlattenPaths(l Layout, files []string) []string {
-	result := []string{}
-	for _, file := range files {
-		if name, inside, ok := l.Split(file); ok {
-			result = append(result, name+"/"+inside)
-		}
-	}
-	slices.Sort(result)
-	return result
 }
 
 // Origins says which origin folder each skill of a skills/ folder belongs in: Own names the repository's own

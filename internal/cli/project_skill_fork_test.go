@@ -269,3 +269,36 @@ func TestForkSkill_ListsLinksToSiblingSkillsWithoutSkillTargets(t *testing.T) {
 		t.Fatalf("exit %d, stderr %q, stdout lacks %q:\n%s", code, diagnostic, want, out)
 	}
 }
+
+// TestForkSkill_MergesUpdatesIntoAForkOfASourceWhoseNameHasADoubledHyphen forks a skill from a source named
+// team--tools, which a source name may be though a skill name may not, and merges the source's next release into the
+// fork: every step reads skills/team--tools/build-feature as the fork's folder.
+func TestForkSkill_MergesUpdatesIntoAForkOfASourceWhoseNameHasADoubledHyphen(t *testing.T) {
+	u, _ := newSkillForkFixture(t)
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: [claude]\nsources:\n  team--tools:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    skills:\n      include: ['*']\n")
+	for _, args := range [][]string{
+		{"project", "sync"},
+		{"project", "add", "skill", "--from", "team--tools:skills/build-feature", "--reason", "We build with make.", "--non-interactive"},
+		{"project", "build"},
+	} {
+		if out, diagnostic, code := u.run(t, args...); code != 0 {
+			t.Fatal(args, code, out, diagnostic)
+		}
+	}
+	ctx := context.Background()
+	if _, err := u.fixture.Commit(ctx, u.fixture.Worktree(), "Change the skill", map[string][]byte{".trailguide/skills/library/build-feature/SKILL.md": []byte(strings.Replace(forkedSkill, "Run scripts/run.sh.", "Run make.", 1))}); err != nil {
+		t.Fatal(err)
+	}
+	if err := u.fixture.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
+		t.Fatal(err)
+	}
+	if out, diagnostic, code := u.run(t, "project", "update", "--yes", "--merge-fork", "team--tools:skills/build-feature"); code != 0 || !strings.Contains(out, "  Change: skills/team--tools/build-feature/SKILL.md\n") {
+		t.Fatalf("exit %d, stderr %q, stdout:\n%s", code, diagnostic, out)
+	}
+	if fork, err := os.ReadFile(filepath.Join(u.directory, ".trailguide/skills/team--tools/build-feature/SKILL.md")); err != nil || !strings.Contains(string(fork), "Run make.") {
+		t.Fatalf("merged fork, %v:\n%s", err, fork)
+	}
+	if out, diagnostic, code := u.run(t, "project", "check"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+}

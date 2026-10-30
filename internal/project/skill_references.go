@@ -67,20 +67,18 @@ func requireAuthoredSkillReferences(ctx context.Context, state projectState, out
 	// A link into the files output writes must name one, but their own links are build's to deliver, such as the
 	// skills index's links into the vendor snapshot when no skill target is configured, so they aren't followed.
 	retention.Folders = append([]string{librarytree.Directory + "/" + librarytree.Managed}, view.targets...)
-	for _, location := range slices.Sorted(maps.Keys(view.installed)) {
-		retention.Folders = append(retention.Folders, location)
+	retention.Folders = append(retention.Folders, slices.Sorted(maps.Keys(view.installed))...)
+	authored, err := authoredSkills(state.config, state.skills)
+	if err != nil {
+		return nil, err
 	}
-	layout := skills.FindLayout(slices.Collect(maps.Keys(state.skills.Files)))
-	for _, name := range slices.Sorted(maps.Keys(state.skills.Files)) {
-		skill, _, inFolder := layout.Split(name)
-		if !inFolder {
-			continue
-		}
-		if location := authoredSkillsDirectory + "/" + skills.Folder(layout[skill], skill); !slices.Contains(retention.Folders, location) {
-			retention.Folders = append(retention.Folders, location)
-		}
-		if skillrefs.IsMarkdown(name) {
-			retention.Start = append(retention.Start, authoredSkillsDirectory+"/"+name)
+	for _, id := range slices.Sorted(maps.Keys(authored)) {
+		location := authoredSkillsDirectory + "/" + authored[id].Folder()
+		retention.Folders = append(retention.Folders, location)
+		for _, name := range slices.Sorted(maps.Keys(authored[id].Files)) {
+			if skillrefs.IsMarkdown(name) {
+				retention.Start = append(retention.Start, location+"/"+name)
+			}
 		}
 	}
 	retained, err := retention.Retain()

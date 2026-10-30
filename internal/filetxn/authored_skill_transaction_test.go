@@ -14,30 +14,33 @@ import (
 )
 
 // TestApply_ReplacesAnAuthoredSkillWithTheConfiguration replaces the fork's folder, dropping a file the merge
-// removed and keeping the executable bit of the files listed, in the transaction that replaces the configuration.
+// removed and keeping the executable bit of the files listed, in the transaction that replaces the configuration,
+// including in the origin folder of a source whose name has a doubled hyphen, which a skill name can't have.
 func TestApply_ReplacesAnAuthoredSkillWithTheConfiguration(t *testing.T) {
-	_, root := openSkillProject(t)
-	writeFixture(t, root, "config.yaml", "old config")
-	writeFixture(t, root, "skills/fabrica/build/SKILL.md", "old fork")
-	writeFixture(t, root, "skills/fabrica/build/notes.md", "dropped")
-	output := map[Target]map[string][]byte{
-		Config:                            {"config.yaml": []byte("new config")},
-		AuthoredSkill("fabrica", "build"): {"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")},
-	}
-	executable := map[Target][]string{AuthoredSkill("fabrica", "build"): {"scripts/check.sh"}}
-	if err := WithWriter(context.Background(), root, func(w *Writer) error { return w.ApplyModes(output, executable, nil) }); err != nil {
-		t.Fatal(err)
-	}
-	tree, err := ReadTree(context.Background(), root, "skills/fabrica/build")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := &Tree{Files: map[string][]byte{"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")}, Directories: []string{"scripts"}, Executable: []string{"scripts/check.sh"}}
-	if !reflect.DeepEqual(tree, want) {
-		t.Fatalf("fork = %+v; want %+v", tree, want)
-	}
-	if data, err := root.ReadFile("config.yaml"); err != nil || string(data) != "new config" {
-		t.Fatalf("config = %q, %v", data, err)
+	for _, origin := range []string{"fabrica", "team--tools"} {
+		_, root := openSkillProject(t)
+		writeFixture(t, root, "config.yaml", "old config")
+		writeFixture(t, root, "skills/"+origin+"/build/SKILL.md", "old fork")
+		writeFixture(t, root, "skills/"+origin+"/build/notes.md", "dropped")
+		output := map[Target]map[string][]byte{
+			Config:                         {"config.yaml": []byte("new config")},
+			AuthoredSkill(origin, "build"): {"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")},
+		}
+		executable := map[Target][]string{AuthoredSkill(origin, "build"): {"scripts/check.sh"}}
+		if err := WithWriter(context.Background(), root, func(w *Writer) error { return w.ApplyModes(output, executable, nil) }); err != nil {
+			t.Fatal(origin, err)
+		}
+		tree, err := ReadTree(context.Background(), root, "skills/"+origin+"/build")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := &Tree{Files: map[string][]byte{"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")}, Directories: []string{"scripts"}, Executable: []string{"scripts/check.sh"}}
+		if !reflect.DeepEqual(tree, want) {
+			t.Fatalf("fork = %+v; want %+v", tree, want)
+		}
+		if data, err := root.ReadFile("config.yaml"); err != nil || string(data) != "new config" {
+			t.Fatalf("config = %q, %v", data, err)
+		}
 	}
 }
 
@@ -50,6 +53,8 @@ func TestApply_RefusesInvalidAuthoredSkillTargets(t *testing.T) {
 		{"skills/Build": {"SKILL.md": []byte("x")}},
 		{"skills/build": {"SKILL.md": []byte("x")}},
 		{"skills/fabrica/build/nested": {"SKILL.md": []byte("x")}},
+		{"skills/Fabrica/build": {"SKILL.md": []byte("x")}},
+		{"skills/fabrica/build--it": {"SKILL.md": []byte("x")}},
 		{"skills": {"build/SKILL.md": []byte("x")}},
 		{AuthoredSkill("fabrica", "build"): nil},
 	} {

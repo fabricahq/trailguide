@@ -5,6 +5,7 @@ package project
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -443,5 +444,35 @@ func TestBuild_RejectsInvalidAuthoredSkills(t *testing.T) {
 				t.Fatalf("got %v; want a validation error at %s", err, test.location)
 			}
 		})
+	}
+}
+
+// TestSync_RefusesALibraryWhoseSkillsLayoutLibraryCheckRejects syncs from a library whose skills/ folder library
+// check rejects: a second skill named hello, in an origin folder the library doesn't have. Sync lists every problem
+// and writes nothing, rather than installing whichever hello comes first in path order.
+func TestSync_RefusesALibraryWhoseSkillsLayoutLibraryCheckRejects(t *testing.T) {
+	ctx := context.Background()
+	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
+		"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		"techs/go/_group.yaml":                      []byte(projectMetadata),
+		"techs/go/errors.md":                        []byte(projectRule),
+		".trailguide/skills/library/hello/SKILL.md": []byte("---\nname: hello\ndescription: Say hello.\n---\n# Hello\n"),
+		".trailguide/skills/aaa/hello/SKILL.md":     []byte("---\nname: hello\ndescription: Say something else.\n---\n# Other\n"),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if err := f.Release(ctx, 1, firstRelease); err != nil {
+		t.Fatal(err)
+	}
+	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"]}}}}`)
+	before := projectBytes(t, options)
+	_, err = Sync(ctx, options, git)
+	for _, text := range []string{"sources.team: the library's skills at release/1 don't have the layout library check requires", ".trailguide/skills/aaa: an origin folder is named for the repository's own skills, library, or for a source a fork comes from"} {
+		requireFailure(t, err, "unsupported-content", text)
+	}
+	if !maps.Equal(before, projectBytes(t, options)) {
+		t.Error("the failed sync changed files")
 	}
 }

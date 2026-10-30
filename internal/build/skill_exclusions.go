@@ -32,7 +32,7 @@ type excludedSkill struct {
 // exclusion names a skill its source's snapshot doesn't hold, when a fork's authored skill doesn't exist, and when
 // forks of two sources install the same authored skill. A forked skill the source's revision no longer has still
 // replaces it, so the fork keeps working after its source deletes the skill.
-func skillReplacements(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) (map[string]skillReplacement, error) {
+func skillReplacements(config rules.Configuration, libraries map[string]Library, local map[string]skills.Skill[[]byte]) (map[string]skillReplacement, error) {
 	result := map[string]skillReplacement{}
 	// replaces maps each authored skill that replaces one to the configuration entry that names it.
 	replaces := map[string]string{}

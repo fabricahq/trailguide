@@ -30,7 +30,7 @@ func generateCiting(t *testing.T, exclude string, local map[string][]byte, skill
 		alter(&team.Snapshot)
 		libraries["team"] = team
 	}
-	return Generate(config, libraries, local, Options{LocalSkills: skills})
+	return Generate(config, libraries, local, Options{LocalSkills: locate(config, skills)})
 }
 
 func TestGenerateLinksAnInstalledSkillToEachRuleItCites(t *testing.T) {
@@ -131,7 +131,7 @@ func TestGenerateLinksALibrarySkillToTheRulesItCitesInItsLibrary(t *testing.T) {
 
 func TestGenerateListsCitedRulesInSkillsIndexWithoutSkillTargets(t *testing.T) {
 	config, libraries := fixture(t, `[]`)
-	output, err := Generate(config, libraries, nil, Options{LocalSkills: citingSkill("team:techs/go/errors")})
+	output, err := Generate(config, libraries, nil, Options{LocalSkills: locate(config, citingSkill("team:techs/go/errors"))})
 	if err != nil {
 		t.Fatal(err)
 	}

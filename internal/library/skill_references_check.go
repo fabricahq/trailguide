@@ -24,14 +24,14 @@ import (
 // a blob.
 const maxReferencedBytes = 8 << 20
 
-// requireSkillReferences fails with a *skillrefs.Error when a link in the Markdown of a skill in tree, the
-// library's skills/ folder, or of a Markdown file those links reach, names a file the repository under root doesn't
+// requireSkillReferences fails with a *skillrefs.Error when a link in the Markdown of one of found, the skills of
+// tree, the library's skills/ folder, by ID, or of a Markdown file those links reach, names a file the repository under root doesn't
 // have, a folder, a symbolic link, a file outside the repository, or one a project's snapshot can't hold: projects
 // that install any of the skills retain every file their links reach, from the same revision. A file Git ignores
 // counts as missing, since a library release doesn't have it; git is nil outside Git. It reads only what the links
 // reach, and returns the bytes of each reached file outside skills/, by repository path, so that a library release
 // can require its commit to hold exactly those bytes, as it does for the library's own files.
-func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit, tree *filetxn.Tree) (map[string][]byte, error) {
+func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit, tree *filetxn.Tree, found map[string]skills.Skill[[]byte]) (map[string][]byte, error) {
 	if tree == nil {
 		return nil, nil
 	}
@@ -42,18 +42,13 @@ func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit,
 		}
 	}
 	retention := skillrefs.Retention{View: view, Origin: skillrefs.Origin{Library: true}, Absent: skillrefs.Missing, AbsentProblem: "the library doesn't have. Add the file, or fix the link; projects that install the skill keep a copy of every file its links reach."}
-	layout := skills.FindLayout(slices.Collect(maps.Keys(tree.Files)))
-	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
-		skill, _, ok := layout.Split(name)
-		if !ok {
-			continue
-		}
-		folder := skillsDirectory + "/" + skills.Folder(layout[skill], skill)
-		if !slices.Contains(retention.Folders, folder) {
-			retention.Folders = append(retention.Folders, folder)
-		}
-		if skillrefs.IsMarkdown(name) {
-			retention.Start = append(retention.Start, skillsDirectory+"/"+name)
+	for _, id := range slices.Sorted(maps.Keys(found)) {
+		folder := skillsDirectory + "/" + found[id].Folder()
+		retention.Folders = append(retention.Folders, folder)
+		for _, name := range slices.Sorted(maps.Keys(found[id].Files)) {
+			if skillrefs.IsMarkdown(name) {
+				retention.Start = append(retention.Start, folder+"/"+name)
+			}
 		}
 	}
 	retained, err := retention.Retain()

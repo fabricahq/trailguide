@@ -24,15 +24,18 @@ import (
 const librarySkillsFolder = librarytree.Directory + "/" + skills.Directory + "/"
 
 // skillFolders returns the skills in files, a commit's tree by repository path, keyed by skill ID, each with its
-// files keyed by their path in the vendor snapshot. A library's skills are the folders in the origin folders of its
-// .trailguide/skills/ that hold a SKILL.md, or, at a commit of an earlier library schema version, the folders
-// directly in .trailguide/skills/ that do, with IDs skills/<name> and snapshot paths at their paths in
-// .trailguide/, such as skills/acme/<name>/. Any other repository's are the folders that hold a SKILL.md, other than the repository root and a
-// folder inside another skill's folder, which belongs to that skill; their IDs and snapshot paths are their
-// repository paths.
+// files keyed by their path in the vendor snapshot, without checking a library's layout, for a commit an import
+// compares with rather than installs from, such as a fork's basedOn. A library's skills are as DiscoverLayout finds
+// them in its .trailguide/skills/: the folders in its origin folders that hold a SKILL.md, or, at a commit of an
+// earlier library schema version, the folders directly in .trailguide/skills/ that do, with IDs skills/<name> and
+// snapshot paths at their paths in .trailguide/, such as skills/acme/<name>/. Any other repository's are the folders
+// that hold a SKILL.md, other than the repository root and a folder inside another skill's folder, which belongs to
+// that skill; their IDs and snapshot paths are their repository paths. An import reads the skills it installs with
+// installableSkillFolders instead.
 func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[string]treeEntry {
 	if isLibrary {
-		return librarySkillFolders(files)
+		inSkills := librarySkillsTree(files)
+		return librarySkillFolders(skills.DiscoverLayout(slices.Collect(maps.Keys(inSkills))), inSkills)
 	}
 	ids := []string{}
 	for name := range files {
@@ -69,17 +72,59 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 	return result
 }
 
-// librarySkillFolders returns skillFolders' result for files, the tree of a library's commit: each skill by its ID,
-// skills/<name>, with its files at their paths in the library's Trail Guide directory, in the skill's origin folder,
-// so the snapshot mirrors that directory and the skill's relative links resolve in it as they do in the library.
-func librarySkillFolders(files map[string]treeEntry) map[string]map[string]treeEntry {
+// installableSkillFolders returns skillFolders' result for tree, a commit of a repository an import installs skills
+// from, isLibrary when it holds a library, after checking that a library's skills/ folder has the layout library
+// check requires, in the origin folders its manifest gives: so the import never leaves out a skill, or picks
+// between two with one name. It fails with unsupported-content, listing every problem, for the source at location,
+// such as sources.team, when it doesn't.
+func (r *repository) installableSkillFolders(ctx context.Context, tree map[string]treeEntry, isLibrary bool, location, revision string) (map[string]map[string]treeEntry, error) {
+	if !isLibrary {
+		return skillFolders(tree, false), nil
+	}
+	inSkills := librarySkillsTree(tree)
+	if len(inSkills) == 0 {
+		return map[string]map[string]treeEntry{}, nil
+	}
+	manifest, _, err := r.manifest(ctx, tree)
+	if err != nil {
+		return nil, err
+	}
+	config, err := rules.ParseConfigurationYAML(manifest)
+	if err != nil {
+		return nil, err
+	}
+	found, problems := skills.Read(inSkills, nil, nil, config.SkillOrigins())
+	if len(problems) > 0 {
+		listed := []string{}
+		for _, problem := range problems {
+			listed = append(listed, librarytree.Directory+"/"+problem.Location+": "+problem.Problem)
+		}
+		return nil, fail("unsupported-content", fmt.Sprintf("%s: the library's skills at %s don't have the layout library check requires, so Trail Guide can't tell which skills it offers:\n  - %s\nAsk the library's maintainer to fix them; trailguide library check reports them.", location, revision, strings.Join(listed, "\n  - ")), nil)
+	}
+	layout := skills.Layout{}
+	for _, skill := range found {
+		layout[skill.Name] = skill.Origin
+	}
+	return librarySkillFolders(layout, inSkills), nil
+}
+
+// librarySkillsTree returns the entries of files, a library commit's tree by repository path, in its
+// .trailguide/skills/, by path relative to it.
+func librarySkillsTree(files map[string]treeEntry) map[string]treeEntry {
 	inSkills := map[string]treeEntry{}
 	for name, entry := range files {
 		if inside, found := strings.CutPrefix(name, librarySkillsFolder); found {
 			inSkills[inside] = entry
 		}
 	}
-	layout := skills.FindLayout(slices.Collect(maps.Keys(inSkills)))
+	return inSkills
+}
+
+// librarySkillFolders returns skillFolders' result for inSkills, the entries of a library's .trailguide/skills/ by
+// path relative to it, whose skills layout places: each skill by its ID, skills/<name>, with its files at their paths
+// in the library's Trail Guide directory, in the skill's origin folder, so the snapshot mirrors that directory and
+// the skill's relative links resolve in it as they do in the library.
+func librarySkillFolders(layout skills.Layout, inSkills map[string]treeEntry) map[string]map[string]treeEntry {
 	result := map[string]map[string]treeEntry{}
 	for name := range layout {
 		result[skills.AuthoredID(name)] = map[string]treeEntry{}
@@ -423,7 +468,10 @@ func (r *repository) readSkills(ctx context.Context, source rules.Source, plan s
 			return importedSkills{}, err
 		}
 	}
-	folders := skillFolders(tree, isLibrary)
+	folders, err := r.installableSkillFolders(ctx, tree, isLibrary, "sources."+source.Name, revisionName(plan.release, plan.commit))
+	if err != nil {
+		return importedSkills{}, err
+	}
 	available := slices.Sorted(maps.Keys(folders))
 	for _, id := range available {
 		result.available[id] = importedSkill(id, levels)

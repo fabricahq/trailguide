@@ -525,7 +525,7 @@ func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntr
 	paths := []string{}
 	var layout skills.Layout
 	if tree != nil {
-		layout = skills.FindLayout(slices.Collect(maps.Keys(tree.Files)))
+		layout = skills.DiscoverLayout(slices.Collect(maps.Keys(tree.Files)))
 		for file := range tree.Files {
 			if name, inside, ok := layout.Split(file); ok && slices.Contains(names, name) {
 				paths = append(paths, skillsDirectory+"/"+file)
@@ -537,7 +537,7 @@ func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntr
 	if err != nil {
 		return nil, err
 	}
-	baseLayout := skills.FindLayout(slices.Collect(maps.Keys(base)))
+	baseLayout := skills.DiscoverLayout(slices.Collect(maps.Keys(base)))
 	released := map[string][]string{}
 	for file := range base {
 		if name, inside, ok := baseLayout.Split(file); ok {

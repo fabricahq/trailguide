@@ -13,7 +13,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
@@ -21,35 +20,19 @@ import (
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
-// authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, each with
-// its files by path in its folder, leaving out the folder's guide. Each skill's folder sits in the origin folder
-// config's skill origins give it: the library's name or local for the project's own skills, and the source's name
-// for a fork. It fails for the first problem skills.LayoutProblems reports. A nil tree has none.
-func authoredSkills(config rules.Configuration, tree *filetxn.Tree) (map[string]build.SkillFiles, error) {
-	result := map[string]build.SkillFiles{}
+// authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, as
+// skills.Read finds them in the origin folders config's skill origins give them: the library's name or local for the
+// project's own skills, and the source's name for a fork. It fails for the first problem skills.Read reports. A nil
+// tree has none.
+func authoredSkills(config rules.Configuration, tree *filetxn.Tree) (map[string]skills.Skill[[]byte], error) {
 	if tree == nil {
-		return result, nil
+		return map[string]skills.Skill[[]byte]{}, nil
 	}
-	names := slices.Collect(maps.Keys(tree.Files))
-	if problems := skills.LayoutProblems(names, tree.Directories, config.SkillOrigins()); len(problems) > 0 {
+	found, problems := skills.Read(tree.Files, tree.Executable, tree.Directories, config.SkillOrigins())
+	if len(problems) > 0 {
 		return nil, &ValidationError{Location: ".trailguide/" + problems[0].Location, Problem: problems[0].Problem}
 	}
-	layout := skills.FindLayout(names)
-	for name := range layout {
-		files := map[string][]byte{}
-		executable := []string{}
-		for file, data := range tree.Files {
-			if inside, ok := strings.CutPrefix(file, skills.Folder(layout[name], name)+"/"); ok {
-				files[inside] = data
-				if slices.Contains(tree.Executable, file) {
-					executable = append(executable, inside)
-				}
-			}
-		}
-		slices.Sort(executable)
-		result[skills.AuthoredID(name)] = build.SkillFiles{Files: files, Executable: executable}
-	}
-	return result, nil
+	return found, nil
 }
 
 // skillFolderPath returns the path, in the Trail Guide directory, of the folder of skill name in the origin folder
@@ -68,7 +51,7 @@ func requireNoSkillNamed(ctx context.Context, root *os.Root, origin, name string
 	if err != nil || tree == nil {
 		return err
 	}
-	if other, taken := skills.FindLayout(slices.Collect(maps.Keys(tree.Files)))[name]; taken {
+	if other, taken := skills.DiscoverLayout(slices.Collect(maps.Keys(tree.Files)))[name]; taken {
 		return failure("already-exists", skillFolderPath(other, name)+": already a skill named "+name+", and a skill's name is its ID; choose a different name", nil)
 	}
 	return nil

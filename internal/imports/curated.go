@@ -258,7 +258,10 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	if err != nil {
 		return importedSkills{}, err
 	}
-	folders := skillFolders(tree, !revision.NonLibrary)
+	folders, err := repo.installableSkillFolders(ctx, tree, !revision.NonLibrary, "sources."+l.library+": the curated source "+l.name, revisionName(revision.Release, revision.Commit))
+	if err != nil {
+		return importedSkills{}, err
+	}
 	ids, levels, usedOnly := []string{}, map[string]string{}, map[string]bool{}
 	for _, skill := range chosen {
 		_, id, _ := library.SplitCurated(skill.id)
@@ -580,7 +583,10 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 	if !declared.Ref.IsZero() && !declared.Ref.LatestRelease() {
 		at = declared.Ref.String()
 	}
-	folders := skillFolders(tree, !revision.NonLibrary)
+	folders, err := repo.installableSkillFolders(ctx, tree, !revision.NonLibrary, "the curated source "+name, at)
+	if err != nil {
+		return nil, "", err
+	}
 	result := map[string]library.CuratedSkill{}
 	for pending := ids; len(pending) > 0; {
 		entries := map[string]treeEntry{}

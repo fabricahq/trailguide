@@ -80,8 +80,9 @@ func authoredSkillTarget(target Target) (authored, legacy bool) {
 	if !found {
 		return false, false
 	}
-	if origin, name, nested := strings.Cut(folder, "/"); nested {
-		return skills.ValidName(origin) && skills.ValidName(name), false
+	if strings.Contains(folder, "/") {
+		_, _, ok := skills.SplitFolder(folder)
+		return ok, false
 	}
 	return skills.ValidName(folder), true
 }

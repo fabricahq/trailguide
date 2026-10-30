@@ -213,7 +213,7 @@ func TestSync_IncludesRecommendedCuratedSkillsWithTheSkillsTheyUse(t *testing.T)
 
 func TestSync_InstallsTheCuratedSkillsALibrarysSkillUses(t *testing.T) {
 	ctx := context.Background()
-	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
+	authored := map[string][]byte{".trailguide/skills/library/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
 	b := newCuratingWith(t, teamSkills, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["skills/add-skill"]}}}}`)
 	if _, err := Sync(ctx, b.options, b.git); err != nil {
 		t.Fatal(err)
@@ -246,7 +246,7 @@ func TestSync_InstallsTheCuratedSkillsALibrarysSkillUses(t *testing.T) {
 
 func TestSync_WarnsWhenTheProjectExcludesACuratedSkillALibrarysSkillUses(t *testing.T) {
 	ctx := context.Background()
-	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
+	authored := map[string][]byte{".trailguide/skills/library/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
 	b := newCuratingWith(t, teamSkills, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["skills/add-skill"],"exclude":[{"id":"pocock:skills/productivity/grilling","reason":"Not wanted."}]}}}}`)
 	changes, err := Sync(ctx, b.options, b.git)
 	if err != nil {
@@ -263,7 +263,7 @@ func TestSync_WarnsWhenTheProjectExcludesACuratedSkillALibrarysSkillUses(t *test
 
 func TestSync_RefusesACuratedSkillALibrarysSkillUsesButTheLibraryDoesNotList(t *testing.T) {
 	ctx := context.Background()
-	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/engineering/interview")}
+	authored := map[string][]byte{".trailguide/skills/library/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/engineering/interview")}
 	b := newCuratingWith(t, teamSkills, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["skills/add-skill"]}}}}`)
 	_, err := Sync(ctx, b.options, b.git)
 	if err == nil || !strings.Contains(err.Error(), "the library's skill skills/add-skill uses pocock:skills/engineering/interview, which the library doesn't list at any level or as a dependency") {

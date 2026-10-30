@@ -3,13 +3,15 @@
 package skills_test
 
 import (
+	"maps"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
-func TestFindLayoutReadsOriginFoldersAndTheFlatLayout(t *testing.T) {
+func TestDiscoverLayoutReadsOriginFoldersAndTheFlatLayout(t *testing.T) {
 	tests := map[string]struct {
 		files []string
 		want  skills.Layout
@@ -24,7 +26,7 @@ func TestFindLayoutReadsOriginFoldersAndTheFlatLayout(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			layout := skills.FindLayout(test.files)
+			layout := skills.DiscoverLayout(test.files)
 			if !reflect.DeepEqual(layout, test.want) {
 				t.Fatalf("got %v; want %v", layout, test.want)
 			}
@@ -77,5 +79,47 @@ func TestLayoutProblemsNamesTheFolderEachSkillBelongsIn(t *testing.T) {
 				t.Fatalf("got %+v\nwant %+v", got, test.want)
 			}
 		})
+	}
+}
+
+func TestSplitFolderTakesASourceNameAndASkillName(t *testing.T) {
+	for folder, want := range map[string]bool{
+		"pstack/show-me-your-work": true,
+		"team--tools/hello":        true,
+		"team/hello--there":        false,
+		"Team/hello":               false,
+		"team-/hello":              true,
+		"hello":                    false,
+		"team/hello/nested":        false,
+	} {
+		if _, _, ok := skills.SplitFolder(folder); ok != want {
+			t.Errorf("SplitFolder(%q) reports %v; want %v", folder, ok, want)
+		}
+	}
+}
+
+func TestReadReturnsEachSkillWithItsOriginOrEveryProblem(t *testing.T) {
+	origins := skills.Origins{Own: "acme", Forks: map[string]string{"show": "team--tools"}}
+	files := map[string]string{"README.md": "guide", "acme/fix/SKILL.md": "fix", "acme/fix/scripts/run.sh": "run", "team--tools/show/SKILL.md": "show"}
+	found, problems := skills.Read(files, []string{"acme/fix/scripts/run.sh"}, nil, origins)
+	want := map[string]skills.Skill[string]{
+		"skills/fix":  {Name: "fix", Origin: "acme", Files: map[string]string{"SKILL.md": "fix", "scripts/run.sh": "run"}, Executable: []string{"scripts/run.sh"}},
+		"skills/show": {Name: "show", Origin: "team--tools", Files: map[string]string{"SKILL.md": "show"}, Executable: []string{}},
+	}
+	if len(problems) != 0 || !reflect.DeepEqual(found, want) {
+		t.Fatalf("got %+v, %+v; want %+v", found, problems, want)
+	}
+	if folder := found["skills/show"].Folder(); folder != "team--tools/show" || found["skills/show"].ID() != "skills/show" {
+		t.Fatalf("folder %s, ID %s", folder, found["skills/show"].ID())
+	}
+	// A second skill named fix, in an origin folder origins don't name: DiscoverLayout would keep one of them, but
+	// Read keeps no skill and reports the folder.
+	files["aaa/fix/SKILL.md"] = "other fix"
+	found, problems = skills.Read(files, nil, nil, origins)
+	if found != nil || len(problems) != 1 || problems[0].Location != "skills/aaa" {
+		t.Fatalf("got %+v, %+v; want the unknown origin", found, problems)
+	}
+	if layout := skills.DiscoverLayout(slices.Collect(maps.Keys(files))); layout["fix"] != "aaa" {
+		t.Fatalf("DiscoverLayout placed fix in %q; the test expects it to pick aaa", layout["fix"])
 	}
 }

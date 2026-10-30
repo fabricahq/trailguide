@@ -106,7 +106,7 @@ type skillResolution struct {
 // ID, skills/<name>. It fails when a SKILL.md is missing or its frontmatter unreadable, when an install name isn't
 // valid, when an exclusion, fork, or rename is invalid, with *ClashError when two skills share an install name, as
 // linkSkillUses does for an authored skill's uses, and as deliverReferences does for a link it can't deliver.
-func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) (skillResolution, error) {
+func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]skills.Skill[[]byte]) (skillResolution, error) {
 	replacements, err := skillReplacements(config, libraries, local)
 	if err != nil {
 		return skillResolution{}, err
@@ -135,10 +135,8 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 		}
 	}
 	result, aliases := withoutCuratedCopies(result)
-	origins := config.SkillOrigins()
 	for _, id := range slices.Sorted(maps.Keys(local)) {
-		name := strings.TrimPrefix(id, skills.Directory+"/")
-		skill := resolvedSkill{ID: id, Folder: skills.Directory + "/" + skills.Folder(origins.For(name), name), Files: local[id], Included: true}
+		skill := resolvedSkill{ID: id, Folder: skills.Directory + "/" + local[id].Folder(), Files: SkillFiles{Files: local[id].Files, Executable: local[id].Executable}, Included: true}
 		if replacement, replaces := replacements[id]; replaces {
 			skill.Replaces = &replacement
 		}
