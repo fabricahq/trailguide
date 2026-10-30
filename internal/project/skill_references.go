@@ -11,7 +11,6 @@ import (
 	"io/fs"
 	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -46,10 +45,19 @@ func requireAuthoredSkillReferences(ctx context.Context, state projectState, out
 		return nil, err
 	}
 	defer repository.Close()
-	view := &projectView{ctx: ctx, root: repository, skills: state.skills, output: output, folders: map[string]bool{}}
+	view := &projectView{ctx: ctx, root: repository, skills: state.skills, output: output, folders: map[string]bool{}, installed: map[string]string{}}
 	for name := range state.skills.Files {
 		for parent := filepath.ToSlash(filepath.Dir(name)); parent != "."; parent = filepath.ToSlash(filepath.Dir(parent)) {
 			view.folders[parent] = true
+		}
+	}
+	// A link into skills/<source>/<name> for a skill source installs as name names its installed copy, as a fork's
+	// link to a sibling skill of its source does, and build points it there.
+	for _, skill := range build.InstalledSkills(output.Files[build.InstalledSkillsFile]) {
+		source, _, fromSource := strings.Cut(skill.ID, ":")
+		location := skills.Folder(source, skill.Name)
+		if fromSource && len(skill.Targets) > 0 && !view.folders[location] {
+			view.installed[authoredSkillsDirectory+"/"+location] = skill.Targets[0]
 		}
 	}
 	for _, target := range state.config.SkillTargets {
@@ -59,22 +67,16 @@ func requireAuthoredSkillReferences(ctx context.Context, state projectState, out
 	// A link into the files output writes must name one, but their own links are build's to deliver, such as the
 	// skills index's links into the vendor snapshot when no skill target is configured, so they aren't followed.
 	retention.Folders = append([]string{librarytree.Directory + "/" + librarytree.Managed}, view.targets...)
-	// A link into skills/<name> for a skill a source installs as name names its installed copy, as a fork's link to
-	// a sibling skill of its source does, and build points it there.
-	for _, folder := range slices.Sorted(maps.Keys(output.Skills)) {
-		if location := authoredSkillsDirectory + "/" + path.Base(folder); !slices.Contains(retention.Folders, location) {
-			retention.Folders = append(retention.Folders, location)
-		}
+	for _, location := range slices.Sorted(maps.Keys(view.installed)) {
+		retention.Folders = append(retention.Folders, location)
 	}
+	layout := skills.FindLayout(slices.Collect(maps.Keys(state.skills.Files)))
 	for _, name := range slices.Sorted(maps.Keys(state.skills.Files)) {
-		folder, _, inFolder := strings.Cut(name, "/")
+		skill, _, inFolder := layout.Split(name)
 		if !inFolder {
 			continue
 		}
-		if _, ok := state.skills.Files[folder+"/"+skills.File]; !ok {
-			continue
-		}
-		if location := authoredSkillsDirectory + "/" + folder; !slices.Contains(retention.Folders, location) {
+		if location := authoredSkillsDirectory + "/" + skills.Folder(layout[skill], skill); !slices.Contains(retention.Folders, location) {
 			retention.Folders = append(retention.Folders, location)
 		}
 		if skillrefs.IsMarkdown(name) {
@@ -126,15 +128,17 @@ func requireLinkedFilesUnchanged(ctx context.Context, directory string, linked m
 // of its skills/ folder from skills; the files output writes in the skill targets, targets, and in _managed/, of
 // which only generated/ is there to link to; and any other file from root, bounded, refusing symbolic links, as it
 // first reads it, so the bytes a check validates are the ones a write later requires unchanged. folders holds the
-// folders skills' paths imply.
+// folders skills' paths imply, and installed maps skills/<source>/<name>, by repository path, for each skill a source
+// installs as name with no authored folder there, to the folder of its installed copy.
 type projectView struct {
-	ctx     context.Context
-	root    *os.Root
-	skills  *filetxn.Tree
-	output  build.Output
-	targets []string
-	folders map[string]bool
-	read    map[string][]byte
+	ctx       context.Context
+	root      *os.Root
+	skills    *filetxn.Tree
+	output    build.Output
+	targets   []string
+	folders   map[string]bool
+	installed map[string]string
+	read      map[string][]byte
 }
 
 // written reports whether output owns repository path file: it is in a skill target's folder or in _managed/.
@@ -181,18 +185,13 @@ func kindIn(files func(func(string) bool), name string) skillrefs.Kind {
 }
 
 // installedAs returns the installed copy's folder and the rest of file when file, by repository path, is in
-// skills/<name>, where name is a skill the command installs from a source rather than an authored one.
+// skills/<source>/<name>, where name is a skill the command installs from source rather than an authored one.
 func (v *projectView) installedAs(file string) (folder, rest string, ok bool) {
-	name, inside := strings.CutPrefix(file, authoredSkillsDirectory+"/")
-	if !inside {
-		return "", "", false
-	}
-	skill, rest, _ := strings.Cut(name, "/")
-	if v.skills != nil && v.folders[skill] {
-		return "", "", false
-	}
-	for _, folder := range slices.Sorted(maps.Keys(v.output.Skills)) {
-		if path.Base(folder) == skill {
+	for location, folder := range v.installed {
+		if file == location {
+			return folder, "", true
+		}
+		if rest, inside := strings.CutPrefix(file, location+"/"); inside {
 			return folder, rest, true
 		}
 	}

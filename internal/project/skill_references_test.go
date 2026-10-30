@@ -29,8 +29,8 @@ const (
 	leverSkill    = "---\nname: principle-build-the-lever\ndescription: Build the lever.\n---\n# Build the lever\n\nCompare with [Encode Lessons in Structure](../principle-encode-lessons-in-structure/SKILL.md).\n"
 	redesignSkill = "---\nname: principle-redesign-from-first-principles\ndescription: Redesign from first principles.\n---\n# Redesign\n\nFollow [the steps](references/steps.md#first-step), twice: [again](references/steps.md).\n"
 	encodeSkill   = "---\nname: principle-encode-lessons-in-structure\ndescription: Encode lessons in structure.\n---\n# Encode lessons\n\nThe opposite of [Build the Lever](../principle-build-the-lever/SKILL.md).\n"
-	stepsDocument = "# Steps\n\nUse [the shared checklist](../../../../docs/checklist.md).\n"
-	checklistDoc  = "# Checklist\n\n![The flow](images/flow.png)\n\nBack to [Redesign](../.trailguide/skills/principle-redesign-from-first-principles/SKILL.md#redesign).\n"
+	stepsDocument = "# Steps\n\nUse [the shared checklist](../../../../../docs/checklist.md).\n"
+	checklistDoc  = "# Checklist\n\n![The flow](images/flow.png)\n\nBack to [Redesign](../.trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md#redesign).\n"
 )
 
 // referenceFiles returns a library's files, by repository path as gitfixture.Library takes them, for the
@@ -41,11 +41,11 @@ func referenceFiles() map[string][]byte {
 		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
-		".trailguide/skills/principle-attack-the-premise/SKILL.md":                        []byte(attackSkill),
-		".trailguide/skills/principle-build-the-lever/SKILL.md":                           []byte(leverSkill),
-		".trailguide/skills/principle-redesign-from-first-principles/SKILL.md":            []byte(redesignSkill),
-		".trailguide/skills/principle-redesign-from-first-principles/references/steps.md": []byte(stepsDocument),
-		".trailguide/skills/principle-encode-lessons-in-structure/SKILL.md":               []byte(encodeSkill),
+		".trailguide/skills/library/principle-attack-the-premise/SKILL.md":                        []byte(attackSkill),
+		".trailguide/skills/library/principle-build-the-lever/SKILL.md":                           []byte(leverSkill),
+		".trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md":            []byte(redesignSkill),
+		".trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md": []byte(stepsDocument),
+		".trailguide/skills/library/principle-encode-lessons-in-structure/SKILL.md":               []byte(encodeSkill),
 		"docs/checklist.md":    []byte(checklistDoc),
 		"docs/images/flow.png": []byte("\x89PNG flow"),
 		"docs/unreferenced.md": []byte("# Not linked\n"),
@@ -165,7 +165,7 @@ func TestSync_KeepsTheGreenfieldComparisonLinksReadable(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/_managed/generated/references/team/skills/principle-redesign-from-first-principles/SKILL.md"), "](references/steps.md#first-step)") {
+	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/_managed/generated/references/team/skills/library/principle-redesign-from-first-principles/SKILL.md"), "](references/steps.md#first-step)") {
 		t.Error("the reference copy lost the fragment of a link that needed no rewriting")
 	}
 	for _, name := range []string{"principle-redesign-from-first-principles", "principle-encode-lessons-in-structure"} {
@@ -184,7 +184,7 @@ func TestSync_KeepsTheGreenfieldComparisonLinksReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"README.md", "team/_repository/docs/checklist.md", "team/_repository/docs/images/flow.png", "team/skills/principle-encode-lessons-in-structure/SKILL.md", "team/skills/principle-redesign-from-first-principles/SKILL.md", "team/skills/principle-redesign-from-first-principles/references/steps.md"}; !slices.Equal(references, want) {
+	if want := []string{"README.md", "team/_repository/docs/checklist.md", "team/_repository/docs/images/flow.png", "team/skills/library/principle-encode-lessons-in-structure/SKILL.md", "team/skills/library/principle-redesign-from-first-principles/SKILL.md", "team/skills/library/principle-redesign-from-first-principles/references/steps.md"}; !slices.Equal(references, want) {
 		t.Errorf("reference copies = %v, want %v", references, want)
 	}
 	entry := lockedEntry(t, options, "team")
@@ -212,15 +212,15 @@ func TestSync_FailsWithoutChangingFilesForALinkItCantDeliver(t *testing.T) {
 		reason string
 		want   []string
 	}{
-		"missing destination": {map[string][]byte{".trailguide/skills/principle-redesign-from-first-principles/references/steps.md": []byte("See [the gone file](gone.md).\n")}, "", skillrefs.Missing, []string{
-			"sources.team: .trailguide/skills/principle-redesign-from-first-principles/references/steps.md: links to gone.md",
-			"The link is reached through .trailguide/skills/principle-attack-the-premise/SKILL.md -> .trailguide/skills/principle-redesign-from-first-principles/SKILL.md -> .trailguide/skills/principle-redesign-from-first-principles/references/steps.md.",
+		"missing destination": {map[string][]byte{".trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md": []byte("See [the gone file](gone.md).\n")}, "", skillrefs.Missing, []string{
+			"sources.team: .trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md: links to gone.md",
+			"The link is reached through .trailguide/skills/library/principle-attack-the-premise/SKILL.md -> .trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md -> .trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md.",
 		}},
 		"destination outside the repository": {map[string][]byte{"docs/checklist.md": []byte("[up](../../outside.md)\n")}, "", skillrefs.Escapes, []string{"outside the repository"}},
 		"folder":                             {map[string][]byte{"docs/checklist.md": []byte("[images](images)\n")}, "", skillrefs.Unsupported, []string{"is a folder"}},
 		"rule file":                          {map[string][]byte{"docs/checklist.md": []byte("[rule](../.trailguide/rules/techs/go/errors.md)\n")}, "", skillrefs.Unsupported, []string{"trailguide-rules-used"}},
-		"missing file an excluded skill links to": {map[string][]byte{".trailguide/skills/principle-redesign-from-first-principles/references/steps.md": []byte("See [the gone file](gone.md).\n")}, `,"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"We redesign our own way."}]`, skillrefs.Missing, []string{
-			".trailguide/skills/principle-redesign-from-first-principles/references/steps.md: links to gone.md",
+		"missing file an excluded skill links to": {map[string][]byte{".trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md": []byte("See [the gone file](gone.md).\n")}, `,"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"We redesign our own way."}]`, skillrefs.Missing, []string{
+			".trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md: links to gone.md",
 		}},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -264,9 +264,9 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 			files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"` + test.levels + `}}`)
 			// Build the Lever, and Encode Lessons when it's installed too, reach Redesign only through one document,
 			// which links to it twice.
-			files[".trailguide/skills/principle-build-the-lever/SKILL.md"] = []byte(leverSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
-			files[".trailguide/skills/principle-encode-lessons-in-structure/SKILL.md"] = []byte(encodeSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
-			files["docs/compare.md"] = []byte("# Compare\n\nSee [Redesign](../.trailguide/" + redesign + "/SKILL.md) and [its steps](../.trailguide/" + redesign + "/references/steps.md).\n")
+			files[".trailguide/skills/library/principle-build-the-lever/SKILL.md"] = []byte(leverSkill + "\nRead [the comparison](../../../../docs/compare.md).\n")
+			files[".trailguide/skills/library/principle-encode-lessons-in-structure/SKILL.md"] = []byte(encodeSkill + "\nRead [the comparison](../../../../docs/compare.md).\n")
+			files["docs/compare.md"] = []byte("# Compare\n\nSee [Redesign](../.trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md) and [its steps](../.trailguide/skills/library/principle-redesign-from-first-principles/references/steps.md).\n")
 			f := referenceLibrary(t, files)
 			options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude","agents"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":[`+test.include+`],"exclude":`+test.exclude+`}}}}`)
 			changes, err := Sync(ctx, options, git)
@@ -274,16 +274,16 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 				t.Fatal(err)
 			}
 			want := []build.ExcludedSkillLink{
-				{Skill: "team:skills/principle-attack-the-premise", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-attack-the-premise/SKILL.md", ".trailguide/" + redesign + "/SKILL.md"}},
-				{Skill: "team:skills/principle-build-the-lever", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-build-the-lever/SKILL.md", "docs/compare.md", ".trailguide/" + redesign + "/SKILL.md"}},
+				{Skill: "team:skills/principle-attack-the-premise", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/library/principle-attack-the-premise/SKILL.md", ".trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md"}},
+				{Skill: "team:skills/principle-build-the-lever", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/library/principle-build-the-lever/SKILL.md", "docs/compare.md", ".trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md"}},
 			}
 			if test.include == `"*"` {
-				want = append(want, build.ExcludedSkillLink{Skill: "team:skills/principle-encode-lessons-in-structure", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/principle-encode-lessons-in-structure/SKILL.md", "docs/compare.md", ".trailguide/" + redesign + "/SKILL.md"}})
+				want = append(want, build.ExcludedSkillLink{Skill: "team:skills/principle-encode-lessons-in-structure", Excluded: "team:" + redesign, Chain: []string{".trailguide/skills/library/principle-encode-lessons-in-structure/SKILL.md", "docs/compare.md", ".trailguide/skills/library/principle-redesign-from-first-principles/SKILL.md"}})
 			}
 			if !reflect.DeepEqual(changes.ExcludedSkillLinks, want) {
 				t.Errorf("excluded skill links = %+v, want %+v", changes.ExcludedSkillLinks, want)
 			}
-			copy := ".trailguide/_managed/generated/references/team/" + redesign + "/SKILL.md"
+			copy := ".trailguide/_managed/generated/references/team/skills/library/principle-redesign-from-first-principles/SKILL.md"
 			for _, target := range []string{".claude/skills", ".agents/skills"} {
 				if linked := linkedFile(t, options, target+"/principle-attack-the-premise/SKILL.md", "Redesign from First Principles"); linked != copy {
 					t.Errorf("%s's attack links to %s, want the reading copy %s", target, linked, copy)
@@ -318,7 +318,7 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 func TestSync_ReportsASkillThatUsesAndLinksToAnExcludedSkillOnce(t *testing.T) {
 	ctx := context.Background()
 	files := referenceFiles()
-	files[".trailguide/skills/principle-attack-the-premise/SKILL.md"] = []byte(strings.Replace(attackSkill, "description: Attack the premise.\n", "description: Attack the premise.\nmetadata:\n  trailguide-skills-used: |-\n    skills/principle-redesign-from-first-principles\n", 1))
+	files[".trailguide/skills/library/principle-attack-the-premise/SKILL.md"] = []byte(strings.Replace(attackSkill, "description: Attack the premise.\n", "description: Attack the premise.\nmetadata:\n  trailguide-skills-used: |-\n    skills/principle-redesign-from-first-principles\n", 1))
 	f := referenceLibrary(t, files)
 	options, git := skillProject(t, f, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":REPOSITORY,"skills":{"include":["*"],"exclude":[{"id":"skills/principle-redesign-from-first-principles","reason":"Ours."}]}}}}`)
 	changes, err := Sync(ctx, options, git)
@@ -338,7 +338,7 @@ func TestSync_ReportsASkillThatUsesAndLinksToAnExcludedSkillOnce(t *testing.T) {
 func TestSync_LinksToTheForkThatReplacesALinkedSkill(t *testing.T) {
 	ctx := context.Background()
 	files := referenceFiles()
-	files[".trailguide/skills/principle-attack-the-premise/SKILL.md"] = []byte(attackSkill + "\nAnd [its steps](../principle-redesign-from-first-principles/references/steps.md).\n")
+	files[".trailguide/skills/library/principle-attack-the-premise/SKILL.md"] = []byte(attackSkill + "\nAnd [its steps](../principle-redesign-from-first-principles/references/steps.md).\n")
 	f := referenceLibrary(t, files)
 	commit, err := f.Command(ctx, "rev-parse", "HEAD")
 	if err != nil {
@@ -350,11 +350,11 @@ func TestSync_LinksToTheForkThatReplacesALinkedSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/principle-redesign-from-first-principles/SKILL.md", "---\nname: principle-redesign-from-first-principles\ndescription: Our redesign.\n---\n# Our redesign\n")
+	writeFixture(t, root, "skills/team/principle-redesign-from-first-principles/SKILL.md", "---\nname: principle-redesign-from-first-principles\ndescription: Our redesign.\n---\n# Our redesign\n")
 	before := projectBytes(t, options)
 	_, err = Sync(ctx, options, git)
 	requireReferenceFailure(t, options, err, skillrefs.ReplacementMissing, before, "which the project forks as skills/principle-redesign-from-first-principles, and the fork has no file at that path")
-	writeFixture(t, root, "skills/principle-redesign-from-first-principles/references/steps.md", "# Our steps\n")
+	writeFixture(t, root, "skills/team/principle-redesign-from-first-principles/references/steps.md", "# Our steps\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func TestSync_ResolvesACuratedSkillsLinksInTheRepositoryItCameFrom(t *testing.T)
 		t.Fatal(err)
 	}
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    offered: [pocock:skills/engineering/to-spec]\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 2\n  name: productivity\n  skills:\n    offered: [pocock:skills/engineering/to-spec]\n"),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
 		// The curating library's own layout has a file at the same relative path, which must not satisfy the link.
@@ -561,7 +561,7 @@ func TestBuild_AsksForAnExplicitSyncWhenAnOlderSnapshotLacksLinkedFiles(t *testi
 	}
 	entry := lock.Sources["team"]
 	for file := range entry.Files {
-		if !strings.HasPrefix(file, "skills/principle-attack-the-premise/") && !strings.HasPrefix(file, "skills/principle-build-the-lever/") && file != "config.yaml" {
+		if !strings.HasPrefix(file, "skills/library/principle-attack-the-premise/") && !strings.HasPrefix(file, "skills/library/principle-build-the-lever/") && file != "config.yaml" {
 			delete(entry.Files, file)
 			if err := os.Remove(filepath.Join(options.Directory, ".trailguide/_managed/vendor/team", filepath.FromSlash(file))); err != nil {
 				t.Fatal(err)
@@ -577,7 +577,7 @@ func TestBuild_AsksForAnExplicitSyncWhenAnOlderSnapshotLacksLinkedFiles(t *testi
 	}
 	before := projectBytes(t, options)
 	_, err = Build(ctx, options)
-	requireReferenceFailure(t, options, err, skillrefs.NotRetained, before, "Run trailguide project sync", "sources.team: .trailguide/skills/principle-attack-the-premise/SKILL.md")
+	requireReferenceFailure(t, options, err, skillrefs.NotRetained, before, "Run trailguide project sync", "sources.team: .trailguide/skills/library/principle-attack-the-premise/SKILL.md")
 	if _, err := Check(ctx, options); err == nil {
 		t.Fatal("check passed a snapshot that lacks linked files")
 	}
@@ -610,7 +610,7 @@ func TestSync_FailsWithoutChangingFilesForALinkedFileOverTheImportLimit(t *testi
 func TestSync_KeepsLinkedFilesInRootFoldersNamedLikeTheLibrarysOwn(t *testing.T) {
 	ctx := context.Background()
 	files := gitfixture.Library(referenceFiles())
-	files[".trailguide/skills/principle-attack-the-premise/SKILL.md"] = []byte("---\nname: principle-attack-the-premise\ndescription: Attack the premise.\n---\nRead [the notes](../../../assets/notes.md), [the guide](../../../skills/guide.md), [the rules](../../../rules/README.md), [the config](../../../config.yaml), and [the shared asset](../../assets/notes.md).\n")
+	files[".trailguide/skills/library/principle-attack-the-premise/SKILL.md"] = []byte("---\nname: principle-attack-the-premise\ndescription: Attack the premise.\n---\nRead [the notes](../../../../assets/notes.md), [the guide](../../../../skills/guide.md), [the rules](../../../../rules/README.md), [the config](../../../../config.yaml), and [the shared asset](../../../assets/notes.md).\n")
 	files["assets/notes.md"] = []byte("# Notes at the repository root\n")
 	files["skills/guide.md"] = []byte("# A guide at the repository root\n")
 	files["rules/README.md"] = []byte("# Rules at the repository root\n")
@@ -653,11 +653,11 @@ func TestSync_FollowsTheLinksOfAForkThatReplacesALinkedSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](missing.md).\n")
+	writeFixture(t, root, "skills/team/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](missing.md).\n")
 	before := projectBytes(t, options)
 	_, err = Sync(ctx, options, git)
-	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/our-redesign/SKILL.md: links to missing.md", "isn't in the project")
-	writeFixture(t, root, "skills/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](../../../docs/notes.md) and [the asset](../../assets/flow.svg).\n")
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/team/our-redesign/SKILL.md: links to missing.md", "isn't in the project")
+	writeFixture(t, root, "skills/team/our-redesign/SKILL.md", "---\nname: our-redesign\ndescription: Our redesign.\n---\n# Our redesign\n\nRead [the notes](../../../../docs/notes.md) and [the asset](../../../assets/flow.svg).\n")
 	writeFixture(t, root, "assets/flow.svg", "<svg/>\n")
 	if err := os.MkdirAll(filepath.Join(options.Directory, "docs"), 0o755); err != nil {
 		t.Fatal(err)
@@ -704,7 +704,7 @@ func TestSync_RefusesAnAuthoredLinkToAnInstalledCopyItWouldRemove(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nUse [the lever](../../../.claude/skills/principle-build-the-lever/SKILL.md).\n")
+	writeFixture(t, root, "skills/local/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nUse [the lever](../../../../.claude/skills/principle-build-the-lever/SKILL.md).\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -714,7 +714,7 @@ func TestSync_RefusesAnAuthoredLinkToAnInstalledCopyItWouldRemove(t *testing.T) 
 	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":["claude"],"sources":{}}`)
 	before := projectBytes(t, options)
 	_, err = Sync(ctx, options, git)
-	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/ours/SKILL.md: links to ../../../.claude/skills/principle-build-the-lever/SKILL.md", "among the files Trail Guide installs and generates")
+	requireReferenceFailure(t, options, err, skillrefs.Missing, before, ".trailguide/skills/local/ours/SKILL.md: links to ../../../../.claude/skills/principle-build-the-lever/SKILL.md", "among the files Trail Guide installs and generates")
 }
 
 func TestSync_KeepsAnAuthoredLinkToTheSkillsIndexWithoutSkillTargets(t *testing.T) {
@@ -726,7 +726,7 @@ func TestSync_KeepsAnAuthoredLinkToTheSkillsIndexWithoutSkillTargets(t *testing.
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nPick from [the index](../../_managed/generated/SKILLS.md).\n")
+	writeFixture(t, root, "skills/local/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nPick from [the index](../../../_managed/generated/SKILLS.md).\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -749,7 +749,7 @@ func TestBuild_ChecksAuthoredLinksWithoutSkillTargets(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":[],"sources":{}}`)
-	writeFixture(t, root, "skills/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nRead [the notes](../../../docs/notes.md).\n")
+	writeFixture(t, root, "skills/local/ours/SKILL.md", "---\nname: ours\ndescription: Ours.\n---\nRead [the notes](../../../../docs/notes.md).\n")
 	var failure *skillrefs.Error
 	if _, err := Build(ctx, options); !errors.As(err, &failure) || failure.Reason != skillrefs.Missing {
 		t.Fatalf("build = %v; want a missing reference", err)

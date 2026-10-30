@@ -26,8 +26,8 @@ const librarySkillsFolder = librarytree.Directory + "/" + skills.Directory + "/"
 // skillFolders returns the skills in files, a commit's tree by repository path, keyed by skill ID, each with its
 // files keyed by their path in the vendor snapshot. A library's skills are the folders in the origin folders of its
 // .trailguide/skills/ that hold a SKILL.md, or, at a commit of an earlier library schema version, the folders
-// directly in .trailguide/skills/ that do, with IDs skills/<name> and snapshot paths in skills/<name>/, without the
-// origin folder. Any other repository's are the folders that hold a SKILL.md, other than the repository root and a
+// directly in .trailguide/skills/ that do, with IDs skills/<name> and snapshot paths at their paths in
+// .trailguide/, such as skills/acme/<name>/. Any other repository's are the folders that hold a SKILL.md, other than the repository root and a
 // folder inside another skill's folder, which belongs to that skill; their IDs and snapshot paths are their
 // repository paths.
 func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[string]treeEntry {
@@ -69,7 +69,9 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 	return result
 }
 
-// librarySkillFolders returns skillFolders' result for files, the tree of a library's commit.
+// librarySkillFolders returns skillFolders' result for files, the tree of a library's commit: each skill by its ID,
+// skills/<name>, with its files at their paths in the library's Trail Guide directory, in the skill's origin folder,
+// so the snapshot mirrors that directory and the skill's relative links resolve in it as they do in the library.
 func librarySkillFolders(files map[string]treeEntry) map[string]map[string]treeEntry {
 	inSkills := map[string]treeEntry{}
 	for name, entry := range files {
@@ -83,8 +85,8 @@ func librarySkillFolders(files map[string]treeEntry) map[string]map[string]treeE
 		result[skills.AuthoredID(name)] = map[string]treeEntry{}
 	}
 	for file, entry := range inSkills {
-		if name, inside, ok := layout.Split(file); ok {
-			entry.name = skills.AuthoredID(name) + "/" + inside
+		if name, _, ok := layout.Split(file); ok {
+			entry.name = skills.Directory + "/" + file
 			result[skills.AuthoredID(name)][entry.name] = entry
 		}
 	}
@@ -271,7 +273,7 @@ func (r *repository) skillUses(ctx context.Context, source rules.Source, folders
 				uses[id] = []string{}
 				continue
 			}
-			if entry, ok := folders[id][id+"/"+skills.File]; ok {
+			if entry, ok := folders[id][library.SkillFolderIn(folders[id], id)+"/"+skills.File]; ok {
 				entries[id] = entry
 			}
 		}
@@ -319,7 +321,7 @@ func curatedUses(installed map[string]library.ImportedSkill, files map[string][]
 		if _, _, curated := library.SplitCurated(id); curated {
 			continue
 		}
-		file := library.SkillFolder(id) + "/" + skills.File
+		file := library.SkillFolderIn(files, id) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(files[file], where+"/"+file)
 		if err != nil {
 			return nil, err
@@ -593,7 +595,7 @@ func (r *repository) requireNoNamedDependencies(ctx context.Context, source rule
 func (r *repository) skillUsers(ctx context.Context, source rules.Source, folders map[string]map[string]treeEntry) (map[string][]string, error) {
 	entries := map[string]treeEntry{}
 	for id, files := range folders {
-		if entry, ok := files[id+"/"+skills.File]; ok {
+		if entry, ok := files[library.SkillFolderIn(files, id)+"/"+skills.File]; ok {
 			entries[entry.name] = entry
 		}
 	}
@@ -604,8 +606,8 @@ func (r *repository) skillUsers(ctx context.Context, source rules.Source, folder
 	result := map[string][]string{}
 	for _, id := range slices.Sorted(maps.Keys(folders)) {
 		used := slices.Clone(source.SkillUses[id])
-		if _, ok := folders[id][id+"/"+skills.File]; ok {
-			file := id + "/" + skills.File
+		file := library.SkillFolderIn(folders[id], id) + "/" + skills.File
+		if _, ok := folders[id][file]; ok {
 			data, err := input.ReadFile(file)
 			if err != nil {
 				return nil, err

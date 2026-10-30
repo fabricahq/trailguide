@@ -158,7 +158,7 @@ Sometimes a skill links to a file your project can't deliver: the file doesn't e
 
 ```text
 $ trailguide project sync
-Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
+Error: sources.fabrica: .trailguide/skills/fabrica/redesign/references/steps.md: links to gone.md (.trailguide/skills/fabrica/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/fabrica/redesign/references/steps.md.
 ```
 
 Choose the repair the message lists. When the file is missing from the source, the source's maintainer fixes the link; `trailguide library check` reports it in their library.

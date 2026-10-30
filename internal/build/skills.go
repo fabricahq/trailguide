@@ -196,13 +196,13 @@ func requestedRef(source rules.Source, snapshot library.Snapshot) string {
 // sourceSkill returns the origin of skill id of source, whose snapshot is snapshot: the source's repository and
 // revision for a skill it publishes, and, for a curated one, the repository and revision it was curated from.
 func sourceSkill(source rules.Source, snapshot library.Snapshot, id string) resolvedSkill {
-	skill := resolvedSkill{ID: source.Name + ":" + id, Source: source.Name, Folder: id, Vendored: id, Repository: source.Repository, Ref: requestedRef(source, snapshot), Commit: snapshot.Commit, Release: snapshot.Release, NonLibrary: snapshot.NonLibrary, Level: snapshot.Skills[id].Level, Included: snapshot.Skills[id].Included}
+	skill := resolvedSkill{ID: source.Name + ":" + id, Source: source.Name, Folder: id, Vendored: snapshot.SkillFolder(id), Repository: source.Repository, Ref: requestedRef(source, snapshot), Commit: snapshot.Commit, Release: snapshot.Release, NonLibrary: snapshot.NonLibrary, Level: snapshot.Skills[id].Level, Included: snapshot.Skills[id].Included}
 	if skill.Level != "" {
 		skill.LevelRelease = snapshot.Release
 	}
 	if name, folder, curated := library.SplitCurated(id); curated {
 		origin := snapshot.Curated[name]
-		skill.Folder, skill.Vendored, skill.Curated, skill.Override = folder, library.SkillFolder(id), name, origin.Source
+		skill.Folder, skill.Curated, skill.Override = folder, name, origin.Source
 		skill.Repository, skill.Ref, skill.Commit, skill.Release, skill.NonLibrary = origin.Repository, origin.Ref.String(), origin.Commit, origin.Release, origin.NonLibrary
 	}
 	return skill

@@ -586,7 +586,7 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 		entries := map[string]treeEntry{}
 		for _, id := range pending {
 			if folder, ok := folders[id]; ok {
-				file := library.SkillFolder(id) + "/" + skills.File
+				file := library.SkillFolderIn(folder, id) + "/" + skills.File
 				entries[file] = folder[file]
 			}
 		}
@@ -596,7 +596,7 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 		}
 		next := []string{}
 		for _, id := range pending {
-			data, ok := files[library.SkillFolder(id)+"/"+skills.File]
+			data, ok := files[library.SkillFolderIn(files, id)+"/"+skills.File]
 			if _, seen := result[id]; !ok || seen {
 				continue
 			}

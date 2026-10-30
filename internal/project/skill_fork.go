@@ -123,7 +123,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("source %s doesn't install skill %s, as its last sync recorded; name a skill its skills.include selects, and if you just added it, run trailguide project sync first", source.Name, from.Skill)}
 		}
 		files := snapshot.SkillFiles(from.Skill)
-		location := librarytree.Vendor + "/" + source.Name + "/" + library.SkillFolder(from.Skill) + "/" + skills.File
+		location := librarytree.Vendor + "/" + source.Name + "/" + snapshot.SkillFolder(from.Skill) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(files[skills.File], location)
 		if err != nil {
 			return err
@@ -332,7 +332,7 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 // installed copy. A link that reaches any other file outside the folder, such as a shared document, or a skill the
 // project doesn't install, has nothing the fork can reach, so it returns a fix for each.
 func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, files map[string][]byte, installed []build.InstalledSkill) (map[string][]byte, []string, error) {
-	folder := library.SkillFolder(id)
+	folder := snapshot.SkillFolder(id)
 	origin := snapshot.Origins()[snapshot.OriginOf(folder+"/")]
 	installedAs := map[string]string{}
 	for _, skill := range installed {
@@ -363,13 +363,13 @@ func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, 
 				return link.Destination
 			}
 			for _, other := range slices.Sorted(maps.Keys(snapshot.Skills)) {
-				rest, inside := strings.CutPrefix(key, library.SkillFolder(other)+"/")
+				rest, inside := strings.CutPrefix(key, snapshot.SkillFolder(other)+"/")
 				if !inside {
 					continue
 				}
 				if as, ok := installedAs[other]; ok && other != id {
-					forked := librarytree.Directory + "/" + skills.AuthoredID(name) + "/" + file
-					relative, err := url.PathUnescape(rules.RelativeLink(forked, librarytree.Directory+"/"+skills.AuthoredID(as)+"/"+rest))
+					forked := librarytree.Directory + "/" + skillFolderPath(source.Name, name) + "/" + file
+					relative, err := url.PathUnescape(rules.RelativeLink(forked, librarytree.Directory+"/"+skillFolderPath(source.Name, as)+"/"+rest))
 					if err == nil {
 						changed = changed || relative != link.Destination
 						return relative

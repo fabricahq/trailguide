@@ -579,9 +579,15 @@ func keepable(row imports.RuleUpdate) bool {
 func withSkillFiles(recorded map[string]library.Snapshot, vendor map[string][]byte) map[string]library.Snapshot {
 	result := make(map[string]library.Snapshot, len(recorded))
 	for name, snapshot := range recorded {
-		snapshot.Files = map[string][]byte{}
+		files := map[string][]byte{}
 		for file, data := range vendor {
-			if stored, ok := strings.CutPrefix(file, name+"/"); ok && snapshot.IsSkillFile(stored) {
+			if stored, ok := strings.CutPrefix(file, name+"/"); ok {
+				files[stored] = data
+			}
+		}
+		snapshot.Files = map[string][]byte{}
+		for stored, data := range files {
+			if isSkillFileIn(files, snapshot.Skills, stored) {
 				snapshot.Files[stored] = data
 			}
 		}

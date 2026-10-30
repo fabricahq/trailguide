@@ -42,12 +42,13 @@ func requireSkillReferences(ctx context.Context, root *os.Root, git *libraryGit,
 		}
 	}
 	retention := skillrefs.Retention{View: view, Origin: skillrefs.Origin{Library: true}, Absent: skillrefs.Missing, AbsentProblem: "the library doesn't have. Add the file, or fix the link; projects that install the skill keep a copy of every file its links reach."}
+	layout := skills.FindLayout(slices.Collect(maps.Keys(tree.Files)))
 	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
-		skill, _, _ := strings.Cut(name, "/")
-		if _, ok := tree.Files[skill+"/"+skills.File]; !ok {
+		skill, _, ok := layout.Split(name)
+		if !ok {
 			continue
 		}
-		folder := skillsDirectory + "/" + skill
+		folder := skillsDirectory + "/" + skills.Folder(layout[skill], skill)
 		if !slices.Contains(retention.Folders, folder) {
 			retention.Folders = append(retention.Folders, folder)
 		}

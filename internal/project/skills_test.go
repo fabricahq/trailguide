@@ -99,7 +99,7 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/scripts/run.sh", "../.claude/skills/check-release/SKILL.md", "_managed/vendor/team/skills/review/SKILL.md", "_managed/generated/SKILLS.md", "_managed/generated/installed-skills.json"} {
+	for _, name := range []string{"../.claude/skills/build-feature/SKILL.md", "../.agents/skills/build-feature/scripts/run.sh", "../.claude/skills/check-release/SKILL.md", "_managed/vendor/team/skills/library/review/SKILL.md", "_managed/generated/SKILLS.md", "_managed/generated/installed-skills.json"} {
 		if !slices.Contains(changes.Added, name) {
 			t.Errorf("sync didn't report adding %s: %v", name, changes.Added)
 		}
@@ -128,7 +128,7 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 		}
 	}
 	record := lockedEntry(t, options, "team")
-	if record.Kind != "library" || !slices.Equal(record.Selectors.Skills, []string{"*"}) || len(record.Skills) != 2 || *record.Skills["skills/review"].Level != "offered" || !slices.Equal(record.Executable, []string{"skills/build-feature/scripts/run.sh"}) || record.Files["skills/build-feature/SKILL.md"] == "" {
+	if record.Kind != "library" || !slices.Equal(record.Selectors.Skills, []string{"*"}) || len(record.Skills) != 2 || *record.Skills["skills/review"].Level != "offered" || !slices.Equal(record.Executable, []string{"skills/library/build-feature/scripts/run.sh"}) || record.Files["skills/library/build-feature/SKILL.md"] == "" {
 		t.Errorf("source record = %+v", record)
 	}
 	again, err := Build(ctx, options)
@@ -157,7 +157,7 @@ func TestSync_RemovesTheFoldersOfSkillsNoLongerIncluded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(changes.Removed, "../.claude/skills/build-feature/scripts/run.sh") || !slices.Contains(changes.Removed, "_managed/vendor/team/skills/build-feature/SKILL.md") {
+	if !slices.Contains(changes.Removed, "../.claude/skills/build-feature/scripts/run.sh") || !slices.Contains(changes.Removed, "_managed/vendor/team/skills/library/build-feature/SKILL.md") {
 		t.Fatalf("removed = %v", changes.Removed)
 	}
 	if exists(t, options, ".claude/skills/build-feature") || !exists(t, options, ".claude/skills/review/SKILL.md") {
@@ -293,10 +293,10 @@ func TestSync_RecordsSkillsWithoutSkillTargetsAndWarns(t *testing.T) {
 			if len(changes.Warnings) != 1 || !strings.Contains(changes.Warnings[0], "The project has no skill targets, so no copy of its 2 skill(s) was installed.") {
 				t.Fatalf("warnings = %v", changes.Warnings)
 			}
-			if exists(t, options, ".claude") || exists(t, options, ".agents") || !exists(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md") {
+			if exists(t, options, ".claude") || exists(t, options, ".agents") || !exists(t, options, ".trailguide/_managed/vendor/team/skills/library/review/SKILL.md") {
 				t.Fatal("sync installed copies or didn't record the skills")
 			}
-			if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "**Installed at:** nowhere, because the project has no skill targets. Read it at [.trailguide/_managed/vendor/team/skills/review/SKILL.md](../vendor/team/skills/review/SKILL.md).") {
+			if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "**Installed at:** nowhere, because the project has no skill targets. Read it at [.trailguide/_managed/vendor/team/skills/library/review/SKILL.md](../vendor/team/skills/library/review/SKILL.md).") {
 				t.Fatalf("SKILLS.md:\n%s", index)
 			}
 		})
@@ -336,7 +336,7 @@ func TestSync_RenamesAClashingSkillAndWarnsThatMentionsKeepTheOldName(t *testing
 	if !strings.Contains(readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"), "# Our review") {
 		t.Fatal("the authored skill isn't installed under its own name")
 	}
-	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md"), "name: review\n") {
+	if !strings.Contains(readRepositoryFile(t, options, ".trailguide/_managed/vendor/team/skills/library/review/SKILL.md"), "name: review\n") {
 		t.Fatal("the rename changed the vendored copy")
 	}
 	if index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md"); !strings.Contains(index, "### team-review\n\nReview a change.\n\n- **Skill:** `team:skills/review`, from release/1") || !strings.Contains(index, "- **Renamed from:** `review`, by the project's configuration. Its own text and other skills from `team` may still call it `review`; they mean this skill.") {

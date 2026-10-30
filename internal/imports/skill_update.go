@@ -157,26 +157,29 @@ func skillChanges(recorded *library.Snapshot, installed importedSkills) []SkillU
 
 // skillFileChanges returns, relative to the folder of skill id and sorted, the files whose contents, presence, or
 // executable bit differ between before and installed, and the scripts among them: those executable in installed.
+// The skill's folder can differ between them, as when its library moves it into an origin folder.
 func skillFileChanges(id string, before library.Snapshot, installed importedSkills) ([]string, []ScriptUpdate) {
-	prefix := id + "/"
+	beforeFolder, installedFolder := before.SkillFolder(id)+"/", library.SkillFolderIn(installed.files, id)+"/"
 	names := map[string]bool{}
-	for _, files := range []map[string][]byte{before.Files, installed.files} {
-		for name := range files {
-			if strings.HasPrefix(name, prefix) {
-				names[name] = true
+	for _, side := range []struct {
+		files  map[string][]byte
+		prefix string
+	}{{before.Files, beforeFolder}, {installed.files, installedFolder}} {
+		for name := range side.files {
+			if relative, inside := strings.CutPrefix(name, side.prefix); inside {
+				names[relative] = true
 			}
 		}
 	}
 	files := []string{}
 	scripts := []ScriptUpdate{}
-	for _, name := range slices.Sorted(maps.Keys(names)) {
-		old, had := before.Files[name]
-		current, has := installed.files[name]
-		executable := slices.Contains(installed.executable, name)
-		if had && has && bytes.Equal(old, current) && slices.Contains(before.Executable, name) == executable {
+	for _, relative := range slices.Sorted(maps.Keys(names)) {
+		old, had := before.Files[beforeFolder+relative]
+		current, has := installed.files[installedFolder+relative]
+		executable := slices.Contains(installed.executable, installedFolder+relative)
+		if had && has && bytes.Equal(old, current) && slices.Contains(before.Executable, beforeFolder+relative) == executable {
 			continue
 		}
-		relative := strings.TrimPrefix(name, prefix)
 		files = append(files, relative)
 		switch {
 		case has && executable && !had:
