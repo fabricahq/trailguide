@@ -36,7 +36,7 @@ func TestSyncUpdateAndCheck_WarnAboutAPersonalSkillWithAnInstalledSkillsName(t *
 	if out, diagnostic, code := invokeWithHome(t, ctx, directory, home, "project", "init", "--skill-targets", "claude"); code != 0 {
 		t.Fatal(code, out, diagnostic)
 	}
-	writeTestFile(t, directory, ".trailguide/skills/tidy/SKILL.md", "---\nname: tidy\ndescription: Tidy up.\n---\n# Tidy\n")
+	writeTestFile(t, directory, ".trailguide/skills/local/tidy/SKILL.md", "---\nname: tidy\ndescription: Tidy up.\n---\n# Tidy\n")
 	commands := [][]string{{"project", "sync"}, {"project", "check"}, {"project", "update", "--yes"}}
 
 	// With no personal skills, as on CI, nothing warns.

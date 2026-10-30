@@ -47,7 +47,7 @@ From a library, the snapshot includes:
 - Supporting files, such as images and examples, from the library's shared `assets/` directory, when an included rule links to them.
 - Rule group metadata, which describes each rule group and when to read it.
 - The library's [published manifest](/reference/library-schema/#what-a-librarys-consumers-read), as `config.yaml`, and its declared license and notice files. The manifest keeps only the `library` section and its curated sources' repositories and refs, never the library's own project settings.
-- Each installed skill's whole folder, `skills/<name>/`, including skills your project excludes or replaces, and the skills that installed skills call.
+- Each installed skill's whole folder, at its path in the library, `skills/<origin>/<name>/`, including skills your project excludes or replaces, and the skills that installed skills call.
 - The rules that installed skills cite, with their asset directories and rule group metadata.
 - The folders of [curated skills](/reference/configuration/#curated-skills) the project installs, under `curated/<curated-source>/`, from the commit the project resolved for that curated source.
 

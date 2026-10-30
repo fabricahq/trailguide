@@ -55,7 +55,7 @@ func TestSync_LeavesOutAnExcludedSkill(t *testing.T) {
 	if exists(t, options, ".claude/skills/review") || !exists(t, options, ".claude/skills/build-feature/SKILL.md") {
 		t.Fatal("sync installed the excluded skill, or not the other one")
 	}
-	if !exists(t, options, ".trailguide/_managed/vendor/team/skills/review/SKILL.md") {
+	if !exists(t, options, ".trailguide/_managed/vendor/team/skills/library/review/SKILL.md") {
 		t.Fatal("sync didn't keep the excluded skill's files in vendor/")
 	}
 	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
@@ -95,13 +95,13 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 		t.Fatalf("plan = %s based on %s", plan.Name(), plan.BasedOn())
 	}
 	trailguide := filepath.Join(options.Directory, ".trailguide")
-	if want := []string{filepath.Join(trailguide, "skills/build-feature/SKILL.md"), filepath.Join(trailguide, "skills/build-feature/scripts/run.sh")}; !reflect.DeepEqual(result.Added, want) || !reflect.DeepEqual(result.Changed, []string{filepath.Join(trailguide, "config.yaml")}) {
+	if want := []string{filepath.Join(trailguide, "skills/team/build-feature/SKILL.md"), filepath.Join(trailguide, "skills/team/build-feature/scripts/run.sh")}; !reflect.DeepEqual(result.Added, want) || !reflect.DeepEqual(result.Changed, []string{filepath.Join(trailguide, "config.yaml")}) {
 		t.Fatalf("result = %+v", result)
 	}
-	if fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md"); fork != buildSkill {
+	if fork := readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md"); fork != buildSkill {
 		t.Fatalf("fork's SKILL.md:\n%s", fork)
 	}
-	if info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/build-feature/scripts/run.sh")); err != nil || info.Mode().Perm()&0o100 == 0 {
+	if info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/team/build-feature/scripts/run.sh")); err != nil || info.Mode().Perm()&0o100 == 0 {
 		t.Fatalf("the fork's script isn't executable: %v %v", info, err)
 	}
 	data := []byte(readRepositoryFile(t, options, ".trailguide/config.yaml"))
@@ -111,7 +111,7 @@ func TestPlanSkillFork_InstallsTheForkInPlaceOfTheSkill(t *testing.T) {
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "<!-- trailguide:installed skills/build-feature. Do not edit; edit .trailguide/skills/build-feature/ instead. -->") {
+	if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "<!-- trailguide:installed skills/build-feature. Do not edit; edit .trailguide/skills/team/build-feature/ instead. -->") {
 		t.Fatalf("installed copy isn't the fork:\n%s", installed)
 	}
 	index := readRepositoryFile(t, options, ".trailguide/_managed/generated/SKILLS.md")
@@ -145,7 +145,7 @@ func TestPlanSkillFork_RefusesWhatItCannotFork(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/build-feature/SKILL.md", "---\nname: build-feature\ndescription: Ours.\n---\n# Build\n")
+	writeFixture(t, root, "skills/local/build-feature/SKILL.md", "---\nname: build-feature\ndescription: Ours.\n---\n# Build\n")
 	for _, test := range []struct {
 		from, location, problem string
 	}{
@@ -184,7 +184,7 @@ func TestPlanSkillFork_ForksARenamedSkillUnderItsInstallName(t *testing.T) {
 	if plan.Name() != "team-review" {
 		t.Fatalf("fork name = %s; want team-review", plan.Name())
 	}
-	if fork := readRepositoryFile(t, options, ".trailguide/skills/team-review/SKILL.md"); !strings.Contains(fork, "\nname: team-review\n") || strings.Contains(fork, "name: review\n") {
+	if fork := readRepositoryFile(t, options, ".trailguide/skills/team/team-review/SKILL.md"); !strings.Contains(fork, "\nname: team-review\n") || strings.Contains(fork, "name: review\n") {
 		t.Fatalf("fork's SKILL.md:\n%s", fork)
 	}
 	config := readRepositoryFile(t, options, ".trailguide/config.yaml")
@@ -230,7 +230,7 @@ func TestPlanSkillFork_CommitRefusesABlankReasonAndAConcurrentChange(t *testing.
 	writeFixture(t, root, configurationFile, strings.ReplaceAll("# Edited.\n"+skillConfig(""), "REPOSITORY", quoteJSON(f.Repository)))
 	_, err = plan.Commit(ctx, "Ours.")
 	projectCode(t, err, "concurrent-change")
-	if exists(t, options, ".trailguide/skills/review") {
+	if exists(t, options, ".trailguide/skills/team/review") {
 		t.Fatal("a refused fork wrote files")
 	}
 }
@@ -266,7 +266,7 @@ func TestPlanSkillFork_CommitRefusesASourceAnUpdateMovedAfterPlanning(t *testing
 	config = updated
 	_, err = plan.Commit(ctx, "We build with make.")
 	projectCode(t, err, "concurrent-change")
-	if exists(t, options, ".trailguide/skills/build-feature") || readRepositoryFile(t, options, ".trailguide/config.yaml") != config {
+	if exists(t, options, ".trailguide/skills/team/build-feature") || readRepositoryFile(t, options, ".trailguide/config.yaml") != config {
 		t.Fatal("a refused fork wrote files")
 	}
 }
@@ -276,8 +276,8 @@ func secondSkillRelease(t *testing.T, f *gitfixture.Fixture) string {
 	t.Helper()
 	ctx := context.Background()
 	commit, err := f.Commit(ctx, f.Worktree(), "Change a skill", map[string][]byte{
-		".trailguide/skills/build-feature/SKILL.md":         []byte(strings.Replace(buildSkill, "Run scripts/run.sh.", "Run scripts/check.sh first.", 1)),
-		".trailguide/skills/build-feature/scripts/check.sh": []byte("#!/bin/sh\necho check\n"),
+		".trailguide/skills/library/build-feature/SKILL.md":         []byte(strings.Replace(buildSkill, "Run scripts/run.sh.", "Run scripts/check.sh first.", 1)),
+		".trailguide/skills/library/build-feature/scripts/check.sh": []byte("#!/bin/sh\necho check\n"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -331,16 +331,16 @@ func TestUpdate_ListsChangesToAReplacedSkill(t *testing.T) {
 			if len(preview.Sources) != 1 || !reflect.DeepEqual(visibleSkillRows(preview.Sources[0].ReplacedSkills), want) {
 				t.Fatalf("preview = %+v\nwant replaced skills %+v", preview.Sources, want)
 			}
-			fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md")
+			fork := readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md")
 			config := readRepositoryFile(t, options, ".trailguide/config.yaml")
 			if _, err := plan.Apply(ctx, nil); err != nil {
 				t.Fatal(err)
 			}
 			// The update moves only the source's ref to the release it installs.
-			if readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != strings.Replace(config, "ref: release/1", "ref: release/2", 1) {
+			if readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != strings.Replace(config, "ref: release/1", "ref: release/2", 1) {
 				t.Fatal("the update changed the fork or its exclusion")
 			}
-			if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "edit .trailguide/skills/build-feature/ instead") {
+			if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "edit .trailguide/skills/team/build-feature/ instead") {
 				t.Fatalf("after the update, the installed copy isn't the fork:\n%s", installed)
 			}
 		})
@@ -353,7 +353,7 @@ func TestSync_ChecksTheCommitAForkIsBasedOn(t *testing.T) {
 	ctx := context.Background()
 	f, _ := skillLibrary(t)
 	// A commit after release/1 removes the skill, so the repository has the commit but the commit lacks the skill.
-	without, err := f.Commit(ctx, f.Worktree(), "Remove a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
+	without, err := f.Commit(ctx, f.Worktree(), "Remove a skill", map[string][]byte{".trailguide/skills/library/build-feature/SKILL.md": nil, ".trailguide/skills/library/build-feature/scripts/run.sh": nil})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestSync_ChecksTheCommitAForkIsBasedOn(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer root.Close()
-			writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+			writeFixture(t, root, "skills/team/build-feature/SKILL.md", buildSkill)
 			_, err = Sync(ctx, options, git)
 			test.check(t, err)
 			if exists(t, options, ".claude/skills") {
@@ -463,13 +463,13 @@ func TestPlanSkillFork_ForksASkillWithoutFrontmatter(t *testing.T) {
 		t.Fatal(err)
 	}
 	forkSkill(t, options, "tools:tools/review", "Ours.")
-	if fork := readRepositoryFile(t, options, ".trailguide/skills/review/SKILL.md"); fork != "---\nname: \"review\"\n---\n# Review\n" {
+	if fork := readRepositoryFile(t, options, ".trailguide/skills/tools/review/SKILL.md"); fork != "---\nname: \"review\"\n---\n# Review\n" {
 		t.Fatalf("fork's SKILL.md:\n%s", fork)
 	}
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
-	if installed := readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"); !strings.Contains(installed, "edit .trailguide/skills/review/ instead") {
+	if installed := readRepositoryFile(t, options, ".claude/skills/review/SKILL.md"); !strings.Contains(installed, "edit .trailguide/skills/tools/review/ instead") {
 		t.Fatalf("installed copy isn't the fork:\n%s", installed)
 	}
 }
@@ -484,7 +484,7 @@ func TestPlanSkillFork_KeepsTheSkillsThatSkillsUsesAdds(t *testing.T) {
 		t.Fatal(err)
 	}
 	forkSkill(t, options, "team:skills/build-feature", "We build with make.")
-	if fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md"); !strings.Contains(fork, "  trailguide-skills-used: |\n    team:skills/review\n") {
+	if fork := readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md"); !strings.Contains(fork, "  trailguide-skills-used: |\n    team:skills/review\n") {
 		t.Fatalf("fork's SKILL.md:\n%s", fork)
 	}
 	if _, err := Build(ctx, options); err != nil {
@@ -547,7 +547,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+			writeFixture(t, root, "skills/team/build-feature/SKILL.md", buildSkill)
 			root.Close()
 			if _, err := Sync(ctx, options, git); err != nil {
 				t.Fatal(err)
@@ -555,10 +555,10 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
 				t.Fatalf("installed %v; want only the fork", got)
 			}
-			if !exists(t, options, ".trailguide/_managed/vendor/team/skills/build-feature/SKILL.md") {
+			if !exists(t, options, ".trailguide/_managed/vendor/team/skills/library/build-feature/SKILL.md") {
 				t.Fatal("sync didn't import the forked skill to compare with the fork")
 			}
-			later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": nil, ".trailguide/skills/build-feature/scripts/run.sh": nil})
+			later, err := f.Commit(ctx, f.Worktree(), "Delete a skill", map[string][]byte{".trailguide/skills/library/build-feature/SKILL.md": nil, ".trailguide/skills/library/build-feature/scripts/run.sh": nil})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -580,7 +580,7 @@ func TestUpdate_KeepsAForkOfASkillItsSourceDeletes(t *testing.T) {
 			if got := installedSkills(t, options); !slices.Equal(got, []string{"build-feature"}) {
 				t.Fatalf("after the update, installed %v; want the fork", got)
 			}
-			if exists(t, options, ".trailguide/_managed/vendor/team/skills/build-feature/SKILL.md") {
+			if exists(t, options, ".trailguide/_managed/vendor/team/skills/library/build-feature/SKILL.md") {
 				t.Fatal("the update kept the deleted skill's vendored copy")
 			}
 			if again, err := Sync(ctx, options, git); err != nil || len(again.Added)+len(again.Changed)+len(again.Removed) != 0 {
@@ -594,7 +594,7 @@ func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	ctx := context.Background()
 	f, _ := skillLibrary(t)
 	using := "---\nname: build-feature\ndescription: Build a feature from a spec.\nmetadata:\n  trailguide-skills-used: |-\n    skills/review\n---\n# Build a feature\n"
-	commit, err := f.Commit(ctx, f.Worktree(), "Review each feature", map[string][]byte{".trailguide/skills/build-feature/SKILL.md": []byte(using)})
+	commit, err := f.Commit(ctx, f.Worktree(), "Review each feature", map[string][]byte{".trailguide/skills/library/build-feature/SKILL.md": []byte(using)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -606,7 +606,7 @@ func TestSync_InstallsNoSkillOnlyTheForkedSkillUses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, "skills/build-feature/SKILL.md", buildSkill)
+	writeFixture(t, root, "skills/team/build-feature/SKILL.md", buildSkill)
 	root.Close()
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)

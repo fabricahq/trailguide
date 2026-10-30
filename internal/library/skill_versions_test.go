@@ -21,13 +21,13 @@ const (
 // ratchetConfig is a library manifest whose library forks dzhng's ratchet-files skill, based on basedOn, and lists the
 // fork at level, with a notice file.
 func ratchetConfig(basedOn, level string) []byte {
-	return []byte("schemaVersion: 2\nsources:\n  dzhng:\n    repository: https://github.com/dzhng/skills\n    skills:\n      forks:\n        skills/engineering/ratchet-files:\n          as: skills/ratchet-files\n          basedOn: \"" + basedOn + "\"\n          reason: We publish our own version.\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    " + level + ": [skills/ratchet-files]\n")
+	return []byte("schemaVersion: 2\nsources:\n  dzhng:\n    repository: https://github.com/dzhng/skills\n    skills:\n      forks:\n        skills/engineering/ratchet-files:\n          as: skills/ratchet-files\n          basedOn: \"" + basedOn + "\"\n          reason: We publish our own version.\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    " + level + ": [skills/ratchet-files]\n")
 }
 
 // ratchetLibrary is libraryFiles with the license and notice ratchetConfig declares, before the library had skills.
 func ratchetLibrary() map[string][]byte {
 	files := libraryFiles()
-	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
 	files["LICENSE.md"] = []byte("MIT License\n")
 	files["NOTICE.md"] = []byte("Notice\n")
 	return files
@@ -45,8 +45,8 @@ func TestRelease_NamesANewForkedSkillMadeRecommendedWithoutRuleChanges(t *testin
 	commitAndPush(t, fixture, options.Directory, map[string][]byte{
 		"config.yaml": ratchetConfig(forkBase, "recommended"),
 		"NOTICE.md":   []byte("Notice\n\nratchet-files is adapted from dzhng/skills.\n"),
-		".trailguide/skills/ratchet-files/SKILL.md":         []byte(ratchetSkill),
-		".trailguide/skills/ratchet-files/scripts/count.sh": []byte("#!/bin/sh\n"),
+		".trailguide/skills/dzhng/ratchet-files/SKILL.md":         []byte(ratchetSkill),
+		".trailguide/skills/dzhng/ratchet-files/scripts/count.sh": []byte("#!/bin/sh\n"),
 	})
 	_, err := Check(ctx, options)
 	if errorCode(err) != "change-notes" || !strings.Contains(err.Error(), "skills/ratchet-files is a new skill, and no pending change note names it. Record it with: trailguide library change skills/ratchet-files --summary '<what the skill adds>'") {
@@ -85,7 +85,7 @@ func TestRelease_PublishesAMovedAndARemovedFork(t *testing.T) {
 	ctx := context.Background()
 	files := ratchetLibrary()
 	files["config.yaml"] = ratchetConfig(forkBase, "recommended")
-	files[".trailguide/skills/ratchet-files/SKILL.md"] = []byte(ratchetSkill)
+	files[".trailguide/skills/dzhng/ratchet-files/SKILL.md"] = []byte(ratchetSkill)
 	fixture, options := authorClone(t, files)
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
@@ -99,7 +99,11 @@ func TestRelease_PublishesAMovedAndARemovedFork(t *testing.T) {
 	if message := tagMessage(t, fixture, remoteDir(fixture), "release/2"); !strings.HasPrefix(message, moved) {
 		t.Fatalf("tag message:\n%s\nwant it to start with:\n%s", message, moved)
 	}
-	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    recommended: [skills/ratchet-files]\n")})
+	// The skill stops being a fork, so it moves to the library's own folder, which keeps its ID and version.
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n  skills:\n    recommended: [skills/ratchet-files]\n"), ".trailguide/skills/dzhng/ratchet-files/SKILL.md": nil, ".trailguide/skills/library/ratchet-files/SKILL.md": []byte(ratchetSkill)})
+	if err := os.RemoveAll(filepath.Join(options.Directory, ".trailguide", "skills", "dzhng")); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
 	}
@@ -116,10 +120,10 @@ func TestRelease_VersionsChangedSkillsFromTheirNotes(t *testing.T) {
 	ctx := context.Background()
 	files := ratchetLibrary()
 	files["config.yaml"] = ratchetConfig(forkBase, "offered")
-	files[".trailguide/skills/ratchet-files/SKILL.md"] = []byte(ratchetSkill)
-	files[".trailguide/skills/ratchet-files/scripts/count.sh"] = []byte("#!/bin/sh\n")
-	files[".trailguide/skills/triage/SKILL.md"] = []byte("---\nname: triage\ndescription: Triage a bug.\n---\n# Triage\n")
-	files[".trailguide/skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
+	files[".trailguide/skills/dzhng/ratchet-files/SKILL.md"] = []byte(ratchetSkill)
+	files[".trailguide/skills/dzhng/ratchet-files/scripts/count.sh"] = []byte("#!/bin/sh\n")
+	files[".trailguide/skills/library/triage/SKILL.md"] = []byte("---\nname: triage\ndescription: Triage a bug.\n---\n# Triage\n")
+	files[".trailguide/skills/library/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
 	fixture, options := authorClone(t, files)
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
@@ -128,11 +132,11 @@ func TestRelease_VersionsChangedSkillsFromTheirNotes(t *testing.T) {
 		t.Fatalf("first library release:\n%s", message)
 	}
 
-	script := filepath.Join(options.Directory, ".trailguide", "skills", "ratchet-files", "scripts", "count.sh")
+	script := filepath.Join(options.Directory, ".trailguide", "skills", "dzhng", "ratchet-files", "scripts", "count.sh")
 	if err := os.Chmod(script, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.RemoveAll(filepath.Join(options.Directory, ".trailguide", "skills", "triage")); err != nil {
+	if err := os.RemoveAll(filepath.Join(options.Directory, ".trailguide", "skills", "library", "triage")); err != nil {
 		t.Fatal(err)
 	}
 	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": ratchetConfig(movedBase, "required")})
@@ -211,8 +215,8 @@ func skillRows(skills []PendingSkill) []string {
 func TestChange_RecordsSkillNotesThatLibraryCheckAccepts(t *testing.T) {
 	ctx := context.Background()
 	files := libraryFiles()
-	files[".trailguide/skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
-	files[".trailguide/skills/triage/SKILL.md"] = []byte("---\nname: triage\ndescription: Triage a bug.\n---\n# Triage\n")
+	files[".trailguide/skills/library/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
+	files[".trailguide/skills/library/triage/SKILL.md"] = []byte("---\nname: triage\ndescription: Triage a bug.\n---\n# Triage\n")
 	_, options := authorClone(t, files, releaseOne+"skills:\n  versions:\n    skills/review: 1.0.0\n    skills/triage: 1.0.0\n  changes:\n    skills/review: {change: new, summaries: [Add the skill.]}\n    skills/triage: {change: new, summaries: [Add the skill.]}\n")
 	if _, _, err := recordChange(t, options, ChangeRequest{IDs: []string{"skills/review"}, Bump: "minor", Summary: "Check the tests."}); errorCode(err) != "unchanged-skill" || err.Error() != "skills/review hasn't changed since release/1. Edit the skill first, then record the change." {
 		t.Fatalf("got %v; want unchanged-skill", err)
@@ -224,10 +228,10 @@ func TestChange_RecordsSkillNotesThatLibraryCheckAccepts(t *testing.T) {
 		t.Fatalf("got %v; want a rule refused as a skill's replacement", err)
 	}
 	edit(t, options.Directory, map[string]string{
-		".trailguide/skills/review/SKILL.md":  "---\nname: review\ndescription: Review a change.\n---\n# Review\n\nCheck the tests.\n",
-		".trailguide/skills/triage":           "",
-		".trailguide/skills/fix-bug/SKILL.md": "---\nname: fix-bug\ndescription: Fix a bug.\n---\n# Fix a bug\n",
-		"practices/testing/verify-retries.md": ruleText("Verify retries."),
+		".trailguide/skills/library/review/SKILL.md":  "---\nname: review\ndescription: Review a change.\n---\n# Review\n\nCheck the tests.\n",
+		".trailguide/skills/library/triage":           "",
+		".trailguide/skills/library/fix-bug/SKILL.md": "---\nname: fix-bug\ndescription: Fix a bug.\n---\n# Fix a bug\n",
+		"practices/testing/verify-retries.md":         ruleText("Verify retries."),
 	})
 	for _, test := range []struct {
 		request ChangeRequest
@@ -255,13 +259,13 @@ func TestChange_RecordsSkillNotesThatLibraryCheckAccepts(t *testing.T) {
 func TestCheck_LeavesFilesGitIgnoresOutOfASkillsVersion(t *testing.T) {
 	ctx := context.Background()
 	files := libraryFiles()
-	files[".trailguide/skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
+	files[".trailguide/skills/library/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
 	files[".gitignore"] = []byte("__pycache__/\n")
 	fixture, options := authorClone(t, files)
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
 	}
-	edit(t, options.Directory, map[string]string{".trailguide/skills/review/__pycache__/check.pyc": "cache"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/library/review/__pycache__/check.pyc": "cache"})
 	checked, err := Check(ctx, options)
 	if err != nil || len(checked.PendingRelease.Skills) != 0 {
 		t.Fatalf("pending skills %+v: %v", checked.PendingRelease.Skills, err)
@@ -277,12 +281,12 @@ func TestCheck_LeavesFilesGitIgnoresOutOfASkillsVersion(t *testing.T) {
 func TestRelease_RecordsOnlySkillsItsCommitDelivers(t *testing.T) {
 	ctx := context.Background()
 	files := libraryFiles()
-	files[".gitignore"] = []byte(".trailguide/skills/local/\n")
+	files[".gitignore"] = []byte(".trailguide/skills/library/local/\n")
 	fixture, options := authorClone(t, files)
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
 	}
-	edit(t, options.Directory, map[string]string{".trailguide/skills/local/SKILL.md": "---\nname: local\ndescription: A personal skill.\n---\n# Local\n"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/library/local/SKILL.md": "---\nname: local\ndescription: A personal skill.\n---\n# Local\n"})
 	checked, err := Check(ctx, options)
 	if err != nil || checked.SkillCount != 0 || len(checked.PendingRelease.Skills) != 0 {
 		t.Fatalf("%+v: %v", checked, err)
@@ -301,21 +305,21 @@ func TestRelease_RecordsOnlySkillsItsCommitDelivers(t *testing.T) {
 func TestRelease_RefusesAnExecutableBitItsCommitLacks(t *testing.T) {
 	ctx := context.Background()
 	files := libraryFiles()
-	files[".trailguide/skills/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
-	files[".trailguide/skills/review/scripts/lint.sh"] = []byte("#!/bin/sh\n")
+	files[".trailguide/skills/library/review/SKILL.md"] = []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n")
+	files[".trailguide/skills/library/review/scripts/lint.sh"] = []byte("#!/bin/sh\n")
 	fixture, options := authorClone(t, files)
 	if _, err := Release(ctx, ReleaseRequest{Options: options}); err != nil {
 		t.Fatal(err)
 	}
 	commitAndPush(t, fixture, options.Directory, map[string][]byte{"changes/review.yaml": []byte("summary: Run the lint script directly.\nskills:\n  skills/review: patch\n")})
-	if err := os.Chmod(filepath.Join(options.Directory, ".trailguide", "skills", "review", "scripts", "lint.sh"), 0o755); err != nil {
+	if err := os.Chmod(filepath.Join(options.Directory, ".trailguide", "skills", "library", "review", "scripts", "lint.sh"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if checked, err := Check(ctx, options); err != nil || len(checked.PendingRelease.Skills) != 1 || checked.PendingRelease.Skills[0].To.String() != "1.0.1" {
 		t.Fatalf("%+v: %v", checked.PendingRelease.Skills, err)
 	}
 	_, err := Release(ctx, ReleaseRequest{Options: options})
-	if errorCode(err) != "uncommitted-changes" || !strings.Contains(err.Error(), "  - .trailguide/skills/review/scripts/lint.sh has an executable bit that differs from its committed copy\n") || strings.Contains(tags(t, fixture, remoteDir(fixture)), "release/2") {
+	if errorCode(err) != "uncommitted-changes" || !strings.Contains(err.Error(), "  - .trailguide/skills/library/review/scripts/lint.sh has an executable bit that differs from its committed copy\n") || strings.Contains(tags(t, fixture, remoteDir(fixture)), "release/2") {
 		t.Fatalf("got %v; want the uncommitted executable bit refused", err)
 	}
 }

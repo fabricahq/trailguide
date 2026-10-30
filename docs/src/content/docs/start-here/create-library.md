@@ -27,7 +27,7 @@ trailguide library init
 
 `engineering-rules` is an example repository name; you can choose another. `trailguide library init` creates:
 
-- `.trailguide/config.yaml`, with a `library` section, the **manifest**, that makes the repository a library.
+- `.trailguide/config.yaml`, with a `library` section, the **manifest**, that makes the repository a library. It names the library `engineering-rules`, after its folder; pass `--name` to choose another [name](/reference/library-schema/#library-name).
 - `.trailguide/rules/` and `.trailguide/skills/`, where you write the rules and skills the library publishes.
 - A README for authors at the repository root.
 - `.github/workflows/trailguide.yml`, which checks pull requests once the library is on GitHub.
@@ -126,7 +126,8 @@ For example, if you choose MIT for your own rules, add the complete MIT text wit
 schemaVersion: 2
 sources: {}
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: engineering-rules
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -204,7 +205,7 @@ Other projects can take rules from the same library. You maintain the shared rul
 
 ## Optional: add a skill
 
-A library can also hold **skills**: coarser-grained playbooks, such as how to fix a reported bug, that cite the rules they apply. Skills live in `.trailguide/skills/` beside your rules and are versioned like rules. Create a draft:
+A library can also hold **skills**: coarser-grained playbooks, such as how to fix a reported bug, that cite the rules they apply. Skills live in `.trailguide/skills/` beside your rules, in a folder named for the library, and are versioned like rules. Create a draft:
 
 ```sh
 trailguide library add skill fix-bug \
@@ -212,7 +213,7 @@ trailguide library add skill fix-bug \
   --type playbook
 ```
 
-Complete `.trailguide/skills/fix-bug/SKILL.md`, list the rules its steps apply, such as `practices/error-handling/make-errors-actionable`, in its `trailguide-rules-used` metadata, and run `trailguide library check`. The skill is offered: projects install it only when they name it. To recommend it to every project, or require it, add it to the manifest's `library.skills` levels; see [Skill levels](/reference/library-schema/#skill-levels). Your library has published its first library release, so record the new skill with `trailguide library change skills/fix-bug --summary '...'` before you publish the next one. [Write a skill](/guides/write-skills/) walks through each step.
+Complete `.trailguide/skills/engineering-rules/fix-bug/SKILL.md`, list the rules its steps apply, such as `practices/error-handling/make-errors-actionable`, in its `trailguide-rules-used` metadata, and run `trailguide library check`. The skill is offered: projects install it only when they name it. To recommend it to every project, or require it, add it to the manifest's `library.skills` levels; see [Skill levels](/reference/library-schema/#skill-levels). Your library has published its first library release, so record the new skill with `trailguide library change skills/fix-bug --summary '...'` before you publish the next one. [Write a skill](/guides/write-skills/) walks through each step.
 
 ## Next steps
 

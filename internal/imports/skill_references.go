@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/skillrefs"
 )
 
@@ -38,7 +39,7 @@ func (r *repository) retainReferences(ctx context.Context, in referenceInput) (m
 	view.input.total = in.retained
 	retention := skillrefs.Retention{View: view, Origin: in.origin, Absent: skillrefs.Missing, AbsentProblem: "the revision doesn't have.", Source: in.source, Revision: in.revision}
 	for _, id := range slices.Sorted(maps.Keys(in.folders)) {
-		folder, _ := in.origin.Path(id)
+		folder, _ := in.origin.Path(library.SkillFolderIn(in.folders[id], id))
 		retention.Folders = append(retention.Folders, folder)
 		if slices.Contains(in.excluded, id) {
 			retention.Reading = append(retention.Reading, folder)

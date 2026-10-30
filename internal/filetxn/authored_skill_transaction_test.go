@@ -14,42 +14,49 @@ import (
 )
 
 // TestApply_ReplacesAnAuthoredSkillWithTheConfiguration replaces the fork's folder, dropping a file the merge
-// removed and keeping the executable bit of the files listed, in the transaction that replaces the configuration.
+// removed and keeping the executable bit of the files listed, in the transaction that replaces the configuration,
+// including in the origin folder of a source whose name has a doubled hyphen, which a skill name can't have.
 func TestApply_ReplacesAnAuthoredSkillWithTheConfiguration(t *testing.T) {
-	_, root := openSkillProject(t)
-	writeFixture(t, root, "config.yaml", "old config")
-	writeFixture(t, root, "skills/build/SKILL.md", "old fork")
-	writeFixture(t, root, "skills/build/notes.md", "dropped")
-	output := map[Target]map[string][]byte{
-		Config:                 {"config.yaml": []byte("new config")},
-		AuthoredSkill("build"): {"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")},
-	}
-	executable := map[Target][]string{AuthoredSkill("build"): {"scripts/check.sh"}}
-	if err := WithWriter(context.Background(), root, func(w *Writer) error { return w.ApplyModes(output, executable, nil) }); err != nil {
-		t.Fatal(err)
-	}
-	tree, err := ReadTree(context.Background(), root, "skills/build")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := &Tree{Files: map[string][]byte{"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")}, Directories: []string{"scripts"}, Executable: []string{"scripts/check.sh"}}
-	if !reflect.DeepEqual(tree, want) {
-		t.Fatalf("fork = %+v; want %+v", tree, want)
-	}
-	if data, err := root.ReadFile("config.yaml"); err != nil || string(data) != "new config" {
-		t.Fatalf("config = %q, %v", data, err)
+	for _, origin := range []string{"fabrica", "team--tools"} {
+		_, root := openSkillProject(t)
+		writeFixture(t, root, "config.yaml", "old config")
+		writeFixture(t, root, "skills/"+origin+"/build/SKILL.md", "old fork")
+		writeFixture(t, root, "skills/"+origin+"/build/notes.md", "dropped")
+		output := map[Target]map[string][]byte{
+			Config:                         {"config.yaml": []byte("new config")},
+			AuthoredSkill(origin, "build"): {"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")},
+		}
+		executable := map[Target][]string{AuthoredSkill(origin, "build"): {"scripts/check.sh"}}
+		if err := WithWriter(context.Background(), root, func(w *Writer) error { return w.ApplyModes(output, executable, nil) }); err != nil {
+			t.Fatal(origin, err)
+		}
+		tree, err := ReadTree(context.Background(), root, "skills/"+origin+"/build")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := &Tree{Files: map[string][]byte{"SKILL.md": []byte("merged fork"), "scripts/check.sh": []byte("#!/bin/sh\n")}, Directories: []string{"scripts"}, Executable: []string{"scripts/check.sh"}}
+		if !reflect.DeepEqual(tree, want) {
+			t.Fatalf("fork = %+v; want %+v", tree, want)
+		}
+		if data, err := root.ReadFile("config.yaml"); err != nil || string(data) != "new config" {
+			t.Fatalf("config = %q, %v", data, err)
+		}
 	}
 }
 
-// TestApply_RefusesInvalidAuthoredSkillTargets refuses a folder that isn't a valid skill name directly under skills/,
-// and removing a fork's folder, which only the person who owns the fork does.
+// TestApply_RefusesInvalidAuthoredSkillTargets refuses a folder that isn't a valid skill name in an origin folder,
+// a skill folder directly under skills/, which only older journals name, and removing a fork's folder, which only
+// the person who owns the fork does.
 func TestApply_RefusesInvalidAuthoredSkillTargets(t *testing.T) {
 	_, root := openSkillProject(t)
 	for _, output := range []map[Target]map[string][]byte{
 		{"skills/Build": {"SKILL.md": []byte("x")}},
-		{"skills/build/nested": {"SKILL.md": []byte("x")}},
+		{"skills/build": {"SKILL.md": []byte("x")}},
+		{"skills/fabrica/build/nested": {"SKILL.md": []byte("x")}},
+		{"skills/Fabrica/build": {"SKILL.md": []byte("x")}},
+		{"skills/fabrica/build--it": {"SKILL.md": []byte("x")}},
 		{"skills": {"build/SKILL.md": []byte("x")}},
-		{AuthoredSkill("build"): nil},
+		{AuthoredSkill("fabrica", "build"): nil},
 	} {
 		projectCode(t, WithWriter(context.Background(), root, func(w *Writer) error { return w.Apply(output, nil) }), "invalid-target")
 	}
@@ -59,18 +66,40 @@ func TestApply_RefusesInvalidAuthoredSkillTargets(t *testing.T) {
 // 9 as invalid, leaving the fork as it is.
 func TestRecovery_RefusesAnAuthoredSkillInAnOlderJournal(t *testing.T) {
 	_, root := openSkillProject(t)
-	writeFixture(t, root, "skills/build/SKILL.md", "old fork")
+	writeFixture(t, root, "skills/fabrica/build/SKILL.md", "old fork")
 	folder := &Tree{Files: map[string][]byte{"SKILL.md": []byte("old fork")}}
 	if err := root.Mkdir(transactionName, 0700); err != nil {
 		t.Fatal(err)
 	}
-	record := journalRecord{FormatVersion: 8, Entries: []journalEntry{{AuthoredSkill("build"), treeDigest(folder), treeDigest(&Tree{Files: map[string][]byte{"SKILL.md": []byte("new fork")}}), true}}}
+	record := journalRecord{FormatVersion: 8, Entries: []journalEntry{{AuthoredSkill("fabrica", "build"), treeDigest(folder), treeDigest(&Tree{Files: map[string][]byte{"SKILL.md": []byte("new fork")}}), true}}}
 	if err := durableJSON(root, transactionName+"/journal.json", record); err != nil {
 		t.Fatal(err)
 	}
 	projectCode(t, WithWriter(context.Background(), root, func(*Writer) error { return nil }), "recovery-required")
-	if data, err := root.ReadFile("skills/build/SKILL.md"); err != nil || string(data) != "old fork" {
+	if data, err := root.ReadFile("skills/fabrica/build/SKILL.md"); err != nil || string(data) != "old fork" {
 		t.Fatalf("recovery changed the fork: %q, %v", data, err)
+	}
+}
+
+// TestRecovery_RefusesAnAuthoredSkillInTheOtherJournalsLayout treats a skill folder directly under skills/ in a
+// journal of format 12, and one in an origin folder in a journal of format 11, as invalid, since each format names
+// authored skills only one way.
+func TestRecovery_RefusesAnAuthoredSkillInTheOtherJournalsLayout(t *testing.T) {
+	for _, test := range []struct {
+		target  Target
+		version int
+	}{{"skills/build", 12}, {AuthoredSkill("fabrica", "build"), 11}} {
+		_, root := openSkillProject(t)
+		writeFixture(t, root, "skills/fabrica/build/SKILL.md", "old fork")
+		folder := &Tree{Files: map[string][]byte{"SKILL.md": []byte("old fork")}}
+		if err := root.Mkdir(transactionName, 0700); err != nil {
+			t.Fatal(err)
+		}
+		record := journalRecord{FormatVersion: test.version, Entries: []journalEntry{{test.target, treeDigest(folder), treeDigest(&Tree{Files: map[string][]byte{"SKILL.md": []byte("new fork")}}), true}}}
+		if err := durableJSON(root, transactionName+"/journal.json", record); err != nil {
+			t.Fatal(err)
+		}
+		projectCode(t, WithWriter(context.Background(), root, func(*Writer) error { return nil }), "recovery-required")
 	}
 }
 
@@ -81,7 +110,7 @@ func authoredSkillUpdate() map[Target]map[string][]byte {
 		Config:                              {"config.yaml": []byte("new config")},
 		Vendor:                              {"team/rule.md": []byte("new rule")},
 		Generated:                           {"RULES.md": []byte("new output")},
-		AuthoredSkill("build"):              {"SKILL.md": []byte("new fork")},
+		AuthoredSkill("fabrica", "build"):   {"SKILL.md": []byte("new fork")},
 		SkillFolder(".claude/skills/build"): {"SKILL.md": []byte("new fork")},
 	}
 }
@@ -120,15 +149,15 @@ func TestKilledAuthoredSkillWriterRecovers(t *testing.T) {
 	for _, test := range []struct{ name, stop, state string }{
 		{"configuration", "config.yaml", "old"},
 		{"installed copy", ".claude/skills/build", "old"},
-		{"fork backed up", transactionName + "/" + backupPrefix + "skills+build", "old"},
-		{"fork", "skills/build", "old"},
+		{"fork backed up", transactionName + "/" + backupPrefix + "skills+fabrica+build", "old"},
+		{"fork", "skills/fabrica/build", "old"},
 		{"committed", transactionName + "/committed.json", "new"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repository, root := openSkillProject(t)
 			writeFixture(t, root, "config.yaml", "old config")
-			writeFixture(t, root, "skills/build/SKILL.md", "old fork")
-			writeFixture(t, root, "skills/build/notes.md", "old notes")
+			writeFixture(t, root, "skills/fabrica/build/SKILL.md", "old fork")
+			writeFixture(t, root, "skills/fabrica/build/notes.md", "old notes")
 			child := exec.Command(os.Args[0], "-test.run=^TestKilledAuthoredSkillWriterRecovers$")
 			child.Env = append(os.Environ(), "TRAILGUIDE_AUTHORED_CHILD="+root.Name(), "TRAILGUIDE_AUTHORED_STOP="+test.stop)
 			output, err := child.CombinedOutput()
@@ -149,7 +178,7 @@ func TestKilledAuthoredSkillWriterRecovers(t *testing.T) {
 			if data, err := root.ReadFile("config.yaml"); err != nil || string(data) != test.state+" config" {
 				t.Fatalf("config = %q, %v; want %s config", data, err, test.state)
 			}
-			tree, err := ReadTree(context.Background(), root, "skills/build")
+			tree, err := ReadTree(context.Background(), root, "skills/fabrica/build")
 			if err != nil || tree == nil || !reflect.DeepEqual(tree.Files, fork) {
 				t.Fatalf("fork = %+v, %v; want %q", tree, err, fork)
 			}

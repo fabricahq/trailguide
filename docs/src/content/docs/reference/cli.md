@@ -130,7 +130,7 @@ If the rule links to files in the library's shared `.trailguide/assets/` directo
 trailguide project add skill NAME [options]
 ```
 
-Create an authored skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `release-checklist`; the skill's ID is `skills/NAME`.
+Create an authored skill in `.trailguide/skills/local/NAME/`, the folder for the project's own skills, or `.trailguide/skills/<library.name>/NAME/` when the repository is also a library. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `release-checklist`; the skill's ID is `skills/NAME`.
 
 | Option | Meaning |
 | --- | --- |
@@ -138,7 +138,7 @@ Create an authored skill in `.trailguide/skills/NAME/`. `NAME` follows the [skil
 | `--type TYPE` | Optional. `playbook` or `review`, recorded as `trailguide-skill-type`. See [Skill types](/concepts/skill/#skill-types). |
 | `--non-interactive` | Never prompt. Supply all required inputs as flags. |
 
-The command writes `SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete it and remove the marker before building; an authored skill that still has the marker fails sync and build. An authored skill cites your own rules by their IDs and rules from sources by project ID, such as `fabrica:practices/testing/verify-retry-limits`; see [Skills in a project](/reference/skill-format/#skills-in-a-project). In a library, use [library add skill](#library-add-skill) instead, whose skills cite only the library's own rules. Existing skills are not overwritten. When a skill the repository installs from a source already has the name, the command warns that sync will fail with `skill-name-clash` until you rename or exclude one of them.
+The command writes `SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete it and remove the marker before building; an authored skill that still has the marker fails sync and build. An authored skill cites your own rules by their IDs and rules from sources by project ID, such as `fabrica:practices/testing/verify-retry-limits`; see [Skills in a project](/reference/skill-format/#skills-in-a-project). In a library, use [library add skill](#library-add-skill) instead, whose skills cite only the library's own rules. Existing skills are not overwritten, and the command refuses a name that another of the repository's skills has in any origin folder. When a skill the repository installs from a source already has the name, the command warns that sync will fail with `skill-name-clash` until you rename or exclude one of them.
 
 #### Fork a skill
 
@@ -146,7 +146,7 @@ The command writes `SKILL.md` with the name, description, and type in its frontm
 trailguide project add skill --from SOURCE:SKILL [options]
 ```
 
-Copy a skill the project installs into `.trailguide/skills/` so the project controls its steps. `SOURCE:SKILL` names a configured source and the skill's ID in it, such as `fabrica:skills/fix-bug`, or a skill the source's library [curates](/reference/configuration/#curated-skills), by its project ID without the source's name repeated, such as `fabrica:mattpocock:skills/to-spec`. The fork keeps the skill's name, so leave out `NAME`.
+Copy a skill the project installs into `.trailguide/skills/<source>/`, the folder for forks of that source's skills, so the project controls its steps. `SOURCE:SKILL` names a configured source and the skill's ID in it, such as `fabrica:skills/fix-bug`, or a skill the source's library [curates](/reference/configuration/#curated-skills), by its project ID without the source's name repeated, such as `fabrica:mattpocock:skills/to-spec`. The fork keeps the skill's name, so leave out `NAME`.
 
 | Option | Meaning |
 | --- | --- |
@@ -156,7 +156,7 @@ Copy a skill the project installs into `.trailguide/skills/` so the project cont
 
 `--description` and `--type` don't apply to a fork. The command:
 
-1. Copies the skill's folder from `_managed/vendor/`, exactly as the project installs it, with every file's executable bit, to `.trailguide/skills/<name>/`: the version `lock.json` records for the source, or, for a non-library source, the locked commit. A curated skill comes from the commit the library's entry holds for the repository the library curates it from. A renamed skill's fork takes its install name, so the folder and `name` match what agents already see, and the fork's entry in step 3 replaces the skill's `skills.rename` entry.
+1. Copies the skill's folder from `_managed/vendor/`, exactly as the project installs it, with every file's executable bit, to `.trailguide/skills/<source>/<name>/`, such as `.trailguide/skills/fabrica/fix-bug/`: the version `lock.json` records for the source, or, for a non-library source, the locked commit. A curated skill comes from the commit the library's entry holds for the repository the library curates it from. A renamed skill's fork takes its install name, so the folder and `name` match what agents already see, and the fork's entry in step 3 replaces the skill's `skills.rename` entry.
 2. Rewrites the fork's `trailguide-rules-used` and `trailguide-skills-used` to project IDs, such as `fabrica:practices/testing/verify-retry-limits`, because an authored skill cites rules and skills from sources by project ID. For a non-library source, it writes the skills that `skills.uses` lists for the skill into `trailguide-skills-used`. A curated skill's uses name skills of the repository it comes from, which the library curates with it, such as `fabrica:mattpocock:skills/grilling`; a curated skill that cites rules of a curated library is forked as a draft for you to remove them from, since a project takes no rules from a curated source.
 3. Adds a [`skills.forks`](/reference/configuration/#fork-a-skill) entry for the skill with `skills/<name>` as `as`, the full commit SHA it copied as `basedOn`, and your reason. For a curated skill, the entry goes under the library's source, such as `fabrica`, with the curated skill's ID, and `basedOn` is the commit of the repository the library curates it from. If you changed that source's configuration since its last sync, run `trailguide project sync` first.
 
@@ -425,6 +425,7 @@ The workflow, `.github/workflows/trailguide.yml`, runs `trailguide library check
 | Option | Meaning |
 | --- | --- |
 | `--directory PATH` | Directory to operate in. Defaults to your working directory; repository discovery applies. Init must target the repository root. |
+| `--name NAME` | The library's [name](/reference/library-schema/#library-name), which names the folder of its own skills, `.trailguide/skills/NAME/`. Defaults to the repository folder's name, lowercased with each run of other characters turned into a hyphen, or `library` when that isn't a valid name. Ignored when the configuration already has a `library` section. |
 | `--spdx EXPRESSION` | Library SPDX expression. Must be supplied together with `--license-file`. |
 | `--license-file PATH` | UTF-8 license text to copy to `LICENSE.md`. Relative to your working directory, even with `--directory`. |
 | `--notice-file PATH` | Optional UTF-8 notice text to copy to `NOTICE.md`. Requires both license options. Relative to your working directory. |
@@ -476,7 +477,7 @@ Create the rule group first with `trailguide library add group`; rule creation d
 trailguide library add skill NAME [options]
 ```
 
-Create a skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `fix-bug`; the skill's ID is `skills/NAME`. A new skill that the manifest's levels don't list is offered; to require or recommend it, add it to `library.skills`. See [Skill levels](/reference/library-schema/#skill-levels).
+Create a skill in `.trailguide/skills/<library.name>/NAME/`, the folder for the library's own skills. `NAME` follows the [skill name grammar](/reference/skill-format/#skill-ids), such as `fix-bug`; the skill's ID is `skills/NAME`. A new skill that the manifest's levels don't list is offered; to require or recommend it, add it to `library.skills`. See [Skill levels](/reference/library-schema/#skill-levels).
 
 | Option | Meaning |
 | --- | --- |
@@ -485,7 +486,7 @@ Create a skill in `.trailguide/skills/NAME/`. `NAME` follows the [skill name gra
 | `--type TYPE` | Optional. `playbook` or `review`, recorded as `trailguide-skill-type`. See [Skill types](/concepts/skill/#skill-types). |
 | `--non-interactive` | Never prompt. Supply all required inputs as flags. |
 
-The command writes `.trailguide/skills/NAME/SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete the draft and remove the marker before validation; see [Write a skill](/guides/write-skills/). An invalid name, or a description that's blank or too long, fails before prompts with exit code `2`. Existing skills are not overwritten.
+The command writes `.trailguide/skills/<library.name>/NAME/SKILL.md` with the name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. Complete the draft and remove the marker before validation; see [Write a skill](/guides/write-skills/). An invalid name, or a description that's blank or too long, fails before prompts with exit code `2`. Existing skills are not overwritten, and the command refuses a name that another of the library's skills has in any origin folder.
 
 After the first library release, the next steps include adding the new skill's change note with `trailguide library change`. Like `trailguide library check`, it fails with instructions in a shallow clone, or a clone with change notes but no release tags, where it can't tell whether the library has a library release.
 
@@ -495,7 +496,7 @@ After the first library release, the next steps include adding the new skill's c
 trailguide library add skill --from SOURCE:SKILL [options]
 ```
 
-Copy a skill from a source the library declares into `.trailguide/skills/`, so the library publishes its own version of it. `SOURCE:SKILL` names a source in the library's `sources` and the skill's ID in its repository, such as `pstack:pstack/skills/show-me-your-work`. The fork keeps the skill's name, so leave out `NAME`.
+Copy a skill from a source the library declares into `.trailguide/skills/<source>/`, the folder for forks of that source's skills, so the library publishes its own version of it. `SOURCE:SKILL` names a source in the library's `sources` and the skill's ID in its repository, such as `pstack:pstack/skills/show-me-your-work`. The fork keeps the skill's name, so leave out `NAME`.
 
 | Option | Meaning |
 | --- | --- |
@@ -506,7 +507,7 @@ Copy a skill from a source the library declares into `.trailguide/skills/`, so t
 
 The command:
 
-1. Copies the skill's folder from the source's repository, with every file's executable bit, to `.trailguide/skills/<name>/`, where `<name>` is the skill's name, or the name the source's `skills.rename` gives it. It reads the source as library check does, so it needs access to the repository.
+1. Copies the skill's folder from the source's repository, with every file's executable bit, to `.trailguide/skills/<source>/<name>/`, such as `.trailguide/skills/pstack/show-me-your-work/`, where `<name>` is the skill's name, or the name the source's `skills.rename` gives it. It reads the source as library check does, so it needs access to the repository.
 2. Rewrites the fork's `trailguide-skills-used` so each skill it uses, including those the source's `skills.uses` adds for it, names the library's fork of it, such as `skills/tdd`, when the library has forked it, and otherwise names it as a skill the library [curates](/reference/configuration/#curated-skills), with the source's name, such as `pstack:skills/tdd`. Projects install a curated skill only when `library.skills` lists it, so a skill that uses one the library neither forked nor lists is refused: list that skill in `library.skills`, at a level or as a dependency, or fork it first. A skill that cites rules of a library source is forked as a draft for you to remove them from, because a library's skills cite only its own rules.
 3. Adds a [`skills.forks`](/reference/configuration/#fork-a-skill) entry for the skill to the source, with `skills/<name>` as `as`, the full commit SHA it copied as `basedOn`, and your reason. The library repository is a project too, so the entry records where the fork came from the way a [project's fork](#fork-a-skill) does, and the library's own agents use the fork in place of the source's skill. The source needs no `skills.include` entry for the skill.
 4. When `library.skills` lists the skill as one the library curates, such as `pstack:pstack/skills/show-me-your-work`, lists `skills/<name>` in its place, at the same level. Otherwise the fork is offered.

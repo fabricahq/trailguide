@@ -49,7 +49,7 @@ func snapshotFixture(t *testing.T) (rules.Configuration, map[string]snapshot) {
 	return config, map[string]snapshot{"team": {Repository: config.Sources[0].Repository, RetiredRules: []string{}, Release: 2, Commit: releaseTwo, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{},
 		Rules: map[string]library.ImportedRule{"techs/go/errors": {Version: &two, Release: 2, Commit: releaseTwo}, "techs/go/naming": {Version: &one, Release: 1, Commit: releaseOne, LegacyLayout: true}},
 		Files: map[string][]byte{
-			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 			"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go rules","whenToRead":"When editing Go."}`),
 			"techs/go/errors.md":   []byte(projectRule),
 			"techs/go/naming.md":   []byte(projectRule),
@@ -562,7 +562,7 @@ func TestSnapshotRefChecks(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			config := snapshotConfig(t, `"rules":{"include":["techs/go/*"]},"ref":"`+test.ref+`"`)
-			files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`), "techs/go/_group.yaml": []byte(`{}`)}
+			files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`), "techs/go/_group.yaml": []byte(`{}`)}
 			item := snapshot{Repository: config.Sources[0].Repository, Ref: gitRef(t, test.ref), Release: test.release, Commit: test.commit, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{}, Rules: test.rules, Files: files}
 			_, err := encodeStored(config, map[string]snapshot{"team": item})
 			if (err == nil) != test.ok {
@@ -767,12 +767,12 @@ func TestSnapshotManifestIsReadAsTheLibrarysConsumer(t *testing.T) {
 		manifest, location string
 		unsupported        bool
 	}{
-		"the published contract":     {manifest: `{"library":{"schemaVersion":1},"sources":{}}`},
-		"project settings":           {manifest: `{"schemaVersion":9,"skillTargets":["future"],"sources":{"own":{"repository":"not an address"}},"library":{"schemaVersion":1}}`},
-		"an unknown manifest field":  {manifest: `{"library":{"schemaVersion":1,"description":"Shared rules."},"sources":{}}`},
+		"the published contract":     {manifest: `{"library":{"schemaVersion":2,"name":"library"},"sources":{}}`},
+		"project settings":           {manifest: `{"schemaVersion":9,"skillTargets":["future"],"sources":{"own":{"repository":"not an address"}},"library":{"schemaVersion":2,"name":"library"}}`},
+		"an unknown manifest field":  {manifest: `{"library":{"schemaVersion":2,"name":"library","description":"Shared rules."},"sources":{}}`},
 		"no schema version":          {manifest: `{"library":{},"sources":{}}`, location: "team/.trailguide/config.yaml: library.schemaVersion"},
 		"a malformed schema version": {manifest: `{"library":{"schemaVersion":"1"},"sources":{}}`, location: "team/.trailguide/config.yaml: library.schemaVersion"},
-		"another schema version":     {manifest: `{"library":{"schemaVersion":2},"sources":{}}`, unsupported: true},
+		"another schema version":     {manifest: `{"library":{"schemaVersion":3},"sources":{}}`, unsupported: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			config, input := snapshotFixture(t)
@@ -791,7 +791,7 @@ func TestSnapshotManifestIsReadAsTheLibrarysConsumer(t *testing.T) {
 			var unsupported *trailguide.UnsupportedLibrarySchemaError
 			switch {
 			case test.unsupported:
-				if !errors.As(err, &unsupported) || unsupported.SchemaVersion != 2 {
+				if !errors.As(err, &unsupported) || unsupported.SchemaVersion != 3 {
 					t.Fatalf("got %v; want an unsupported library schema version", err)
 				}
 			case test.location != "":

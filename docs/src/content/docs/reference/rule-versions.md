@@ -20,10 +20,12 @@ A rule version covers the rule itself:
 
 A project that takes a rule version gets exactly these files as they were in that version.
 
-A skill version covers the skill's whole folder, `.trailguide/skills/<name>/`:
+A skill version covers the skill's whole folder, `.trailguide/skills/<origin>/<name>/`:
 
 - Every file in the folder that Git tracks, including `SKILL.md`, scripts, references, and assets. Files Git ignores aren't part of any version, and a folder whose `SKILL.md` Git ignores isn't one of the library's skills.
 - Each file's executable bit, so making a script executable, or no longer executable, is a change to the skill.
+
+The [origin folder](/reference/skill-format/#skill-folders) isn't part of the version, so moving a skill to another origin folder, such as when the library stops tracking a fork, doesn't change it.
 
 A project that installs a skill version gets exactly these files, with their modes, as they were in that version. Unlike a rule's, a skill's version isn't chosen on its own: a project installs all of a source's skills from the library release that supplies its library-wide files, described next, and the skill's version tells you what changed. The skills it uses come from that library release too. The rules it cites aren't part of its version: each has its own version, and a project takes each at the version its configuration chooses. A skill's [level](/reference/library-schema/#skill-levels) isn't part of its version either, nor is the fork a source's `skills.forks` records for it: both are set in the manifest, a library-wide file. The release notes still name a skill whose level or fork changed; see [GitHub Release pages](#github-release-pages).
 

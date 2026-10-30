@@ -104,7 +104,8 @@ sources:
     repository: https://github.com/anthropics/skills.git
     ref: main
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: library
   license:
     spdxExpression: MIT
     file: LICENSE.md

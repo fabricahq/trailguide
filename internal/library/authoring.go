@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/gitexec"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -186,12 +188,34 @@ func libraryManifest(ctx context.Context, root *os.Root) (map[string][]byte, *tr
 	return declaredTerms(ctx, root, data, nil)
 }
 
+// defaultLibraryName returns the library name folder, the library folder's name, suggests: in lowercase, with each
+// run of other characters than letters and digits as one hyphen, and without leading digits and hyphens or a
+// trailing hyphen, such as acme-rules for Acme_Rules. A folder whose name leaves nothing, or leaves local, which
+// names a project's own skills, suggests library.
+func defaultLibraryName(folder string) string {
+	var name strings.Builder
+	for _, r := range strings.ToLower(folder) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9' && name.Len() > 0:
+			name.WriteRune(r)
+		case name.Len() > 0 && !strings.HasSuffix(name.String(), "-"):
+			name.WriteByte('-')
+		}
+	}
+	result := strings.TrimSuffix(name.String(), "-")
+	if !skills.ValidSourceName(result) || result == skills.LocalOrigin {
+		return "library"
+	}
+	return result
+}
+
 // Initialize creates missing scaffolding and explicit terms without overwriting existing terms, README, or check
 // workflow. It adds a library section to .trailguide/config.yaml, creating the configuration when it's missing and
-// keeping an existing one's sources and comments; an existing library section stays unchanged. The workflow installs
-// trailguideVersion, an unprefixed version such as 0.2.0, from the Trail Guide release tagged with it, or the latest
-// release for a 0.0.0- development build.
-func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVersion string) (AuthoringResult, error) {
+// keeping an existing one's sources and comments; an existing library section stays unchanged. The new section's
+// name is name, or, when name is empty, the library folder's name when that is a valid library name. The workflow
+// installs trailguideVersion, an unprefixed version such as 0.2.0, from the Trail Guide release tagged with it, or
+// the latest release for a 0.0.0- development build.
+func Initialize(ctx context.Context, options Options, name string, terms *Terms, trailguideVersion string) (AuthoringResult, error) {
 	workflow, err := checkWorkflowFor(trailguideVersion)
 	if err != nil {
 		return AuthoringResult{}, err
@@ -226,10 +250,14 @@ func Initialize(ctx context.Context, options Options, terms *Terms, trailguideVe
 		planned := map[string][]byte{}
 		if declared == nil {
 			// A struct keeps schemaVersion first in the section, where a map would sort it after license.
+			if name == "" {
+				name = defaultLibraryName(filepath.Base(root.Name()))
+			}
 			section := struct {
 				SchemaVersion int            `yaml:"schemaVersion"`
+				Name          string         `yaml:"name"`
 				License       map[string]any `yaml:"license,omitempty"`
-			}{SchemaVersion: trailguide.LibrarySchemaVersion}
+			}{SchemaVersion: trailguide.LibrarySchemaVersion, Name: name}
 			if terms != nil {
 				notices := []string{}
 				if terms.Notice != nil {

@@ -75,7 +75,7 @@ Some rules a skill cites aren't listed in `RULES.md`, because the project takes 
 
 If a skill's step and a rule disagree, follow the rule and report the conflict, naming the skill's ID and version from its marker line and the rule's ID and version, so someone can fix the skill. If a step can't be followed, such as when it names a script or rule that isn't there, stop and report it rather than improvising a substitute.
 
-Don't edit installed copies; sync rewrites them. To change a skill for this project, fork it with `trailguide project add skill --from`, which copies it into `.trailguide/skills/`; see [Write a skill](/guides/write-skills/). A skill the project's library requires can't be forked or excluded; report the problem to the user instead.
+Don't edit installed copies; sync rewrites them. To change a skill for this project, fork it with `trailguide project add skill --from`, which copies it into `.trailguide/skills/<source>/`; see [Write a skill](/guides/write-skills/). A skill the project's library requires can't be forked or excluded; report the problem to the user instead.
 
 When `trailguide project sync`, `update`, or `check` warns that a personal skill has the same name as one the project installs, tell the user: some agents use the personal skill instead of the project's. Don't rename or remove the user's personal skills yourself.
 

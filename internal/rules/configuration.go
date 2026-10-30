@@ -654,3 +654,19 @@ func parseExclusions(input json.RawMessage, location string) (map[string]Exclusi
 	}
 	return result, nil
 }
+
+// SkillOrigins returns which origin folder of skills/ each of the configuration's authored skills belongs in: the
+// library's name for its own skills, or skills.LocalOrigin when the repository isn't a library, and the source's
+// name for each skill that forks one of the source's skills.
+func (c Configuration) SkillOrigins() skills.Origins {
+	origins := skills.Origins{Own: skills.LocalOrigin, Forks: map[string]string{}}
+	if c.Library != nil {
+		origins.Own = c.Library.Name
+	}
+	for _, source := range c.Sources {
+		for _, fork := range source.SkillForks {
+			origins.Forks[strings.TrimPrefix(fork.As, skills.Directory+"/")] = source.Name
+		}
+	}
+	return origins
+}
