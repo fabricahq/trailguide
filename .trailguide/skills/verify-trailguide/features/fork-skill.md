@@ -1,0 +1,33 @@
+# Fork a skill with links
+
+A user forks an installed skill with `trailguide project add skill --from SOURCE:SKILL`, which copies its folder, linked files inside it included, into `.trailguide/skills/`. The fork installs in place of the source's skill, and links from other installed skills into the forked skill reach the fork's files. When the fork lacks a file another skill links to, build fails with `reference-replacement-missing` and names the repairs.
+
+## Sub-features
+
+- `fork-copy` copies the skill's folder, including files its links reach inside it, and records the fork in `config.yaml`.
+- `fork-install` installs the fork in place of the source's skill after build.
+- `fork-links` points other installed skills' links into the forked skill at the fork's files.
+- `fork-missing` fails build with `reference-replacement-missing` when the fork lacks a file another skill links to, and writes nothing.
+
+## How to get to it (user POV)
+
+- Run `trailguide project add skill --from SOURCE:SKILL --reason TEXT`, then `trailguide project build`.
+- Edit or delete files in the fork under `.trailguide/skills/<name>/`, then build.
+
+## Driving it with tg-lab
+
+Preconditions:
+
+- `tg-lab doctor` reports `doctor: ok`.
+- A remote with `skills/review/SKILL.md` linking to `[checklist](references/checklist.md)`, `skills/review/references/checklist.md`, and `skills/audit/SKILL.md` linking to `[checklist](../review/references/checklist.md)`. Give non-library skills `license: MIT`, or use a library remote.
+- A fresh project with the source at `--ref main`, including both skills, synced and committed.
+
+- **Fork.** Run `TG_LAB=<lab> tg-lab run fork-copy -- trailguide project add skill --from SRC:skills/review --reason "Our review." --non-interactive`. Exit 0; `.trailguide/skills/review/SKILL.md` and `references/checklist.md` exist, and `config.yaml` has a `skills.forks` entry with `as: skills/review`.
+- **Install.** Run `TG_LAB=<lab> tg-lab run fork-install -- trailguide project build`, then `TG_LAB=<lab> tg-lab run fork-install-show -- head -8 .claude/skills/review/SKILL.md`. The marker names the fork, not the source's skill.
+- **Links follow the fork.** Edit `.trailguide/skills/review/references/checklist.md`, build, and run `TG_LAB=<lab> tg-lab run fork-links -- sh -c 'cat .claude/skills/audit/SKILL.md'`. The `checklist` link resolves to the installed fork's file, which has the edit.
+- **Missing in fork.** Delete `.trailguide/skills/review/references/checklist.md` and its link from the fork's `SKILL.md`, then run `TG_LAB=<lab> tg-lab run fork-missing -- trailguide project build --json`. Exit 1, `error.code` is `reference-replacement-missing`, and the message names `audit`'s link and the repairs. `git status --short` shows no change under `.claude/` or `.agents/`.
+
+## Gotchas
+
+- Delete the fork's own link to the file too; otherwise build first reports the fork's own broken link as `reference-missing`.
+- A fork of a required library skill fails validation; fork an offered or recommended one.
