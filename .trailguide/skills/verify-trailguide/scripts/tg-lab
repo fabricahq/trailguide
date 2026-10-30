@@ -34,9 +34,15 @@ require_lab() {
 	TG_LAB="$(cd "$TG_LAB" && pwd)"
 }
 
-# lab_env runs its arguments with the lab's private HOME, Git configuration, and trailguide first on PATH.
+# lab_env runs its arguments with the lab's private HOME, Git configuration, and trailguide first on PATH, and
+# without any inherited GIT_* or SSH_ASKPASS setting, such as GIT_SSH_COMMAND or GIT_EXEC_PATH, which could run
+# programs outside the lab.
 lab_env() {
-	env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_CONFIG_GLOBAL \
+	local unset=(-u SSH_ASKPASS) name
+	while IFS= read -r name; do
+		unset+=(-u "$name")
+	done < <(compgen -e | grep '^GIT_' || true)
+	env "${unset[@]}" \
 		HOME="$TG_LAB/home" XDG_CONFIG_HOME="$TG_LAB/home/.config" \
 		GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \
 		PATH="$TG_LAB/bin:$PATH" "$@"

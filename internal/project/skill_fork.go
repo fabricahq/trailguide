@@ -325,8 +325,8 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 }
 
 // forkLinks returns, by path in the skill's folder, the Markdown files of files, the folder of skill id in snapshot,
-// the snapshot of source, whose links leave the folder, with each link to a skill the project installs, as installed
-// lists them, or forks pointing at it by the name it installs as, so the fork, skills/<name>, reaches that skill's
+// the snapshot of source, whose links leave the folder, with each link to a skill the project installs into its
+// skill targets, as installed lists them, or forks pointing at it by the name it installs as, so the fork, skills/<name>, reaches that skill's
 // installed copy. A link that reaches any other file outside the folder, such as a shared document, or a skill the
 // project doesn't install, has nothing the fork can reach, so it returns a fix for each.
 func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, files map[string][]byte, installed []build.InstalledSkill) (map[string][]byte, []string, error) {
@@ -334,7 +334,9 @@ func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, 
 	origin := snapshot.Origins()[snapshot.OriginOf(folder+"/")]
 	installedAs := map[string]string{}
 	for _, skill := range installed {
-		if other, ok := strings.CutPrefix(skill.ID, source.Name+":"); ok {
+		// Without skill targets, a source's skill has no installed copy to link to, only its vendor snapshot, which
+		// the fork can't link to either.
+		if other, ok := strings.CutPrefix(skill.ID, source.Name+":"); ok && len(skill.Targets) > 0 {
 			installedAs[other] = skill.Name
 		}
 	}
@@ -373,7 +375,7 @@ func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, 
 				}
 				break
 			}
-			fixes = append(fixes, fmt.Sprintf("In %s, replace the link to %s. It reaches %s in %s, which is outside the skill and every skill the project installs, so the fork can't reach it. Copy the file into the fork and link to the copy, or remove the link.", file, link.Destination, link.Target, source.Name))
+			fixes = append(fixes, fmt.Sprintf("In %s, replace the link to %s. It reaches %s in %s, which is outside the skill and every skill the project installs into its skill targets, so the fork can't reach it. Copy the file into the fork and link to the copy, or remove the link.", file, link.Destination, link.Target, source.Name))
 			return link.Destination
 		})
 		if changed {
