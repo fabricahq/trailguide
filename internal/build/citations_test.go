@@ -83,7 +83,7 @@ func TestGenerateReportsARetiredRuleAnAuthoredSkillCitesWithoutFailing(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(output.RetiredCitations) != 1 || output.RetiredCitations[0].Error() != "skills/fix/SKILL.md: trailguide-rules-used names team:techs/go/old, which its library retired; remove it from trailguide-rules-used, or cite the rule that replaces it" {
+	if len(output.RetiredCitations) != 1 || output.RetiredCitations[0].Error() != "skills/local/fix/SKILL.md: trailguide-rules-used names team:techs/go/old, which its library retired; remove it from trailguide-rules-used, or cite the rule that replaces it" {
 		t.Fatalf("retired citations = %v", output.RetiredCitations)
 	}
 }
@@ -171,7 +171,7 @@ func TestGenerateRejectsInvalidAuthoredSkills(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			output, err := generateCiting(t, `[]`, nil, test.skill, test.alter)
 			var validation errs.ValidationError
-			if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/fix/SKILL.md" || validation.ValidationProblem() != test.want || output.Files != nil {
+			if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/local/fix/SKILL.md" || validation.ValidationProblem() != test.want || output.Files != nil {
 				t.Fatalf("got %v; want a validation error at skills/fix/SKILL.md: %s", err, test.want)
 			}
 		})
@@ -192,7 +192,7 @@ func TestGenerateRejectsACitedRuleItsSourceDoesntHave(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			output, err := generateCiting(t, exclude, nil, citingSkill("team:techs/go/errors", "team:techs/go/error"), nil)
 			var validation errs.ValidationError
-			if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/fix/SKILL.md" || validation.ValidationProblem() != problem || output.Files != nil {
+			if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/local/fix/SKILL.md" || validation.ValidationProblem() != problem || output.Files != nil {
 				t.Fatalf("got %v; want a validation error at skills/fix/SKILL.md: %s", err, problem)
 			}
 		})

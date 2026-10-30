@@ -137,17 +137,20 @@ func forkedSkillCopy(source rules.Source, row imports.ReplacedSkillUpdate, copy 
 	return imports.SkillCopy{Files: files, Executable: copy.Executable}, nil
 }
 
-// authoredSkillCopy returns the authored skill named name, by path in its folder, as the project state has it.
+// authoredSkillCopy returns the authored skill named name, by path in its folder, as the project state has it, in
+// whichever origin folder holds it.
 func authoredSkillCopy(state projectState, name string) imports.SkillCopy {
 	result := imports.SkillCopy{Files: map[string][]byte{}, Executable: []string{}}
-	for file, data := range treeFiles(state.skills) {
-		if relative, ok := strings.CutPrefix(file, name+"/"); ok {
+	files := treeFiles(state.skills)
+	prefix := skills.Folder(skills.FindLayout(slices.Collect(maps.Keys(files)))[name], name) + "/"
+	for file, data := range files {
+		if relative, ok := strings.CutPrefix(file, prefix); ok {
 			result.Files[relative] = data
 		}
 	}
 	if state.skills != nil {
 		for _, file := range state.skills.Executable {
-			if relative, ok := strings.CutPrefix(file, name+"/"); ok {
+			if relative, ok := strings.CutPrefix(file, prefix); ok {
 				result.Executable = append(result.Executable, relative)
 			}
 		}

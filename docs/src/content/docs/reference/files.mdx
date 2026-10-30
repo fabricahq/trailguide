@@ -36,10 +36,12 @@ The tree below shows the **repository root**, the top-level directory of your co
       - test-failure-paths.md
   - skills/
     - README.md
-    - fix-bug/
-      - SKILL.md
-    - release-checklist/
-      - SKILL.md
+    - fabrica/ forks of the fabrica source's skills
+      - fix-bug/
+        - SKILL.md
+    - local/ the repository's own skills
+      - release-checklist/
+        - SKILL.md
   - assets/
     - retry-lifecycle.svg
   - lock.json
@@ -94,7 +96,7 @@ Initialize from the repository root. In Git repositories, other commands find th
 
 The Trail Guide directory holds three kinds of content. Everything Trail Guide writes for you sits under `_managed/`, so anything outside it, apart from `lock.json` and `README.md`, is yours to edit:
 
-- **Authored content: `rules/`, `skills/`, and `assets/`.** The rules, rule group metadata, skills, and shared assets written in this repository. Add your own rules and skills here, including replacements and forks of rules and skills you include from sources. You maintain these files; sync preserves them. A library publishes exactly this content.
+- **Authored content: `rules/`, `skills/`, and `assets/`.** The rules, rule group metadata, skills, and shared assets written in this repository. Add your own rules and skills here, including replacements and forks of rules and skills you include from sources. Each skill sits in a folder for its origin: `skills/local/` for the repository's own skills, or `skills/<library.name>/` in a library, and `skills/<source>/` for a fork of that source's skill; see [Skill folders](/reference/skill-format/#skill-folders). You maintain these files; sync preserves them. A library publishes exactly this content.
 - **Vendor snapshots: `_managed/vendor/<source-name>/`.** A copy of what the repository takes from each source, at the library release or commit that [`lock.json`](/reference/provenance/#inspect-the-lockfile) records for it, along with every rule's version and every file's digest. A library's snapshot mirrors its Trail Guide directory, with a `config.yaml` that holds only the [published manifest](/reference/library-schema/#what-a-librarys-consumers-read), the `library` section and its curated sources' repositories and refs, so a rule's relative links to the library's shared assets work in the copy too; license and notice files from outside the library's `.trailguide/` keep their paths from its repository root. A non-library source's files keep their paths in its repository. A snapshot also holds every file an installed skill's links reach, such as a sibling skill or a shared checklist, so the links keep working offline; these files aren't skills. In a library's snapshot, a linked file from outside the library's `.trailguide/` is under `_repository/`, at its path from the repository root. Skills a library [curates](/reference/configuration/#curated-skills) are stored with the library that listed them, under `curated/<curated-source>/`. Snapshots are kept per source because two sources can both have the same rule group ID. Do not customize them; put your changes in authored content instead.
 - **Generated guidance: `_managed/generated/`.** The resolved rules your agents read. Trail Guide combines the included and authored rules according to `config.yaml`, applies exclusions and replacements, and writes the reading indexes, including `SKILLS.md`. `references/<source-name>/` holds a reading copy of each file an installed skill links to outside its own folder, at its path in the source's snapshot. Do not edit this directory; rebuild it after changing your inputs. Its `.gitattributes` marks every file in it as generated, so GitHub collapses them in pull request diffs. Vendor snapshots stay expanded, so reviewers see what changed in a source.
 
@@ -118,7 +120,7 @@ For example, when you replace a library rule, its vendored copy stays in `_manag
 | Skill folders that Trail Guide installed in `.claude/skills/` and `.agents/skills/` | `trailguide project sync`, `trailguide project update`, and `trailguide project build` | Provide installed copies of skills where agents look for them. |
 | Other folders in `.claude/skills/` and `.agents/skills/` | You, or the tool that installed them | Trail Guide never changes or removes them. |
 
-Keep your changes in configuration and authored content. Edits in `_managed/vendor/`, `_managed/generated/`, or an installed skill folder will be replaced or removed. To change a skill you include from a source, [fork it](/reference/cli/#fork-a-skill) into `skills/`.
+Keep your changes in configuration and authored content. Edits in `_managed/vendor/`, `_managed/generated/`, or an installed skill folder will be replaced or removed. To change a skill you include from a source, [fork it](/reference/cli/#fork-a-skill) into `skills/<source>/`.
 Commit configuration, authored content, `lock.json`, both managed directories, and the installed skill folders, so your team, CI, and every fresh checkout use the same rules and skills offline.
 Commit the project instructions and README as well.
 If your `.gitignore` excludes a target folder, such as with `/.claude/`, change the line to `/.claude/*` and add the exception `!/.claude/skills/`, or `trailguide project check` reports the missing folders. Git can't re-include a folder inside an excluded folder, so `!/.claude/skills/` alone doesn't work after `/.claude/`.
@@ -193,7 +195,7 @@ metadata:
 1. Read the spec and name the slice you're building.
 ```
 
-The marker names the skill's project ID and its version. A skill from a non-library source shows its full commit SHA in place of a version. An authored skill has no version, and its marker says where to edit it instead: `<!-- trailguide:installed skills/fix-bug. Do not edit; edit .trailguide/skills/fix-bug/ instead. -->`. A `SKILL.md` without frontmatter, which only a non-library source can supply, gets the marker as its first line. The marker never includes the Trail Guide version, so upgrading Trail Guide doesn't change installed copies.
+The marker names the skill's project ID and its version. A skill from a non-library source shows its full commit SHA in place of a version. An authored skill has no version, and its marker says where to edit it instead: `<!-- trailguide:installed skills/fix-bug. Do not edit; edit .trailguide/skills/fabrica/fix-bug/ instead. -->`. A `SKILL.md` without frontmatter, which only a non-library source can supply, gets the marker as its first line. The marker never includes the Trail Guide version, so upgrading Trail Guide doesn't change installed copies.
 
 Second, a generated section is appended to the end of `SKILL.md`. When the skill cites rules, it lists each one's project ID, version, and generated rule file:
 

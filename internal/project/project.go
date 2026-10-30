@@ -378,7 +378,7 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	if err != nil {
 		return build.Output{}, err
 	}
-	local, err := authoredSkills(state.skills)
+	local, err := authoredSkills(state.config, state.skills)
 	if err != nil {
 		return build.Output{}, err
 	}

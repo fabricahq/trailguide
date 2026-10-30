@@ -30,11 +30,19 @@ func TestSkillFoldersFindsEachSkillAndItsFiles(t *testing.T) {
 		isLibrary bool
 		want      map[string][]string
 	}{
-		"library skills are folders directly in .trailguide/skills": {
-			tree: entries(".trailguide/skills/build/SKILL.md", ".trailguide/skills/build/scripts/run.sh", ".trailguide/skills/notes.md", ".trailguide/skills/empty/README.md",
-				".trailguide/skills/group/nested/SKILL.md", ".trailguide/rules/techs/go/errors.md", "tools/review/SKILL.md"),
+		"library skills are folders in the origin folders of .trailguide/skills": {
+			tree: entries(".trailguide/skills/acme/build/SKILL.md", ".trailguide/skills/acme/build/scripts/run.sh", ".trailguide/skills/README.md", ".trailguide/skills/acme/empty/README.md",
+				".trailguide/skills/pstack/review/SKILL.md", ".trailguide/skills/acme/build/deep/nested/SKILL.md", ".trailguide/rules/techs/go/errors.md", "tools/review/SKILL.md"),
 			isLibrary: true,
-			want:      map[string][]string{"skills/build": {"skills/build/SKILL.md", "skills/build/scripts/run.sh"}},
+			want: map[string][]string{
+				"skills/build":  {"skills/build/SKILL.md", "skills/build/deep/nested/SKILL.md", "skills/build/scripts/run.sh"},
+				"skills/review": {"skills/review/SKILL.md"},
+			},
+		},
+		"a library commit of schema version 1 keeps skills directly in .trailguide/skills": {
+			tree:      entries(".trailguide/skills/build/SKILL.md", ".trailguide/skills/build/scripts/run.sh", ".trailguide/skills/notes.md", ".trailguide/skills/group/nested/SKILL.md"),
+			isLibrary: true,
+			want:      map[string][]string{"skills/build": {"skills/build/SKILL.md", "skills/build/scripts/run.sh"}, "skills/nested": {"skills/nested/SKILL.md"}},
 		},
 		"another repository's skills are folders with a SKILL.md": {
 			tree:      entries("SKILL.md", "README.md", "tools/review/SKILL.md", "tools/review/guide.md", "skills/engineering/to-spec/SKILL.md", ".claude/skills/local/SKILL.md"),

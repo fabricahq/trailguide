@@ -71,7 +71,7 @@ func createLibrarySkill(cmd *cobra.Command, f *authoringFlags, name string, outp
 	if err != nil {
 		return err
 	}
-	description, err := f.askDescription(name, true)
+	description, err := f.askDescription(plan.Folder(), true)
 	if err != nil {
 		return err
 	}

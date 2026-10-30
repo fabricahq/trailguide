@@ -67,10 +67,10 @@ func TestProjectGuideExamples(t *testing.T) {
 		t.Run(projectName, func(t *testing.T) {
 			ctx := context.Background()
 			fixture, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-				"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-				"techs/go/_group.yaml":                      []byte(`{"name":"Go","description":"Shared Go guidance.","whenToRead":"When writing Go."}`),
-				"techs/go/shared.md":                        []byte(rule),
-				".trailguide/skills/build-feature/SKILL.md": []byte("---\nname: build-feature\ndescription: Build a feature.\n---\n# Build a feature\n"),
+				"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+				"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Shared Go guidance.","whenToRead":"When writing Go."}`),
+				"techs/go/shared.md":   []byte(rule),
+				".trailguide/skills/library/build-feature/SKILL.md": []byte("---\nname: build-feature\ndescription: Build a feature.\n---\n# Build a feature\n"),
 			}))
 			if err != nil {
 				t.Fatal(err)

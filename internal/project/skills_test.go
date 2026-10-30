@@ -27,18 +27,18 @@ func skillLibrary(t *testing.T) (*gitfixture.Fixture, string) {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                     []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		"techs/go/_group.yaml":                            []byte(projectMetadata),
-		"techs/go/errors.md":                              []byte(projectRule),
-		".trailguide/skills/build-feature/SKILL.md":       []byte(buildSkill),
-		".trailguide/skills/build-feature/scripts/run.sh": []byte("#!/bin/sh\necho build\n"),
-		".trailguide/skills/review/SKILL.md":              []byte(reviewSkill),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		"techs/go/_group.yaml": []byte(projectMetadata),
+		"techs/go/errors.md":   []byte(projectRule),
+		".trailguide/skills/library/build-feature/SKILL.md":       []byte(buildSkill),
+		".trailguide/skills/library/build-feature/scripts/run.sh": []byte("#!/bin/sh\necho build\n"),
+		".trailguide/skills/library/review/SKILL.md":              []byte(reviewSkill),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	if err := os.Chmod(filepath.Join(f.Worktree(), ".trailguide/skills/build-feature/scripts/run.sh"), 0o700); err != nil {
+	if err := os.Chmod(filepath.Join(f.Worktree(), ".trailguide/skills/library/build-feature/scripts/run.sh"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	commit, err := f.Commit(ctx, f.Worktree(), "Make the script executable", nil)
@@ -94,7 +94,7 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
+	writeFixture(t, root, "skills/local/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
 	changes, err := Sync(ctx, options, git)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestSync_InstallsSourceAndAuthoredSkillsIntoEverySkillTarget(t *testing.T) 
 		if err != nil || info.Mode().Perm()&0o100 == 0 {
 			t.Errorf("%s run.sh isn't executable: %v %v", target, info, err)
 		}
-		if authored := readRepositoryFile(t, options, target+"/check-release/SKILL.md"); !strings.Contains(authored, "<!-- trailguide:installed skills/check-release. Do not edit; edit .trailguide/skills/check-release/ instead. -->") {
+		if authored := readRepositoryFile(t, options, target+"/check-release/SKILL.md"); !strings.Contains(authored, "<!-- trailguide:installed skills/check-release. Do not edit; edit .trailguide/skills/local/check-release/ instead. -->") {
 			t.Errorf("authored copy:\n%s", authored)
 		}
 	}
@@ -247,7 +247,7 @@ func TestSync_FailsForANewlyIncludedSkillTheLockedRevisionLacks(t *testing.T) {
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.Commit(ctx, f.Worktree(), "Add a skill", map[string][]byte{".trailguide/skills/plan/SKILL.md": []byte("---\nname: plan\n---\n# Plan\n")}); err != nil {
+	if _, err := f.Commit(ctx, f.Worktree(), "Add a skill", map[string][]byte{".trailguide/skills/library/plan/SKILL.md": []byte("---\nname: plan\n---\n# Plan\n")}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Release(ctx, 2, "schemaVersion: 1\nrelease: 2\nrules:\n  techs/go/errors: 1.0.0\n"); err != nil {
@@ -314,7 +314,7 @@ func TestSync_RenamesAClashingSkillAndWarnsThatMentionsKeepTheOldName(t *testing
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/review/SKILL.md", "---\nname: review\ndescription: Our review.\n---\n# Our review\n")
+	writeFixture(t, root, "skills/local/review/SKILL.md", "---\nname: review\ndescription: Our review.\n---\n# Our review\n")
 	_, err = Sync(ctx, options, git)
 	projectCode(t, err, "skill-name-clash")
 	if !strings.Contains(err.Error(), "skills/review and team:skills/review both install as review. Rename one with skills.rename, or exclude one.") {
@@ -372,7 +372,7 @@ func TestBuild_InstallsAuthoredSkillsOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFixture(t, root, configurationFile, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{}}`)
-	writeFixture(t, root, "skills/tidy/SKILL.md", "---\nname: tidy\n---\n# Tidy\n")
+	writeFixture(t, root, "skills/local/tidy/SKILL.md", "---\nname: tidy\n---\n# Tidy\n")
 	changes, err := Build(ctx, options)
 	if err != nil {
 		t.Fatal(err)
@@ -380,7 +380,7 @@ func TestBuild_InstallsAuthoredSkillsOffline(t *testing.T) {
 	if !slices.Contains(changes.Added, "../../../.claude/skills/tidy/SKILL.md") || !slices.Contains(changes.Added, "SKILLS.md") {
 		t.Fatalf("added = %v", changes.Added)
 	}
-	writeFixture(t, root, "skills/tidy/SKILL.md", "---\nname: tidy\n---\n# Tidy up\n")
+	writeFixture(t, root, "skills/local/tidy/SKILL.md", "---\nname: tidy\n---\n# Tidy up\n")
 	changes, err = Build(ctx, options)
 	if err != nil || !slices.Contains(changes.Changed, "../../../.claude/skills/tidy/SKILL.md") {
 		t.Fatalf("rebuild = %+v, %v", changes, err)
@@ -399,7 +399,7 @@ func TestSync_RejectsASourceSkillAndAnAuthoredSkillWithOneName(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/review/SKILL.md", "---\nname: review\n---\n# Our review\n")
+	writeFixture(t, root, "skills/local/review/SKILL.md", "---\nname: review\n---\n# Our review\n")
 	_, err = Sync(ctx, options, git)
 	projectCode(t, err, "skill-name-clash")
 	if exists(t, options, ".claude/skills/review") {
@@ -414,11 +414,14 @@ func TestBuild_RejectsInvalidAuthoredSkills(t *testing.T) {
 		code     string
 	}{
 		"file directly in skills":       {map[string]string{"skills/notes.md": "x"}, ".trailguide/skills/notes.md", ""},
-		"folder without SKILL.md":       {map[string]string{"skills/tidy/notes.md": "x"}, ".trailguide/skills/tidy/", ""},
-		"invalid folder name":           {map[string]string{"skills/Tidy/SKILL.md": "x"}, ".trailguide/skills/Tidy/", ""},
-		"name that isn't the folder's":  {map[string]string{"skills/one/SKILL.md": "---\nname: shared\n---\n"}, "skills/one/SKILL.md", ""},
-		"unknown skill type":            {map[string]string{"skills/one/SKILL.md": "---\nname: one\nmetadata:\n  trailguide-skill-type: design\n---\n"}, "skills/one/SKILL.md", ""},
-		"cited rule that doesn't exist": {map[string]string{"skills/one/SKILL.md": "---\nname: one\nmetadata:\n  trailguide-rules-used: techs/go/missing\n---\n"}, "skills/one/SKILL.md", ""},
+		"skill directly in skills":      {map[string]string{"skills/tidy/SKILL.md": "---\nname: tidy\n---\n"}, ".trailguide/skills/tidy", ""},
+		"file directly in local":        {map[string]string{"skills/local/notes.md": "x"}, ".trailguide/skills/local/notes.md", ""},
+		"unknown origin folder":         {map[string]string{"skills/team/tidy/SKILL.md": "---\nname: tidy\n---\n"}, ".trailguide/skills/team", ""},
+		"folder without SKILL.md":       {map[string]string{"skills/local/tidy/notes.md": "x"}, ".trailguide/skills/local/tidy", ""},
+		"invalid folder name":           {map[string]string{"skills/local/Tidy/SKILL.md": "x"}, ".trailguide/skills/local/Tidy", ""},
+		"name that isn't the folder's":  {map[string]string{"skills/local/one/SKILL.md": "---\nname: shared\n---\n"}, "skills/local/one/SKILL.md", ""},
+		"unknown skill type":            {map[string]string{"skills/local/one/SKILL.md": "---\nname: one\nmetadata:\n  trailguide-skill-type: design\n---\n"}, "skills/local/one/SKILL.md", ""},
+		"cited rule that doesn't exist": {map[string]string{"skills/local/one/SKILL.md": "---\nname: one\nmetadata:\n  trailguide-rules-used: techs/go/missing\n---\n"}, "skills/local/one/SKILL.md", ""},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {

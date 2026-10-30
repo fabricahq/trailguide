@@ -105,13 +105,13 @@ A repository gets skills from three places:
 
 - **Libraries.** A [library](/concepts/libraries/) publishes the skills in its `.trailguide/skills/` folder, and can list skills it **curates** from other repositories. It sets a level for each one; see [Skill levels](#skill-levels).
 - **Non-library sources.** Any Git repository of skills that hasn't adopted Trail Guide, so it has skill folders but no library manifest, such as a third party's skill collection. Every skill in it is offered. Because it has no library releases, its `ref` names a branch, tag, or commit, and Trail Guide records the exact commit.
-- **Your repository.** Skills you author live in `.trailguide/skills/`.
+- **Your repository.** Skills you author live in `.trailguide/skills/`, in a folder for each skill's origin: `local/` for your project's own skills, the library's name for a library's, and a source's name for forks of its skills. See [Skill folders](/reference/skill-format/#skill-folders).
 
 When a skill calls others in the same repository, Trail Guide installs them alongside it from that repository and revision.
 
 A library's own skill can also call a skill the library curates from another repository. For example, Fabrica's library authors `add-skill` and curates Anthropic's `skill-creator` from the anthropics/skills repository. When `add-skill` lists `anthropic:skills/skill-creator` in its `trailguide-skills-used`, a project that installs `add-skill` also gets `skill-creator`, with its files taken from anthropics/skills, not from Fabrica's library.
 
-A skill's ID is its folder's path in the repository that holds it, such as `skills/build-feature`. Its identity is that repository plus that path, so two sources that reach the same repository name the same skill. In a project, an ID is qualified by the source name you chose, such as `fabrica:skills/build-feature`. Configuration uses these IDs to include, exclude, rename, and replace skills.
+A skill's ID is `skills/<name>` in the repository that authors it, such as `skills/build-feature`, or its folder's path in a repository that isn't a library. Its identity is that repository plus that path, so two sources that reach the same repository name the same skill. In a project, an ID is qualified by the source name you chose, such as `fabrica:skills/build-feature`. Configuration uses these IDs to include, exclude, rename, and replace skills.
 
 A project can [exclude](/guides/install-skills/#exclude-a-skill) a source's skill it doesn't want, with a reason, or [fork](/guides/fork-skills/) it into an authored skill that installs in its place under the same name. Updates list the source's later changes to a skill the project forked, and can merge them into the fork while keeping the project's edits.
 

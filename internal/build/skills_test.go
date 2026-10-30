@@ -34,7 +34,7 @@ func TestGenerateInstallsAuthoredSkillsIntoEachTarget(t *testing.T) {
 	}
 	for _, folder := range []string{".claude/skills/tidy", ".agents/skills/tidy"} {
 		installed, ok := output.Skills[folder]
-		if !ok || !strings.Contains(string(installed.Files["SKILL.md"]), "---\n<!-- trailguide:installed skills/tidy. Do not edit; edit .trailguide/skills/tidy/ instead. -->\n# Tidy") || !slices.Equal(installed.Executable, []string{"run.sh"}) {
+		if !ok || !strings.Contains(string(installed.Files["SKILL.md"]), "---\n<!-- trailguide:installed skills/tidy. Do not edit; edit .trailguide/skills/local/tidy/ instead. -->\n# Tidy") || !slices.Equal(installed.Executable, []string{"run.sh"}) {
 			t.Errorf("%s = %+v", folder, installed)
 		}
 	}
@@ -179,7 +179,7 @@ func TestGenerateRejectsInvalidForks(t *testing.T) {
 		location, problem string
 	}{
 		"excluded missing skill": {replacementConfig(t, `"exclude":[{"id":"skills/plan","reason":"No."}]`), "sources.team.skills.exclude.skills/plan", "the source doesn't install skill skills/plan"},
-		"no authored skill":      {replacementConfig(t, `"forks":{"skills/review":{"as":"skills/missing","reason":"No."}}`), "sources.team.skills.forks.skills/review.as", "the project has no authored skill skills/missing; add .trailguide/skills/missing/SKILL.md"},
+		"no authored skill":      {replacementConfig(t, `"forks":{"skills/review":{"as":"skills/missing","reason":"No."}}`), "sources.team.skills.forks.skills/review.as", "the project has no authored skill skills/missing; add .trailguide/skills/team/missing/SKILL.md"},
 		"one replacing two":      {twoSources, "sources.team.skills.forks.skills/review.as", "skills/ours already replaces the skill sources.other.skills.forks.skills/fix names"},
 	} {
 		t.Run(name, func(t *testing.T) {

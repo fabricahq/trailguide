@@ -69,7 +69,7 @@ func createProjectSkill(cmd *cobra.Command, sf *authoringFlags, name string, out
 	if err != nil {
 		return err
 	}
-	description, err := sf.askDescription(name, false)
+	description, err := sf.askDescription(plan.Folder(), false)
 	if err != nil {
 		return err
 	}

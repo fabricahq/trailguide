@@ -62,7 +62,7 @@ func addLibraryCommands(root *cobra.Command, options Options, output *commandOut
 // libraryInitCommand reads explicit publisher terms before creating library-owned files.
 func libraryInitCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd, f := newLibraryCommand("init", "Initialize a rule library without overwriting authored files", cobra.NoArgs, options)
-	for name, description := range map[string]string{"spdx": "Library SPDX expression", "license-file": "Existing UTF-8 license text", "notice-file": "Existing UTF-8 notice text"} {
+	for name, description := range map[string]string{"name": "Library name, which names the folder of its own skills; defaults to the library folder's name", "spdx": "Library SPDX expression", "license-file": "Existing UTF-8 license text", "notice-file": "Existing UTF-8 notice text"} {
 		f.add(cmd, name, description)
 	}
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
@@ -91,7 +91,7 @@ func libraryInitCommand(options Options, output *commandOutput) *cobra.Command {
 				terms.Notice = &notice
 			}
 		}
-		result, err := library.Initialize(cmd.Context(), target, terms, options.Version)
+		result, err := library.Initialize(cmd.Context(), target, f.value("name"), terms, options.Version)
 		if err != nil {
 			return err
 		}

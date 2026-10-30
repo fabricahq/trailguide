@@ -21,16 +21,21 @@ import (
 // LibrarySchemaVersion is the library schema version this version of Trail Guide reads and writes, which every
 // library declares in its manifest's library.schemaVersion. The library schema covers everything a library publishes:
 // the manifest, the repository and ref of each source it curates skills from, rule files, group metadata, and the
-// library's layout. Release records have their own schema version, ReleaseRecordSchemaVersion.
+// library's layout. Version 2 added library.name and keeps each skill in the folder of its origin, as
+// skills/<origin>/<name>/. Release records have their own schema version, ReleaseRecordSchemaVersion.
 //
 // Consumers ignore fields they don't know in the manifest, so a later Trail Guide can add a field without a new
 // schema version when ignoring it keeps every reader correct. A change that readers must interpret, even an optional
 // field, needs a new schema version.
-const LibrarySchemaVersion = 1
+const LibrarySchemaVersion = 2
 
 // Library is a library's manifest: the library section of its configuration, which makes the repository a library,
 // and the sources its skills curate from.
 type Library struct {
+	// Name is the library's name, which names the folder of its own skills, skills/<name>/. It is a source name: a
+	// lowercase letter, then lowercase letters, digits, and hyphens. A project that uses the library names its source
+	// for itself, so the two can differ.
+	Name string `json:"name"`
 	// License is nil when the library declares no license.
 	License *LicenseDeclaration `json:"license"`
 	// Skills holds the levels the library gives its skills, its own and those it curates.
@@ -142,6 +147,7 @@ func parseManifest(text []byte, location string) (*Library, error) {
 //
 //   - schemaVersion: the library schema version, which must be LibrarySchemaVersion; a missing or malformed one is
 //     a *ValidationError, and another version an *UnsupportedLibrarySchemaError;
+//   - name: the library's name, which names the folder of its own skills, and can't be a name of sources;
 //   - license: the SPDX expression of the library's terms, its license file, and its notice files, at paths
 //     relative to the repository root that must hold library-wide files, outside rules and their asset
 //     directories; and
@@ -278,11 +284,14 @@ func parseLibrary(input json.RawMessage, sources []string, location string, stri
 		return nil, err
 	}
 	if strict {
-		if err := decode.KnownFields(fields, []string{"license", "schemaVersion", "skills"}, location); err != nil {
+		if err := decode.KnownFields(fields, []string{"license", "name", "schemaVersion", "skills"}, location); err != nil {
 			return nil, err
 		}
 	}
 	result := &Library{}
+	if result.Name, err = libraryName(fields["name"], sources, location+".name"); err != nil {
+		return nil, err
+	}
 	if raw, ok := fields["license"]; ok {
 		if result.License, err = parseLicense(raw, location+".license", strict); err != nil {
 			return nil, err
@@ -292,6 +301,26 @@ func parseLibrary(input json.RawMessage, sources []string, location string, stri
 		return nil, err
 	}
 	return result, nil
+}
+
+// libraryName validates input, a library section's name at location: a source name, which no source in sources has,
+// since a library's own skills and a source's forks each have a folder in skills/ named for them. A missing name
+// fails.
+func libraryName(input json.RawMessage, sources []string, location string) (string, error) {
+	if input == nil {
+		return "", invalid(location, "missing; add the library's name, such as name: acme, which names the folder of its own skills, skills/<name>/")
+	}
+	name, err := decode.Text(input, location)
+	if err != nil {
+		return "", err
+	}
+	if !skills.ValidSourceName(name) || name == skills.LocalOrigin {
+		return "", invalid(location, "expected a lowercase letter, then lowercase letters, digits, and hyphens, other than local, such as acme; got "+decode.Quote(name))
+	}
+	if slices.Contains(sources, name) {
+		return "", invalid(location, "names the source "+name+" too, and a library's own skills and a source's forks each have their own folder in skills/; rename the library or the source")
+	}
+	return name, nil
 }
 
 // parseLicense validates a license declaration and returns the library paths of its declared files, without

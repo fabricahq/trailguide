@@ -16,7 +16,7 @@ import (
 func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		".trailguide/skills/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md).\n"),
 		".trailguide/skills/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
 		".trailguide/skills/redesign/steps.md": []byte("# Steps\n"),
@@ -74,7 +74,7 @@ func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) 
 func TestSkillReferences_WarnAboutAnExcludedSkillInHumanAndJSONOutput(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		".trailguide/skills/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md) and [the guide](../../../docs/guide.md).\n"),
 		".trailguide/skills/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
 		".trailguide/skills/redesign/steps.md": []byte("# Steps\n"),

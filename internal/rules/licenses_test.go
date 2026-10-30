@@ -94,9 +94,9 @@ func TestLicensePaths(t *testing.T) {
 // TestPublishedManifest keeps only a configuration's library section, in canonical JSON, and publishes nothing for
 // a configuration that isn't a library's.
 func TestPublishedManifest(t *testing.T) {
-	text := "# Comments stay in the repository.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n"
+	text := "# Comments stay in the repository.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n"
 	published, err := rules.PublishedManifest([]byte(text), "config.yaml")
-	want := `{"library":{"license":{"file":"LICENSE.md","notices":[],"spdxExpression":"MIT"},"schemaVersion":1},"sources":{}}` + "\n"
+	want := `{"library":{"license":{"file":"LICENSE.md","notices":[],"spdxExpression":"MIT"},"name":"library","schemaVersion":2},"sources":{}}` + "\n"
 	if err != nil || string(published) != want {
 		t.Fatalf("got %s, %v; want %s", published, err, want)
 	}
@@ -106,20 +106,20 @@ func TestPublishedManifest(t *testing.T) {
 	if none, err := rules.PublishedManifest([]byte("schemaVersion: 2\nsources: {}\n"), "config.yaml"); err != nil || none != nil {
 		t.Fatalf("got %s, %v for a project's configuration", none, err)
 	}
-	curating := "schemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\n  mattpocock:\n    repository: https://github.com/mattpocock/skills.git\n    ref: v1.0.0\nlibrary:\n  schemaVersion: 1\n  skills:\n    recommended: [mattpocock:skills/to-spec]\n"
+	curating := "schemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\n  mattpocock:\n    repository: https://github.com/mattpocock/skills.git\n    ref: v1.0.0\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    recommended: [mattpocock:skills/to-spec]\n"
 	published, err = rules.PublishedManifest([]byte(curating), "config.yaml")
-	want = `{"library":{"schemaVersion":1,"skills":{"recommended":["mattpocock:skills/to-spec"]}},"sources":{"mattpocock":{"ref":"v1.0.0","repository":"https://github.com/mattpocock/skills.git"}}}` + "\n"
+	want = `{"library":{"name":"library","schemaVersion":2,"skills":{"recommended":["mattpocock:skills/to-spec"]}},"sources":{"mattpocock":{"ref":"v1.0.0","repository":"https://github.com/mattpocock/skills.git"}}}` + "\n"
 	if err != nil || string(published) != want {
 		t.Fatalf("got %s, %v; want only the curated source's repository and ref: %s", published, err, want)
 	}
 	if again, err := rules.PublishedManifest(published, "config.yaml"); err != nil || string(again) != want {
 		t.Fatalf("republished %s, %v", again, err)
 	}
-	levels := "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  skills:\n    required: [skills/ship]\n"
-	if published, err := rules.PublishedManifest([]byte(levels), "config.yaml"); err != nil || string(published) != `{"library":{"schemaVersion":1,"skills":{"required":["skills/ship"]}},"sources":{}}`+"\n" {
+	levels := "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    required: [skills/ship]\n"
+	if published, err := rules.PublishedManifest([]byte(levels), "config.yaml"); err != nil || string(published) != `{"library":{"name":"library","schemaVersion":2,"skills":{"required":["skills/ship"]}},"sources":{}}`+"\n" {
 		t.Fatalf("got %s, %v; want the skill levels published", published, err)
 	}
-	if _, err := rules.PublishedManifest([]byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  skills: {required: skills/ship}\n"), "config.yaml"); err == nil {
+	if _, err := rules.PublishedManifest([]byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills: {required: skills/ship}\n"), "config.yaml"); err == nil {
 		t.Fatal("published invalid skill levels")
 	}
 }
@@ -128,7 +128,7 @@ func TestPublishedManifest(t *testing.T) {
 // that differ only in what configures the repository as a project, and a different one when the contract changes,
 // so library releases detect manifest changes from the published contract alone.
 func TestPublishedManifest_IgnoresProjectSettingsAndTheSchemaVersion(t *testing.T) {
-	section := "library:\n  schemaVersion: 1\n  skills:\n    recommended: [mattpocock:skills/to-spec]\n"
+	section := "library:\n  schemaVersion: 2\n  name: library\n  skills:\n    recommended: [mattpocock:skills/to-spec]\n"
 	curated := "  mattpocock:\n    repository: https://github.com/mattpocock/skills.git\n    ref: main\n"
 	base := "schemaVersion: 2\nsources:\n" + curated + section
 	want, err := rules.PublishedManifestOf(sectionAndSources(t, base))
@@ -177,7 +177,7 @@ func sectionAndSources(t *testing.T, text string) (json.RawMessage, json.RawMess
 // TestLicenseDeclaredInTheLegacyDirectory reads a license file declared in .code-rules/assets/, as a library release
 // from before Code Rules was renamed Trail Guide declares it, as the shared asset it is.
 func TestLicenseDeclaredInTheLegacyDirectory(t *testing.T) {
-	text := "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: .code-rules/assets/LICENSE.md\n    notices: [.code-rules/assets/NOTICE.md]\n"
+	text := "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: .code-rules/assets/LICENSE.md\n    notices: [.code-rules/assets/NOTICE.md]\n"
 	library, err := rules.ParseLibraryManifest([]byte(text), "config.yaml")
 	if err != nil {
 		t.Fatal(err)

@@ -14,7 +14,7 @@ import (
 // TestInitialize_WritesTheDocumentedCheckWorkflow pins the running version and matches the guide's workflow outside the install step.
 func TestInitialize_WritesTheDocumentedCheckWorkflow(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
-	result, err := Initialize(context.Background(), options, nil, "0.2.0")
+	result, err := Initialize(context.Background(), options, "", nil, "0.2.0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestInitialize_PinsReleasesAndInstallsTheLatestForDevelopmentBuilds(t *test
 		"0.0.0-dev.g0123456789ab": latest,
 	} {
 		options := Options{Directory: t.TempDir()}
-		if _, err := Initialize(context.Background(), options, nil, version); err != nil {
+		if _, err := Initialize(context.Background(), options, "", nil, version); err != nil {
 			t.Fatal(version, err)
 		}
 		data, err := os.ReadFile(filepath.Join(options.Directory, ".github/workflows/trailguide.yml"))
@@ -71,7 +71,7 @@ func TestInitialize_KeepsAnExistingWorkflow(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
 	custom := "name: Custom\n"
 	edit(t, options.Directory, map[string]string{".github/workflows/trailguide.yml": custom})
-	result, err := Initialize(context.Background(), options, nil, "0.2.0")
+	result, err := Initialize(context.Background(), options, "", nil, "0.2.0")
 	if err != nil || strings.Contains(strings.Join(result.Written(), "\n"), "trailguide.yml") {
 		t.Fatal(result, err)
 	}
@@ -84,7 +84,7 @@ func TestInitialize_KeepsAnExistingWorkflow(t *testing.T) {
 func TestInitialize_RejectsVersionsThatArentReleaseTags(t *testing.T) {
 	for _, version := range []string{"v0.2.0", "0.2", "0.2.0 && curl example.invalid", ""} {
 		options := Options{Directory: filepath.Join(t.TempDir(), "library")}
-		if _, err := Initialize(context.Background(), options, nil, version); errorCode(err) != "invalid-version" {
+		if _, err := Initialize(context.Background(), options, "", nil, version); errorCode(err) != "invalid-version" {
 			t.Fatalf("%q: %v", version, err)
 		}
 		if _, err := os.Stat(options.Directory); !os.IsNotExist(err) {

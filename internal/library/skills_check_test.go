@@ -74,12 +74,12 @@ func TestSkillProblemsReportsEachInvalidSkill(t *testing.T) {
 			for file, text := range test.files {
 				tree.Files[file] = []byte(text)
 			}
-			if got := skillProblems(tree, current, []string{"anthropic:skills/skill-creator"}, changes); !reflect.DeepEqual(got, test.want) {
+			if got := skillProblems(tree, skills.Layout{}, current, []string{"anthropic:skills/skill-creator"}, changes); !reflect.DeepEqual(got, test.want) {
 				t.Fatalf("problems:\n%q\nwant\n%q", got, test.want)
 			}
 		})
 	}
-	if got := skillProblems(nil, current, nil, changes); len(got) != 0 {
+	if got := skillProblems(nil, nil, current, nil, changes); len(got) != 0 {
 		t.Fatalf("a library without skills/ has problems: %q", got)
 	}
 }
@@ -87,7 +87,7 @@ func TestSkillProblemsReportsEachInvalidSkill(t *testing.T) {
 func TestCheck_RejectsASkillThatCitesARuleTheLibraryRetired(t *testing.T) {
 	ctx := context.Background()
 	fixture, options := authorClone(t, libraryFiles(), releaseOne)
-	edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\nmetadata:\n  trailguide-skill-type: playbook\n  trailguide-rules-used: |\n    practices/testing/a\n    practices/testing/b\n---\n# Fix\n", "changes/skills.yaml": "summary: Add fix.\nskills:\n  skills/fix: new\n"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/library/fix/SKILL.md": "---\nname: fix\nmetadata:\n  trailguide-skill-type: playbook\n  trailguide-rules-used: |\n    practices/testing/a\n    practices/testing/b\n---\n# Fix\n", "changes/skills.yaml": "summary: Add fix.\nskills:\n  skills/fix: new\n"})
 	if _, err := Check(ctx, options); err != nil {
 		t.Fatalf("check rejected a valid skill: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestCheck_RejectsASkillThatCitesARuleTheLibraryRetired(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := Check(ctx, options)
-	if errorCode(err) != "invalid-skill" || !strings.HasSuffix(err.Error(), "skills don't pass library check:\n  - skills/fix/SKILL.md: trailguide-rules-used names practices/testing/b, which is retired and replaced by practices/testing/a; cite the replacement") {
+	if errorCode(err) != "invalid-skill" || !strings.HasSuffix(err.Error(), "skills don't pass library check:\n  - skills/library/fix/SKILL.md: trailguide-rules-used names practices/testing/b, which is retired and replaced by practices/testing/a; cite the replacement") {
 		t.Fatalf("got %v; want invalid-skill naming the retired rule", err)
 	}
 }
@@ -104,15 +104,15 @@ func TestCheck_RejectsASkillThatUsesASkillTheLibraryDoesntHave(t *testing.T) {
 	ctx := context.Background()
 	_, options := authorClone(t, libraryFiles(), releaseOne)
 	edit(t, options.Directory, map[string]string{
-		".trailguide/skills/fix/SKILL.md":    "---\nname: fix\nmetadata:\n  trailguide-skills-used: |\n    skills/review\n    skills/tdd\n---\n# Fix\n",
-		".trailguide/skills/review/SKILL.md": "---\nname: review\n---\n# Review\n",
-		"changes/skills.yaml":                "summary: Add fix and review.\nskills:\n  skills/fix: new\n  skills/review: new\n",
+		".trailguide/skills/library/fix/SKILL.md":    "---\nname: fix\nmetadata:\n  trailguide-skills-used: |\n    skills/review\n    skills/tdd\n---\n# Fix\n",
+		".trailguide/skills/library/review/SKILL.md": "---\nname: review\n---\n# Review\n",
+		"changes/skills.yaml":                        "summary: Add fix and review.\nskills:\n  skills/fix: new\n  skills/review: new\n",
 	})
 	_, err := Check(ctx, options)
-	if errorCode(err) != "invalid-skill" || !strings.HasSuffix(err.Error(), "skills don't pass library check:\n  - skills/fix/SKILL.md: trailguide-skills-used names skills/tdd, which isn't a skill in this library") {
+	if errorCode(err) != "invalid-skill" || !strings.HasSuffix(err.Error(), "skills don't pass library check:\n  - skills/library/fix/SKILL.md: trailguide-skills-used names skills/tdd, which isn't a skill in this library") {
 		t.Fatalf("got %v; want invalid-skill naming the skill and the skill it uses", err)
 	}
-	edit(t, options.Directory, map[string]string{".trailguide/skills/tdd/SKILL.md": "---\nname: tdd\n---\n# TDD\n", "changes/tdd.yaml": "summary: Add tdd.\nskills:\n  skills/tdd: new\n"})
+	edit(t, options.Directory, map[string]string{".trailguide/skills/library/tdd/SKILL.md": "---\nname: tdd\n---\n# TDD\n", "changes/tdd.yaml": "summary: Add tdd.\nskills:\n  skills/tdd: new\n"})
 	if _, err := Check(ctx, options); err != nil {
 		t.Fatalf("check rejected a skill that uses skills the library has: %v", err)
 	}
@@ -129,20 +129,20 @@ func TestCheck_WarnsOnlyAboutACodexInterfaceFileTheMetadataCanReplace(t *testing
 	ctx := context.Background()
 	_, options := authorClone(t, libraryFiles(), releaseOne)
 	edit(t, options.Directory, map[string]string{
-		".trailguide/skills/fix/SKILL.md":               "---\nname: fix\n---\n# Fix\n",
-		".trailguide/skills/fix/agents/openai.yaml":     "interface:\n  display_name: Fix\n  default_prompt: Use $fix.\n",
-		".trailguide/skills/fix/references/openai.yaml": "interface:\n  display_name: Not the interface file\n",
-		".trailguide/skills/quiet/SKILL.md":             "---\nname: quiet\n---\n# Quiet\n",
-		".trailguide/skills/quiet/agents/openai.yaml":   "interface:\n  display_name: Quiet\npolicy:\n  allow_implicit_invocation: false\n",
-		".trailguide/skills/brand/SKILL.md":             "---\nname: brand\n---\n# Brand\n",
-		".trailguide/skills/brand/agents/openai.yaml":   "interface:\n  display_name: Brand\n  icon_small: ./assets/icon.svg\n",
-		"changes/skills.yaml":                           "summary: Add skills.\nskills:\n  skills/brand: new\n  skills/fix: new\n  skills/quiet: new\n",
+		".trailguide/skills/library/fix/SKILL.md":               "---\nname: fix\n---\n# Fix\n",
+		".trailguide/skills/library/fix/agents/openai.yaml":     "interface:\n  display_name: Fix\n  default_prompt: Use $fix.\n",
+		".trailguide/skills/library/fix/references/openai.yaml": "interface:\n  display_name: Not the interface file\n",
+		".trailguide/skills/library/quiet/SKILL.md":             "---\nname: quiet\n---\n# Quiet\n",
+		".trailguide/skills/library/quiet/agents/openai.yaml":   "interface:\n  display_name: Quiet\npolicy:\n  allow_implicit_invocation: false\n",
+		".trailguide/skills/library/brand/SKILL.md":             "---\nname: brand\n---\n# Brand\n",
+		".trailguide/skills/library/brand/agents/openai.yaml":   "interface:\n  display_name: Brand\n  icon_small: ./assets/icon.svg\n",
+		"changes/skills.yaml":                                   "summary: Add skills.\nskills:\n  skills/brand: new\n  skills/fix: new\n  skills/quiet: new\n",
 	})
 	result, err := Check(ctx, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "skills/fix/agents/openai.yaml: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.display-name, short-description, and default-prompt in SKILL.md instead, then delete this file."
+	want := "skills/library/fix/agents/openai.yaml: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.display-name, short-description, and default-prompt in SKILL.md instead, then delete this file."
 	found := []string{}
 	for _, warning := range result.Warnings {
 		if strings.Contains(warning, "openai.yaml") {

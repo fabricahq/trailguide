@@ -38,7 +38,7 @@ const (
 // and a shared checklist and image outside .trailguide/.
 func referenceFiles() map[string][]byte {
 	return map[string][]byte{
-		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
 		".trailguide/skills/principle-attack-the-premise/SKILL.md":                        []byte(attackSkill),
@@ -261,7 +261,7 @@ func TestSync_KeepsWhatIncludedSkillsLinkToInAnExcludedSkillForReading(t *testin
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
 			files := referenceFiles()
-			files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1` + test.levels + `}}`)
+			files["config.yaml"] = []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"` + test.levels + `}}`)
 			// Build the Lever, and Encode Lessons when it's installed too, reach Redesign only through one document,
 			// which links to it twice.
 			files[".trailguide/skills/principle-build-the-lever/SKILL.md"] = []byte(leverSkill + "\nRead [the comparison](../../../docs/compare.md).\n")
@@ -436,7 +436,7 @@ func TestSync_ResolvesACuratedSkillsLinksInTheRepositoryItCameFrom(t *testing.T)
 		t.Fatal(err)
 	}
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 1\n  skills:\n    offered: [pocock:skills/engineering/to-spec]\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    offered: [pocock:skills/engineering/to-spec]\n"),
 		"techs/go/_group.yaml": []byte(projectMetadata),
 		"techs/go/errors.md":   []byte(projectRule),
 		// The curating library's own layout has a file at the same relative path, which must not satisfy the link.

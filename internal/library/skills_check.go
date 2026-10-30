@@ -20,13 +20,57 @@ import (
 // skillsDirectory is where a library's skills live in its repository.
 const skillsDirectory = ".trailguide/" + skills.Directory
 
-// skillProblems returns every problem in the skills tree holds, by path in the library's skills/ folder, in path
-// order, each starting with the file or folder it's about: a file directly in skills/ other than its guide, a folder whose name breaks the
-// skill name grammar or that has no SKILL.md, frontmatter skills.ReadMetadata or skills.Check rejects, a SKILL.md that still has the draft marker, and a cited
+// skillLayoutProblems returns every problem skills.LayoutProblems finds in tree, the library's skills/ folder, given
+// the skill origins of manifest, the library's configuration, each starting with the path it's about. A nil tree has
+// none. It fails when manifest doesn't parse.
+func skillLayoutProblems(tree *filetxn.Tree, manifest []byte) ([]string, error) {
+	problems := []string{}
+	if tree == nil {
+		return problems, nil
+	}
+	config, err := rules.ParseConfigurationYAML(manifest)
+	if err != nil {
+		return nil, err
+	}
+	for _, problem := range skills.LayoutProblems(slices.Collect(maps.Keys(tree.Files)), tree.Directories, config.SkillOrigins()) {
+		problems = append(problems, problem.Location+": "+problem.Problem)
+	}
+	return problems, nil
+}
+
+// flatSkills returns tree, the library's skills/ folder, with each skill's files, executable files, and directories
+// at <name>/<path>, as if every skill sat directly in skills/, and the layout that places each skill in its origin
+// folder. It leaves out everything outside a skill's folder. A nil tree stays nil.
+func flatSkills(tree *filetxn.Tree) (*filetxn.Tree, skills.Layout) {
+	if tree == nil {
+		return nil, skills.Layout{}
+	}
+	layout := skills.FindLayout(slices.Collect(maps.Keys(tree.Files)))
+	flat := &filetxn.Tree{Files: skills.Flatten(layout, tree.Files), Executable: skills.FlattenPaths(layout, tree.Executable), Directories: []string{}}
+	for _, directory := range tree.Directories {
+		origin, rest, nested := strings.Cut(directory, "/")
+		if name, _, _ := strings.Cut(rest, "/"); nested && layout[name] == origin {
+			flat.Directories = append(flat.Directories, rest)
+		}
+	}
+	slices.Sort(flat.Directories)
+	return flat, layout
+}
+
+// skillLocation returns the path of the folder of skill name in the library's Trail Guide directory, as layout
+// places it, such as skills/acme/build-feature.
+func skillLocation(layout skills.Layout, name string) string {
+	return skills.Directory + "/" + skills.Folder(layout[name], name)
+}
+
+// skillProblems returns every problem in the skills tree holds, keyed by skill name as flatSkills keys it, in path
+// order, each starting with the file or folder it's about, at its path in the library's skills/ folder, which layout
+// gives: a file directly in skills/ other than its guide, a folder whose name breaks the skill name grammar or that has
+// no SKILL.md, frontmatter skills.ReadMetadata or skills.Check rejects, a SKILL.md that still has the draft marker, and a cited
 // rule that isn't one of current, the library's rules, naming the replacement when the library's release history or
 // a pending change note retired it, and a skill a skill uses that isn't a folder of skills/ with a SKILL.md or, when
 // the line names a source, one of curated, the curated skills the library's levels list. A nil tree has no skills.
-func skillProblems(tree *filetxn.Tree, current, curated []string, changes libraryChanges) []string {
+func skillProblems(tree *filetxn.Tree, layout skills.Layout, current, curated []string, changes libraryChanges) []string {
 	problems := []string{}
 	if tree == nil {
 		return problems
@@ -50,7 +94,7 @@ func skillProblems(tree *filetxn.Tree, current, curated []string, changes librar
 	}
 	_, retiring := changes.namedRules()
 	for _, folder := range slices.Sorted(maps.Keys(folders)) {
-		location := skills.AuthoredID(folder)
+		location := skillLocation(layout, folder)
 		switch {
 		case !skills.ValidName(folder):
 			problems = append(problems, location+": a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen")
@@ -169,18 +213,19 @@ func uncalledDependencies(tree *filetxn.Tree, dependencies []string, curatedCall
 	return problems
 }
 
-// interfaceFileWarnings returns a warning, in path order, for each skill in tree, the library's skills/ folder, that
+// interfaceFileWarnings returns a warning, in path order, for each skill in tree, the library's skills/ folder keyed by
+// skill name as flatSkills keys it, with each skill's origin folder in layout, that
 // ships its own agents/openai.yaml holding only the interface text Trail Guide can generate from the skill's metadata,
 // suggesting the metadata keys instead. A file with other settings, such as icons or a policy, is a supported
 // escape hatch and gets no warning. A nil tree has none.
-func interfaceFileWarnings(tree *filetxn.Tree) []string {
+func interfaceFileWarnings(tree *filetxn.Tree, layout skills.Layout) []string {
 	warnings := []string{}
 	if tree == nil {
 		return warnings
 	}
 	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
 		if folder, file, _ := strings.Cut(name, "/"); file == skills.OpenAIFile && skills.InterfaceTextOnly(tree.Files[name]) {
-			warnings = append(warnings, fmt.Sprintf("%s/%s: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.%s, %s, and %s in SKILL.md instead, then delete this file.", skills.AuthoredID(folder), skills.OpenAIFile, skills.DisplayNameKey, skills.ShortDescriptionKey, skills.DefaultPromptKey))
+			warnings = append(warnings, fmt.Sprintf("%s/%s: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.%s, %s, and %s in SKILL.md instead, then delete this file.", skillLocation(layout, folder), skills.OpenAIFile, skills.DisplayNameKey, skills.ShortDescriptionKey, skills.DefaultPromptKey))
 		}
 	}
 	return warnings

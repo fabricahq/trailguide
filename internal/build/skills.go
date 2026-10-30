@@ -42,8 +42,8 @@ func (e *ClashError) Error() string {
 type resolvedSkill struct {
 	// ID is the project ID: source:folder for a source's skill, or skills/<name> for an authored one.
 	ID string
-	// Source is the source's name, or empty for an authored skill; Folder is the skill's ID in its source or in the
-	// repository's skills/ folder.
+	// Source is the source's name, or empty for an authored skill; Folder is the skill's ID in its source or, for an
+	// authored skill, its folder in the Trail Guide directory, skills/<origin>/<name>.
 	Source, Folder string
 	// Name is the install name; Description, Type, and Interface are as SKILL.md declares them.
 	Name, Description, Type string
@@ -135,12 +135,14 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 		}
 	}
 	result, aliases := withoutCuratedCopies(result)
+	origins := config.SkillOrigins()
 	for _, id := range slices.Sorted(maps.Keys(local)) {
-		skill := resolvedSkill{ID: id, Folder: id, Files: local[id], Included: true}
+		name := strings.TrimPrefix(id, skills.Directory+"/")
+		skill := resolvedSkill{ID: id, Folder: skills.Directory + "/" + skills.Folder(origins.For(name), name), Files: local[id], Included: true}
 		if replacement, replaces := replacements[id]; replaces {
 			skill.Replaces = &replacement
 		}
-		if err := describeSkill(&skill, "", id+"/"+skills.File); err != nil {
+		if err := describeSkill(&skill, "", skill.Folder+"/"+skills.File); err != nil {
 			return skillResolution{}, err
 		}
 		result = append(result, skill)

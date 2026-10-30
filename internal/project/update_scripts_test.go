@@ -29,19 +29,19 @@ func scriptLibrary(t *testing.T) *gitfixture.Fixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		"techs/go/_group.yaml":                                 []byte(projectMetadata),
-		"techs/go/errors.md":                                   []byte(projectRule),
-		".trailguide/skills/build-feature/SKILL.md":            []byte(buildSkill),
-		".trailguide/skills/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build\n"),
-		".trailguide/skills/build-feature/scripts/lint.sh":     []byte("#!/bin/sh\necho lint\n"),
-		".trailguide/skills/build-feature/references/notes.md": []byte("Notes.\n"),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		"techs/go/_group.yaml": []byte(projectMetadata),
+		"techs/go/errors.md":   []byte(projectRule),
+		".trailguide/skills/library/build-feature/SKILL.md":            []byte(buildSkill),
+		".trailguide/skills/library/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build\n"),
+		".trailguide/skills/library/build-feature/scripts/lint.sh":     []byte("#!/bin/sh\necho lint\n"),
+		".trailguide/skills/library/build-feature/references/notes.md": []byte("Notes.\n"),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	makeExecutable(t, f, ".trailguide/skills/build-feature/scripts/run.sh", ".trailguide/skills/build-feature/scripts/lint.sh")
+	makeExecutable(t, f, ".trailguide/skills/library/build-feature/scripts/run.sh", ".trailguide/skills/library/build-feature/scripts/lint.sh")
 	if _, err := f.Commit(ctx, f.Worktree(), "Make the scripts executable", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -58,16 +58,16 @@ func publishScriptRelease(t *testing.T, f *gitfixture.Fixture) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := f.Commit(ctx, f.Worktree(), "Change the scripts", gitfixture.Library(map[string][]byte{
-		"techs/go/errors.md":                                   []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
-		".trailguide/skills/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build everything\n"),
-		".trailguide/skills/build-feature/scripts/setup.sh":    []byte("#!/bin/sh\necho setup\n"),
-		".trailguide/skills/build-feature/references/notes.md": []byte("More notes.\n"),
-		".trailguide/skills/plan/SKILL.md":                     []byte("---\nname: plan\ndescription: Plan a change.\n---\n# Plan\n"),
-		".trailguide/skills/plan/scripts/plan.sh":              []byte("#!/bin/sh\necho plan\n"),
+		"techs/go/errors.md": []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
+		".trailguide/skills/library/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build everything\n"),
+		".trailguide/skills/library/build-feature/scripts/setup.sh":    []byte("#!/bin/sh\necho setup\n"),
+		".trailguide/skills/library/build-feature/references/notes.md": []byte("More notes.\n"),
+		".trailguide/skills/library/plan/SKILL.md":                     []byte("---\nname: plan\ndescription: Plan a change.\n---\n# Plan\n"),
+		".trailguide/skills/library/plan/scripts/plan.sh":              []byte("#!/bin/sh\necho plan\n"),
 	})); err != nil {
 		t.Fatal(err)
 	}
-	makeExecutable(t, f, ".trailguide/skills/build-feature/scripts/setup.sh", ".trailguide/skills/plan/scripts/plan.sh")
+	makeExecutable(t, f, ".trailguide/skills/library/build-feature/scripts/setup.sh", ".trailguide/skills/library/plan/scripts/plan.sh")
 	if _, err := f.Commit(ctx, f.Worktree(), "Make the new scripts executable", nil); err != nil {
 		t.Fatal(err)
 	}

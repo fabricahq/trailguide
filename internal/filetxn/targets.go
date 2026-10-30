@@ -61,19 +61,35 @@ func LocalRuleAssets(file string) Target {
 // stays small enough to read during recovery.
 const maxLocalRules = 1000
 
-// AuthoredSkill is the folder of the authored skill named name, skills/<name>, a fork of a source's skill. Only
-// project update replaces it, when it merges the source's changes into the fork, so recovery restores or finishes
-// the fork, the configuration that records the commit it's based on, and the output generated from them together.
-func AuthoredSkill(name string) Target { return Target(skills.Directory + "/" + name) }
+// AuthoredSkill is the folder of the authored skill named name in the origin folder origin,
+// skills/<origin>/<name>, a fork of a source's skill. Only project update replaces it, when it merges the source's
+// changes into the fork, so recovery restores or finishes the fork, the configuration that records the commit it's
+// based on, and the output generated from them together.
+func AuthoredSkill(origin, name string) Target {
+	return Target(skills.Directory + "/" + skills.Folder(origin, name))
+}
 
 // maxAuthoredSkills bounds the authored skill folders one transaction can replace, so its journal stays small enough
 // to read during recovery.
 const maxAuthoredSkills = 1000
 
-// authoredSkillTarget reports whether target is an AuthoredSkill target of a valid skill name.
-func authoredSkillTarget(target Target) bool {
-	name, authored := strings.CutPrefix(string(target), skills.Directory+"/")
-	return authored && skills.ValidName(name)
+// authoredSkillTarget reports whether target is an AuthoredSkill target of a valid origin and skill name, or, in a
+// journal of format 9 to 11, from before skills sat in origin folders, skills/<name>, which legacy reports.
+func authoredSkillTarget(target Target) (authored, legacy bool) {
+	folder, found := strings.CutPrefix(string(target), skills.Directory+"/")
+	if !found {
+		return false, false
+	}
+	if origin, name, nested := strings.Cut(folder, "/"); nested {
+		return skills.ValidName(origin) && skills.ValidName(name), false
+	}
+	return skills.ValidName(folder), true
+}
+
+// isAuthoredSkill reports whether target is an AuthoredSkill target in either form authoredSkillTarget reads.
+func isAuthoredSkill(target Target) bool {
+	authored, _ := authoredSkillTarget(target)
+	return authored
 }
 
 // AgentsFile is the repository's AGENTS.md, beside the Trail Guide directory, which holds a section Trail Guide maintains.
@@ -141,7 +157,7 @@ func localRuleAssetsTarget(target Target) bool {
 // localTarget reports whether target is an authored file or directory under rules/ or skills/, which follows the
 // fixed targets in a transaction.
 func localTarget(target Target) bool {
-	return localGroupMetadataTarget(target) || localRuleTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target)
+	return localGroupMetadataTarget(target) || localRuleTarget(target) || localRuleAssetsTarget(target) || isAuthoredSkill(target)
 }
 
 // fileTarget reports whether target is a single file rather than a directory tree.
@@ -151,7 +167,7 @@ func fileTarget(target Target) bool {
 
 func validTarget(target Target) bool {
 	_, skill := skillFolderTarget(target)
-	return managedTarget(target) || fileTarget(target) || localRuleAssetsTarget(target) || authoredSkillTarget(target) || skill
+	return managedTarget(target) || fileTarget(target) || localRuleAssetsTarget(target) || isAuthoredSkill(target) || skill
 }
 
 // managedTarget reports whether target is a managed tree, in the current layout or the legacy one.

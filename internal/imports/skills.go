@@ -24,21 +24,20 @@ import (
 const librarySkillsFolder = librarytree.Directory + "/" + skills.Directory + "/"
 
 // skillFolders returns the skills in files, a commit's tree by repository path, keyed by skill ID, each with its
-// files keyed by their path in the vendor snapshot. A library's skills are the folders directly in its
-// .trailguide/skills/ that hold a SKILL.md, with IDs skills/<name> and snapshot paths in skills/. Any other
-// repository's are the folders that hold a SKILL.md, other than the repository root and a folder inside another
-// skill's folder, which belongs to that skill; their IDs and snapshot paths are their repository paths.
+// files keyed by their path in the vendor snapshot. A library's skills are the folders in the origin folders of its
+// .trailguide/skills/ that hold a SKILL.md, or, at a commit of an earlier library schema version, the folders
+// directly in .trailguide/skills/ that do, with IDs skills/<name> and snapshot paths in skills/<name>/, without the
+// origin folder. Any other repository's are the folders that hold a SKILL.md, other than the repository root and a
+// folder inside another skill's folder, which belongs to that skill; their IDs and snapshot paths are their
+// repository paths.
 func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[string]treeEntry {
+	if isLibrary {
+		return librarySkillFolders(files)
+	}
 	ids := []string{}
 	for name := range files {
 		folder, found := strings.CutSuffix(name, "/"+skills.File)
 		if !found {
-			continue
-		}
-		if isLibrary {
-			if skill, inside := strings.CutPrefix(folder, librarySkillsFolder); inside && !strings.Contains(skill, "/") {
-				ids = append(ids, skills.AuthoredID(skill))
-			}
 			continue
 		}
 		// A colon separates a curated skill's source from its ID, so a folder whose path has one can't be named.
@@ -59,20 +58,34 @@ func skillFolders(files map[string]treeEntry, isLibrary bool) map[string]map[str
 		result[id] = map[string]treeEntry{}
 	}
 	for name, entry := range files {
-		stored := name
-		if isLibrary {
-			inside, found := strings.CutPrefix(name, librarytree.Directory+"/")
-			if !found {
-				continue
-			}
-			stored = inside
-		}
 		for id := range result {
-			if strings.HasPrefix(stored, id+"/") {
-				entry.name = stored
-				result[id][stored] = entry
+			if strings.HasPrefix(name, id+"/") {
+				entry.name = name
+				result[id][name] = entry
 				break
 			}
+		}
+	}
+	return result
+}
+
+// librarySkillFolders returns skillFolders' result for files, the tree of a library's commit.
+func librarySkillFolders(files map[string]treeEntry) map[string]map[string]treeEntry {
+	inSkills := map[string]treeEntry{}
+	for name, entry := range files {
+		if inside, found := strings.CutPrefix(name, librarySkillsFolder); found {
+			inSkills[inside] = entry
+		}
+	}
+	layout := skills.FindLayout(slices.Collect(maps.Keys(inSkills)))
+	result := map[string]map[string]treeEntry{}
+	for name := range layout {
+		result[skills.AuthoredID(name)] = map[string]treeEntry{}
+	}
+	for file, entry := range inSkills {
+		if name, inside, ok := layout.Split(file); ok {
+			entry.name = skills.AuthoredID(name) + "/" + inside
+			result[skills.AuthoredID(name)][entry.name] = entry
 		}
 	}
 	return result
@@ -192,7 +205,7 @@ func skillNotInRevision(source rules.Source, plan sourcePlan, field, id string) 
 		}
 		return fail("skill-not-in-revision", fmt.Sprintf("%s names %s, which isn't in %s, the revision .trailguide/lock.json records for sources.%s. Sync takes every skill from that revision. %s", field, id, revision, source.Name, next), nil)
 	}
-	return &ValidationError{Location: field, Problem: fmt.Sprintf("the source has no skill %s at %s; check the skill ID. A library's skills are the folders in its .trailguide/skills/, such as skills/build-feature; another repository's are the folders that hold a SKILL.md, named by their path from the repository root", id, revision)}
+	return &ValidationError{Location: field, Problem: fmt.Sprintf("the source has no skill %s at %s; check the skill ID. A library's skills are the folders in the origin folders of its .trailguide/skills/, named skills/<name>, such as skills/build-feature; another repository's are the folders that hold a SKILL.md, named by their path from the repository root", id, revision)}
 }
 
 // requireConfiguredUses checks that every skill the source's skills.uses lists is one of available, the IDs of the

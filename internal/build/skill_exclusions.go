@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // skillReplacement is what an authored skill replaces: a source's skill, which the project forks, installing the
@@ -45,7 +47,7 @@ func skillReplacements(config rules.Configuration, libraries map[string]Library,
 			fork := source.SkillForks[id]
 			where := "sources." + source.Name + ".skills.forks." + id + ".as"
 			if _, authored := local[fork.As]; !authored {
-				return nil, invalid(where, fmt.Sprintf("the project has no authored skill %s; add .trailguide/%s/SKILL.md, or remove the fork", fork.As, fork.As))
+				return nil, invalid(where, fmt.Sprintf("the project has no authored skill %s; add .trailguide/%s/%s/SKILL.md, or remove the fork", fork.As, skills.Directory, skills.Folder(source.Name, strings.TrimPrefix(fork.As, skills.Directory+"/"))))
 			}
 			if other, taken := replaces[fork.As]; taken {
 				return nil, invalid(where, fmt.Sprintf("%s already replaces the skill %s names; each authored skill replaces one skill", fork.As, other))
