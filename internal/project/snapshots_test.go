@@ -732,10 +732,9 @@ func TestSnapshotRecordsRejectInvalidSkills(t *testing.T) {
 		"skill without SKILL.md": {"tools", func(r *sourceRecord) {
 			r.Skills["tools/other"], r.AvailableSkills["tools/other"] = recordSkill{Included: true, UsedBy: []string{}}, availableSkill{}
 		}, "missing the skill's SKILL.md"},
-		"executable file outside a skill":     {"team", func(r *sourceRecord) { r.Executable = []string{"techs/go/errors.md"} }, "expected distinct skill files"},
-		"unknown kind":                        {"team", func(r *sourceRecord) { r.Kind = "plugin" }, "expected library or non-library"},
-		"non-library file outside its skills": {"tools", func(r *sourceRecord) { r.Files["README.md"] = r.Files["tools/review/SKILL.md"] }, "belongs to no recorded skill"},
-		"skill neither included nor used":     {"tools", func(r *sourceRecord) { r.Skills["tools/review"] = recordSkill{UsedBy: []string{}} }, "recorded only because other skills use it"},
+		"executable file outside a skill": {"team", func(r *sourceRecord) { r.Executable = []string{"techs/go/errors.md"} }, "expected distinct skill files"},
+		"unknown kind":                    {"team", func(r *sourceRecord) { r.Kind = "plugin" }, "expected library or non-library"},
+		"skill neither included nor used": {"tools", func(r *sourceRecord) { r.Skills["tools/review"] = recordSkill{UsedBy: []string{}} }, "recorded only because other skills use it"},
 		"used by an unrecorded skill": {"tools", func(r *sourceRecord) {
 			r.Skills["tools/review"] = recordSkill{Included: true, UsedBy: []string{"tools/gone"}}
 		}, "expected distinct other recorded skills"},

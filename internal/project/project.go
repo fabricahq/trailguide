@@ -15,6 +15,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/library"
+	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -51,6 +52,10 @@ type FileChanges struct {
 	// excludes without a replacement. Last, one for each personal skill in Options.Home with the name of a skill the
 	// project installs, which build doesn't report.
 	Warnings []string `json:"warnings"`
+	// ExcludedSkillLinks reports each installed skill whose links reach a skill the project excludes, whose linked
+	// files the project keeps for reading without installing the skill, for the caller to warn about; build.Output
+	// describes them. It is empty, never nil, when there are none.
+	ExcludedSkillLinks []build.ExcludedSkillLink `json:"excludedSkillLinks"`
 	// Recovered reports that the command first recovered an interrupted earlier command, restoring or finishing
 	// that command's files, which the lists above don't include.
 	Recovered bool `json:"recovered"`
@@ -101,6 +106,7 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		defer agents.close()
 		changes = compareFiles(treeFiles(before.generated), output.Files)
 		changes.Warnings = append(retiredCitationWarnings(output), output.ExcludedUses...)
+		changes.ExcludedSkillLinks = output.ExcludedLinks
 		// Build reports paths relative to _managed/generated/, three folders below the repository root.
 		mergeChanges(&changes, prefixChanges(installs.changes, "../../../"))
 		changes.Warnings = append(changes.Warnings, renameWarnings(output)...)
@@ -110,6 +116,9 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		agents.include(targets, &changes)
 		return w.ApplyModes(targets, installs.executable, func() error {
 			if err := requireUnchanged(ctx, root, before); err != nil {
+				return err
+			}
+			if err := requireLinkedFilesUnchanged(ctx, before.directory, output.LinkedFiles); err != nil {
 				return err
 			}
 			if err := agents.requireUnchanged(ctx); err != nil {
@@ -188,6 +197,9 @@ func checkProjectFiles(ctx context.Context, options Options, expected map[string
 	if err := requireCheckUnchanged(ctx, root, before, expected, files); err != nil {
 		return checkedProject{}, err
 	}
+	if err := requireLinkedFilesUnchanged(ctx, before.directory, output.LinkedFiles); err != nil {
+		return checkedProject{}, err
+	}
 	if err := requireSkillFoldersUnchanged(ctx, root, installs); err != nil {
 		return checkedProject{}, err
 	}
@@ -238,6 +250,8 @@ type projectState struct {
 	lock                                     []byte
 	layout                                   managedLayout
 	local, assets, skills, vendor, generated *filetxn.Tree
+	// directory is the Trail Guide directory's path, beside the files outside it that authored skills link to.
+	directory string
 }
 
 // records returns the project's records, as readRecords reads them for every command but sync, which alone moves a
@@ -268,7 +282,7 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 	if err != nil {
 		return projectState{}, err
 	}
-	state := projectState{config: config, configBytes: data, lock: lock, layout: layout}
+	state := projectState{config: config, configBytes: data, lock: lock, layout: layout, directory: root.Name()}
 	for _, item := range []struct {
 		name  string
 		value **filetxn.Tree
@@ -309,15 +323,28 @@ func prepareProject(ctx context.Context, state projectState, options Options) (b
 }
 
 // loadSnapshot validates the library content of a verified snapshot, assembling each rule from the library
-// release that published it, and checks that it holds exactly the recorded rules and files besides its skills'. A
-// snapshot of a repository that isn't a library has an empty catalog.
+// release that published it, and checks that it holds exactly the recorded rules and files besides its skills' and
+// the files its delivered skills link to, which must all be there. A snapshot of a repository that isn't a library
+// has an empty catalog.
 func loadSnapshot(ctx context.Context, source rules.Source, snapshot snapshot) (library.Catalog, error) {
-	if snapshot.NonLibrary {
-		return library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}}, nil
+	references, err := snapshot.ReferenceFiles(source.Name, func(id string) bool { return deliversSkill(source, id) }, func(id string) bool {
+		_, excluded := source.SkillExclude[id]
+		return excluded
+	})
+	if err != nil {
+		return library.Catalog{}, err
 	}
 	ruleFiles := snapshot
 	ruleFiles.Files = maps.Clone(snapshot.Files)
 	maps.DeleteFunc(ruleFiles.Files, func(file string, _ []byte) bool { return snapshot.IsSkillFile(file) })
+	if snapshot.NonLibrary {
+		for _, file := range slices.Sorted(maps.Keys(ruleFiles.Files)) {
+			if !references[file] {
+				return library.Catalog{}, invalidSnapshot(librarytree.Vendor+"/"+source.Name+"/"+file, "belongs to no installed skill, and no installed skill links to it; run trailguide project sync")
+			}
+		}
+		return library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}}, nil
+	}
 	snapshot = ruleFiles
 	// An individually selected rule the snapshot doesn't import was retired when it was recorded.
 	individual := []string{}
@@ -330,6 +357,12 @@ func loadSnapshot(ctx context.Context, source rules.Source, snapshot snapshot) (
 	if err != nil {
 		return library.Catalog{}, err
 	}
+	// A file the skills link to is in the catalog too when the library's rules use it.
+	loaded := catalog.Files()
+	maps.DeleteFunc(snapshot.Files, func(file string, _ []byte) bool {
+		_, inCatalog := loaded[file]
+		return references[file] && !inCatalog
+	})
 	if err := verifyLoadedSnapshot(source, catalog, snapshot); err != nil {
 		return library.Catalog{}, err
 	}
@@ -352,6 +385,10 @@ func renderProject(ctx context.Context, state projectState, libraries map[string
 	output, err := build.Generate(state.config, libraries, authored, build.Options{IndexMaxLines: options.IndexMaxLines, GroupInlineMaxBytes: options.GroupInlineMaxBytes, LocalSkills: local})
 	if err != nil {
 		return build.Output{}, clashFailure(err)
+	}
+	// Installed copies' links point at the files the project's skills name, so those must be there after the write.
+	if output.LinkedFiles, err = requireAuthoredSkillReferences(ctx, state, output); err != nil {
+		return build.Output{}, err
 	}
 	if err := ctx.Err(); err != nil {
 		return build.Output{}, err
@@ -404,7 +441,7 @@ func treeFiles(tree *filetxn.Tree) map[string][]byte {
 
 // compareFiles produces deterministic byte-level changes without treating timestamp changes as output changes.
 func compareFiles(before, after map[string][]byte) FileChanges {
-	changes := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}}
+	changes := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}, ExcludedSkillLinks: []build.ExcludedSkillLink{}}
 	for _, name := range slices.Sorted(maps.Keys(after)) {
 		data, ok := before[name]
 		if !ok {
@@ -448,4 +485,12 @@ func verifyLoadedSnapshot(source rules.Source, catalog library.Catalog, snapshot
 		}
 	}
 	return nil
+}
+
+// deliversSkill reports whether the project delivers source's installed skill id, which it doesn't when its
+// configuration excludes or forks it.
+func deliversSkill(source rules.Source, id string) bool {
+	_, excluded := source.SkillExclude[id]
+	_, forked := source.SkillForks[id]
+	return !excluded && !forked
 }

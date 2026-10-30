@@ -104,11 +104,14 @@ After sync, each installed skill appears in several places. Trail Guide writes a
 - **`.trailguide/_managed/vendor/fabrica/skills/build-feature/`**: the original files, as the library published that version.
 - **`.trailguide/_managed/generated/SKILLS.md`**: one entry per installed skill, with its description, ID and version, level and the library that set it, type, installed paths, how many rules it applies, the skills it calls, and why it's installed.
 - **`.trailguide/_managed/generated/installed-skills.json`**: which folders in the targets Trail Guide installed.
+- **`.trailguide/_managed/generated/references/fabrica/`**: a reading copy of each file an installed skill links to outside its own folder, such as a sibling skill it compares itself with or a shared checklist. These copies aren't skills: agents reach them only by following the links.
 
 An installed copy matches the library's folder, scripts and their executable bits included, with two additions to `SKILL.md`:
 
 - A marker comment as the first line after the frontmatter, naming the skill's project ID and version, such as `<!-- trailguide:installed fabrica:skills/build-feature 1.3.0. Do not edit; fork it with trailguide project add skill --from. -->`.
 - When the skill cites rules, a generated section at the end, **Rules this skill applies**, which links to your project's version of each rule the skill cites, and a **Skills this skill uses** line when it calls others.
+
+Links that leave the skill's folder are changed so they still reach their file from the installed copy: a link to a skill you also install points at its installed copy, under the name you give it, or at your fork of it, and any other link points at a reading copy in `_managed/generated/references/`. Web links stay as they are.
 
 Don't edit installed copies: the next sync replaces them, and `trailguide project check` reports the difference. To change a skill, [fork it](#fork-a-skill).
 
@@ -134,6 +137,37 @@ skills:
 ```
 
 Trail Guide doesn't search skill text for calls it wasn't told about. See [Declare the skills a skill calls](/reference/configuration/#declare-the-skills-a-skill-calls).
+
+## When a skill links to a skill you exclude
+
+A skill you install can link to one you exclude, such as `attack-the-premise` comparing itself with `redesign`. Excluding `redesign` keeps it out of your agents' skills folders and `SKILLS.md`'s available skills, but the link still works: sync keeps the files the link reaches, from the same revision, as reading copies in `_managed/generated/references/`, and warns, naming both skills:
+
+```text
+$ trailguide project sync
+...
+Warning: fabrica:skills/attack-the-premise references fabrica:skills/redesign, which this project excludes. fabrica:skills/redesign won't be installed as a skill, but its referenced files will be retained for reading. To leave them out too, add skills/attack-the-premise to sources.fabrica.skills.exclude, or fork it without the link.
+```
+
+When the link is reached through other files, such as a shared checklist, the warning adds the chain of files it goes through, by their paths in the source's repository. A skill that both calls and links to the skill you exclude gets one warning that says both. Build and update give the same warning, and `--json` output lists each one under `excludedSkillLinks`.
+
+An agent that follows the link reads the excluded skill's text, and could act on it. If you excluded the skill because you don't want agents to see it, exclude or fork the skill that links to it as well.
+
+## When a skill links to a file you can't keep
+
+Sometimes a skill links to a file your project can't deliver: the file doesn't exist at the revision you install, the link names a folder or a rule file, or it points into a fork that lacks the file. Sync and update check every link before they write anything, so they fail, leave your files as they were, and name the file with the link, the link, the source and revision, and the chain of links that reached it:
+
+```text
+$ trailguide project sync
+Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
+```
+
+Choose the repair the message lists. When the file is missing from the source, the source's maintainer fixes the link; `trailguide library check` reports it in their library.
+
+A project synced with an older Trail Guide has no copies of the files its skills link to, so build and check fail with `reference-not-retained`. They work offline, so they never fetch the files themselves. Take them from the revision your lockfile records, without moving any source:
+
+```sh
+trailguide project sync
+```
 
 ## Install skills from a repository that isn't a library
 
@@ -227,7 +261,7 @@ sources:
           reason: Release Planner writes our release notes.
 ```
 
-These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `_managed/vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed.
+These are partial snippets, not complete source definitions. An excluded skill isn't installed, but it stays in `_managed/vendor/`, so updates can show you its changes. When another installed skill calls it, sync warns that the skill it calls isn't installed. When another installed skill links to it, sync keeps the linked files for reading and warns; see [When a skill links to a skill you exclude](#when-a-skill-links-to-a-skill-you-exclude).
 
 You can't exclude or fork a [required skill](/reference/configuration/#skill-levels): sync fails and names the library that requires it. Required skills are your organization's floor; to diverge from one, stop using the source.
 
@@ -268,7 +302,7 @@ trailguide project add skill review-migration \
   --non-interactive
 ```
 
-The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
+The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Links in the skill can name any file in your repository, such as `../../../docs/schema.md`; build fails when one names a file that isn't there, and points the installed copy's links at the same files. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
 
 ## Personal skills with the same name
 

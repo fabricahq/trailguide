@@ -117,8 +117,8 @@ func TestLibraryAddSkill_ForksASkillItCantAdaptAsADraftToFinish(t *testing.T) {
 	binary := buildCLI(t)
 	out, diagnostic, code := runCLIWithEnvironment(t, binary, directory, environment, "library", "add", "skill", "--from", "pocock:skills/ops/ratchet", "--reason", "Ours.")
 	for _, want := range []string{
-		"Finish the fork: Trail Guide couldn't finish adapting the skill's SKILL.md",
-		"Until you finish it, library check fails and projects can't install the fork.\nIn SKILL.md:\n",
+		"Finish the fork: Trail Guide couldn't finish adapting the skill, so it marked the fork's",
+		"Until you finish it, library check fails and projects can't install the fork.\nIn the fork:\n",
 		"  - Correct its frontmatter: ",
 		"  - Name the skill ratchet, and name the skills it uses with the source's name, such as pocock:skills/tdd.",
 		"Then remove the <!-- trailguide:draft --> line.",

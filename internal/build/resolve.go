@@ -93,7 +93,9 @@ type resolvedSource struct {
 // LocalFiles holds supporting bytes; active rules own their documents.
 type resolution struct {
 	// Skills lists the skills the project installs, by project ID.
-	Skills     []resolvedSkill   `json:"skills"`
+	Skills []resolvedSkill `json:"skills"`
+	// References holds the reading copies of the files installed skills link to, by path in generated/.
+	References map[string][]byte `json:"references"`
 	Groups     []resolvedGroup   `json:"groups"`
 	Sources    []resolvedSource  `json:"sources"`
 	LocalPaths []string          `json:"localPaths"`

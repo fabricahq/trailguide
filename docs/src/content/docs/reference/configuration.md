@@ -198,6 +198,8 @@ Excluding a [required skill](#skill-levels) fails validation and names the libra
 
 When another installed skill calls a skill you exclude, `trailguide project sync` warns that the skill it calls isn't installed. Fork the skill instead to give the calling skill your version.
 
+Excluding a skill decides only what's installed. When an installed skill links to a skill you exclude, by ID or by level, sync keeps the files the links reach as reading copies and warns; it doesn't stop an agent that follows the link from reading them. See [When a skill links to a skill you exclude](/guides/install-skills/#when-a-skill-links-to-a-skill-you-exclude).
+
 You can also exclude a rule that an installed skill cites, such as one outside your rule `include`. The skill's installed copy then says the rule is excluded by this repository, with your reason.
 
 ## Fork a skill

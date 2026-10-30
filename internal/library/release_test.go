@@ -299,6 +299,12 @@ func TestRelease_RefusesBeforeChangingAnything(t *testing.T) {
 				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fixer\ndescription: Fix a bug.\n---\n"), ".trailguide/skills/tdd/SKILL.md": []byte("---\nname: tdd\ndescription: Test first.\n---\n"), "changes/skills.yaml": []byte("summary: Add skills.\nskills:\n  skills/fix: new\n  skills/review: new\n")})
 				edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\ndescription: Fix a bug.\n---\n", ".trailguide/skills/review/SKILL.md": "---\nname: review\ndescription: Review a change.\n---\n", ".trailguide/skills/tdd": ""})
 			}},
+		{name: "uncommitted files skills link to", code: "uncommitted-changes", message: "these library files differ from it:\n  - docs/checklist.md differs from its committed copy\n  - docs/guide.md isn't committed\nCommit and push your changes",
+			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
+				// Projects retain the files a skill links to from the published commit, so it must hold what check read.
+				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fix\ndescription: Fix a bug.\n---\nRead [the checklist](../../../docs/checklist.md).\n"), "docs/checklist.md": []byte("# Checklist\n"), "changes/skills.yaml": []byte("summary: Add fix.\nskills:\n  skills/fix: new\n")})
+				edit(t, options.Directory, map[string]string{"docs/checklist.md": "See [the guide](guide.md).\n", "docs/guide.md": "# Guide\n"})
+			}},
 		{name: "file a Git filter changes", code: "uncommitted-changes", message: "  - .trailguide/assets/note.txt differs from its committed copy\n",
 			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
 				// Like Git LFS, the clean filter commits other content than the checkout holds, so Git sees no change.

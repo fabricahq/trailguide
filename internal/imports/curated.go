@@ -14,6 +14,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skillrefs"
 	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
@@ -284,6 +285,7 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 	}
 	result := importedSkills{skills: map[string]library.ImportedSkill{}}
 	files := map[string]treeEntry{}
+	taken := map[string]map[string]treeEntry{}
 	for _, id := range slices.Sorted(maps.Keys(installed)) {
 		level, ok := levels[id]
 		if !ok {
@@ -292,9 +294,20 @@ func (l curatedSource) read(ctx context.Context, repo *repository, revision libr
 		// A skill the library's own skills use, which the project's selection doesn't take, is installed for them.
 		result.skills[id] = library.ImportedSkill{Level: level, Included: installed[id].Included && !usedOnly[id], UsedBy: installed[id].UsedBy}
 		maps.Copy(files, folders[id])
+		taken[id] = folders[id]
 	}
-	result.files, result.executable, err = repo.readFiles(ctx, l.library, files, retained)
-	return result, err
+	if result.files, result.executable, err = repo.readFiles(ctx, l.library, files, retained); err != nil {
+		return importedSkills{}, err
+	}
+	for _, data := range result.files {
+		retained += len(data)
+	}
+	references, err := repo.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: !revision.NonLibrary}, folders: taken, delivered: deliveredSkills(slices.Collect(maps.Keys(taken)), l.exclude, l.forks), excluded: excludedSkills(slices.Collect(maps.Keys(taken)), l.exclude), files: result.files, retained: retained, source: "sources." + l.library + ", curated from " + l.name, revision: revision.Commit})
+	if err != nil {
+		return importedSkills{}, err
+	}
+	maps.Copy(result.files, references)
+	return result, nil
 }
 
 // revision returns the revision the curated source's skills come from, fetched, and reports whether a lock entry
@@ -537,7 +550,8 @@ func (l curatedSource) plan(ctx context.Context, chosen []curatedSkill, was libr
 // maintainer. It returns, by the skill's ID in the repository, the name each skill of ids installs under, as project
 // sync names it, and the skills of the repository it uses, and the same for each skill those use, which a project
 // installs with them, leaving out the IDs the repository has no skill for there. It also returns the revision's name,
-// such as main or release/3.
+// such as main or release/3. It fails as retainReferences does when those skills' links name a file a project
+// couldn't retain.
 func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedSource, ids []string, options Options) (_ map[string]library.CuratedSkill, _ string, err error) {
 	ctx, cancel, err := withTimeout(ctx, options)
 	if err != nil {
@@ -606,6 +620,25 @@ func CuratedSkillNames(ctx context.Context, name string, declared rules.CuratedS
 			result[id] = library.CuratedSkill{Name: installName, Uses: uses}
 		}
 		pending = next
+	}
+	// A project that installs the skills keeps every file their links reach from the same revision, so a link the
+	// revision can't satisfy fails the library's check.
+	taken := map[string]map[string]treeEntry{}
+	entries := map[string]treeEntry{}
+	for id := range result {
+		taken[id] = folders[id]
+		maps.Copy(entries, folders[id])
+	}
+	files, _, err := repo.readFiles(ctx, name, entries, 0)
+	if err != nil {
+		return nil, "", err
+	}
+	retained := 0
+	for _, data := range files {
+		retained += len(data)
+	}
+	if _, err := repo.retainReferences(ctx, referenceInput{tree: tree, origin: skillrefs.Origin{Library: !revision.NonLibrary}, folders: taken, delivered: slices.Sorted(maps.Keys(taken)), files: files, retained: retained, source: "sources." + name, revision: revision.Commit}); err != nil {
+		return nil, "", err
 	}
 	return result, at, nil
 }

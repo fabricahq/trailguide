@@ -32,9 +32,32 @@ type Output struct {
 	// ExcludedUses warns, in skill order, about each use of a source's skill that the project excludes without a
 	// replacement, which isn't installed. It is empty, never nil, when there are none.
 	ExcludedUses []string `json:"excludedUses"`
+	// ExcludedLinks reports, sorted by skill and then excluded skill, each installed skill whose links reach a
+	// source's skill the project excludes, whose files the links reach the project keeps as reading copies instead of
+	// installing the skill. It is empty, never nil, when there are none.
+	ExcludedLinks []ExcludedSkillLink `json:"excludedLinks"`
 	// RenamedSkills lists, sorted by project ID, the skills the project installs under a name skills.rename gives
 	// them instead of their own; it is empty, never nil, when it renames none.
 	RenamedSkills []RenamedSkill `json:"renamedSkills"`
+	// LinkedFiles maps each file the project's own skills link to outside skills/, the skill targets, and _managed/,
+	// by path from the repository root, to the bytes the caller checked, so that a write can require them unchanged.
+	// Generate leaves it nil; the caller sets it.
+	LinkedFiles map[string][]byte `json:"-"`
+}
+
+// ExcludedSkillLink is an installed skill whose links reach the files of a skill the project excludes, which the
+// project keeps as reading copies in generated/references/ without installing the skill, so an agent can still
+// read them.
+type ExcludedSkillLink struct {
+	// Skill is the project ID of the installed skill, and Excluded the project ID of the skill the project excludes,
+	// such as fabrica:skills/redesign.
+	Skill    string `json:"skill"`
+	Excluded string `json:"excluded"`
+	// Chain lists, by path in the repository that supplied them, the file of Skill whose link starts the reference,
+	// each file the reference goes through, and the first file of Excluded it reaches.
+	Chain []string `json:"chain"`
+	// Uses reports that Skill also uses Excluded, a use the project drops.
+	Uses bool `json:"uses"`
 }
 
 // RenamedSkill is a source's skill that the project installs under another name.
@@ -68,10 +91,11 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 	if err != nil {
 		return Output{}, err
 	}
-	var excludedUses []string
-	if resolved.Skills, excludedUses, err = resolveSkills(config, libraries, options.LocalSkills); err != nil {
+	skills, err := resolveSkills(config, libraries, options.LocalSkills)
+	if err != nil {
 		return Output{}, err
 	}
+	resolved.Skills, resolved.References = skills.Skills, skills.References
 	retired, err := citeRules(&resolved, config, libraries)
 	if err != nil {
 		return Output{}, err
@@ -83,6 +107,6 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 	if err != nil {
 		return Output{}, err
 	}
-	output.RetiredCitations, output.ExcludedUses = retired, excludedUses
+	output.RetiredCitations, output.ExcludedUses, output.ExcludedLinks = retired, skills.ExcludedUses, skills.ExcludedLinks
 	return output, nil
 }

@@ -363,7 +363,7 @@ func termsPath(input json.RawMessage, location string) (string, error) {
 	}
 	path, ok := librarytree.LibraryPath(librarytree.Upgrade(declared))
 	if !ok || path == librarytree.Manifest || strings.HasPrefix(path, "changes/") || (path == declared && librarytree.InSnapshotNames(path)) {
-		return "", invalid(location, decode.Quote(declared)+" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library")
+		return "", invalid(location, decode.Quote(declared)+" can't hold a license or notice file; keep it outside .trailguide/, such as LICENSE.md at the repository root, or in .trailguide/assets/. At the repository root, _source.json, config.yaml, and the _repository/, assets/, curated/, changes/, practices/, rules/, skills/, and techs/ folders are reserved for the library's own files and a project's copy of the library")
 	}
 	if librarytree.IsRuleContent(path) {
 		return "", invalid(location, decode.Quote(declared)+" belongs to a rule's version; keep license and notice files outside rules and their asset directories, such as LICENSE.md at the repository root")

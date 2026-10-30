@@ -83,6 +83,8 @@ Use the problem reported by `trailguide project check` to choose a repair:
 | The managed Trail Guide guide is missing or outdated. | Run `trailguide project build` or `trailguide project sync` to refresh it and regenerate guidance. Run `trailguide project init` to refresh only setup files. |
 | An installed skill folder is missing, edited, or unexpected, or `_managed/generated/installed-skills.json` is stale, and vendored files are valid. | Run `trailguide project build`. If the folders are missing because `.gitignore` excludes them, also add an exception and commit them; see [Who owns the target folders](#who-owns-the-target-folders). |
 | The `AGENTS.md` section is missing or outdated. | Run `trailguide project build`. If build reports that the section was edited, move your text outside the markers and delete the section first. |
+| A `reference-not-retained` error says the project's copy of a source lacks a file an installed skill links to, such as after an upgrade from an older Trail Guide. | Run `trailguide project sync`. It takes the linked files from the revision `.trailguide/lock.json` records, without moving the source. |
+| Another `reference-` error says a skill links to a file the project can't deliver. | Follow the repair in the message: fix the configuration, such as a fork that lacks the file, or ask the source's maintainer to fix the link. See [When a skill links to a file you can't keep](/guides/install-skills/#when-a-skill-links-to-a-file-you-cant-keep). |
 | Configuration, rule metadata, or skill metadata is invalid. | Correct the reported input, then retry the appropriate command. |
 
 Run `trailguide project check` again after repairing the problem.
@@ -100,6 +102,7 @@ For skills, check also fails when:
 - `_managed/generated/installed-skills.json` or `_managed/generated/SKILLS.md` doesn't match the skills the configuration installs.
 - Two skills the repository installs have the same install name, or a target folder has a folder Trail Guide would install a skill into but doesn't own.
 - One of your authored skills cites a rule its library retired. The message names the replacement when there is one.
+- A copy in `_managed/generated/references/` of a file an installed skill links to is missing or edited, or a vendor snapshot lacks a file an installed skill links to.
 
 Check never reads the contents of target folders Trail Guide doesn't own.
 

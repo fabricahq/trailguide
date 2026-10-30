@@ -92,6 +92,10 @@ func skillForkedReport(result project.AuthoringResult, from project.SkillForkSou
 	if fixes := plan.Fixes(); len(fixes) > 0 {
 		steps = append(steps, nextStep{Instruction: forkFixesInstruction(fixes, "trailguide project build refuses it")})
 	}
-	steps = append(steps, nextStep{Instruction: instruction}, nextStep{Instruction: "Then install the fork in place of the source's skill:", Commands: []string{"trailguide project build", "trailguide project check"}})
+	install := nextStep{Instruction: "Then install the fork in place of the source's skill:", Commands: []string{"trailguide project build", "trailguide project check"}}
+	if plan.LinksOutside() {
+		install = nextStep{Instruction: "Then install the fork in place of the source's skill. Sync, unlike build, also drops the files\nonly the source's skill linked to, from the revision .trailguide/lock.json records:", Commands: []string{"trailguide project sync", "trailguide project check"}}
+	}
+	steps = append(steps, nextStep{Instruction: instruction}, install)
 	return authoredReport(&out, result.Added, result.Changed, result.Warnings, steps)
 }

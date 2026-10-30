@@ -201,6 +201,11 @@ func (r *repository) importPlan(ctx context.Context, source rules.Source, plan s
 	if err != nil {
 		return Library{}, err
 	}
+	for _, file := range slices.Sorted(maps.Keys(imported.files)) {
+		if data, ok := snapshot.Files[file]; ok && !bytes.Equal(data, imported.files[file]) {
+			return Library{}, fail("unsupported-content", fmt.Sprintf("sources.%s: installed skills link to %s, which differs at %s from the copy the library's rules use. Ask the library's maintainer to publish a library release with both.", source.Name, file, revisionName(plan.release, plan.commit)), nil)
+		}
+	}
 	addSkills(&snapshot, source, imported)
 	if err := ctx.Err(); err != nil {
 		return Library{}, gitexec.ContextFailure(err)

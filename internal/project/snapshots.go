@@ -538,11 +538,8 @@ func checkRecord(record sourceRecord, name, where string) (parsedRecord, error) 
 		if result.Release != 0 || len(result.Groups) > 0 || len(result.Rules) > 0 || len(result.RetiredRules) > 0 || !result.Selection.IsEmpty() || len(result.RuleSelection) > 0 || len(result.Curated) > 0 {
 			return parsedRecord{}, invalidSnapshot(where, "a record of a source that isn't a library has no library release, groups, or rules")
 		}
-		for file := range paths {
-			if !result.IsSkillFile(file) {
-				return parsedRecord{}, invalidSnapshot(where+".files", file+" belongs to no recorded skill")
-			}
-		}
+		// Files outside the skills' folders are those the skills link to, which loadSnapshot checks once it has their
+		// bytes.
 		return result, nil
 	}
 	if _, ok := paths[librarytree.Manifest]; !ok {

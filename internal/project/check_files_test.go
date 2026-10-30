@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
 )
 
@@ -42,7 +43,7 @@ func TestCheckWithFiles(t *testing.T) {
 			if err != nil || len(generated.Added)+len(generated.Changed)+len(generated.Removed) != 0 {
 				t.Fatal(generated, files, err)
 			}
-			want := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}}
+			want := FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: []string{}, ExcludedSkillLinks: []build.ExcludedSkillLink{}}
 			if state == "missing" {
 				want.Added = []string{"README.md"}
 			}

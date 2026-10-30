@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/test/gitfixture"
 )
 
@@ -150,7 +151,7 @@ func TestForkSkill_ForksASkillItCantAdaptAsADraftToFinish(t *testing.T) {
 	u, _ := newSkillForkFixtureWith(t, map[string][]byte{".trailguide/skills/ship/SKILL.md": []byte(ship)})
 	out, diagnostic, code := u.run(t, "project", "add", "skill", "--from", "team:skills/ship", "--reason", "We ship with make.", "--non-interactive")
 	for _, want := range []string{
-		"Until you finish it, trailguide project build refuses it.\nIn SKILL.md:\n",
+		"Until you finish it, trailguide project build refuses it.\nIn the fork:\n",
 		"  - Name the skill ship, and cite the source's skills and rules with the source's name, such as team:skills/tdd;",
 		"Then remove the <!-- trailguide:draft --> line.",
 	} {
@@ -206,5 +207,65 @@ func TestForkSkill_RejectsMissingAndExtraInputs(t *testing.T) {
 	}
 	if after := projectFileContents(t, u.directory); !reflect.DeepEqual(before, after) {
 		t.Fatal("a refused fork changed the project")
+	}
+}
+
+// TestForkSkill_PointsLinksAtInstalledSkillsAndListsTheOthers forks a skill that links to a sibling skill the project
+// installs and to a shared document: the fork's link to the sibling reaches its installed copy, and the link to the
+// document is a fix to finish, after which sync installs the fork and drops the document.
+func TestForkSkill_PointsLinksAtInstalledSkillsAndListsTheOthers(t *testing.T) {
+	u, _ := newSkillForkFixtureWith(t, map[string][]byte{
+		".trailguide/skills/review/SKILL.md": []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n\nCompare with [build](../build-feature/SKILL.md) and read the [guide](../../../docs/guide.md).\n"),
+		"docs/guide.md":                      []byte("# Guide\n"),
+	})
+	out, diagnostic, code := u.run(t, "project", "add", "skill", "--from", "team:skills/review", "--reason", "Ours.", "--non-interactive")
+	if code != 0 || diagnostic != "" {
+		t.Fatal(code, out, diagnostic)
+	}
+	for _, want := range []string{
+		"  - In SKILL.md, replace the link to ../../../docs/guide.md. It reaches docs/guide.md in team, which is outside the skill and every skill the project installs into its skill targets, so the fork can't reach it.",
+		"Then install the fork in place of the source's skill. Sync, unlike build, also drops the files\nonly the source's skill linked to, from the revision .trailguide/lock.json records:\n  trailguide project sync\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("stdout lacks %q:\n%s", want, out)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(u.directory, ".trailguide/skills/review/SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fork := string(data)
+	if !strings.Contains(fork, "[build](../build-feature/SKILL.md)") {
+		t.Fatalf("fork:\n%s", fork)
+	}
+	u.write(t, "skills/review/SKILL.md", strings.NewReplacer(" and read the [guide](../../../docs/guide.md)", "", rules.DraftMarker+"\n", "").Replace(fork))
+	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+	installed, err := os.ReadFile(filepath.Join(u.directory, ".claude/skills/review/SKILL.md"))
+	if err != nil || !strings.Contains(string(installed), "[build](../build-feature/SKILL.md)") {
+		t.Fatalf("installed fork: %v\n%s", err, installed)
+	}
+	if _, err := os.Stat(filepath.Join(u.directory, ".trailguide/_managed/vendor/team/_repository/docs/guide.md")); !os.IsNotExist(err) {
+		t.Fatalf("sync kept the document only the source's skill linked to: %v", err)
+	}
+	if out, diagnostic, code := u.run(t, "project", "check"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+}
+
+// TestForkSkill_ListsLinksToSiblingSkillsWithoutSkillTargets forks a skill that links to a sibling skill in a
+// project without skill targets, where the sibling has no installed copy to link to, so the link is a fix to finish.
+func TestForkSkill_ListsLinksToSiblingSkillsWithoutSkillTargets(t *testing.T) {
+	u, _ := newSkillForkFixtureWith(t, map[string][]byte{
+		".trailguide/skills/review/SKILL.md": []byte("---\nname: review\ndescription: Review a change.\n---\n# Review\n\nCompare with [build](../build-feature/SKILL.md).\n"),
+	})
+	u.write(t, "config.yaml", "schemaVersion: 2\nskillTargets: []\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    skills:\n      include: ['*']\n")
+	if out, diagnostic, code := u.run(t, "project", "sync"); code != 0 {
+		t.Fatal(code, out, diagnostic)
+	}
+	out, diagnostic, code := u.run(t, "project", "add", "skill", "--from", "team:skills/review", "--reason", "Ours.", "--non-interactive")
+	if want := "  - In SKILL.md, replace the link to ../build-feature/SKILL.md. It reaches .trailguide/skills/build-feature/SKILL.md in team"; code != 0 || !strings.Contains(out, want) {
+		t.Fatalf("exit %d, stderr %q, stdout lacks %q:\n%s", code, diagnostic, want, out)
 	}
 }

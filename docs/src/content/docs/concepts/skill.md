@@ -79,6 +79,16 @@ A skill cites rules from its own repository, so the rules it depends on always t
 
 In a library, `trailguide library check` fails when a skill cites a rule that doesn't exist or was retired, so a typo never reaches an agent. See [Rules a skill applies](/reference/skill-format/#rules-a-skill-applies).
 
+## Files a skill links to
+
+A skill's instructions often link to other files: a sibling skill it compares itself with, a shared checklist, or a diagram. Those links keep working wherever the skill is installed. When a project installs the skill, Trail Guide keeps a copy of every file the skill's links reach, and every file those files link to, from the same revision of the same repository. For a skill a library curates, that's the repository the library curates it from. It changes the installed links to point at those copies, in every agent's skills folder.
+
+Your project's own skills, including forks, keep their links working too: Trail Guide checks that each link names a file in your repository or a skill the project installs, and points the installed copy's link at that file, or at the installed copy of the skill it names. A fork can't link to the rest of its source's repository, so forking a skill lists each such link for you to replace.
+
+A linked file is for reading, not a skill to run. Linking to a sibling skill doesn't install it, add it to `SKILLS.md`, or put it in an agent's skills folder; to install it, include it, or have the skill call it with `trailguide-skills-used`. When the linked skill is installed anyway, the link points at its installed copy, under the name the project gives it, or at the project's fork of it.
+
+Excluding a skill is an installation choice. An excluded skill isn't installed in any agent's skills folder or listed among the available skills, but when a skill you install links to it, Trail Guide still keeps the linked files as reading copies, and sync, build, and update warn about it. A reading copy isn't a restriction on what an agent can do: an agent that follows the link reads the excluded skill's text and could act on it. To keep that text out of the project too, exclude the linking skill, or fork it without the link. When a link points into a fork that lacks the file, sync fails before changing anything and lists the repairs. Web links stay as they are and are never downloaded. See [Links](/reference/skill-format/#links).
+
 ## Skills and rules
 
 Keep each practice in a rule, and cite it from the skills that apply it. When a skill needs a practice followed, it cites the rule rather than restating it:

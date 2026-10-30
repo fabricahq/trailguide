@@ -85,17 +85,31 @@ type resolvedSkill struct {
 	Replaces *skillReplacement
 }
 
-// resolveSkills returns, sorted by project ID, the skills of every configured source's snapshot that the source
-// doesn't exclude or fork, and the authored skills in local, keyed by ID, skills/<name>, each with the skill it replaces and
-// the skills it uses and those that use it. It fails when a SKILL.md is missing or its frontmatter unreadable, when
-// an install name isn't valid, when an exclusion or fork is invalid, as skillReplacements checks it, when a rename names a
-// skill the source doesn't install, with *ClashError when two skills share an install name, after renames, and as
-// linkSkillUses does for an authored skill's uses. It also returns linkSkillUses' warnings about uses of skills the
-// project excludes without a replacement.
-func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) ([]resolvedSkill, []string, error) {
+// skillResolution is the skills a project installs, as resolveSkills resolves them.
+type skillResolution struct {
+	// Skills lists, sorted by project ID, the skills of every configured source's snapshot that the source doesn't
+	// exclude or fork, and the authored skills, each with the skill it replaces, the skills it uses and those that
+	// use it, and, when the project has skill targets, its files as it installs them, with its links pointing at
+	// what the project delivers.
+	Skills []resolvedSkill
+	// References holds the reading copies of the files installed skills link to that no installed skill holds, by
+	// path in generated/.
+	References map[string][]byte
+	// ExcludedUses warns about each use of a skill the project excludes without a replacement, and ExcludedLinks
+	// reports each installed skill whose links reach a skill the project excludes, noting when it also uses it,
+	// instead of a separate warning; see Output.
+	ExcludedUses  []string
+	ExcludedLinks []ExcludedSkillLink
+}
+
+// resolveSkills resolves the skills of the configured sources' snapshots and the authored skills in local, keyed by
+// ID, skills/<name>. It fails when a SKILL.md is missing or its frontmatter unreadable, when an install name isn't
+// valid, when an exclusion, fork, or rename is invalid, with *ClashError when two skills share an install name, as
+// linkSkillUses does for an authored skill's uses, and as deliverReferences does for a link it can't deliver.
+func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) (skillResolution, error) {
 	replacements, err := skillReplacements(config, libraries, local)
 	if err != nil {
-		return nil, nil, err
+		return skillResolution{}, err
 	}
 	result := []resolvedSkill{}
 	for _, source := range config.Sources {
@@ -110,13 +124,13 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			skill := sourceSkill(source, snapshot, id)
 			skill.Files = SkillFiles{snapshot.SkillFiles(id), snapshot.SkillExecutable(id)}
 			if err := describeSkill(&skill, source.SkillRename[id], librarytree.Vendor+"/"+source.Name+"/"+skill.Vendored+"/"+skills.File); err != nil {
-				return nil, nil, err
+				return skillResolution{}, err
 			}
 			result = append(result, skill)
 		}
 		for _, id := range slices.Sorted(maps.Keys(source.SkillRename)) {
 			if _, installs := snapshot.Skills[id]; !installs {
-				return nil, nil, invalid("sources."+source.Name+".skills.rename."+id, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to rename; name a skill its skills.include selects, or remove the entry", id))
+				return skillResolution{}, invalid("sources."+source.Name+".skills.rename."+id, fmt.Sprintf("the source doesn't install skill %s, so there's nothing to rename; name a skill its skills.include selects, or remove the entry", id))
 			}
 		}
 	}
@@ -127,7 +141,7 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			skill.Replaces = &replacement
 		}
 		if err := describeSkill(&skill, "", id+"/"+skills.File); err != nil {
-			return nil, nil, err
+			return skillResolution{}, err
 		}
 		result = append(result, skill)
 	}
@@ -139,15 +153,33 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 			result[i].Targets = append(result[i].Targets, folder+"/"+skill.Name)
 		}
 		if other, taken := names[skill.Name]; taken {
-			return nil, nil, &ClashError{Name: skill.Name, IDs: [2]string{other, skill.ID}}
+			return skillResolution{}, &ClashError{Name: skill.Name, IDs: [2]string{other, skill.ID}}
 		}
 		names[skill.Name] = skill.ID
 	}
-	warnings, err := linkSkillUses(result, config, aliases)
+	uses, err := linkSkillUses(result, config, aliases)
 	if err != nil {
-		return nil, nil, err
+		return skillResolution{}, err
 	}
-	return result, warnings, nil
+	references, err := deliverReferences(result, config, libraries, aliases)
+	if err != nil {
+		return skillResolution{}, err
+	}
+	for i, skill := range result {
+		if files, delivered := references.skills[skill.ID]; delivered {
+			result[i].Files.Files = files
+		}
+	}
+	resolution := skillResolution{Skills: result, References: references.copies, ExcludedUses: []string{}, ExcludedLinks: references.excluded}
+	for _, use := range uses {
+		i := slices.IndexFunc(resolution.ExcludedLinks, func(link ExcludedSkillLink) bool { return link.Skill == use.skill && link.Excluded == use.excluded })
+		if i < 0 {
+			resolution.ExcludedUses = append(resolution.ExcludedUses, use.String())
+			continue
+		}
+		resolution.ExcludedLinks[i].Uses = true
+	}
+	return resolution, nil
 }
 
 // requestedRef returns the source's ref as generated output shows it: empty for a ref that chooses a library

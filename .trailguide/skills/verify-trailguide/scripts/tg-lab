@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+# tg-lab builds the trailguide CLI from a checkout and drives it in a disposable lab: a private HOME and Git
+# configuration, local Git repositories that projects reach as https://verify.invalid/NAME, and an evidence folder
+# that cleanup keeps. Run it with no arguments for usage.
+set -euo pipefail
+
+usage() {
+	cat <<'USAGE'
+Usage:
+  tg-lab new [CHECKOUT]          Build CHECKOUT (default: the Git root of the current directory) into a new lab.
+                                 Prints TG_LAB=<lab>; pass it to every later command.
+  tg-lab doctor                  Check that $TG_LAB is a lab worth driving.
+  tg-lab remote NAME             Create a Git repository that projects reach as https://verify.invalid/NAME.
+  tg-lab project NAME            Create an empty Git repository to use as a project.
+  tg-lab commit DIR MESSAGE      Commit every change in DIR, a lab repository.
+  tg-lab exec -- COMMAND...      Run COMMAND in the current directory with the lab's environment.
+  tg-lab run LABEL -- COMMAND... Like exec, and save the command, stdout, stderr, and exit code as evidence.
+  tg-lab cleanup                 Delete the lab. Keep its evidence.
+
+Environment:
+  TG_LAB        The lab directory that new printed. Every command but new requires it.
+  TG_LAB_ROOT   Where new creates runs (default: ${TMPDIR:-/tmp}/trailguide-verify).
+USAGE
+}
+
+fail() {
+	echo "tg-lab: $*" >&2
+	exit 1
+}
+
+require_lab() {
+	[[ -n "${TG_LAB:-}" ]] || fail "set TG_LAB to the lab directory that tg-lab new printed"
+	[[ -f "$TG_LAB/lab.env" ]] || fail "$TG_LAB isn't a lab: it has no lab.env"
+	TG_LAB="$(cd "$TG_LAB" && pwd)"
+}
+
+# lab_env runs its arguments with the lab's private HOME, Git configuration, and trailguide first on PATH, and
+# without any inherited GIT_* or SSH_ASKPASS setting, such as GIT_SSH_COMMAND or GIT_EXEC_PATH, which could run
+# programs outside the lab.
+lab_env() {
+	local unset=(-u SSH_ASKPASS) name
+	while IFS= read -r name; do
+		unset+=(-u "$name")
+	done < <(compgen -e | grep '^GIT_' || true)
+	env "${unset[@]}" \
+		HOME="$TG_LAB/home" XDG_CONFIG_HOME="$TG_LAB/home/.config" \
+		GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \
+		PATH="$TG_LAB/bin:$PATH" "$@"
+}
+
+cmd_new() {
+	local checkout="${1:-}"
+	if [[ -z "$checkout" ]]; then
+		checkout="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "run new inside a trailguide checkout, or pass its path"
+	fi
+	checkout="$(cd "$checkout" && pwd)"
+	[[ -f "$checkout/cmd/trailguide/main.go" ]] || fail "$checkout isn't a trailguide checkout: it has no cmd/trailguide/main.go"
+	local root="${TG_LAB_ROOT:-${TMPDIR:-/tmp}/trailguide-verify}"
+	mkdir -p "$root"
+	local run
+	run="$(mktemp -d "$root/run-$(date -u +%Y%m%dT%H%M%SZ)-XXXX")"
+	local lab="$run/lab"
+	# Until new prints the lab, nothing else can clean it up, so a failure removes the run.
+	trap 'rm -rf "$run"' EXIT
+	mkdir -p "$lab/bin" "$lab/home/.config" "$lab/remotes" "$lab/projects" "$run/evidence"
+	(cd "$checkout" && go build -o "$lab/bin/trailguide" ./cmd/trailguide) || fail "go build failed in $checkout"
+	cat >"$lab/home/.gitconfig" <<EOF
+[user]
+	name = Trail Guide Verify
+	email = verify@example.invalid
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = false
+[tag]
+	gpgsign = false
+[url "file://$lab/remotes/"]
+	insteadOf = https://verify.invalid/
+[uploadpack]
+	allowFilter = true
+	allowAnySHA1InWant = true
+[protocol "file"]
+	allow = always
+EOF
+	local commit dirty
+	commit="$(git -C "$checkout" rev-parse HEAD)"
+	dirty="$(git -C "$checkout" status --porcelain | wc -l | tr -d ' ')"
+	printf 'checkout=%q\ncommit=%q\nuncommitted_paths=%q\nevidence=%q\n' "$checkout" "$commit" "$dirty" "$run/evidence" >"$lab/lab.env"
+	trap - EXIT
+	echo "Built trailguide from $checkout at $commit ($dirty uncommitted paths)."
+	echo "Evidence: $run/evidence"
+	echo "TG_LAB=$lab"
+}
+
+cmd_doctor() {
+	require_lab
+	local ok=1
+	# shellcheck disable=SC1091
+	source "$TG_LAB/lab.env"
+	echo "lab:       $TG_LAB"
+	echo "evidence:  $evidence"
+	if [[ -x "$TG_LAB/bin/trailguide" ]]; then
+		echo "binary:    $(lab_env trailguide --version 2>&1 | tail -1)"
+	else
+		echo "binary:    MISSING"
+		ok=0
+	fi
+	echo "built at:  $commit ($uncommitted_paths uncommitted paths) from $checkout"
+	if [[ -d "$checkout/.git" || -f "$checkout/.git" ]]; then
+		local head
+		head="$(git -C "$checkout" rev-parse HEAD)"
+		if [[ "$head" != "$commit" ]]; then
+			echo "STALE:     $checkout is now at $head; run tg-lab new to rebuild"
+			ok=0
+		fi
+	fi
+	local resolved
+	resolved="$(lab_env sh -c 'command -v trailguide')"
+	if [[ "$resolved" != "$TG_LAB/bin/trailguide" ]]; then
+		echo "PATH:      trailguide resolves to $resolved, not the lab's binary"
+		ok=0
+	fi
+	if lab_env git config --get "url.file://$TG_LAB/remotes/.insteadOf" >/dev/null; then
+		echo "remotes:   https://verify.invalid/NAME -> $TG_LAB/remotes/NAME"
+	else
+		echo "remotes:   MISSING insteadOf in $TG_LAB/home/.gitconfig"
+		ok=0
+	fi
+	echo "repos:     $(find "$TG_LAB/remotes" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') remotes, $(find "$TG_LAB/projects" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') projects"
+	if [[ $ok == 1 ]]; then
+		echo "doctor: ok"
+	else
+		echo "doctor: NOT OK"
+		return 1
+	fi
+}
+
+valid_name() {
+	[[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "name must be lowercase letters, digits, and hyphens: $1"
+}
+
+new_repo() {
+	local dir="$1"
+	[[ ! -e "$dir" ]] || fail "$dir already exists"
+	mkdir -p "$dir"
+	lab_env git -C "$dir" init --quiet
+}
+
+cmd_remote() {
+	require_lab
+	[[ $# == 1 ]] || fail "usage: tg-lab remote NAME"
+	valid_name "$1"
+	new_repo "$TG_LAB/remotes/$1"
+	echo "path=$TG_LAB/remotes/$1"
+	echo "url=https://verify.invalid/$1"
+}
+
+cmd_project() {
+	require_lab
+	[[ $# == 1 ]] || fail "usage: tg-lab project NAME"
+	valid_name "$1"
+	new_repo "$TG_LAB/projects/$1"
+	echo "path=$TG_LAB/projects/$1"
+}
+
+cmd_commit() {
+	require_lab
+	[[ $# == 2 ]] || fail "usage: tg-lab commit DIR MESSAGE"
+	local dir
+	dir="$(cd "$1" && pwd)"
+	[[ "$dir" == "$TG_LAB"/* ]] || fail "$dir isn't inside the lab"
+	lab_env git -C "$dir" add --all
+	lab_env git -C "$dir" commit --quiet --allow-empty -m "$2"
+	lab_env git -C "$dir" rev-parse HEAD
+}
+
+cmd_exec() {
+	require_lab
+	[[ "${1:-}" == "--" ]] || fail "usage: tg-lab exec -- COMMAND..."
+	shift
+	[[ $# -gt 0 ]] || fail "usage: tg-lab exec -- COMMAND..."
+	lab_env "$@"
+}
+
+cmd_run() {
+	require_lab
+	[[ $# -ge 3 && "$2" == "--" ]] || fail "usage: tg-lab run LABEL -- COMMAND..."
+	local label="$1"
+	shift 2
+	[[ "$label" =~ ^[A-Za-z0-9._-]+$ ]] || fail "label must be letters, digits, dots, underscores, and hyphens: $label"
+	# shellcheck disable=SC1091
+	source "$TG_LAB/lab.env"
+	local count file out err code
+	count="$(find "$evidence" -maxdepth 1 -name '*.txt' | wc -l | tr -d ' ')"
+	file="$(printf '%s/%03d-%s.txt' "$evidence" "$((count + 1))" "$label")"
+	out="$(mktemp)"
+	err="$(mktemp)"
+	set +e
+	lab_env "$@" >"$out" 2>"$err"
+	code=$?
+	set -e
+	{
+		echo "\$ cd ${PWD/#$TG_LAB/\$TG_LAB}"
+		printf '$'
+		printf ' %q' "$@"
+		echo
+		echo "--- stdout"
+		cat "$out"
+		echo "--- stderr"
+		cat "$err"
+		echo "--- exit: $code"
+	} >"$file"
+	cat "$out"
+	cat "$err" >&2
+	rm -f "$out" "$err"
+	echo "[tg-lab] exit $code; evidence: $file" >&2
+	return "$code"
+}
+
+cmd_cleanup() {
+	require_lab
+	# shellcheck disable=SC1091
+	source "$TG_LAB/lab.env"
+	[[ "$(basename "$TG_LAB")" == "lab" && -f "$TG_LAB/lab.env" ]] || fail "refusing to delete $TG_LAB"
+	chmod -R u+w "$TG_LAB"
+	rm -rf "$TG_LAB"
+	echo "Deleted $TG_LAB. Evidence kept in $evidence:"
+	ls "$evidence"
+}
+
+main() {
+	local command="${1:-}"
+	[[ $# -gt 0 ]] && shift
+	case "$command" in
+	new) cmd_new "$@" ;;
+	doctor) cmd_doctor "$@" ;;
+	remote) cmd_remote "$@" ;;
+	project) cmd_project "$@" ;;
+	commit) cmd_commit "$@" ;;
+	exec) cmd_exec "$@" ;;
+	run) cmd_run "$@" ;;
+	cleanup) cmd_cleanup "$@" ;;
+	"" | -h | --help | help) usage ;;
+	*)
+		usage >&2
+		exit 2
+		;;
+	esac
+}
+
+main "$@"

@@ -23,7 +23,7 @@ import (
 // authored skill that replaces it instead; with no replacement, the use is dropped, and linkSkillUses returns a
 // warning for it, in skill order. A use of a skill in aliases, a project source's copy of a curated skill that
 // withoutCuratedCopies dropped, reaches the curated skill it maps to.
-func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases map[string]string) ([]string, error) {
+func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases map[string]string) ([]excludedUse, error) {
 	sources := map[string]rules.Source{}
 	// excluded maps the project ID of each source's skill the project excludes or forks to the fork that replaces it,
 	// or "" when none does.
@@ -37,7 +37,7 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 			excluded[source.Name+":"+id] = fork.As
 		}
 	}
-	warnings := []string{}
+	warnings := []excludedUse{}
 	// redirect returns the installed skill a use of id reaches, and false when the project excludes id without a
 	// replacement, which it warns about.
 	redirect := func(skill resolvedSkill, id string) (string, bool) {
@@ -55,7 +55,7 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 			// A curated skill can't be replaced; see rules.ParseConfiguration's exclusion checks.
 			fix = "Stop excluding the skill, or remove the use from the skill that uses it, which you can fork. A curated skill can't be replaced."
 		}
-		warnings = append(warnings, fmt.Sprintf("%s uses %s, which the project excludes without a replacement, so the skill it uses isn't installed. %s", skill.ID, id, fix))
+		warnings = append(warnings, excludedUse{skill: skill.ID, excluded: id, fix: fix})
 		return "", false
 	}
 	uses := map[string][]string{}
@@ -119,6 +119,17 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 		resolved[i].Uses = slices.Compact(used)
 	}
 	return warnings, nil
+}
+
+// excludedUse is a use, by skill, the project ID of an installed skill, of excluded, a source's skill the project
+// excludes without a replacement, which the project drops; fix says how to keep it.
+type excludedUse struct {
+	skill, excluded, fix string
+}
+
+// String returns the warning about the use.
+func (u excludedUse) String() string {
+	return fmt.Sprintf("%s uses %s, which the project excludes without a replacement, so the skill it uses isn't installed. %s", u.skill, u.excluded, u.fix)
 }
 
 // authoredUseProblem explains why an authored skill can't use citation, a line of its trailguide-skills-used that names no

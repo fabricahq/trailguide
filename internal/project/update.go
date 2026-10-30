@@ -215,7 +215,7 @@ func (p *UpdatePlan) Preview(ctx context.Context, decisions []UpdateDecision) (U
 	if err := p.mergeSkillForks(ctx, sources, skillForks); err != nil {
 		return UpdateResult{}, unchanged(err, p.recovered)
 	}
-	result := UpdateResult{Sources: sources, FileChanges: FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: append(append([]string{}, p.update.Warnings...), p.personal...), Recovered: p.recovered}}
+	result := UpdateResult{Sources: sources, FileChanges: FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: append(append([]string{}, p.update.Warnings...), p.personal...), ExcludedSkillLinks: []build.ExcludedSkillLink{}, Recovered: p.recovered}}
 	return result.withScriptsWarning(), nil
 }
 

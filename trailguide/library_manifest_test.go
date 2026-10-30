@@ -200,6 +200,7 @@ func TestParseLibraryManifest_RefusesAnInvalidManifest(t *testing.T) {
 		"a quoted schema version":                 {"sources: {}\nlibrary: {schemaVersion: '1'}\n", at + ": library.schemaVersion"},
 		"a fractional schema version":             {"sources: {}\nlibrary: {schemaVersion: 1.5}\n", at + ": library.schemaVersion"},
 		"schema version 0":                        {"sources: {}\nlibrary: {schemaVersion: 0}\n", at + ": library.schemaVersion"},
+		"a notice where linked files go":          {"schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license: {file: LICENSE.md, notices: [_repository/NOTICE.md]}\n", at + ": library.license.notices[0]"},
 		"a license in a rule":                     {"schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license: {file: .trailguide/rules/techs/go/x.md, notices: []}\n", at + ": library.license.file"},
 		"an unknown SPDX ID":                      {"schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license: {spdxExpression: Nope, file: LICENSE.md, notices: []}\n", at + ": library.license.spdxExpression"},
 		"a skill listed twice":                    {"schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  skills: {required: [skills/a], offered: [skills/a]}\n", at + ": library.skills.offered[0]"},

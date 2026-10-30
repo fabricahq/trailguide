@@ -65,6 +65,10 @@ func prepare(resolved resolution, options Options) (Output, error) {
 		return Output{}, err
 	}
 	maps.Copy(files, skillFiles)
+	if len(resolved.References) > 0 {
+		maps.Copy(files, resolved.References)
+		files[ReferencesDirectory+"/README.md"] = []byte(generatedMarkdown(referencesReadme))
+	}
 	if err := validateOutputPaths(files); err != nil {
 		return Output{}, err
 	}
