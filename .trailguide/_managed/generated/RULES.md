@@ -5,6 +5,8 @@
 
 This project uses [Fabrica Trail Guide](https://trailguide.fabricahq.com) to declare its adopted engineering practices.
 
+This project also installs agent skills. See [SKILLS.md](SKILLS.md) for what each one does and where it's installed.
+
 ## How to use this file
 
 Before planning, implementing, reviewing, testing, or diagnosing, complete these steps. Exclusions and replacements are already applied to the generated rules.
@@ -23,9 +25,9 @@ Before planning, implementing, reviewing, testing, or diagnosing, complete these
 
 ### Code design
 
-**Description:** Structure functions, modules, and folders so operations read clearly, computation stays separate from effects, and each feature's code stays together.
+**Description:** Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
 
-**When to read this group:** When planning, implementing, refactoring, or reviewing function, module, or folder structure.
+**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
 
 **Open group:** [Code design](groups/practices/code-design.md)
 

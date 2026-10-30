@@ -5,9 +5,9 @@
 
 **Group ID:** `practices/code-design`
 
-**Description:** Structure functions, modules, and folders so operations read clearly, computation stays separate from effects, and each feature's code stays together.
+**Description:** Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
 
-**When to read this group:** When planning, implementing, refactoring, or reviewing function, module, or folder structure.
+**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
 
 ## How to use this group
 
@@ -39,6 +39,20 @@ Version: 1.0.0
 
 **Read full rule:** [Express operations as meaningful steps](../../rules/fabrica/practices/code-design/express-operations-as-meaningful-steps.md)
 
+### Hide implementation decisions behind meaningful interfaces
+
+Rule ID: `fabrica:practices/code-design/hide-implementation-decisions`
+
+Version: 1.0.0
+
+**When to read:** Before designing, changing, or reviewing how functions, classes, packages, or services work together. Read when choosing parameters, defaults, or configuration, passing dependencies, returning internal data, defining a format that more than one module reads or writes, or deciding which module performs a step.
+
+**Impact:** HIGH
+
+**Why it matters:** Callers that repeat a module's internal steps, formats, or settings can miss required work and must change whenever those details change.
+
+**Read full rule:** [Hide implementation decisions behind meaningful interfaces](../../rules/fabrica/practices/code-design/hide-implementation-decisions.md)
+
 ### Organize code by feature
 
 Rule ID: `fabrica:practices/code-design/organize-code-by-feature`
@@ -52,6 +66,20 @@ Version: 1.0.0
 **Why it matters:** Code grouped by technical type scatters each feature across the tree, so changes touch many folders and shared folders fill with single-use code.
 
 **Read full rule:** [Organize code by feature](../../rules/fabrica/practices/code-design/organize-code-by-feature.md)
+
+### Record facts when they happen
+
+Rule ID: `fabrica:practices/code-design/record-facts-when-they-happen`
+
+Version: 1.0.0
+
+**When to read:** Before planning, writing, changing, or reviewing code that needs to know something that happened earlier, such as which question a reply answered, which job delivered a result, or whether a payment was refunded, and before migrating records that don't say it.
+
+**Impact:** HIGH
+
+**Why it matters:** Code that works out a past event from timestamps, ordering, or which records exist gets it wrong whenever history takes a shape its author didn't foresee, and each patch to the guess invites the next.
+
+**Read full rule:** [Record facts when they happen](../../rules/fabrica/practices/code-design/record-facts-when-they-happen.md)
 
 ### Separate pure computation from effects
 

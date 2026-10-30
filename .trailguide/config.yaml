@@ -2,7 +2,7 @@ schemaVersion: 2
 sources:
   fabrica:
     repository: https://github.com/fabricahq/public-library.git
-    ref: release/3
+    ref: release/7
     rules:
       include:
         - practices/code-design/*
@@ -15,7 +15,7 @@ sources:
         - techs/typescript/*
       exclude:
         - id: techs/typescript/comment-role-result-and-constraints
-          reason: This repository's comment policy also covers its website's Astro components
-            and private helpers, as its ESLint configuration enforces.
+          reason: This repository's comment policy also covers its website's Astro
+            components and private helpers, as its ESLint configuration enforces.
           replacedBy: techs/typescript/comment-role-result-and-constraints
           basedOn: "1.0.0"
