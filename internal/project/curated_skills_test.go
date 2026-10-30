@@ -596,9 +596,9 @@ func TestUpdate_PreviewsTheCuratedSkillsAnOverridingSourceMoves(t *testing.T) {
 func testOverridingSourceMoves(t *testing.T, declaredLater bool) {
 	ctx := context.Background()
 	kit, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    offered: [skills/deploy]\n"),
-		"techs/go/_group.yaml":                       []byte(projectMetadata),
-		"techs/go/errors.md":                         []byte(projectRule),
+		"config.yaml":          []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    offered: [skills/deploy]\n"),
+		"techs/go/_group.yaml": []byte(projectMetadata),
+		"techs/go/errors.md":   []byte(projectRule),
 		".trailguide/skills/library/deploy/SKILL.md": []byte(deploySkill),
 	}))
 	if err != nil {
