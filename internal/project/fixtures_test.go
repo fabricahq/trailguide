@@ -56,3 +56,10 @@ func projectCode(t *testing.T, err error, want string) {
 		t.Fatalf("wanted %s, got %v", want, err)
 	}
 }
+
+// movesSources reports whether result moves anything other than minTrailguideVersion, which every update from a
+// release build raises in a project that doesn't name that release yet.
+func movesSources(result UpdateResult) bool {
+	result.SetsMinimumVersion = ""
+	return result.Moves()
+}

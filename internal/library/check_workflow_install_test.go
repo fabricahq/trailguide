@@ -107,7 +107,7 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	// GNU tar runs gzip to read the archive.
-	for _, name := range []string{"sha256sum", "tar", "gzip", "grep", "mkdir", "cp"} {
+	for _, name := range []string{"sha256sum", "tar", "gzip", "grep", "mkdir", "cp", "sed"} {
 		real, err := exec.LookPath(name)
 		if err != nil {
 			t.Fatalf("%s, which GitHub's Ubuntu runners have, is required to run the install step: %v", name, err)
@@ -119,47 +119,60 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 	current, older := releaseArchive(t, "0.2.0"), releaseArchive(t, "0.1.0")
 	currentName, olderName := "trailguide_0.2.0_linux_amd64.tar.gz", "trailguide_0.1.0_linux_amd64.tar.gz"
 	for _, test := range []struct {
-		name, version, latest, attestation string
+		// minimum is the configuration's minTrailguideVersion line, or empty for none.
+		name, minimum, latest, attestation string
 		// assets publishes the GitHub Release page v0.2.0.
 		assets func(t *testing.T, assets string)
 		// installed is the version the step installs, or "" when it must fail.
 		installed string
 	}{
-		{"verified", "0.2.0", "", "pass", func(t *testing.T, assets string) {
+		{"verified", "minTrailguideVersion: 0.2.0", "", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, "0.2.0"},
-		{"attestation fails", "0.2.0", "", "fail", func(t *testing.T, assets string) {
+		{"quoted minimum with a comment", `minTrailguideVersion: "0.2.0" # raised by update`, "", "pass", func(t *testing.T, assets string) {
+			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
+		}, "0.2.0"},
+		{"flow-style minimum fails instead of installing the latest", "library: {minTrailguideVersion: 0.2.0}", "0.2.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, ""},
-		{"archive differs from its checksum", "0.2.0", "", "pass", func(t *testing.T, assets string) {
+		{"quoted key fails instead of installing the latest", `"minTrailguideVersion": 0.2.0`, "0.2.0", "pass", func(t *testing.T, assets string) {
+			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
+		}, ""},
+		{"quoted key in a large configuration fails", `"minTrailguideVersion": 0.2.0` + strings.Repeat("\n# filler that outlasts a pipe buffer", 4096), "0.2.0", "pass", func(t *testing.T, assets string) {
+			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
+		}, ""},
+		{"a comment naming the field installs the latest release", "# minTrailguideVersion is unset", "0.2.0", "pass", func(t *testing.T, assets string) {
+			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
+		}, "0.2.0"},
+		{"attestation fails", "minTrailguideVersion: 0.2.0", "", "fail", func(t *testing.T, assets string) {
+			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
+		}, ""},
+		{"archive differs from its checksum", "minTrailguideVersion: 0.2.0", "", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: older}, map[string][]byte{currentName: current})
 		}, ""},
-		{"an older release's assets", "0.2.0", "", "pass", func(t *testing.T, assets string) {
+		{"an older release's assets", "minTrailguideVersion: 0.2.0", "", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{olderName: older}, map[string][]byte{olderName: older})
 		}, ""},
-		{"an older archive under the requested name", "0.2.0", "", "pass", func(t *testing.T, assets string) {
+		{"an older archive under the requested name", "minTrailguideVersion: 0.2.0", "", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: older}, map[string][]byte{olderName: older})
 		}, ""},
-		{"development build installs the latest release", "0.0.0-development", "0.2.0", "pass", func(t *testing.T, assets string) {
+		{"no minimum installs the latest release", "", "0.2.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, "0.2.0"},
-		{"development build with the latest release's assets replaced", "0.0.0-development", "0.2.0", "pass", func(t *testing.T, assets string) {
+		{"no minimum with the latest release's assets replaced", "", "0.2.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{olderName: older}, map[string][]byte{olderName: older})
 		}, ""},
-		{"development build with an invalid latest version", "0.0.0-development", "*", "pass", func(t *testing.T, assets string) {
+		{"no minimum with an invalid latest version", "", "*", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			workflow, err := checkWorkflowFor(test.version)
-			if err != nil {
-				t.Fatal(err)
-			}
 			runner := t.TempDir()
+			edit(t, runner, map[string]string{".trailguide/config.yaml": "schemaVersion: 2\n" + test.minimum + "\nsources: {}\n"})
 			assets := filepath.Join(runner, "assets")
 			test.assets(t, assets)
 			githubPath, summary := filepath.Join(runner, "github-path"), filepath.Join(runner, "step-summary")
-			command := exec.Command(bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", installScript(t, string(workflow)))
+			command := exec.Command(bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", installScript(t, string(checkWorkflow)))
 			command.Dir = runner
 			command.Env = []string{"PATH=" + tools, "RUNNER_TEMP=" + filepath.Join(runner, "temp"), "GITHUB_PATH=" + githubPath, "GITHUB_STEP_SUMMARY=" + summary, "GH_TOKEN=token", "FAKE_LOG=" + filepath.Join(runner, "log"), "FAKE_ASSETS=" + assets, "FAKE_LATEST=" + test.latest, "FAKE_ATTESTATION=" + test.attestation}
 			output, err := command.CombinedOutput()

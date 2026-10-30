@@ -258,9 +258,10 @@ func TestPlanSkillFork_CommitRefusesASourceAnUpdateMovedAfterPlanning(t *testing
 	if _, err := update.Apply(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
-	// The update moves only the source's ref, so the record alone changes what the fork is based on.
+	// The update moves only the source's ref, and raises minTrailguideVersion, so the record alone changes what the
+	// fork is based on.
 	updated := readRepositoryFile(t, options, ".trailguide/config.yaml")
-	if strings.Replace(config, "release/1", "release/2", 1) != updated {
+	if withRaisedMinimum(strings.Replace(config, "release/1", "release/2", 1)) != updated {
 		t.Fatalf("the update changed more than the source's ref, so the test doesn't isolate the source record:\n%s", updated)
 	}
 	config = updated
@@ -336,8 +337,8 @@ func TestUpdate_ListsChangesToAReplacedSkill(t *testing.T) {
 			if _, err := plan.Apply(ctx, nil); err != nil {
 				t.Fatal(err)
 			}
-			// The update moves only the source's ref to the release it installs.
-			if readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != strings.Replace(config, "ref: release/1", "ref: release/2", 1) {
+			// The update moves only the source's ref to the release it installs, and raises minTrailguideVersion.
+			if readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != withRaisedMinimum(strings.Replace(config, "ref: release/1", "ref: release/2", 1)) {
 				t.Fatal("the update changed the fork or its exclusion")
 			}
 			if installed := readRepositoryFile(t, options, ".claude/skills/build-feature/SKILL.md"); !strings.Contains(installed, "edit .trailguide/skills/team/build-feature/ instead") {

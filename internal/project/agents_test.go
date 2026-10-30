@@ -14,13 +14,13 @@ import (
 	"github.com/fabricahq/trailguide/internal/rules"
 )
 
-// TestRenderAgentsSection records the version and a digest of the lines between the markers, and names the
-// project's directory.
+// TestRenderAgentsSection records a digest of the lines between the markers, and no version, and names the project's
+// directory.
 func TestRenderAgentsSection(t *testing.T) {
-	section := renderAgentsSection(".trailguide", "1.2.3")
+	section := renderAgentsSection(".trailguide")
 	lines := strings.SplitAfter(section, "\n")
 	marker := agentsBeginMarker.FindStringSubmatch(strings.TrimSuffix(lines[0], "\n"))
-	if marker == nil || marker[1] != "1.2.3" || marker[2] != agentsDigest(strings.Join(lines[1:len(lines)-2], "")) || lines[len(lines)-2] != "<!-- trailguide:end -->\n" {
+	if marker == nil || lines[0] != "<!-- trailguide:begin sha256:"+marker[1]+" -->\n" || marker[1] != agentsDigest(strings.Join(lines[1:len(lines)-2], "")) || lines[len(lines)-2] != "<!-- trailguide:end -->\n" {
 		t.Fatalf("markers:\n%s", section)
 	}
 	for _, want := range []string{"## Skills and Rules\n", "Read `.trailguide/_managed/generated/RULES.md`", "If `.trailguide/_managed/generated/SKILLS.md` exists, read it", "follow `.trailguide/README.md`"} {
@@ -28,7 +28,7 @@ func TestRenderAgentsSection(t *testing.T) {
 			t.Fatalf("missing %q:\n%s", want, section)
 		}
 	}
-	if legacy := renderAgentsSection(".code-rules", "1.2.3"); strings.Contains(legacy, ".trailguide/") || !strings.Contains(legacy, "Read `.code-rules/_managed/generated/RULES.md`") {
+	if legacy := renderAgentsSection(".code-rules"); strings.Contains(legacy, ".trailguide/") || !strings.Contains(legacy, "Read `.code-rules/_managed/generated/RULES.md`") {
 		t.Fatalf("section for .code-rules/:\n%s", legacy)
 	}
 }
@@ -36,8 +36,9 @@ func TestRenderAgentsSection(t *testing.T) {
 // TestPlanAgentsSection covers creating, appending, refreshing, and leaving alone, and keeps every line outside the
 // markers byte for byte.
 func TestPlanAgentsSection(t *testing.T) {
-	current := renderAgentsSection(".trailguide", "1.2.3")
-	older := renderAgentsSection(".trailguide", "1.0.0")
+	current := renderAgentsSection(".trailguide")
+	// Trail Guide 0.8 and earlier recorded their version in the begin marker.
+	versioned := strings.Replace(current, "trailguide:begin sha256:", "trailguide:begin 0.8.0 sha256:", 1)
 	for name, test := range map[string]struct {
 		existing *string
 		want     string
@@ -47,8 +48,8 @@ func TestPlanAgentsSection(t *testing.T) {
 		"empty":            {ptr(""), current, "added"},
 		"own text":         {ptr("# Guide\n\nRun make test."), "# Guide\n\nRun make test.\n\n" + current, "added"},
 		"blank line":       {ptr("# Guide\n\n"), "# Guide\n\n" + current, "added"},
-		"older version":    {ptr("# Guide\n\n" + older + "\n## Releases\n"), "# Guide\n\n" + current + "\n## Releases\n", "updated"},
-		"other directory":  {ptr(renderAgentsSection(".code-rules", "1.2.3")), current, "updated"},
+		"versioned marker": {ptr("# Guide\n\n" + versioned + "\n## Releases\n"), "# Guide\n\n" + current + "\n## Releases\n", "updated"},
+		"other directory":  {ptr(renderAgentsSection(".code-rules")), current, "updated"},
 		"current":          {ptr("# Guide\n\n" + current + "Footer\n"), "", ""},
 		"pasted":           {ptr("## Engineering rules\n\n1. Read `.trailguide/_managed/generated/RULES.md`.\n"), "", ""},
 		"crlf current":     {ptr(strings.ReplaceAll(current, "\n", "\r\n")), "", ""},
@@ -56,7 +57,7 @@ func TestPlanAgentsSection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := agentsProject(t, test.existing)
-			plan, err := planAgentsSection(context.Background(), root, rules.Configuration{}, Options{ToolVersion: "1.2.3"})
+			plan, err := planAgentsSection(context.Background(), root, rules.Configuration{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,7 +77,7 @@ func TestPlanAgentsSection(t *testing.T) {
 
 // TestPlanAgentsSectionRefuses an edited section and broken markers, so no command overwrites what someone wrote.
 func TestPlanAgentsSectionRefuses(t *testing.T) {
-	current := renderAgentsSection(".trailguide", "1.2.3")
+	current := renderAgentsSection(".trailguide")
 	for name, test := range map[string]struct{ existing, code string }{
 		"edited":      {strings.Replace(current, "Briefly report", "Always report", 1), "agents-section-edited"},
 		"old pointer": {"## Engineering rules\n\n1. Read `.trailguide/generated/RULES.md`.\n", "agents-pointer-outdated"},
@@ -98,7 +99,7 @@ func TestPlanAgentsSectionRefuses(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := planAgentsSection(context.Background(), root, rules.Configuration{}, Options{ToolVersion: "1.2.3"})
+			_, err := planAgentsSection(context.Background(), root, rules.Configuration{})
 			var failure *filetxn.Error
 			if !errors.As(err, &failure) || failure.Code != test.code {
 				t.Fatalf("got %v, want %s", err, test.code)
@@ -107,8 +108,8 @@ func TestPlanAgentsSectionRefuses(t *testing.T) {
 	}
 }
 
-// TestBuildAgentsSection writes the section through build, keeps the project's own text, and makes check and build
-// fail, writing nothing, for an edited section.
+// TestBuildAgentsSection refreshes a versioned section through build, keeps the project's own text, and makes check
+// and build fail, writing nothing, for an edited section.
 func TestBuildAgentsSection(t *testing.T) {
 	ctx := context.Background()
 	root, options := localProject(t)
@@ -118,20 +119,22 @@ func TestBuildAgentsSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(agents, append([]byte(own), data...), 0644); err != nil {
+	// A section that Trail Guide 0.8 wrote records its version, which build drops.
+	versioned := strings.Replace(string(data), "trailguide:begin sha256:", "trailguide:begin 0.8.0 sha256:", 1)
+	if err := os.WriteFile(agents, []byte(own+versioned), 0644); err != nil {
 		t.Fatal(err)
 	}
 	changes, err := Build(ctx, options)
 	if err != nil || changes.Agents == nil || changes.Agents.Action != "updated" {
 		t.Fatalf("%+v %v", changes, err)
 	}
-	if got, err := os.ReadFile(agents); err != nil || string(got) != own+renderAgentsSection(".trailguide", "1.2.3") {
+	if got, err := os.ReadFile(agents); err != nil || string(got) != own+renderAgentsSection(".trailguide") {
 		t.Fatalf("%s %v", got, err)
 	}
 	if result, err := Check(ctx, options); err != nil || !result.Current() {
 		t.Fatalf("%+v %v", result, err)
 	}
-	edited := own + strings.Replace(renderAgentsSection(".trailguide", "1.2.3"), "Briefly report", "Always report", 1)
+	edited := own + strings.Replace(renderAgentsSection(".trailguide"), "Briefly report", "Always report", 1)
 	if err := os.WriteFile(agents, []byte(edited), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +235,7 @@ func TestAgentsPlanNoticesAChange(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
 			root := agentsProject(t, test.existing)
-			plan, err := planAgentsSection(ctx, root, rules.Configuration{}, Options{ToolVersion: "1.2.3"})
+			plan, err := planAgentsSection(ctx, root, rules.Configuration{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -258,7 +261,7 @@ func TestAgentsPlanNoticesAChange(t *testing.T) {
 // TestInitRefusesAnEditedSectionFirst fails before writing any scaffolding when AGENTS.md holds an edited section.
 func TestInitRefusesAnEditedSectionFirst(t *testing.T) {
 	repository := t.TempDir()
-	edited := strings.Replace(renderAgentsSection(".trailguide", "1.2.3"), "Briefly report", "Always report", 1)
+	edited := strings.Replace(renderAgentsSection(".trailguide"), "Briefly report", "Always report", 1)
 	if err := os.WriteFile(filepath.Join(repository, "AGENTS.md"), []byte(edited), 0644); err != nil {
 		t.Fatal(err)
 	}

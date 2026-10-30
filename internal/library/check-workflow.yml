@@ -15,7 +15,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=TRAILGUIDE_VERSION
+          # Install the oldest release the library allows, or the latest release when it names none.
+          version=$(sed -nE "s/^minTrailguideVersion:[[:space:]]*[\"']?([0-9]+\.[0-9]+\.[0-9]+)[\"']?[[:space:]]*(#.*)?$/\1/p" .trailguide/config.yaml)
+          uncommented=$(sed -E 's/(^|[[:space:]])#.*//' .trailguide/config.yaml)
+          if [[ -z "$version" && "$uncommented" == *minTrailguideVersion* ]]; then
+            echo "Can't read minTrailguideVersion; write it on a line of its own in .trailguide/config.yaml, such as minTrailguideVersion: 0.9.0." >&2
+            exit 1
+          elif [[ -z "$version" ]]; then
+            version=$(gh release view --repo fabricahq/trailguide --json tagName --jq '.tagName | ltrimstr("v")')
+          fi
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
           archive="trailguide_${version}_linux_amd64.tar.gz"
           dir="$RUNNER_TEMP/trailguide"

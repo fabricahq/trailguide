@@ -246,7 +246,7 @@ func TestUpdate_PreviewsLevelChangesAndInstallsNewRequiredSkills(t *testing.T) {
 	if got := preview.Sources[0].SkillLevels; !slices.Equal(got, want) {
 		t.Fatalf("level rows = %+v; want %+v", got, want)
 	}
-	if !preview.Moves() {
+	if !movesSources(preview) {
 		t.Fatal("the preview has nothing to apply")
 	}
 	if _, err := plan.Apply(ctx, nil); err != nil {

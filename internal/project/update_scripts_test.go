@@ -132,8 +132,8 @@ func TestUpdate_FlagsTheScriptsAnUpdateAddsOrChangesBeforeAndAfterApplying(t *te
 	if got := preview.Sources[0].Skills; !reflect.DeepEqual(got, scriptRows) {
 		t.Fatalf("preview skills = %+v\nwant %+v", got, scriptRows)
 	}
-	if !slices.Contains(preview.Warnings, previewScriptsWarning) || !preview.Moves() {
-		t.Fatalf("preview warnings = %q, moves = %v; want the scripts warning", preview.Warnings, preview.Moves())
+	if !slices.Contains(preview.Warnings, previewScriptsWarning) || !movesSources(preview) {
+		t.Fatalf("preview warnings = %q, moves = %v; want the scripts warning", preview.Warnings, movesSources(preview))
 	}
 	if exists(t, options, ".claude/skills/build-feature/scripts/setup.sh") {
 		t.Fatal("the preview installed a script")
@@ -158,7 +158,7 @@ func TestUpdate_FlagsTheScriptsAnUpdateAddsOrChangesBeforeAndAfterApplying(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after, err := again.Preview(ctx, nil); err != nil || len(after.Sources[0].Skills) != 0 || after.ScriptsWarning() != "" || after.Moves() {
+	if after, err := again.Preview(ctx, nil); err != nil || len(after.Sources[0].Skills) != 0 || after.ScriptsWarning() != "" || movesSources(after) {
 		t.Fatalf("preview after the update = %+v, %v; want no skill rows or warning", after, err)
 	}
 }

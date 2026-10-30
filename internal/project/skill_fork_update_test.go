@@ -196,7 +196,7 @@ func TestUpdate_OffersToMergeAForkAfterTheSourceMoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeNoConflicts || !preview.Moves() {
+	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeNoConflicts || !movesSources(preview) {
 		t.Fatalf("preview = %+v; want only a fork whose changes merge, which the update can apply", preview.Sources)
 	}
 }

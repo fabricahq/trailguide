@@ -51,6 +51,7 @@ Replace them with libraries, rules, and skills your project can access.
 | Field | Meaning |
 | --- | --- |
 | `schemaVersion` | Required. `2`. See [No backward compatibility](#no-backward-compatibility). |
+| `minTrailguideVersion` | Optional. The oldest Trail Guide release that may work on this repository, such as `0.9.0`. Init writes it and update raises it. See [Minimum Trail Guide version](#minimum-trail-guide-version). |
 | `skillTargets` | Optional. Where installed copies of skills go: an array of `claude` (`.claude/skills/`) and `agents` (`.agents/skills/`). Missing means `[]`. See [Skill targets](#skill-targets). |
 | `manageAgentsFile` | Optional. `true`, the default, has init, build, sync, and update keep a Trail Guide section in the repository's `AGENTS.md`, and check verify it. `false` leaves `AGENTS.md` alone. See [AGENTS.md section](#agentsmd-section). |
 | `sources` | Map of stable source names to sources. Use an empty object for a repository that uses only its authored rules and skills. |
@@ -397,6 +398,28 @@ sources: {}
 
 Commands then neither write nor check `AGENTS.md`. They don't remove a section they wrote earlier: delete it yourself, along with its markers, and tell your agent to read `.trailguide/_managed/generated/RULES.md` in your own words.
 
+## Minimum Trail Guide version
+
+Everyone who works on a repository runs their own copy of Trail Guide, and a newer release can write configuration, the lock, or generated files that an older one reads differently. `minTrailguideVersion` names the oldest release that may work on the repository:
+
+```yaml
+schemaVersion: 2
+minTrailguideVersion: 0.10.0
+sources: {}
+```
+
+You don't need to maintain it. `trailguide project init` and `trailguide library init` write the version that created the configuration, and `trailguide project update` raises it to the version that ran the update, never lowering it, in the same step that writes the lock. Because a raise makes everyone else upgrade, the update's preview lists it, such as `Sets minTrailguideVersion to 0.10.0 in .trailguide/config.yaml`, and asks you to confirm it even when nothing else changes. Sync, build, and check never change it. A library's check workflow installs the release it names, so CI moves with it. Raise it by hand when you want everyone off an older release sooner, such as one with a bug that affects your repository.
+
+Every project and library command reads `minTrailguideVersion` before anything else in the configuration, and again after it recovers an interrupted command, so a configuration with settings or values an older release doesn't know still gets a clear answer. An older release fails with `upgrade-required` and writes nothing:
+
+```text
+Error: .trailguide/config.yaml: minTrailguideVersion is 0.10.0, but this is trailguide 0.9.2; upgrade trailguide to 0.10.0 or newer, then run the command again.
+```
+
+Upgrade Trail Guide, as [Install Trail Guide](/start-here/install/) describes, and run the command again. Development and prerelease builds don't check the field and never write it.
+
+Releases that predate the field, such as 0.8.0, can't give that answer: they reject it like any field they don't know, with `Error: unknown field minTrailguideVersion.` and `Location: configuration`. The fix is the same: upgrade Trail Guide.
+
 ## Library manifest
 
 The `library` section makes a repository a library. It publishes the repository's authored rules, rule groups, skills, and assets, and sets the level of each skill it offers:
@@ -656,7 +679,7 @@ There's no upgrade command. Rewrite the file by hand:
 ## Version boundaries
 
 The top-level `schemaVersion` describes this configuration. A library's [`library.schemaVersion`](/reference/library-schema/#schema-version) describes what it publishes, and projects that import the library ignore its top-level `schemaVersion`, so this schema can change without breaking a library's consumers.
-The caller-supplied `toolVersion` identifies the tool that generated the output.
+[`minTrailguideVersion`](#minimum-trail-guide-version) says which Trail Guide releases may work on the repository; the files Trail Guide writes don't record the release that wrote them.
 
 Each source's `ref` and pins state which versions the project wants: `ref` names the library release or revision, and every rule without a pin follows the source's lock, which `trailguide project update` moves together with `ref`.
 The lockfile records each included rule's and skill's version, library release, and commit, or a non-library source's commit, used by offline commands. It is output Trail Guide owns, not a second version the project chooses.

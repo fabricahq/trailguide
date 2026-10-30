@@ -71,7 +71,7 @@ func Check(ctx context.Context, options Options) (CheckResult, error) {
 	defer func() { agents.close() }()
 	checked, err := checkProjectFiles(ctx, options, map[string][]byte{guideName: guideBytes}, func(root *os.Root, config rules.Configuration) error {
 		var err error
-		agents, err = planAgentsSection(ctx, root, config, options)
+		agents, err = planAgentsSection(ctx, root, config)
 		return err
 	})
 	if err != nil {

@@ -104,7 +104,7 @@ func (p *ChangePlan) Commit(ctx context.Context, bump trailguide.Change, summary
 	}
 	defer dir.Close()
 	missingReplacement := false
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, p.options.ToolVersion, func() ([]filetxn.File, error) {
 		versioned, published, err := checkChange(ctx, root, p.options, request)
 		if err != nil {
 			return nil, err

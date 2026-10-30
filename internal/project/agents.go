@@ -30,11 +30,12 @@ const agentsFile = "AGENTS.md"
 //go:embed agents-section.md
 var agentsSectionTemplate string
 
-// The section is fenced by these markers. The begin marker records the version that wrote the section and the first
-// 16 hexadecimal digits of the SHA-256 of the lines between the markers, so a refresh can tell an unedited section
-// written by another version, which it replaces, from a hand edit, which it refuses to overwrite.
+// The section is fenced by these markers. The begin marker records the first 16 hexadecimal digits of the SHA-256 of
+// the lines between the markers, so a refresh can tell an unedited section, which it replaces when the text changed,
+// from a hand edit, which it refuses to overwrite. Trail Guide 0.8 and earlier also wrote their version before the
+// digest; the marker still matches, and the next refresh drops it.
 var (
-	agentsBeginMarker = regexp.MustCompile(`^<!-- trailguide:begin (\S+) sha256:([0-9a-f]{16}) -->$`)
+	agentsBeginMarker = regexp.MustCompile(`^<!-- trailguide:begin (?:\S+ )?sha256:([0-9a-f]{16}) -->$`)
 	agentsEndMarker   = regexp.MustCompile(`^<!-- trailguide:end -->$`)
 )
 
@@ -46,20 +47,11 @@ type AgentsChange struct {
 	Action string `json:"action"`
 }
 
-// toolVersion is the version the AGENTS.md section records, with a placeholder for development
-// builds that pass none.
-func toolVersion(options Options) string {
-	if options.ToolVersion == "" {
-		return "0.0.0-development"
-	}
-	return options.ToolVersion
-}
-
 // renderAgentsSection returns the section, markers included, for a project whose Trail Guide directory is named
 // directory, such as .trailguide.
-func renderAgentsSection(directory, version string) string {
+func renderAgentsSection(directory string) string {
 	inner := strings.ReplaceAll(agentsSectionTemplate, ".trailguide/", directory+"/")
-	return fmt.Sprintf("<!-- trailguide:begin %s sha256:%s -->\n%s<!-- trailguide:end -->\n", version, agentsDigest(inner), inner)
+	return fmt.Sprintf("<!-- trailguide:begin sha256:%s -->\n%s<!-- trailguide:end -->\n", agentsDigest(inner), inner)
 }
 
 func agentsDigest(text string) string {
@@ -105,7 +97,7 @@ func inspectAgentsSection(existing string) (agentsSection, error) {
 	if s.begin != -1 {
 		marker := agentsBeginMarker.FindStringSubmatch(strings.TrimRight(s.lines[s.begin], "\r\n"))
 		// A checkout that converts line endings to CRLF keeps an unedited section.
-		s.edited = agentsDigest(strings.ReplaceAll(strings.Join(s.lines[s.begin+1:s.end], ""), "\r\n", "\n")) != marker[2]
+		s.edited = agentsDigest(strings.ReplaceAll(strings.Join(s.lines[s.begin+1:s.end], ""), "\r\n", "\n")) != marker[1]
 	}
 	return s, nil
 }
@@ -150,14 +142,14 @@ type agentsPlan struct {
 	change     *AgentsChange
 }
 
-// planAgentsSection plans the AGENTS.md beside the Trail Guide directory at root so it holds the current section for
-// options' version. It plans no change, without reading the file, when config turns off manageAgentsFile, and when
+// planAgentsSection plans the AGENTS.md beside the Trail Guide directory at root so it holds the current section. It
+// plans no change, without reading the file, when config turns off manageAgentsFile, and when
 // the section is current, or when the file has no section but already points to the project's
 // _managed/generated/RULES.md, as the block Trail Guide once asked users to paste does: that file stays the project's
 // until its pointer is removed. It fails with agents-pointer-outdated when such a file points to generated/RULES.md,
 // where Trail Guide 0.7 and earlier kept it, with agents-section-edited when the section's lines changed since Trail
 // Guide wrote them, and with agents-section-invalid when its markers are broken.
-func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configuration, options Options) (plan agentsPlan, err error) {
+func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configuration) (plan agentsPlan, err error) {
 	if config.SkipAgentsFile {
 		return agentsPlan{}, nil
 	}
@@ -177,7 +169,7 @@ func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configur
 	}
 	plan.previous = data
 	directory := filepath.Base(root.Name())
-	want := renderAgentsSection(directory, toolVersion(options))
+	want := renderAgentsSection(directory)
 	existing := string(data)
 	s, err := inspectAgentsSection(existing)
 	if err != nil {

@@ -34,7 +34,7 @@ trailguide project build
 trailguide project check
 ```
 
-A library's check workflow installs the Trail Guide version that created it. To move it to the version you just installed, delete `.github/workflows/trailguide.yml` from the library and run `trailguide library init` again; see [Check changes in CI](/guides/version-rules/#check-changes-in-ci). A library created with Code Rules has `.github/workflows/code-rules.yml` instead; follow [Upgrade from Code Rules](#upgrade-from-code-rules).
+A library's check workflow installs the release its `minTrailguideVersion` names, which `trailguide project update` raises to the version you run. A workflow written by Trail Guide 0.8.0 or earlier pins the version that created it instead; to replace it, delete `.github/workflows/trailguide.yml` from the library and run `trailguide library init` again; see [Check changes in CI](/guides/version-rules/#check-changes-in-ci). A library created with Code Rules has `.github/workflows/code-rules.yml` instead; follow [Upgrade from Code Rules](#upgrade-from-code-rules).
 
 ## Upgrade from Code Rules
 

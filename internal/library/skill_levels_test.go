@@ -15,7 +15,7 @@ import (
 
 func TestLibraryCheck_RequiresEveryLeveledSkillToExist(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
-	if _, err := Initialize(context.Background(), options, "", nil, "1.2.3"); err != nil {
+	if _, err := Initialize(context.Background(), withToolVersion(options, "1.2.3"), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	write := func(name, text string) {
@@ -43,7 +43,7 @@ func TestLibraryCheck_RequiresEveryLeveledSkillToExist(t *testing.T) {
 
 func TestLibraryCheck_RequiresEveryDependencyToBeUsed(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
-	if _, err := Initialize(context.Background(), options, "", nil, "1.2.3"); err != nil {
+	if _, err := Initialize(context.Background(), withToolVersion(options, "1.2.3"), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	write := func(name, text string) {

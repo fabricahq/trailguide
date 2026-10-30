@@ -81,7 +81,7 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 	defer root.Close()
 	var changes FileChanges
 	recovered := false
-	err = filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+	err = withWriter(ctx, root, options.ToolVersion, func(w *filetxn.Writer) error {
 		recovered = w.Recovered()
 		before, err := readProject(ctx, root)
 		if err != nil {
@@ -99,7 +99,7 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		if err != nil {
 			return err
 		}
-		agents, err := planAgentsSection(ctx, root, before.config, options)
+		agents, err := planAgentsSection(ctx, root, before.config)
 		if err != nil {
 			return err
 		}

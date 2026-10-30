@@ -92,12 +92,11 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Init wrote AGENTS.md's section without a version, so check reports it last, and build updates it.
-			last := len(stale.Problems) - 1
-			if len(changes.Added) != last || stale.Problems[last] != (Problem{Kind: OutdatedAgents, Path: "../AGENTS.md", Repair: Rebuild}) || changes.Agents == nil || *changes.Agents != (AgentsChange{Path: "AGENTS.md", Action: "updated"}) {
+			// Init wrote AGENTS.md's section, so only generated output is missing.
+			if len(changes.Added) != len(stale.Problems) || changes.Agents != nil {
 				t.Fatalf("build/check differ: %+v %+v", changes, stale)
 			}
-			for i, problem := range stale.Problems[:last] {
+			for i, problem := range stale.Problems {
 				if problem.Kind != MissingFile || problem.Path != "_managed/generated/"+changes.Added[i] || problem.Repair != Rebuild {
 					t.Fatalf("unexpected initial problem: %+v", problem)
 				}
