@@ -1,8 +1,14 @@
 schemaVersion: 2
+skillTargets: [claude]
 sources:
   fabrica:
     repository: https://github.com/fabricahq/public-library.git
     ref: release/7
+    skills:
+      include: [recommended]
+      exclude:
+        - id: skills/create-verification-skill
+          reason: Its SKILL.md links to a folder, which Trail Guide can't keep. Include it again once the library links to a file.
     rules:
       include:
         - practices/code-design/*

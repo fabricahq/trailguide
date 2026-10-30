@@ -19,7 +19,41 @@
         "skills/show-me-your-work": {"level": "offered"}
       },
       "commit": "586301255f96d4b0a1f7c9e86b78fd55c8226f41",
-      "executable": [],
+      "curated": {
+        "pstack": {
+          "commit": "699e1e7488c53c05ca13409f40da83cd37682091",
+          "executable": [],
+          "files": {
+            "pstack/skills/principle-attack-the-premise/SKILL.md": "6a932884daad4aa189e9b5d1665226bbc75621d4d2a398fd4003bebd382f4599",
+            "pstack/skills/principle-build-the-lever/SKILL.md": "3434b0ad0c640c6f1d7960be7a8986c3bcdc14e26060360dec29903df60074ff",
+            "pstack/skills/principle-encode-lessons-in-structure/SKILL.md": "228963799189f481827d6f28065f278bc2008ffa37030b1234cbd5814d36b9e9",
+            "pstack/skills/principle-fix-root-causes/SKILL.md": "8df3c8c3fe57eb0055a5c8efab8ab144557fdf301da70b1cdc77a3a3ef3f3052",
+            "pstack/skills/principle-guard-the-context-window/SKILL.md": "af0b9dd70b43628ce4a59a4d332e9d9ad055084e460f430e7a757495c627e81a",
+            "pstack/skills/principle-laziness-protocol/SKILL.md": "1be6e7a435f26a75a76eb848b9c3d611b9977d0f5822361753244da25ca3ca45",
+            "pstack/skills/principle-never-block-on-the-human/SKILL.md": "05030a7a083c337676f793881b4e93cd218e8f1dd676529f56e6ac1d3efb8d1f",
+            "pstack/skills/principle-prove-it-works/SKILL.md": "ec79a15025bac8d33d62011c54f3b612733fd2a024e623b531b3637aa75070e2",
+            "pstack/skills/principle-redesign-from-first-principles/SKILL.md": "170e0a658783e43fee8ec5a8c2422a4abb8f69cef621dd1819a95910b8207034",
+            "pstack/skills/principle-sequence-verifiable-units/SKILL.md": "2ccbbacc56ace5afdfb8670cef19d7bd009fb2a0033b9a741cbdf2b6baf72187"
+          },
+          "kind": "non-library",
+          "ref": "699e1e7488c53c05ca13409f40da83cd37682091",
+          "repository": "https://github.com/cursor/plugins.git",
+          "skills": {
+            "pstack/skills/principle-attack-the-premise": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-build-the-lever": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-fix-root-causes": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-guard-the-context-window": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-laziness-protocol": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-never-block-on-the-human": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-prove-it-works": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]},
+            "pstack/skills/principle-sequence-verifiable-units": {"included": false, "level": "dependency", "usedBy": [], "usedByLibrary": ["skills/build"]}
+          }
+        }
+      },
+      "executable": [
+        "skills/ratchet-files/scripts/check-file-size.mjs",
+        "skills/show-me-your-work/scripts/log.sh"
+      ],
       "files": {
         "LICENSE.md": "58f9b79033cf651c5213465e6751b63ba00886247fdc11374a2b4dbe86f49c19",
         "NOTICE.md": "0d2d089c9a276fd3199c3620f95ba0c797c14b3fb8bdffdc10da8e65e9417028",
@@ -51,6 +85,17 @@
         "practices/testing/test-at-the-lowest-layer.md": "07066f7a26b6ae5a1963005cce49d89bd093b03e6deeb9c4bee28d733f71048b",
         "practices/testing/test-bug-fixes-before-fixing.md": "959c09c041cda679ec1b152bf422110bf6ec97755dead06f9f275f2655ff64b8",
         "practices/testing/test-observable-behavior.md": "a80a62218320ed14020fe149d8983b6512adfef4627d13fcfc77cf6f3e830800",
+        "skills/build/SKILL.md": "a1b9754394daabf908abcb9f34586c35210a91d3f3d3d0a0aac24d567b0ac98e",
+        "skills/create-verification-skill/SKILL.md": "2450bfa8fcb3d82a5f30e56055807825e4d23be2ea7f1200cf4b45f63f747f81",
+        "skills/create-verification-skill/references/feature-map-example/README.md": "cb7bd782cf89968a4ba3d58a5151db837430db92d19a6f52a906973b77b516ba",
+        "skills/create-verification-skill/references/feature-map-example/create-note.md": "644a44c74f35d38c2feb7cd05a0121fdebbb623e8dc376c185b565a581d1ccf7",
+        "skills/create-verification-skill/references/feature-map-example/search.md": "e44be12777916f87337c558a57489932a5f84b2fa0b7b8424edd93119b9978b2",
+        "skills/maintain-verification-skill/SKILL.md": "5dbb976347375b3595a925b9f3427f476ec61076ca3dadac94be0ba94502325b",
+        "skills/ratchet-files/SKILL.md": "4ba32066262f67a0bccfae0b37512a61a9af89fbf2f3339082cb7446f30c9ac3",
+        "skills/ratchet-files/scripts/check-file-size.mjs": "6e1fc8bc8b814f7c390275e04b148a9f12887f81bd7067f649049834e99e5cbc",
+        "skills/show-me-your-work/SKILL.md": "f84e420a877f3da80b29f8db447036bb60decfcf1283dcc10f14d7a5cba8b68e",
+        "skills/show-me-your-work/references/decision-log-template.tsv": "6779378006a2f5225e8c06deb84f1d913fb532041ebbb6e50d94600bfe3f4b76",
+        "skills/show-me-your-work/scripts/log.sh": "a65a4bc5fb7cdeadbdb7b7ff1ca4682f4d9c42420942b2977cd17b46c4ac338e",
         "techs/go/_group.yaml": "1a2d94d762306b7fb2913093433ffc1de9181aa674e1747b895f2ff3c7fb78dd",
         "techs/go/comment-non-obvious-struct-fields.md": "32162b186e7e330e1c0fc66129677dff9958e18c0be89048b0e3650be454c40e",
         "techs/go/comments-package-doc-vs-file-header.md": "f098ae65071fa302232c577e3848639130055422fbf7b15d4e0ca698e75be162",
@@ -97,7 +142,7 @@
         "techs/javascript",
         "techs/typescript"
       ],
-      "integrity": "sha256-TJ8mbT/LHcPwAZ5jTVjqVW0BV3leu2RLgDKfz3C0dRA=",
+      "integrity": "sha256-7W4o4qbwrjjF7/XJz8EYtJmZ5R0CeJoLTUIit72Yg+k=",
       "kind": "library",
       "ref": "release/7",
       "release": 7,
@@ -176,9 +221,17 @@
           "techs/typescript"
         ],
         "rules": [],
-        "skills": []
+        "skills": [
+          "recommended"
+        ]
       },
-      "skills": {}
+      "skills": {
+        "skills/build": {"included": true, "level": "recommended", "usedBy": []},
+        "skills/create-verification-skill": {"included": true, "level": "recommended", "usedBy": []},
+        "skills/maintain-verification-skill": {"included": true, "level": "recommended", "usedBy": []},
+        "skills/ratchet-files": {"included": true, "level": "recommended", "usedBy": []},
+        "skills/show-me-your-work": {"included": false, "level": "offered", "usedBy": ["skills/build"]}
+      }
     }
   }
 }
