@@ -34,7 +34,7 @@ func initRepository(t *testing.T, dir string) {
 	}
 }
 
-// withToolVersion returns options for a build of version, which Initialize records and pins its check workflow to.
+// withToolVersion returns options for a build of version, which Initialize records as the minTrailguideVersion of a new configuration.
 func withToolVersion(options Options, version string) Options {
 	options.ToolVersion = version
 	return options
