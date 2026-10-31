@@ -61,5 +61,5 @@ downstream:
 
 # Where release notes live, and the branch that release pull requests merge into
 # and releases are published from.
-release-notes-dir: releases
+release-notes-dir: _releases
 # release-branch: main

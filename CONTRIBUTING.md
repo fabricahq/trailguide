@@ -87,7 +87,7 @@ Use a new output directory for each attempt. Verify archive checksums against a 
 
 ## Releases
 
-[Release Planner](https://release-planner.fabricahq.com) publishes releases: a release PR supplies editable notes and the version in `releases/v<version>.md`, and builds and tests the release assets; merging it publishes them. [Make a release](https://release-planner.fabricahq.com/start-here/release/) describes the procedure, and the [release policy](.release-planner/policy.md) owns versions, breaking changes, and this repository's release pipeline.
+[Release Planner](https://release-planner.fabricahq.com) publishes releases: a release PR supplies editable notes and the version in `_releases/v<version>.md`, and builds and tests the release assets; merging it publishes them. [Make a release](https://release-planner.fabricahq.com/start-here/release/) describes the procedure, and the [release policy](.release-planner/policy.md) owns versions, breaking changes, and this repository's release pipeline.
 
 ## Implementation map
 
