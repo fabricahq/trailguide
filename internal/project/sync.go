@@ -40,7 +40,7 @@ func Sync(ctx context.Context, options Options, git imports.Options, retake ...s
 	}
 	defer root.Close()
 	var changes FileChanges
-	err = filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+	err = withWriter(ctx, root, options.ToolVersion, func(w *filetxn.Writer) error {
 		recovered = w.Recovered()
 		before, err := readProject(ctx, root)
 		if err != nil {
@@ -172,7 +172,7 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 	if err != nil {
 		return FileChanges{}, err
 	}
-	agents, err := planAgentsSection(ctx, root, in.config, in.options)
+	agents, err := planAgentsSection(ctx, root, in.config, in.options.ToolVersion)
 	if err != nil {
 		return FileChanges{}, err
 	}

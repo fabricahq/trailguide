@@ -47,25 +47,6 @@ sources:
 
 Nothing else changes: the release is the one your lock already records, so check passes and sync writes nothing.
 
-### A source without a ref
-
-Every source needs a `ref`. A project synced with an earlier Trail Guide may have library sources without one, and then sync, update, build, and check all fail, naming the release your project records:
-
-```text
-Error: sources.fabrica has no ref, so .trailguide/config.yaml doesn't say which library release the project takes. Add ref: release/4 to sources.fabrica, the release this project records, or ref: latest-release to take the newest release at each update, then run the command again. No files were written.
-```
-
-Add the line the error names to the source:
-
-```yaml
-sources:
-  fabrica:
-    repository: https://github.com/fabricahq/.trailguide.git
-    ref: release/4
-```
-
-Nothing else changes: the release is the one your lock already records, so check passes and sync writes nothing.
-
 ## Run an update and read the preview
 
 Update never changes your project without showing you first. It prints a preview of every change, waits for you to read it, and applies nothing until you confirm. This section walks through that preview and what to look for in it.
@@ -307,6 +288,8 @@ An update changes what your agents read and may change scripts they run, so revi
 - Inspect the diff of the installed skills in `.claude/skills/` and `.agents/skills/`, especially scripts, which your agents may run.
 - For each `replaced` rule in the preview, compare the library's old and new text before deciding whether your own rule still makes sense.
 - When updated rules introduce competing obligations, use the [conflict-review prompt](/guides/conflicting-guidance/#generate-a-review-prompt) to inspect the combined guidance.
+
+The update also raises `minTrailguideVersion` in `.trailguide/config.yaml` to the Trail Guide version you ran, when it named an older one, and the preview says so before you confirm. Teammates whose Trail Guide is older then get an error asking them to upgrade, instead of regenerating the files differently. See [Minimum Trail Guide version](/reference/configuration/#minimum-trail-guide-version).
 
 Commit the configuration, vendor snapshots, generated files, and installed skill folders together.
 

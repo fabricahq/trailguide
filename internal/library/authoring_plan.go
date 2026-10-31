@@ -189,7 +189,7 @@ func (p *SkillPlan) Commit(ctx context.Context, description, kind string) (Autho
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, p.options.ToolVersion, func() ([]filetxn.File, error) {
 		if _, _, err := libraryManifest(ctx, root); err != nil {
 			return nil, err
 		}

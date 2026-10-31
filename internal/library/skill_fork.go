@@ -343,7 +343,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, p.options.ToolVersion, func() ([]filetxn.File, error) {
 		original, config, err := readLibraryConfiguration(ctx, root)
 		if err != nil {
 			return nil, err

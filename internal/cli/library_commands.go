@@ -16,7 +16,7 @@ import (
 // newLibraryCommand registers library-specific location and explicit-input flags.
 func newLibraryCommand(use, description string, args cobra.PositionalArgs, options Options) (*cobra.Command, *authoringFlags) {
 	cmd := &cobra.Command{Use: use, Short: description, Args: args}
-	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory, git: gitexec.Options{GitPath: options.Git.GitPath, Environment: options.Git.Environment}, imports: options.Git}
+	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory, git: gitexec.Options{GitPath: options.Git.GitPath, Environment: options.Git.Environment}, imports: options.Git, version: options.Version}
 	cmd.PostRunE = flags.finishPrompts
 	flags.add(cmd, "directory", "Library directory (default Git root, or current directory outside Git)")
 	cmd.Flags().Bool("non-interactive", false, "Require explicit flags; never prompt")
@@ -30,7 +30,7 @@ func (f *authoringFlags) libraryOptions(ctx context.Context, initialize bool) (l
 		directory = f.file("directory")
 	}
 	directory, err := commandDirectory(ctx, directory, "library", initialize)
-	return library.Options{Directory: directory, Git: f.git, Curated: f.readCurated, ReadSkill: f.readSourceSkill, Forks: f.readForks}, err
+	return library.Options{Directory: directory, ToolVersion: f.version, Git: f.git, Curated: f.readCurated, ReadSkill: f.readSourceSkill, Forks: f.readForks}, err
 }
 
 // readSourceSkill reads a skill from a source the library declares, which a fork copies.
@@ -91,7 +91,7 @@ func libraryInitCommand(options Options, output *commandOutput) *cobra.Command {
 				terms.Notice = &notice
 			}
 		}
-		result, err := library.Initialize(cmd.Context(), target, f.value("name"), terms, options.Version)
+		result, err := library.Initialize(cmd.Context(), target, f.value("name"), terms)
 		if err != nil {
 			return err
 		}
