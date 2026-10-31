@@ -47,7 +47,7 @@ func TestRenderReleaseNotes_MatchesTheGuideExample(t *testing.T) {
 	if notes := renderReleaseNotes(guideRecord(), skillContext{}); notes != guideNotes {
 		t.Fatalf("notes:\n%s\nwant:\n%s", notes, guideNotes)
 	}
-	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
+	guide, err := os.ReadFile("../../_docs/src/content/docs/guides/version-rules.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestRenderReleaseNotes_MatchesTheGuideSkillsExample(t *testing.T) {
 	if _, err := releaseMessage(guideSkillsNotes, record); err != nil {
 		t.Fatal(err)
 	}
-	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
+	guide, err := os.ReadFile("../../_docs/src/content/docs/guides/version-rules.md")
 	if err != nil {
 		t.Fatal(err)
 	}

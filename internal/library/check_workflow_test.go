@@ -28,7 +28,7 @@ func TestInitialize_WritesTheDocumentedCheckWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := string(data)
-	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
+	guide, err := os.ReadFile("../../_docs/src/content/docs/guides/version-rules.md")
 	if err != nil {
 		t.Fatal(err)
 	}

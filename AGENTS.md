@@ -55,7 +55,7 @@ Agents need to find relevant rules, interpret their scope, and cite evidence whe
 
 A rule expresses one independently adoptable engineering expectation in a Markdown file. It states what to do, when it applies, and what evidence would demonstrate compliance. Rules can govern code, tests, plans, documentation, and other engineering work.
 
-A rule retains its identity and provenance when imported or rendered as a resolved definition. See [Rule](docs/src/content/docs/concepts/rule.md) for the concept and [the rubric and template](docs/src/content/docs/reference/rule-authoring.md) for the authoring standard.
+A rule retains its identity and provenance when imported or rendered as a resolved definition. See [Rule](_docs/src/content/docs/concepts/rule.md) for the concept and [the rubric and template](_docs/src/content/docs/reference/rule-authoring.md) for the authoring standard.
 
 #### Rule group
 
@@ -64,13 +64,13 @@ A rule group collects related rules and explains when an agent should read them.
 1. Technology groups live under `techs/` and cover named languages, frameworks, tools, platforms, or protocols.
 2. Practice groups live under `practices/` and cover concerns such as testing, observability, error handling, and architecture.
 
-Rule groups guide selection; individual rules determine applicability. A testing rule may matter even when a change touches no test files. See [Rule group](docs/src/content/docs/concepts/groups.md).
+Rule groups guide selection; individual rules determine applicability. A testing rule may matter even when a change touches no test files. See [Rule group](_docs/src/content/docs/concepts/groups.md).
 
 #### Skill
 
 A skill is the AI skill people already know, officially a folder that follows the open Agent Skills standard, whose `SKILL.md` tells an agent how to carry out one kind of task, step by step. Skills are coarse-grained: suited to playbooks, techniques, and coordinating a whole task. Rules are the granular layer: one best practice each, adopted and versioned on its own. A skill cites the rules it applies instead of restating them. Skills don't belong to rule groups. A skill may declare a type, `playbook` or `review`, as a label only.
 
-Trail Guide installs included skills into the folders agents read and checks them; it doesn't run them, decide when agents use them, or check that agents followed them. It installs skills into repositories, never into a person's home directory; it only warns when a personal skill has the same name as one a project installs. See [Skill](docs/src/content/docs/concepts/skill.md).
+Trail Guide installs included skills into the folders agents read and checks them; it doesn't run them, decide when agents use them, or check that agents followed them. It installs skills into repositories, never into a person's home directory; it only warns when a personal skill has the same name as one a project installs. See [Skill](_docs/src/content/docs/concepts/skill.md).
 
 #### Library
 
@@ -78,7 +78,7 @@ A library is a Git repository whose manifest publishes its rule groups and skill
 
 Projects may take from multiple sources, move to each rule's published versions, and each source's skills, on their own schedule, and add or replace rules and skills of their own. A source can also be a Git repository of skills that isn't a library. One configuration file and one `.trailguide/` layout serve projects and libraries alike.
 Source-qualified IDs distinguish rules from different libraries; they do not resolve contradictory instructions.
-See [Library](docs/src/content/docs/concepts/libraries.md) and [Configuration](docs/src/content/docs/reference/configuration.md).
+See [Library](_docs/src/content/docs/concepts/libraries.md) and [Configuration](_docs/src/content/docs/reference/configuration.md).
 
 ### Principles
 
@@ -112,7 +112,7 @@ Projects retain their product vision, domain knowledge, and architecture context
 Trail Guide manages which versioned rules and skills a codebase adopts, delivers the rules' resolved definitions, and installs the skills.
 By default, Trail Guide keeps a Skills and Rules section in the project's `AGENTS.md`, between markers, and never changes the rest of the file; it tells agents to read `RULES.md` and `SKILLS.md`. Projects can turn the section off and write their own. Trail Guide can't guarantee that agents follow the rules or use the skills.
 Projects can add their own guidance on how agents apply rules and skills, in other procedures, skills, or elsewhere in `AGENTS.md`, and choose their own validation and enforcement.
-Rule and skill input validation and generated-file consistency checks are in scope; checking application compliance is not. See [product scope](docs/src/content/docs/start-here/overview.md#what-trail-guide-does-not-do).
+Rule and skill input validation and generated-file consistency checks are in scope; checking application compliance is not. See [product scope](_docs/src/content/docs/start-here/overview.md#what-trail-guide-does-not-do).
 
 ## Working in this repository
 

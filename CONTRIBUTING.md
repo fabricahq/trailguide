@@ -14,7 +14,7 @@ go build -o ./dist/trailguide ./cmd/trailguide
 
 The executable runs without Node.js or Bun. From a consuming project's root, run `trailguide project init`, create a local group and rule, then `trailguide project build`. To adopt a library or a repository of skills, use `trailguide project add source` with its repository and rule or skill selectors, then run `trailguide project sync`.
 
-Read [project setup](docs/src/content/docs/start-here/set-up-project.md) and [the CLI reference](docs/src/content/docs/reference/cli.md) for the complete workflow. Human output is the default; `--json` returns structured responses and disables prompts. `trailguide project check` reports status and problems without writing files.
+Read [project setup](_docs/src/content/docs/start-here/set-up-project.md) and [the CLI reference](_docs/src/content/docs/reference/cli.md) for the complete workflow. Human output is the default; `--json` returns structured responses and disables prompts. `trailguide project check` reports status and problems without writing files.
 
 ## Validate changes
 
@@ -42,7 +42,7 @@ bun run check
 bun run docs:dev
 ```
 
-`bun run check` validates website/tooling formatting, lint, types, tests, the Astro build, and rendered links. It does not replace Go validation. See [docs/README.md](docs/README.md) for site development and the [CSS and Tailwind guidelines](docs/_internal/css.md) for styling conventions.
+`bun run check` validates website/tooling formatting, lint, types, tests, the Astro build, and rendered links. It does not replace Go validation. See [_docs/README.md](_docs/README.md) for site development and the [CSS and Tailwind guidelines](_docs/_internal/css.md) for styling conventions.
 
 TypeScript stays on 6.0.3 because the current Astro checker and ESLint parser require its compiler API. [TypeScript 7 does not yet provide that API](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6-0); revisit this pin when both tools support it.
 

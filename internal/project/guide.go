@@ -84,7 +84,7 @@ Authored and library definitions can contribute to the same group, such as techs
 
 ## Manage authored rules
 
-Follow [the project guide](../{{PROJECT_GUIDE}}) to add groups and rules. Keep rules within their group's scope and follow the [rule authoring rubric](https://github.com/fabricahq/trailguide/blob/main/docs/src/content/docs/reference/rule-authoring.md).
+Follow [the project guide](../{{PROJECT_GUIDE}}) to add groups and rules. Keep rules within their group's scope and follow the [rule authoring rubric](https://github.com/fabricahq/trailguide/blob/main/_docs/src/content/docs/reference/rule-authoring.md).
 
 Complete drafts before building. Run trailguide project build after editing these files, or trailguide project sync after changing a library source. Read the resulting [resolved rules](../_managed/generated/RULES.md) when working on the project.
 `

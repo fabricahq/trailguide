@@ -32,5 +32,5 @@ jobs:
         env:
           INSTALLER_REQUIRE_SHELLS: '1'
         run: |
-          sh -n docs/public/install.sh
+          sh -n _docs/public/install.sh
           go test -race -count=1 ./internal/distribution -run '^TestStandaloneInstaller$'

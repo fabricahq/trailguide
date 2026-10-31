@@ -26,11 +26,11 @@ bun run docs:links
 bun run docs:preview
 ```
 
-The output is `docs/dist/`.
+The output is `_docs/dist/`.
 The rendered-link checker lives in `_tools/link-checker/`. `cli.ts` owns command arguments and exit status; `check-site.ts` coordinates validation. HTML parsing, external requests, public-network restrictions, and their tests stay inside that folder.
 The root TypeScript, lint, and test commands include these Bun scripts; Astro checks the site code.
 `bun run docs:links` uses Bun and parse5 to check local destinations and fragments in the built HTML.
-For a different build directory, run `bun docs/_tools/link-checker/cli.ts <directory>` from the repository root.
+For a different build directory, run `bun _docs/_tools/link-checker/cli.ts <directory>` from the repository root.
 The production build includes the search index.
 These commands do not publish the site.
 

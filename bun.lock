@@ -15,7 +15,7 @@
         "yaml": "^2.9.1",
       },
     },
-    "docs": {
+    "_docs": {
       "name": "@trailguide/docs",
       "dependencies": {
         "@astrojs/markdown-remark": "7.3.1",
@@ -122,7 +122,7 @@
 
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
 
-    "@trailguide/docs": ["@trailguide/docs@workspace:docs"],
+    "@trailguide/docs": ["@trailguide/docs@workspace:_docs"],
 
     "@ctrl/tinycolor": ["@ctrl/tinycolor@4.2.1", "", {}, "sha512-Vh5uy9Y1JBMId6J1f68TMXnZrTCvNdo9Fu2k0d1YnJngR+sM5kWTKl441c/3TFs+cG0NWOjRWgQ/iaWhbYx+7A=="],
 

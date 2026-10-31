@@ -42,7 +42,7 @@ test.each([
   'should report a missing $name when linting TypeScript',
   async ({ code, rule }) => {
     const results = await eslint.lintText(code, {
-      filePath: 'docs/src/comment-policy-example.ts',
+      filePath: '_docs/src/comment-policy-example.ts',
     });
     expect(
       results.flatMap((result) =>
@@ -61,14 +61,14 @@ function defaultValue(value: number | undefined) { return value ?? 0; }
 /** Return twice the supplied value, or zero when absent. */
 export function calculate(value: number | undefined) { return double(defaultValue(value)); }
 `,
-    { filePath: 'docs/src/comment-policy-example.ts' },
+    { filePath: '_docs/src/comment-policy-example.ts' },
   );
   expect(results.flatMap((result) => result.messages)).toEqual([]);
 });
 
 test('should enforce the role header when an Astro component has no explicit export', async () => {
   const missing = await eslint.lintText('<p>Example</p>', {
-    filePath: 'docs/src/components/CommentPolicyExample.astro',
+    filePath: '_docs/src/components/CommentPolicyExample.astro',
   });
   expect(
     missing.flatMap((result) =>
@@ -77,7 +77,7 @@ test('should enforce the role header when an Astro component has no explicit exp
   ).toContain('jsdoc/require-file-overview');
   const documented = await eslint.lintText(
     `---\n${header}---\n<p>Example</p>`,
-    { filePath: 'docs/src/components/CommentPolicyExample.astro' },
+    { filePath: '_docs/src/components/CommentPolicyExample.astro' },
   );
   expect(documented.flatMap((result) => result.messages)).toEqual([]);
 });
@@ -85,7 +85,7 @@ test('should enforce the role header when an Astro component has no explicit exp
 test('should require a contract when an Astro page exports route generation', async () => {
   const results = await eslint.lintText(
     `---\n${header}export function getStaticPaths() { return []; }\n---\n<p>Example</p>`,
-    { filePath: 'docs/src/pages/comment-policy-example.astro' },
+    { filePath: '_docs/src/pages/comment-policy-example.astro' },
   );
   expect(
     results.flatMap((result) =>

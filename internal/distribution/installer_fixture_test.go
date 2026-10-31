@@ -115,7 +115,7 @@ func (f *installerFixture) release(version, target string, members []installerMe
 // run executes the installer as piped input, with all writable paths under the fixture root.
 func (f *installerFixture) run(args ...string) (string, error) {
 	f.t.Helper()
-	script := f.read(filepath.Join("..", "..", "docs", "public", "install.sh"))
+	script := f.read(filepath.Join("..", "..", "_docs", "public", "install.sh"))
 	ctx, cancel := context.WithTimeout(f.t.Context(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", append([]string{"-s", "--"}, args...)...)

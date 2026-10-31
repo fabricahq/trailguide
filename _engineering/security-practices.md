@@ -17,7 +17,7 @@ These are requirements to verify, not a claim that an audit has established ever
 A checksum proves consistency with its reference record, not authenticity if an attacker can replace both the content and the record.
 Even authentic, unchanged rules can contain harmful instructions. Users must deliberately choose which publishers and rule changes they trust.
 
-Trail Guide runs Git on other people's repositories with hooks disabled and only HTTPS and SSH transports allowed. It never shows text from Git, a Git server, or the GitHub CLI, because that text can hold credentials; `internal/gitexec` classifies it privately so callers explain failures with their own messages. The [CLI reference](../docs/src/content/docs/reference/cli.md#text-from-git-servers-and-the-github-cli) states this contract.
+Trail Guide runs Git on other people's repositories with hooks disabled and only HTTPS and SSH transports allowed. It never shows text from Git, a Git server, or the GitHub CLI, because that text can hold credentials; `internal/gitexec` classifies it privately so callers explain failures with their own messages. The [CLI reference](../_docs/src/content/docs/reference/cli.md#text-from-git-servers-and-the-github-cli) states this contract.
 
 ## Security audits
 
@@ -62,7 +62,7 @@ Renovate may refresh existing update branches outside that window.
 
 Renovate manages Go modules, Bun workspaces and their lockfile, workflow actions, and supported runtime inputs.
 A custom manager finds versioned `go run` tools in workflows and CONTRIBUTING.md commands so those pins receive update PRs too.
-The GitHub Actions manager also reads `internal/library/check-workflow.yml`, the workflow `trailguide library init` writes, so its action pins receive update PRs; apply the same update to both workflow examples in the [version rules guide](../docs/src/content/docs/guides/version-rules.md). A test compares its **Check changes in CI** copy with the template; nothing checks the other.
+The GitHub Actions manager also reads `internal/library/check-workflow.yml`, the workflow `trailguide library init` writes, so its action pins receive update PRs; apply the same update to both workflow examples in the [version rules guide](../_docs/src/content/docs/guides/version-rules.md). A test compares its **Check changes in CI** copy with the template; nothing checks the other.
 Renovate includes indirect Go requirements. We disable broad lockfile-maintenance runs; dependency PRs regenerate the affected lockfile through the package manager.
 Review transitive changes in each lockfile diff: the cooldown does not establish the safety or age of every dependency a package manager resolves.
 
