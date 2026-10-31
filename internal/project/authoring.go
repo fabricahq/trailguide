@@ -102,7 +102,7 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 			return nil, err
 		}
 		// Refuse an edited section or broken markers before writing anything; initializeAgents writes the section.
-		agents, err := planAgentsSection(ctx, root, config)
+		agents, err := planAgentsSection(ctx, root, config, options.ToolVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func initializeAgents(ctx context.Context, root *os.Root, options Options, resul
 		if err != nil {
 			return err
 		}
-		agents, err := planAgentsSection(ctx, root, config)
+		agents, err := planAgentsSection(ctx, root, config, options.ToolVersion)
 		if err != nil {
 			return err
 		}

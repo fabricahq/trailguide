@@ -99,7 +99,7 @@ func Build(ctx context.Context, options Options) (FileChanges, error) {
 		if err != nil {
 			return err
 		}
-		agents, err := planAgentsSection(ctx, root, before.config)
+		agents, err := planAgentsSection(ctx, root, before.config, options.ToolVersion)
 		if err != nil {
 			return err
 		}

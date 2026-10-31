@@ -58,7 +58,7 @@ func TestPlanAgentsSection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := agentsProject(t, test.existing)
-			plan, err := planAgentsSection(context.Background(), root, rules.Configuration{})
+			plan, err := planAgentsSection(context.Background(), root, rules.Configuration{}, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,12 +100,43 @@ func TestPlanAgentsSectionRefuses(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := planAgentsSection(context.Background(), root, rules.Configuration{})
+			_, err := planAgentsSection(context.Background(), root, rules.Configuration{}, "")
 			var failure *filetxn.Error
 			if !errors.As(err, &failure) || failure.Code != test.code {
 				t.Fatalf("got %v, want %s", err, test.code)
 			}
 		})
+	}
+}
+
+// TestPlanAgentsSection_NamesTheVersionUntilAMinimumShutsOutOlderReleases writes the running version in a new
+// section's begin marker, as Trail Guide 0.8, which rejects a marker without one, reads it, while the configuration
+// has no minTrailguideVersion, and no version once it has one, which those releases refuse.
+func TestPlanAgentsSection_NamesTheVersionUntilAMinimumShutsOutOlderReleases(t *testing.T) {
+	minimum, err := rules.ParseToolVersion("1.2.3", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, test := range map[string]struct {
+		config rules.Configuration
+		want   string
+	}{
+		"no minimum": {rules.Configuration{}, renderAgentsSection(".trailguide", "1.2.3")},
+		"minimum":    {rules.Configuration{MinimumVersion: &minimum}, renderAgentsSection(".trailguide", "")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			plan, err := planAgentsSection(context.Background(), agentsProject(t, nil), test.config, "1.2.3")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer plan.close()
+			if string(plan.content) != test.want {
+				t.Fatalf("got:\n%s\nwant:\n%s", plan.content, test.want)
+			}
+		})
+	}
+	if marker := strings.SplitN(renderAgentsSection(".trailguide", "1.2.3"), "\n", 2)[0]; !strings.HasPrefix(marker, "<!-- trailguide:begin 1.2.3 sha256:") {
+		t.Fatalf("begin marker %q", marker)
 	}
 }
 
@@ -236,7 +267,7 @@ func TestAgentsPlanNoticesAChange(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
 			root := agentsProject(t, test.existing)
-			plan, err := planAgentsSection(ctx, root, rules.Configuration{})
+			plan, err := planAgentsSection(ctx, root, rules.Configuration{}, "")
 			if err != nil {
 				t.Fatal(err)
 			}

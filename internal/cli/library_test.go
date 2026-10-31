@@ -100,7 +100,7 @@ func TestLibraryInit_WritesACheckWorkflowThatInstallsTheMinimum(t *testing.T) {
 			t.Fatal(code, out.String(), diagnostic.String())
 		}
 		workflow, err := os.ReadFile(filepath.Join(directory, ".github", "workflows", "trailguide.yml"))
-		if err != nil || !strings.Contains(string(workflow), "\n          version=$(sed -nE \"s/^minTrailguideVersion:") {
+		if err != nil || !strings.Contains(string(workflow), "\n          version=$(yq -r '.minTrailguideVersion // \"\"' .trailguide/config.yaml)\n") {
 			t.Fatalf("%q: %s %v", version, workflow, err)
 		}
 		config, err := os.ReadFile(filepath.Join(directory, ".trailguide", "config.yaml"))

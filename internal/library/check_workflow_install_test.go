@@ -107,7 +107,7 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	// GNU tar runs gzip to read the archive.
-	for _, name := range []string{"sha256sum", "tar", "gzip", "grep", "mkdir", "cp", "sed"} {
+	for _, name := range []string{"sha256sum", "tar", "gzip", "grep", "mkdir", "cp", "yq"} {
 		real, err := exec.LookPath(name)
 		if err != nil {
 			t.Fatalf("%s, which GitHub's Ubuntu runners have, is required to run the install step: %v", name, err)
@@ -116,10 +116,17 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The Python yq, unlike the Go yq that GitHub's runners have, runs jq.
+	if real, err := exec.LookPath("jq"); err == nil {
+		if err := os.Symlink(real, filepath.Join(tools, "jq")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	current, older := releaseArchive(t, "0.2.0"), releaseArchive(t, "0.1.0")
 	currentName, olderName := "trailguide_0.2.0_linux_amd64.tar.gz", "trailguide_0.1.0_linux_amd64.tar.gz"
 	for _, test := range []struct {
-		// minimum is the configuration's minTrailguideVersion line, or empty for none.
+		// minimum is the configuration's minTrailguideVersion line, or empty for none, or the whole configuration
+		// when it's a flow mapping.
 		name, minimum, latest, attestation string
 		// assets publishes the GitHub Release page v0.2.0.
 		assets func(t *testing.T, assets string)
@@ -132,15 +139,16 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 		{"quoted minimum with a comment", `minTrailguideVersion: "0.2.0" # raised by update`, "", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, "0.2.0"},
-		{"flow-style minimum fails instead of installing the latest", "library: {minTrailguideVersion: 0.2.0}", "0.2.0", "pass", func(t *testing.T, assets string) {
+		// The latest release differs from the minimum, so a case that misreads the minimum fails to download it.
+		{"quoted key", `"minTrailguideVersion": '0.2.0'`, "0.3.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
-		}, ""},
-		{"quoted key fails instead of installing the latest", `"minTrailguideVersion": 0.2.0`, "0.2.0", "pass", func(t *testing.T, assets string) {
+		}, "0.2.0"},
+		{"flow mapping", "{schemaVersion: 2, minTrailguideVersion: 0.2.0, sources: {}}", "0.3.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
-		}, ""},
-		{"quoted key in a large configuration fails", `"minTrailguideVersion": 0.2.0` + strings.Repeat("\n# filler that outlasts a pipe buffer", 4096), "0.2.0", "pass", func(t *testing.T, assets string) {
+		}, "0.2.0"},
+		{"quoted key in a large configuration", `"minTrailguideVersion": 0.2.0` + strings.Repeat("\n# filler that outlasts a pipe buffer", 4096), "0.3.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
-		}, ""},
+		}, "0.2.0"},
 		{"a comment naming the field installs the latest release", "# minTrailguideVersion is unset", "0.2.0", "pass", func(t *testing.T, assets string) {
 			publish(t, assets, "v0.2.0", map[string][]byte{currentName: current}, map[string][]byte{currentName: current})
 		}, "0.2.0"},
@@ -168,7 +176,11 @@ func TestCheckWorkflow_InstallsOnlyTheVerifiedRequestedVersion(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			runner := t.TempDir()
-			edit(t, runner, map[string]string{".trailguide/config.yaml": "schemaVersion: 2\n" + test.minimum + "\nsources: {}\n"})
+			config := "schemaVersion: 2\n" + test.minimum + "\nsources: {}\n"
+			if strings.HasPrefix(test.minimum, "{") {
+				config = test.minimum + "\n"
+			}
+			edit(t, runner, map[string]string{".trailguide/config.yaml": config})
 			assets := filepath.Join(runner, "assets")
 			test.assets(t, assets)
 			githubPath, summary := filepath.Join(runner, "github-path"), filepath.Join(runner, "step-summary")

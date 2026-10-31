@@ -33,7 +33,8 @@ var agentsSectionTemplate string
 // The section is fenced by these markers. The begin marker records the first 16 hexadecimal digits of the SHA-256 of
 // the lines between the markers, so a refresh can tell an unedited section, which it replaces when the text changed,
 // from a hand edit, which it refuses to overwrite. Trail Guide 0.8 and earlier also wrote their version before the
-// digest and reject a marker without one, so a refresh keeps the version a marker names.
+// digest and reject a marker without one, so a refresh keeps the version a marker names, and a new section names
+// the running version until the configuration's minTrailguideVersion, which those releases refuse, shuts them out.
 var (
 	agentsBeginMarker = regexp.MustCompile(`^<!-- trailguide:begin (?:(\S+) )?sha256:([0-9a-f]{16}) -->$`)
 	agentsEndMarker   = regexp.MustCompile(`^<!-- trailguide:end -->$`)
@@ -155,7 +156,7 @@ type agentsPlan struct {
 // until its pointer is removed. It fails with agents-pointer-outdated when such a file points to generated/RULES.md,
 // where Trail Guide 0.7 and earlier kept it, with agents-section-edited when the section's lines changed since Trail
 // Guide wrote them, and with agents-section-invalid when its markers are broken.
-func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configuration) (plan agentsPlan, err error) {
+func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configuration, toolVersion string) (plan agentsPlan, err error) {
 	if config.SkipAgentsFile {
 		return agentsPlan{}, nil
 	}
@@ -180,7 +181,11 @@ func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configur
 	if err != nil {
 		return plan, err
 	}
-	want := renderAgentsSection(directory, s.version)
+	version := s.version
+	if !s.found() && config.MinimumVersion == nil {
+		version = toolVersion
+	}
+	want := renderAgentsSection(directory, version)
 	var content, action string
 	switch {
 	case !s.found() && strings.Contains(existing, directory+"/"+librarytree.Generated+"/RULES.md"):
