@@ -18,8 +18,8 @@ func TestAgentInstructions_MatchTheSection(t *testing.T) {
 	lines := strings.SplitAfter(section, "\n")
 	want := strings.Join(lines[1:len(lines)-2], "")
 	for _, name := range []string{
-		"../../_docs/src/content/docs/start-here/set-up-project.md",
-		"../../_docs/src/content/docs/for-agents/index.md",
+		"../../docs/src/content/docs/start-here/set-up-project.md",
+		"../../docs/src/content/docs/for-agents/index.md",
 	} {
 		data, err := os.ReadFile(name)
 		if err != nil {

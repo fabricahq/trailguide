@@ -2,7 +2,7 @@
 
 This internal guide owns styling conventions for the documentation site and homepage.
 Keep contributor guidance here; public documentation lives in `src/content/docs/`.
-Paths below are relative to `_docs/`.
+Paths below are relative to `docs/`.
 
 ## Use Tailwind for component styling
 

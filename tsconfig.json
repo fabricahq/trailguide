@@ -17,6 +17,6 @@
   },
   "include": [
     "_tools/*.ts",
-    "_docs/_tools/**/*.ts"
+    "docs/_tools/**/*.ts"
   ]
 }

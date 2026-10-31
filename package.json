@@ -2,20 +2,20 @@
   "name": "trailguide-website-tools",
   "type": "module",
   "workspaces": [
-    "_docs"
+    "docs"
   ],
   "scripts": {
-    "docs:dev": "bun run --cwd _docs dev",
-    "docs:check": "bun run --cwd _docs check",
-    "docs:build": "bun run --cwd _docs build",
-    "docs:preview": "bun run --cwd _docs preview",
-    "docs:links:all": "bun _docs/_tools/link-checker/cli.ts --external",
-    "docs:links": "bun run --cwd _docs links",
+    "docs:dev": "bun run --cwd docs dev",
+    "docs:check": "bun run --cwd docs check",
+    "docs:build": "bun run --cwd docs build",
+    "docs:preview": "bun run --cwd docs preview",
+    "docs:links:all": "bun docs/_tools/link-checker/cli.ts --external",
+    "docs:links": "bun run --cwd docs links",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run docs:check && bun run docs:build && bun run docs:links",
-    "format:check": "prettier --single-quote --check _tools/*.ts \"_docs/_tools/**/*.ts\" eslint.config.mjs",
+    "format:check": "prettier --single-quote --check _tools/*.ts \"docs/_tools/**/*.ts\" eslint.config.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --project tsconfig.json",
-    "test": "bun test ./_tools ./_docs/_tools"
+    "test": "bun test ./_tools ./docs/_tools"
   },
   "packageManager": "bun@1.4.2",
   "devDependencies": {

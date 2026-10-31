@@ -70,7 +70,7 @@ trailguide project check
 
 Confirm that `.trailguide/rules/techs/go/return-errors.md` contains the complete rule and that the generated Go group includes it. The body file is an authoring input; future edits belong in the rule file. Put supporting files that several rules share in `.trailguide/assets/`, and link to them from a rule as `../../../assets/<file>`. If you omit `--body-file`, open the created Markdown file in your editor. Keep its metadata between the `---` lines; below it, write the instructions, rationale, correct and incorrect examples, and validation steps. Replace template placeholders, remove unused sections, and remove the `<!-- trailguide:draft -->` marker before building.
 
-Follow the [rule authoring rubric](https://github.com/fabricahq/trailguide/blob/main/_docs/src/content/docs/reference/rule-authoring.md). Use explicit exclusions in the configuration, optionally naming an authored rule by its rule ID as `replacedBy`, when overriding imported rules; adding an authored rule does not automatically replace an imported rule.
+Follow the [rule authoring rubric](https://github.com/fabricahq/trailguide/blob/main/docs/src/content/docs/reference/rule-authoring.md). Use explicit exclusions in the configuration, optionally naming an authored rule by its rule ID as `replacedBy`, when overriding imported rules; adding an authored rule does not automatically replace an imported rule.
 
 #### Add a source
 

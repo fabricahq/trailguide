@@ -6,9 +6,9 @@ import jsdoc from 'eslint-plugin-jsdoc';
 
 const sourceFiles = [
   '_tools/**/*.ts',
-  '_docs/_tools/**/*.ts',
-  '_docs/src/**/*.{ts,astro,mjs}',
-  '_docs/*.mjs',
+  'docs/_tools/**/*.ts',
+  'docs/src/**/*.{ts,astro,mjs}',
+  'docs/*.mjs',
   'eslint.config.mjs',
 ];
 
@@ -60,7 +60,7 @@ export default [
     },
   },
   {
-    files: ['_docs/src/**/*.astro'],
+    files: ['docs/src/**/*.astro'],
     // Astro components have implicit exports; their frontmatter overview also describes the rendered result.
     languageOptions: {
       parser: astroParser,
