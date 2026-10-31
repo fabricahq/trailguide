@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/fabricahq/trailguide/internal/filetxn"
+	"github.com/fabricahq/trailguide/internal/rules"
 )
 
 // TestSync_MovesTheManagedTreesUnderManaged: every other command refuses a project whose vendor/ and generated/
@@ -132,11 +133,11 @@ func TestSync_MovesTheManagedTreesPastAnEmptyManagedFolder(t *testing.T) {
 // refuses any other file directly in skills/.
 func TestAuthoredSkills_LeaveOutTheFoldersGuide(t *testing.T) {
 	skill := []byte("---\nname: fix\ndescription: Fix a bug.\n---\n\nFix it.\n")
-	found, err := authoredSkills(&filetxn.Tree{Files: map[string][]byte{"README.md": []byte(skillsGuide), "fix/SKILL.md": skill}})
+	found, err := authoredSkills(rules.Configuration{}, &filetxn.Tree{Files: map[string][]byte{"README.md": []byte(skillsGuide), "local/fix/SKILL.md": skill}})
 	if err != nil || len(found) != 1 || found["skills/fix"].Files["SKILL.md"] == nil {
 		t.Fatalf("got %+v, %v; want only skills/fix", found, err)
 	}
-	if _, err := authoredSkills(&filetxn.Tree{Files: map[string][]byte{"NOTES.md": nil}}); err == nil || !strings.Contains(err.Error(), "skills/NOTES.md") {
+	if _, err := authoredSkills(rules.Configuration{}, &filetxn.Tree{Files: map[string][]byte{"NOTES.md": nil}}); err == nil || !strings.Contains(err.Error(), "skills/NOTES.md") {
 		t.Fatalf("got %v; want NOTES.md refused", err)
 	}
 }

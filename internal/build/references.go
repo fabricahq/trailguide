@@ -77,14 +77,18 @@ func deliverReferences(resolved []resolvedSkill, config rules.Configuration, lib
 // an authored skill's file, under its install name, or the project's file in place. It fails as skillrefs.Links
 // does, which the caller's check of the authored skills' links rules out.
 func authoredLinks(resolved []resolvedSkill) (map[string]map[string][]byte, error) {
-	// A link into skills/<name> names the skill installed as name: the authored skill, or a source's skill, which has
-	// no authored folder, as a fork's link to a sibling skill of its source does.
+	// A link into skills/<origin>/<name> names the skill installed as name: the authored skill in that folder, or,
+	// when origin is a source, that source's skill, which has no authored folder, as a fork's link to a sibling skill
+	// of its source does.
 	installed := map[string]resolvedSkill{}
+	for _, skill := range resolved {
+		if skill.Source != "" && len(skill.Targets) > 0 {
+			installed[librarytree.Directory+"/"+skills.Directory+"/"+skills.Folder(skill.Source, skill.Name)] = skill
+		}
+	}
 	for _, skill := range resolved {
 		if skill.Source == "" {
 			installed[librarytree.Directory+"/"+skill.Folder] = skill
-		} else if len(skill.Targets) > 0 {
-			installed[librarytree.Directory+"/"+skills.Directory+"/"+skill.Name] = skill
 		}
 	}
 	result := map[string]map[string][]byte{}
@@ -224,7 +228,7 @@ const notRetainedProblem = "the project's copy of the source doesn't retain. Run
 // reason and problem of a *skillrefs.Error, for a fork's missing file and a file the snapshot doesn't hold.
 func (d *delivery) place(key string) (string, bool, *skillrefs.Error) {
 	for _, id := range slices.Sorted(maps.Keys(d.snapshot.Skills)) {
-		name, inside := strings.CutPrefix(key, library.SkillFolder(id)+"/")
+		name, inside := strings.CutPrefix(key, d.snapshot.SkillFolder(id)+"/")
 		if !inside {
 			continue
 		}
@@ -305,13 +309,13 @@ func (d *delivery) readingCopies() map[string][]byte {
 // file at path key in the snapshot, or "" when no such skill does.
 func (d *delivery) excludedSkill(key string) string {
 	for id := range d.source.SkillExclude {
-		if strings.HasPrefix(key, library.SkillFolder(id)+"/") {
+		if strings.HasPrefix(key, d.snapshot.SkillFolder(id)+"/") {
 			return d.source.Name + ":" + id
 		}
 	}
 	for id, skill := range d.snapshot.AvailableSkills {
 		// A skill the snapshot records is installed, whatever its level.
-		if _, installed := d.snapshot.Skills[id]; !installed && strings.HasPrefix(key, library.SkillFolder(id)+"/") && d.source.ExcludesLevel(id, skill.Level) {
+		if _, installed := d.snapshot.Skills[id]; !installed && strings.HasPrefix(key, d.snapshot.SkillFolder(id)+"/") && d.source.ExcludesLevel(id, skill.Level) {
 			return d.source.Name + ":" + id
 		}
 	}

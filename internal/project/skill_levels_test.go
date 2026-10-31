@@ -20,13 +20,13 @@ func leveledLibrary(t *testing.T) *gitfixture.Fixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
-		"techs/go/_group.yaml":                      []byte(projectMetadata),
-		"techs/go/errors.md":                        []byte(projectRule),
-		".trailguide/skills/ship/SKILL.md":          []byte("---\nname: ship\ndescription: Ship a service.\n---\n# Ship\n"),
-		".trailguide/skills/review/SKILL.md":        []byte(reviewSkill),
-		".trailguide/skills/deploy/SKILL.md":        []byte("---\nname: deploy\ndescription: Deploy a preview.\n---\n# Deploy\n"),
-		".trailguide/skills/build-feature/SKILL.md": []byte(buildSkill),
+		"config.yaml":                                       []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
+		"techs/go/_group.yaml":                              []byte(projectMetadata),
+		"techs/go/errors.md":                                []byte(projectRule),
+		".trailguide/skills/library/ship/SKILL.md":          []byte("---\nname: ship\ndescription: Ship a service.\n---\n# Ship\n"),
+		".trailguide/skills/library/review/SKILL.md":        []byte(reviewSkill),
+		".trailguide/skills/library/deploy/SKILL.md":        []byte("---\nname: deploy\ndescription: Deploy a preview.\n---\n# Deploy\n"),
+		".trailguide/skills/library/build-feature/SKILL.md": []byte(buildSkill),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -44,8 +44,8 @@ func releaseNewLevels(t *testing.T, f *gitfixture.Fixture) {
 	t.Helper()
 	ctx := context.Background()
 	files := map[string][]byte{
-		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/audit","skills/review","skills/ship"],"offered":["skills/deploy"]}}}`),
-		".trailguide/skills/audit/SKILL.md": []byte("---\nname: audit\ndescription: Audit a change.\n---\n# Audit\n"),
+		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/audit","skills/review","skills/ship"],"offered":["skills/deploy"]}}}`),
+		".trailguide/skills/library/audit/SKILL.md": []byte("---\nname: audit\ndescription: Audit a change.\n---\n# Audit\n"),
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Require review and audit", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestListSkills_ShowsEveryInstalledAndAvailableSkillWithItsLevel(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, "skills/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
+	writeFixture(t, root, "skills/local/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
 	root.Close()
 	if _, err := Sync(context.Background(), options, git); err != nil {
 		t.Fatal(err)
@@ -246,7 +246,7 @@ func TestUpdate_PreviewsLevelChangesAndInstallsNewRequiredSkills(t *testing.T) {
 	if got := preview.Sources[0].SkillLevels; !slices.Equal(got, want) {
 		t.Fatalf("level rows = %+v; want %+v", got, want)
 	}
-	if !preview.Moves() {
+	if !movesSources(preview) {
 		t.Fatal("the preview has nothing to apply")
 	}
 	if _, err := plan.Apply(ctx, nil); err != nil {
@@ -297,7 +297,7 @@ func TestUpdate_TakesLevelChangesFromTheRevisionTheDecisionsChoose(t *testing.T)
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Require review and wrap errors", gitfixture.Library(map[string][]byte{
-		"config.yaml":        []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/review","skills/ship"],"offered":["skills/deploy"]}}}`),
+		"config.yaml":        []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/review","skills/ship"],"offered":["skills/deploy"]}}}`),
 		"techs/go/errors.md": []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
 	})); err != nil {
 		t.Fatal(err)
@@ -383,7 +383,7 @@ func TestSync_ForksASkillItAlsoExcludesByLevel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, "skills/our-deploy/SKILL.md", "---\nname: our-deploy\ndescription: Deploy our way.\n---\n# Deploy\n")
+	writeFixture(t, root, "skills/team/our-deploy/SKILL.md", "---\nname: our-deploy\ndescription: Deploy our way.\n---\n# Deploy\n")
 	root.Close()
 	if _, err := Sync(context.Background(), options, git); err != nil {
 		t.Fatal(err)
@@ -405,7 +405,7 @@ func TestUpdate_PreviewsALevelChangeThatRemovesASkillOnItsRow(t *testing.T) {
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
-	files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`)}
+	files := map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`)}
 	if _, err := f.Commit(ctx, f.Worktree(), "Stop recommending review", gitfixture.Library(files)); err != nil {
 		t.Fatal(err)
 	}

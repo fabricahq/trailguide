@@ -42,7 +42,7 @@ func Generate(config rules.Configuration, libraries map[string]Library, localFil
 // In internal/project: the operation reads once, under its root and limits, then renders.
 tree, err := filetxn.ReadTree(ctx, root, item.name)
 // ...
-output, err := build.Generate(state.config, libraries, treeFiles(state.local), build.Options{ToolVersion: version})
+output, err := build.Generate(state.config, libraries, authored, build.Options{IndexMaxLines: options.IndexMaxLines})
 ```
 
 ### Validation

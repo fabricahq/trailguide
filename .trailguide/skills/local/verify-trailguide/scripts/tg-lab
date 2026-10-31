@@ -10,6 +10,9 @@ Usage:
   tg-lab new [CHECKOUT]          Build CHECKOUT (default: the Git root of the current directory) into a new lab.
                                  Prints TG_LAB=<lab>; pass it to every later command.
   tg-lab doctor                  Check that $TG_LAB is a lab worth driving.
+  tg-lab version VERSION [CHECKOUT]
+                                 Build CHECKOUT (default: the lab's checkout) as release VERSION, such as 0.9.0,
+                                 into the lab as trailguide-VERSION.
   tg-lab remote NAME             Create a Git repository that projects reach as https://verify.invalid/NAME.
   tg-lab project NAME            Create an empty Git repository to use as a project.
   tg-lab commit DIR MESSAGE      Commit every change in DIR, a lab repository.
@@ -135,6 +138,25 @@ cmd_doctor() {
 	fi
 }
 
+# cmd_version builds a release binary beside the lab's development one. The lab's own trailguide is a development
+# build, which skips release-only behavior such as checking minTrailguideVersion.
+cmd_version() {
+	require_lab
+	[[ $# == 1 || $# == 2 ]] || fail "usage: tg-lab version VERSION [CHECKOUT]"
+	local version="$1"
+	[[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail "version must be major.minor.patch, such as 0.9.0: $version"
+	# shellcheck disable=SC1091
+	source "$TG_LAB/lab.env"
+	local from="${2:-$checkout}"
+	from="$(cd "$from" && pwd)"
+	[[ -f "$from/cmd/trailguide/main.go" ]] || fail "$from isn't a trailguide checkout: it has no cmd/trailguide/main.go"
+	local binary="$TG_LAB/bin/trailguide-$version"
+	[[ ! -e "$binary" ]] || fail "$binary already exists"
+	(cd "$from" && go build -ldflags "-X main.version=$version" -o "$binary" ./cmd/trailguide) || fail "go build failed in $from"
+	echo "Built trailguide-$version from $from at $(git -C "$from" rev-parse HEAD) ($(git -C "$from" status --porcelain | wc -l | tr -d ' ') uncommitted paths)."
+	echo "binary=$binary"
+}
+
 valid_name() {
 	[[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "name must be lowercase letters, digits, and hyphens: $1"
 }
@@ -234,6 +256,7 @@ main() {
 	case "$command" in
 	new) cmd_new "$@" ;;
 	doctor) cmd_doctor "$@" ;;
+	version) cmd_version "$@" ;;
 	remote) cmd_remote "$@" ;;
 	project) cmd_project "$@" ;;
 	commit) cmd_commit "$@" ;;

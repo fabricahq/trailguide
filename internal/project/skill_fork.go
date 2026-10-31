@@ -123,7 +123,7 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 			return &ValidationError{Location: "--from", Problem: fmt.Sprintf("source %s doesn't install skill %s, as its last sync recorded; name a skill its skills.include selects, and if you just added it, run trailguide project sync first", source.Name, from.Skill)}
 		}
 		files := snapshot.SkillFiles(from.Skill)
-		location := librarytree.Vendor + "/" + source.Name + "/" + library.SkillFolder(from.Skill) + "/" + skills.File
+		location := librarytree.Vendor + "/" + source.Name + "/" + snapshot.SkillFolder(from.Skill) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(files[skills.File], location)
 		if err != nil {
 			return err
@@ -155,8 +155,8 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 		} else if plan.name, err = skills.InstallName(id, metadata, location); err != nil {
 			return err
 		}
-		folder := skills.AuthoredID(plan.name)
-		if err := requireSkillForkTarget(ctx, root, config, folder); err != nil {
+		folder := skillFolderPath(from.Source, plan.name)
+		if err := requireSkillForkTarget(ctx, root, config, from.Source, plan.name); err != nil {
 			return err
 		}
 		executable := snapshot.SkillExecutable(from.Skill)
@@ -204,17 +204,19 @@ func PlanSkillFork(ctx context.Context, from SkillForkSource, options Options) (
 	return plan, nil
 }
 
-// requireSkillForkTarget fails when the Trail Guide directory already has folder, the fork's authored skill folder,
-// skills/<name>, or when another fork already installs as that authored skill.
-func requireSkillForkTarget(ctx context.Context, root *os.Root, config rules.Configuration, folder string) error {
-	for _, source := range config.Sources {
-		for _, id := range slices.Sorted(maps.Keys(source.SkillForks)) {
-			if source.SkillForks[id].As == folder {
-				return &ValidationError{Location: "sources." + source.Name + ".skills.forks." + id + ".as", Problem: fmt.Sprintf("already names %s, the new fork's folder, and each authored skill replaces one skill; remove that fork first", folder)}
+// requireSkillForkTarget fails when the Trail Guide directory already has a skill named name, the fork's name, in
+// source's origin folder, where the fork goes, or any other, or when another fork already installs as the authored
+// skill skills/<name>.
+func requireSkillForkTarget(ctx context.Context, root *os.Root, config rules.Configuration, source, name string) error {
+	id := skills.AuthoredID(name)
+	for _, declared := range config.Sources {
+		for _, forked := range slices.Sorted(maps.Keys(declared.SkillForks)) {
+			if declared.SkillForks[forked].As == id {
+				return &ValidationError{Location: "sources." + declared.Name + ".skills.forks." + forked + ".as", Problem: fmt.Sprintf("already names %s, the new fork, and each authored skill replaces one skill; remove that fork first", id)}
 			}
 		}
 	}
-	return filetxn.RequireAbsent(ctx, root, folder)
+	return requireNoSkillNamed(ctx, root, source, name)
 }
 
 // Name returns the fork's name, which is the skill's install name, so its ID is skills/<name>.
@@ -247,7 +249,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 	if err != nil {
 		return AuthoringResult{}, err
 	}
-	folder := skills.AuthoredID(p.name)
+	id := skills.AuthoredID(p.name)
 	return editProject(ctx, p.options, func(root *os.Root, original []byte, config rules.Configuration) ([]filetxn.File, error) {
 		if !bytes.Equal(original, p.configBytes) {
 			return nil, failure("concurrent-change", "the project's configuration changed after the fork was planned; run the command again", nil)
@@ -259,10 +261,10 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		if !bytes.Equal(lock, p.lock) {
 			return nil, failure("concurrent-change", "the source's imported files changed after the fork was planned; run the command again", nil)
 		}
-		if err := requireSkillForkTarget(ctx, root, config, folder); err != nil {
+		if err := requireSkillForkTarget(ctx, root, config, p.from.Source, p.name); err != nil {
 			return nil, err
 		}
-		edit := rules.SourceEdit{SkillForks: map[string]rules.SkillFork{p.from.Skill: {As: folder, Reason: reason, BasedOn: basedOn}}}
+		edit := rules.SourceEdit{SkillForks: map[string]rules.SkillFork{p.from.Skill: {As: id, Reason: reason, BasedOn: basedOn}}}
 		if p.renamed {
 			edit.SkillUnrename = []string{p.from.Skill}
 		}
@@ -330,7 +332,7 @@ func forkedSkillFile(data []byte, metadata skills.Metadata, name, source string,
 // installed copy. A link that reaches any other file outside the folder, such as a shared document, or a skill the
 // project doesn't install, has nothing the fork can reach, so it returns a fix for each.
 func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, files map[string][]byte, installed []build.InstalledSkill) (map[string][]byte, []string, error) {
-	folder := library.SkillFolder(id)
+	folder := snapshot.SkillFolder(id)
 	origin := snapshot.Origins()[snapshot.OriginOf(folder+"/")]
 	installedAs := map[string]string{}
 	for _, skill := range installed {
@@ -361,13 +363,13 @@ func forkLinks(snapshot library.Snapshot, source rules.Source, id, name string, 
 				return link.Destination
 			}
 			for _, other := range slices.Sorted(maps.Keys(snapshot.Skills)) {
-				rest, inside := strings.CutPrefix(key, library.SkillFolder(other)+"/")
+				rest, inside := strings.CutPrefix(key, snapshot.SkillFolder(other)+"/")
 				if !inside {
 					continue
 				}
 				if as, ok := installedAs[other]; ok && other != id {
-					forked := librarytree.Directory + "/" + skills.AuthoredID(name) + "/" + file
-					relative, err := url.PathUnescape(rules.RelativeLink(forked, librarytree.Directory+"/"+skills.AuthoredID(as)+"/"+rest))
+					forked := librarytree.Directory + "/" + skillFolderPath(source.Name, name) + "/" + file
+					relative, err := url.PathUnescape(rules.RelativeLink(forked, librarytree.Directory+"/"+skillFolderPath(source.Name, as)+"/"+rest))
 					if err == nil {
 						changed = changed || relative != link.Destination
 						return relative

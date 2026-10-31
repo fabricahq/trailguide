@@ -107,7 +107,13 @@ func linkSkillUses(resolved []resolvedSkill, config rules.Configuration, aliases
 	}
 	installed, err := skills.ResolveUses(ids, uses)
 	if cycle := (*skills.UseCycleError)(nil); errors.As(err, &cycle) {
-		return nil, invalid(cycle.Cycle[0]+"/"+skills.File, fmt.Sprintf("%s forms a cycle: %s. A skill installs with every skill it uses, so uses can't form a cycle; remove one of them", skills.SkillsUsedKey, strings.Join(cycle.Cycle, " -> ")))
+		location := cycle.Cycle[0] + "/" + skills.File
+		for _, skill := range resolved {
+			if skill.ID == cycle.Cycle[0] {
+				location = skillLocation(skill)
+			}
+		}
+		return nil, invalid(location, fmt.Sprintf("%s forms a cycle: %s. A skill installs with every skill it uses, so uses can't form a cycle; remove one of them", skills.SkillsUsedKey, strings.Join(cycle.Cycle, " -> ")))
 	}
 	if err != nil {
 		return nil, err

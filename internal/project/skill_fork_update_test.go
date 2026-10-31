@@ -33,7 +33,7 @@ func forkedSkillProject(t *testing.T, edit func(string) string) (Options, import
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFixture(t, root, "skills/build-feature/SKILL.md", edit(readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md")))
+	writeFixture(t, root, "skills/team/build-feature/SKILL.md", edit(readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md")))
 	root.Close()
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
@@ -80,11 +80,11 @@ func TestUpdate_MergesTheSourcesChangesIntoASkillFork(t *testing.T) {
 					t.Fatalf("changes = %+v; want %s", applied.FileChanges, want)
 				}
 			}
-			fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md")
+			fork := readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md")
 			if !strings.Contains(fork, "Run scripts/check.sh first.") || strings.Contains(fork, "Run scripts/run.sh.") || !strings.Contains(fork, edit("Build a feature from a spec.")) {
 				t.Fatalf("merged fork:\n%s", fork)
 			}
-			if !exists(t, options, ".trailguide/skills/build-feature/scripts/check.sh") {
+			if !exists(t, options, ".trailguide/skills/team/build-feature/scripts/check.sh") {
 				t.Fatal("the merge didn't add the source's new script")
 			}
 			if config := readRepositoryFile(t, options, ".trailguide/config.yaml"); !strings.Contains(config, "basedOn: \""+later+"\"") {
@@ -125,14 +125,14 @@ func TestUpdate_RefusesToMergeConflictingChangesIntoASkillFork(t *testing.T) {
 	if rows := preview.Sources[0].ReplacedSkills; len(rows) != 1 || rows[0].Merge != imports.SkillMergeConflicts || strings.Join(rows[0].Conflicts, ",") != "SKILL.md" {
 		t.Fatalf("replaced skills = %+v; want SKILL.md to conflict", rows)
 	}
-	fork := readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md")
+	fork := readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md")
 	config := readRepositoryFile(t, options, ".trailguide/config.yaml")
 	_, err = plan.Apply(ctx, updateSkillFork)
 	var failure *filetxn.Error
 	if !errors.As(err, &failure) || failure.Code != "invalid-arguments" || !strings.Contains(err.Error(), "touch the same lines of SKILL.md") || !strings.Contains(err.Error(), later) {
 		t.Fatalf("got %v; want a refusal naming SKILL.md and the commit to record", err)
 	}
-	if readRepositoryFile(t, options, ".trailguide/skills/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != config {
+	if readRepositoryFile(t, options, ".trailguide/skills/team/build-feature/SKILL.md") != fork || readRepositoryFile(t, options, ".trailguide/config.yaml") != config {
 		t.Fatal("the refused update changed the fork or its basedOn")
 	}
 }
@@ -196,7 +196,7 @@ func TestUpdate_OffersToMergeAForkAfterTheSourceMoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeNoConflicts || !preview.Moves() {
+	if source := preview.Sources[0]; source.Commit != nil || len(source.ReplacedSkills) != 1 || source.ReplacedSkills[0].Merge != imports.SkillMergeNoConflicts || !movesSources(preview) {
 		t.Fatalf("preview = %+v; want only a fork whose changes merge, which the update can apply", preview.Sources)
 	}
 }
@@ -211,7 +211,7 @@ func TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	forkSkill(t, options, "team:skills/build-feature", "We build with make.")
-	if err := os.Chmod(filepath.Join(f.Worktree(), ".trailguide/skills/build-feature/scripts/run.sh"), 0o600); err != nil {
+	if err := os.Chmod(filepath.Join(f.Worktree(), ".trailguide/skills/library/build-feature/scripts/run.sh"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Make the script plain", nil); err != nil {
@@ -228,10 +228,10 @@ func TestUpdate_ReportsAMergedForkFileWhoseModeAloneChanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(applied.Changed, "skills/build-feature/scripts/run.sh") {
+	if !slices.Contains(applied.Changed, "skills/team/build-feature/scripts/run.sh") {
 		t.Fatalf("changed = %v; want the script whose mode changed", applied.Changed)
 	}
-	info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/build-feature/scripts/run.sh"))
+	info, err := os.Stat(filepath.Join(options.Directory, ".trailguide/skills/team/build-feature/scripts/run.sh"))
 	if err != nil || info.Mode()&0o111 != 0 {
 		t.Fatalf("fork script mode = %v, %v; want it no longer executable", info, err)
 	}

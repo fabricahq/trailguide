@@ -101,7 +101,7 @@ func TestSync_KeepsABranchsRecordedCommitAndUpdateMovesItToTheNewest(t *testing.
 		t.Fatal(err)
 	}
 	source := preview.Sources[0]
-	if !source.FollowsRef || source.Ref != "main" || !reflect.DeepEqual(source.Commit, &imports.CommitMove{From: f.LatestCommit, To: moved}) || source.TagMoved || !preview.Moves() {
+	if !source.FollowsRef || source.Ref != "main" || !reflect.DeepEqual(source.Commit, &imports.CommitMove{From: f.LatestCommit, To: moved}) || source.TagMoved || !movesSources(preview) {
 		t.Fatalf("preview = %+v; want main moving from %s to %s", source, f.LatestCommit, moved)
 	}
 	want := []imports.SkillUpdate{{ID: "tools/review", Change: imports.SkillChanged, Files: []string{"SKILL.md", "lint.sh"}, Scripts: []imports.ScriptUpdate{{Path: "lint.sh", Change: imports.SkillAdded}}}}
@@ -118,7 +118,7 @@ func TestSync_KeepsABranchsRecordedCommitAndUpdateMovesItToTheNewest(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if preview, err = plan.Preview(ctx, nil); err != nil || preview.Sources[0].Commit != nil || preview.Moves() {
+	if preview, err = plan.Preview(ctx, nil); err != nil || preview.Sources[0].Commit != nil || movesSources(preview) {
 		t.Fatalf("preview after the update = %+v, %v; want nothing to move", preview.Sources, err)
 	}
 }
@@ -228,7 +228,7 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 		t.Fatalf("sync recorded %s; want main's newest commit %s", got, want)
 	}
 	moved, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
-		".trailguide/skills/review/SKILL.md":             []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		".trailguide/skills/library/review/SKILL.md":     []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
 		librarytree.RepositoryPath("techs/go/errors.md"): []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
 	})
 	if err != nil {
@@ -302,7 +302,7 @@ func TestUpdate_ALibrarySourceOnABareTagStaysWhereSyncKeepsIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
-		".trailguide/skills/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		".trailguide/skills/library/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -317,7 +317,7 @@ func TestUpdate_ALibrarySourceOnABareTagStaysWhereSyncKeepsIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; source.FollowsRef || source.Commit != nil || preview.Moves() {
+	if source := preview.Sources[0]; source.FollowsRef || source.Commit != nil || movesSources(preview) {
 		t.Fatalf("preview = %+v; want the tagged library to stay at %s", source, tagged)
 	}
 }

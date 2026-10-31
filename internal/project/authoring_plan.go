@@ -143,19 +143,27 @@ func checkSourceAlias(config rules.Configuration, alias string) error {
 // LocalSkillPlan identifies a new authored skill in the project's skills/; Commit rechecks that its folder is still
 // absent.
 type LocalSkillPlan struct {
-	name    string
-	options Options
+	name, folder string
+	options      Options
 }
 
 // PlanLocalSkill checks the skill's name and that the project has no authored skill folder by that name before
 // collecting the skill's description.
 func PlanLocalSkill(ctx context.Context, name string, options Options) (*LocalSkillPlan, error) {
-	options, err := planProjectAuthoring(ctx, options, func(root *os.Root, _ rules.Configuration) error { return checkLocalSkill(ctx, root, name) })
+	folder := ""
+	options, err := planProjectAuthoring(ctx, options, func(root *os.Root, config rules.Configuration) error {
+		origin := config.SkillOrigins().Own
+		folder = path.Join(librarytree.Directory, skillFolderPath(origin, name))
+		return checkLocalSkill(ctx, root, origin, name)
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &LocalSkillPlan{name, options}, nil
+	return &LocalSkillPlan{name, folder, options}, nil
 }
+
+// Folder returns the path in the repository of the planned skill's folder, such as .trailguide/skills/local/fix-bug.
+func (p *LocalSkillPlan) Folder() string { return p.folder }
 
 // Commit rechecks the target before creating the skill's SKILL.md, a marked draft with description and kind, a
 // trailguide-skill-type or empty, in its frontmatter. It warns when a skill the project last installed from a source
@@ -177,7 +185,8 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 	}
 	var clash string
 	result, err := editProject(ctx, p.options, func(root *os.Root, _ []byte, config rules.Configuration) ([]filetxn.File, error) {
-		if err := checkLocalSkill(ctx, root, p.name); err != nil {
+		origin := config.SkillOrigins().Own
+		if err := checkLocalSkill(ctx, root, origin, p.name); err != nil {
 			return nil, err
 		}
 		layout, err := readLayout(root)
@@ -195,7 +204,7 @@ func (p *LocalSkillPlan) Commit(ctx context.Context, description, kind string) (
 				break
 			}
 		}
-		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(skills.AuthoredID(p.name), skills.File), Content: data}})
+		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(skillFolderPath(origin, p.name), skills.File), Content: data}})
 	})
 	if err == nil && clash != "" {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("The project installs %s as %s too, so trailguide project sync and build fail with skill-name-clash until you rename this skill's folder and name, or exclude %s.", clash, p.name, clash))
@@ -216,9 +225,11 @@ func excludes(config rules.Configuration, source, id string) bool {
 	return false
 }
 
-func checkLocalSkill(ctx context.Context, root *os.Root, name string) error {
+// checkLocalSkill fails when name isn't a valid skill name, or the project already has a skill named name, in the
+// origin folder of its own skills, origin, or any other.
+func checkLocalSkill(ctx context.Context, root *os.Root, origin, name string) error {
 	if !skills.ValidName(name) {
 		return &ValidationError{Location: "skill name", Problem: "a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen, such as release-checklist"}
 	}
-	return filetxn.RequireAbsent(ctx, root, skills.AuthoredID(name))
+	return requireNoSkillNamed(ctx, root, origin, name)
 }

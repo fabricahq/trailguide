@@ -38,8 +38,10 @@ Keep implementation details out of the map. Name only user paths, required state
 
 ## Features
 
+- [Skill origin folders](./skill-origins.md) covers where library, project, and forked skills sit in `.trailguide/skills/`, the layouts library check and sync refuse, and fork merges for any source name.
 - [Install skills from a source](./install-skills.md) covers init, adding a skill repository or library as a source, sync, listing skills, and check.
 - [Skill links that leave the skill](./skill-references.md) covers retained linked files, rewritten links, reading copies, offline build and check, and repairing a project that lacks the copies.
 - [Links to an excluded skill](./excluded-skill-links.md) covers the warning, its JSON form, indirect chains, and the merged warning for a skill that uses and links to the excluded skill.
 - [Broken skill links](./reference-errors.md) covers the errors sync, update, and library check report for links a project can't deliver, and that they write nothing.
 - [Fork a skill with links](./fork-skill.md) covers forking an installed skill whose links reach other files, and a fork that drops a linked file.
+- [Minimum Trail Guide version](./minimum-version.md) covers `minTrailguideVersion` on init and update, refusing older releases, release binaries built with `tg-lab version`, and the `AGENTS.md` marker without a version.

@@ -42,8 +42,8 @@ func (e *ClashError) Error() string {
 type resolvedSkill struct {
 	// ID is the project ID: source:folder for a source's skill, or skills/<name> for an authored one.
 	ID string
-	// Source is the source's name, or empty for an authored skill; Folder is the skill's ID in its source or in the
-	// repository's skills/ folder.
+	// Source is the source's name, or empty for an authored skill; Folder is the skill's ID in its source or, for an
+	// authored skill, its folder in the Trail Guide directory, skills/<origin>/<name>.
 	Source, Folder string
 	// Name is the install name; Description, Type, and Interface are as SKILL.md declares them.
 	Name, Description, Type string
@@ -106,7 +106,7 @@ type skillResolution struct {
 // ID, skills/<name>. It fails when a SKILL.md is missing or its frontmatter unreadable, when an install name isn't
 // valid, when an exclusion, fork, or rename is invalid, with *ClashError when two skills share an install name, as
 // linkSkillUses does for an authored skill's uses, and as deliverReferences does for a link it can't deliver.
-func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]SkillFiles) (skillResolution, error) {
+func resolveSkills(config rules.Configuration, libraries map[string]Library, local map[string]skills.Skill[[]byte]) (skillResolution, error) {
 	replacements, err := skillReplacements(config, libraries, local)
 	if err != nil {
 		return skillResolution{}, err
@@ -136,11 +136,11 @@ func resolveSkills(config rules.Configuration, libraries map[string]Library, loc
 	}
 	result, aliases := withoutCuratedCopies(result)
 	for _, id := range slices.Sorted(maps.Keys(local)) {
-		skill := resolvedSkill{ID: id, Folder: id, Files: local[id], Included: true}
+		skill := resolvedSkill{ID: id, Folder: skills.Directory + "/" + local[id].Folder(), Files: SkillFiles{Files: local[id].Files, Executable: local[id].Executable}, Included: true}
 		if replacement, replaces := replacements[id]; replaces {
 			skill.Replaces = &replacement
 		}
-		if err := describeSkill(&skill, "", id+"/"+skills.File); err != nil {
+		if err := describeSkill(&skill, "", skill.Folder+"/"+skills.File); err != nil {
 			return skillResolution{}, err
 		}
 		result = append(result, skill)
@@ -194,13 +194,13 @@ func requestedRef(source rules.Source, snapshot library.Snapshot) string {
 // sourceSkill returns the origin of skill id of source, whose snapshot is snapshot: the source's repository and
 // revision for a skill it publishes, and, for a curated one, the repository and revision it was curated from.
 func sourceSkill(source rules.Source, snapshot library.Snapshot, id string) resolvedSkill {
-	skill := resolvedSkill{ID: source.Name + ":" + id, Source: source.Name, Folder: id, Vendored: id, Repository: source.Repository, Ref: requestedRef(source, snapshot), Commit: snapshot.Commit, Release: snapshot.Release, NonLibrary: snapshot.NonLibrary, Level: snapshot.Skills[id].Level, Included: snapshot.Skills[id].Included}
+	skill := resolvedSkill{ID: source.Name + ":" + id, Source: source.Name, Folder: id, Vendored: snapshot.SkillFolder(id), Repository: source.Repository, Ref: requestedRef(source, snapshot), Commit: snapshot.Commit, Release: snapshot.Release, NonLibrary: snapshot.NonLibrary, Level: snapshot.Skills[id].Level, Included: snapshot.Skills[id].Included}
 	if skill.Level != "" {
 		skill.LevelRelease = snapshot.Release
 	}
 	if name, folder, curated := library.SplitCurated(id); curated {
 		origin := snapshot.Curated[name]
-		skill.Folder, skill.Vendored, skill.Curated, skill.Override = folder, library.SkillFolder(id), name, origin.Source
+		skill.Folder, skill.Curated, skill.Override = folder, name, origin.Source
 		skill.Repository, skill.Ref, skill.Commit, skill.Release, skill.NonLibrary = origin.Repository, origin.Ref.String(), origin.Commit, origin.Release, origin.NonLibrary
 	}
 	return skill

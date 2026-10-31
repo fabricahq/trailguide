@@ -27,15 +27,17 @@ type authoringFlags struct {
 	// git runs Git in a library's own repository; project commands don't use it.
 	git gitexec.Options
 	// imports fetches the sources a library curates skills from, for library check.
-	imports      imports.Options
+	imports imports.Options
+	// version is this build's version, which commands check against the configuration's minTrailguideVersion.
+	version      string
 	introduction string
 	prompted     bool
 }
 
 // newAuthoringCommand registers noninteractive flags with strict positional arity.
-func newAuthoringCommand(use, description string, args cobra.PositionalArgs, directory string) (*cobra.Command, *authoringFlags) {
+func newAuthoringCommand(use, description string, args cobra.PositionalArgs, options Options) (*cobra.Command, *authoringFlags) {
 	cmd := &cobra.Command{Use: use, Short: description, Args: args}
-	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: directory}
+	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory, version: options.Version}
 	cmd.PostRunE = flags.finishPrompts
 	cmd.Flags().Bool("non-interactive", false, "Require explicit flags; never prompt")
 	return cmd, flags
@@ -98,7 +100,7 @@ func (f *authoringFlags) file(name string) string {
 // options resolves the project target while file inputs remain relative to the caller.
 func (f *authoringFlags) options(ctx context.Context, initialize bool) (project.Options, error) {
 	directory, err := commandDirectory(ctx, f.directory, "project", initialize)
-	return project.Options{Directory: directory}, err
+	return project.Options{Directory: directory, ToolVersion: f.version}, err
 }
 
 // group returns the explicit metadata for an existing or newly created group.

@@ -36,14 +36,18 @@ A library uses the same Trail Guide directory as every other repository. The tre
           - verify-retry-limits.md
     - skills/
       - README.md
-      - build-feature/
-        - SKILL.md
-        - references/
-          - slicing.md
-        - scripts/
-          - verify.sh
-      - review-tests/
-        - SKILL.md
+      - engineering/
+        - build-feature/
+          - SKILL.md
+          - references/
+            - slicing.md
+          - scripts/
+            - verify.sh
+        - review-tests/
+          - SKILL.md
+      - pstack/
+        - show-me-your-work/
+          - SKILL.md
     - lock.json
     - _managed/
       - vendor/
@@ -56,12 +60,12 @@ A library uses the same Trail Guide directory as every other repository. The tre
 A library publishes exactly its **authored content**:
 
 - **Rule groups** under `rules/techs/` and `rules/practices/`, each with its rule group metadata and rules.
-- **Skills** under `skills/`, one folder per skill.
+- **Skills** under `skills/`, one folder per skill, in the folder for the skill's [origin](#skills).
 - **Library-wide files**: the manifest in `config.yaml`, rule group metadata, shared files in `assets/`, and the declared license and notice files.
 
 `lock.json` and everything under `_managed/` are the library's own project files, for the sources it takes from and the guidance its own agents read. Projects never take them from the library.
 
-Trail Guide discovers rule groups only under `rules/techs/` and `rules/practices/`, and skills only as `skills/<name>/SKILL.md`. A rule's ID is its path in `rules/` without `.md`, such as `practices/testing/verify-retry-limits`, and a skill's ID is `skills/<name>`.
+Trail Guide discovers rule groups only under `rules/techs/` and `rules/practices/`, and skills only as `skills/<origin>/<name>/SKILL.md`. A rule's ID is its path in `rules/` without `.md`, such as `practices/testing/verify-retry-limits`, and a skill's ID is `skills/<name>`, whatever its origin.
 Within a rule group, Markdown files outside reserved asset directories are rules. The `README.md` at the rule group's root and declared license and notice files, which can't use a rule's path, are exempt. Rule group READMEs are authoring documentation, not generated rule guidance.
 [Change notes](/reference/rule-versions/#change-notes), which record how rules and skills changed, live in `changes/`. Projects never take them.
 Library releases are Git tags, not files; see [Library releases](/reference/rule-versions/#library-releases).
@@ -82,7 +86,8 @@ sources:
     repository: https://github.com/mattpocock/skills.git
     ref: main
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: engineering
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -96,7 +101,13 @@ library:
       - mattpocock:skills/productivity/grilling
 ```
 
-The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository; it writes `schemaVersion: 1` in the `library` section.
+The rest of the file is an ordinary [configuration](/reference/configuration/): the library's own sources and what it takes from them, and its skill targets. Run `trailguide library init` to add a manifest to a repository; it writes `schemaVersion: 2` and the library's name in the `library` section.
+
+### Library name
+
+`library.name` is required. It names the folder of the library's own skills, `skills/<name>/`, so a visitor to the repository can tell them from the skills it forks from other repositories. It follows the [source name](/reference/configuration/#source-names-and-ids) grammar, such as `engineering` or `fabrica`; it can't be `local`, which names a project's own skills, or the name of one of the library's sources. `trailguide library init` derives it from the repository's folder name; pass `--name` to choose another.
+
+The name is a label for the library's folder only. Projects still name the library by the source name they choose, and a skill's ID doesn't include it.
 
 ### Schema version
 
@@ -105,13 +116,13 @@ The rest of the file is an ordinary [configuration](/reference/configuration/): 
 - the `library` section: its schema version, license, and skill levels;
 - the `repository` and `ref` of each source the library's skills [curate](#curated-skills) from;
 - rule files and rule group metadata;
-- the library layout: where the manifest, rules, skills, and shared assets live.
+- the library layout: where the manifest, rules, skills, and shared assets live, and the library's name, which names the folder of its own skills.
 
 [Release records](/reference/rule-versions/#release-record) have their own `schemaVersion`, which changes independently.
 
 The configuration's top-level `schemaVersion` is a different version: it describes the project configuration, which the library's own Trail Guide reads. `library.schemaVersion` describes what the library publishes, which its consumers read.
 
-This version of Trail Guide reads and writes library schema version `1`. A library without `library.schemaVersion`, or with one that isn't a whole number, fails with a validation error at `library.schemaVersion`. A library in another library schema version fails with `unsupported-library-schema`, which names both versions: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier library schema version. It adds support for one when libraries still publish in it.
+This version of Trail Guide reads and writes library schema version `2`, which added `library.name` and [origin folders](#skills). A library in schema version `1` keeps every skill directly in `skills/`; it fails with `unsupported-library-schema` until it moves to version `2`. A library without `library.schemaVersion`, or with one that isn't a whole number, fails with a validation error at `library.schemaVersion`. A library in another library schema version fails with `unsupported-library-schema`, which names both versions: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier library schema version. It adds support for one when libraries still publish in it.
 
 #### What a library's consumers read
 
@@ -134,7 +145,14 @@ The manifest replaces `rule-library.yaml`, and the Trail Guide directory replace
 
 ## Skills
 
-Each folder in `skills/` is one skill, and its `SKILL.md` names it. `skills/` holds only skill folders, each directly inside it. Skills don't belong to rule groups, so a skill folder is never inside `rules/`, or inside another skill.
+Each skill is a folder two levels down in `skills/`, `skills/<origin>/<name>/`, and its `SKILL.md` names it. The first level is the skill's **origin**, where the skill comes from:
+
+- `skills/<library.name>/` holds the skills the library writes itself, such as `skills/engineering/build-feature/`.
+- `skills/<source>/` holds the skills the library [forks](/reference/configuration/#fork-a-skill) from one of its sources, named for the source, such as `skills/pstack/show-me-your-work/`.
+
+A visitor browsing `skills/` sees at a glance which skills the library wrote and which it adapted from another repository. Curated skills aren't copied into the library, so they have no folder.
+
+`skills/` holds only origin folders and an optional `README.md`, and each origin folder holds only skill folders. Two skills can't share a name, even in different origins, because a skill's ID is `skills/<name>` whatever its origin. A forked skill sits in its source's folder, and a skill in a source's folder must be a fork of that source's skill; `trailguide library check` reports a skill in the wrong folder with where to move it. Skills don't belong to rule groups, so a skill folder is never inside `rules/`, or inside another skill.
 
 `trailguide library check` validates every skill, and a project installs only the skills it includes, its required skills, and the skills they call. A skill's version covers its whole folder; see [What a version covers](/reference/rule-versions/#what-a-version-covers). For the folder's contents, the `SKILL.md` fields, and every check, see [Skill format](/reference/skill-format/).
 
@@ -160,7 +178,8 @@ List a skill in `library.skills.dependencies` when the library has it only becau
 
 ```yaml
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: engineering
   skills:
     recommended: [skills/add-skill]
     dependencies: [anthropic:skills/skill-creator]
@@ -197,7 +216,7 @@ The optional `library.license` object declares the library-wide terms. Authors s
 | `library.license.notices` | Paths to accompanying notices, relative to the repository root; use an empty array when none apply. |
 
 When `license` is present, all three fields are required and all declared files must exist within the repository.
-Declared license and notice files are [library-wide files](/reference/rule-versions/#what-a-version-covers), so they can't be part of a rule's or skill's version: a declared path can't be a rule's Markdown file, lie in a rule's asset directory, such as `.trailguide/rules/practices/testing/assets/verify-retry-limits/LICENSE`, or lie in a skill folder, such as `.trailguide/skills/build-feature/LICENSE`. Otherwise a later library release could replace a file that a project's pinned rule version covers. `trailguide library check` rejects such a declaration, and projects refuse to take a library release whose manifest has one.
+Declared license and notice files are [library-wide files](/reference/rule-versions/#what-a-version-covers), so they can't be part of a rule's or skill's version: a declared path can't be a rule's Markdown file, lie in a rule's asset directory, such as `.trailguide/rules/practices/testing/assets/verify-retry-limits/LICENSE`, or lie in a skill folder, such as `.trailguide/skills/engineering/build-feature/LICENSE`. Otherwise a later library release could replace a file that a project's pinned rule version covers. `trailguide library check` rejects such a declaration, and projects refuse to take a library release whose manifest has one.
 A project's [vendor snapshot](/reference/files/) of the library stores a declared file from outside `.trailguide/` at its path from the repository root, beside the files from `.trailguide/`, so that path can't start with a name the snapshot uses for those files, or that Trail Guide 0.5 used for its records, in any letter case: `_source.json`, `config.yaml`, `_repository/`, `assets/`, `curated/`, `changes/`, `rules/`, or `skills/`. The snapshot keeps the files skills link to from outside `.trailguide/` under `_repository/`.
 Unknown fields in the license declaration are rejected so misspellings cannot silently discard intended metadata.
 Trail Guide retains the declared files from the resolved source commit and links generated rules to unchanged copies. Offline builds require those files in the stored snapshot.
@@ -230,7 +249,7 @@ Earlier versions of Trail Guide read a library's manifest from `rule-library.yam
 | `assets/` | `.trailguide/assets/` |
 | `changes/` | `.trailguide/changes/` |
 
-Move the files with `git mv`, then delete `rule-library.yaml` and write its `license` fields, without its `formatVersion`, in the `library` section of `.trailguide/config.yaml`, after `schemaVersion: 1`, beside the `sources` the repository uses as a project, if any. License and notice paths stay relative to the repository root, so they don't change.
+Move the files with `git mv`, then delete `rule-library.yaml` and write its `license` fields, without its `formatVersion`, in the `library` section of `.trailguide/config.yaml`, after `schemaVersion: 2` and the library's `name`, beside the `sources` the repository uses as a project, if any. License and notice paths stay relative to the repository root, so they don't change.
 
 Rule IDs and versions don't change. A moved rule sits two folders deeper, so its relative links to shared assets need one more `../`, such as `../../../assets/retry-lifecycle.svg`, and its links to license files at the repository root need two more. Links that start with `/assets/` still work, because a link that starts with `/` resolves from `.trailguide/`. Once the library has a library release, record each rule whose links changed with `trailguide library change RULE_ID --bump patch`, then run `trailguide library check`. A rule whose bytes didn't change needs no note, and moving the manifest isn't a library-wide change unless its license fields changed.
 

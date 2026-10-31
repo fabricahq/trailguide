@@ -581,7 +581,7 @@ func TestProject_TellsWhetherToUpgradeOrMigrateForAnotherFormat(t *testing.T) {
 
 // TestSync_ReportsCodesForMissingLibraryReleases surfaces ref-required before the first library release.
 func TestSync_ReportsCodesForMissingLibraryReleases(t *testing.T) {
-	f, err := gitfixture.New(context.Background(), gitfixture.Library(map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`)}))
+	f, err := gitfixture.New(context.Background(), gitfixture.Library(map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,7 +597,7 @@ func TestSync_ReportsCodesForMissingLibraryReleases(t *testing.T) {
 func TestSync_StoresOlderRulesAtTheirLibraryPaths(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":                     []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		"techs/go/_group.yaml":            []byte(projectMetadata),
 		"techs/go/errors.md":              []byte(projectRule + "\n[Guide](assets/errors/guide.md)\n"),
 		"techs/go/assets/errors/guide.md": []byte("[Shared](../../../../../assets/shared.md)\n"),

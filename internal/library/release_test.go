@@ -210,12 +210,12 @@ func TestRelease_PublishesLibraryWideChangesWithoutRuleChanges(t *testing.T) {
 // declare, so a renamed license and a removed notice are listed under their old paths too.
 func TestRelease_ListsRenamedAndRemovedLicenseFiles(t *testing.T) {
 	files := libraryFiles()
-	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices:\n      - NOTICE.md\n")
 	files["LICENSE.md"] = []byte("MIT License\n")
 	files["NOTICE.md"] = []byte("Notice\n")
 	fixture, options := authorClone(t, files, releaseOne)
 	commitAndPush(t, fixture, options.Directory, map[string][]byte{
-		"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.txt\n    notices: []\n"),
+		"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.txt\n    notices: []\n"),
 		"LICENSE.md":  nil,
 		"LICENSE.txt": []byte("MIT License\n"),
 		"NOTICE.md":   nil,
@@ -293,16 +293,16 @@ func TestRelease_RefusesBeforeChangingAnything(t *testing.T) {
 			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
 				edit(t, options.Directory, map[string]string{"practices/testing/a.md": ruleText("Changed."), "practices/testing/b.md": "", "practices/testing/c.md": ruleText("New."), "changes/a.yaml": "summary: Change a.\nrules:\n  practices/testing/a: patch\n  practices/testing/b: retired\n  practices/testing/c: new\n"})
 			}},
-		{name: "uncommitted skill changes", code: "uncommitted-changes", message: "these library files differ from it:\n  - .trailguide/skills/fix/SKILL.md differs from its committed copy\n  - .trailguide/skills/review/SKILL.md isn't committed\n  - .trailguide/skills/tdd/SKILL.md was deleted, and the deletion isn't committed\nCommit and push your changes",
+		{name: "uncommitted skill changes", code: "uncommitted-changes", message: "these library files differ from it:\n  - .trailguide/skills/library/fix/SKILL.md differs from its committed copy\n  - .trailguide/skills/library/review/SKILL.md isn't committed\n  - .trailguide/skills/library/tdd/SKILL.md was deleted, and the deletion isn't committed\nCommit and push your changes",
 			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
 				// The committed fix skill's name doesn't match its folder; only the working tree corrects it.
-				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fixer\ndescription: Fix a bug.\n---\n"), ".trailguide/skills/tdd/SKILL.md": []byte("---\nname: tdd\ndescription: Test first.\n---\n"), "changes/skills.yaml": []byte("summary: Add skills.\nskills:\n  skills/fix: new\n  skills/review: new\n")})
-				edit(t, options.Directory, map[string]string{".trailguide/skills/fix/SKILL.md": "---\nname: fix\ndescription: Fix a bug.\n---\n", ".trailguide/skills/review/SKILL.md": "---\nname: review\ndescription: Review a change.\n---\n", ".trailguide/skills/tdd": ""})
+				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/library/fix/SKILL.md": []byte("---\nname: fixer\ndescription: Fix a bug.\n---\n"), ".trailguide/skills/library/tdd/SKILL.md": []byte("---\nname: tdd\ndescription: Test first.\n---\n"), "changes/skills.yaml": []byte("summary: Add skills.\nskills:\n  skills/fix: new\n  skills/review: new\n")})
+				edit(t, options.Directory, map[string]string{".trailguide/skills/library/fix/SKILL.md": "---\nname: fix\ndescription: Fix a bug.\n---\n", ".trailguide/skills/library/review/SKILL.md": "---\nname: review\ndescription: Review a change.\n---\n", ".trailguide/skills/library/tdd": ""})
 			}},
 		{name: "uncommitted files skills link to", code: "uncommitted-changes", message: "these library files differ from it:\n  - docs/checklist.md differs from its committed copy\n  - docs/guide.md isn't committed\nCommit and push your changes",
 			arrange: func(t *testing.T, fixture *gitfixture.Fixture, options *Options) {
 				// Projects retain the files a skill links to from the published commit, so it must hold what check read.
-				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/fix/SKILL.md": []byte("---\nname: fix\ndescription: Fix a bug.\n---\nRead [the checklist](../../../docs/checklist.md).\n"), "docs/checklist.md": []byte("# Checklist\n"), "changes/skills.yaml": []byte("summary: Add fix.\nskills:\n  skills/fix: new\n")})
+				commitAndPush(t, fixture, options.Directory, map[string][]byte{".trailguide/skills/library/fix/SKILL.md": []byte("---\nname: fix\ndescription: Fix a bug.\n---\nRead [the checklist](../../../../docs/checklist.md).\n"), "docs/checklist.md": []byte("# Checklist\n"), "changes/skills.yaml": []byte("summary: Add fix.\nskills:\n  skills/fix: new\n")})
 				edit(t, options.Directory, map[string]string{"docs/checklist.md": "See [the guide](guide.md).\n", "docs/guide.md": "# Guide\n"})
 			}},
 		{name: "file a Git filter changes", code: "uncommitted-changes", message: "  - .trailguide/assets/note.txt differs from its committed copy\n",

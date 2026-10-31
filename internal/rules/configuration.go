@@ -27,6 +27,9 @@ type Configuration struct {
 	SkipAgentsFile bool `json:"skipAgentsFile,omitempty"`
 	// Library is the library section, the manifest, or nil when the repository isn't a library.
 	Library *Library `json:"library,omitempty"`
+	// MinimumVersion is minTrailguideVersion, the oldest Trail Guide release that may work on the project, which
+	// project init records and project update raises; it is nil when the configuration doesn't name one.
+	MinimumVersion *ToolVersion `json:"minTrailguideVersion,omitempty"`
 }
 
 // Source declares one remote library, the rules it selects, and the project's pins and exceptions.
@@ -184,7 +187,7 @@ func ParseConfiguration(input json.RawMessage) (Configuration, error) {
 	if versioned && schema == 1 {
 		return Configuration{}, invalid("schemaVersion", versionOneProblem)
 	}
-	if err := decode.KnownFields(fields, []string{"schemaVersion", "skillTargets", "manageAgentsFile", "sources", "library"}, "configuration"); err != nil {
+	if err := decode.KnownFields(fields, []string{"schemaVersion", MinimumVersionField, "skillTargets", "manageAgentsFile", "sources", "library"}, "configuration"); err != nil {
 		return Configuration{}, err
 	}
 	if !versioned || schema != 2 {
@@ -198,7 +201,11 @@ func ParseConfiguration(input json.RawMessage) (Configuration, error) {
 	if err != nil {
 		return Configuration{}, err
 	}
-	result := Configuration{Sources: make([]Source, 0, len(sources)), SkillTargets: targets}
+	minimum, err := parseMinimumVersion(fields[MinimumVersionField])
+	if err != nil {
+		return Configuration{}, err
+	}
+	result := Configuration{Sources: make([]Source, 0, len(sources)), SkillTargets: targets, MinimumVersion: minimum}
 	if raw, ok := fields["manageAgentsFile"]; ok {
 		// A pointer tells null, which would otherwise leave manage false, from a boolean.
 		var manage *bool
@@ -653,4 +660,20 @@ func parseExclusions(input json.RawMessage, location string) (map[string]Exclusi
 		result[id] = exclusion
 	}
 	return result, nil
+}
+
+// SkillOrigins returns which origin folder of skills/ each of the configuration's authored skills belongs in: the
+// library's name for its own skills, or skills.LocalOrigin when the repository isn't a library, and the source's
+// name for each skill that forks one of the source's skills.
+func (c Configuration) SkillOrigins() skills.Origins {
+	origins := skills.Origins{Own: skills.LocalOrigin, Forks: map[string]string{}}
+	if c.Library != nil {
+		origins.Own = c.Library.Name
+	}
+	for _, source := range c.Sources {
+		for _, fork := range source.SkillForks {
+			origins.Forks[strings.TrimPrefix(fork.As, skills.Directory+"/")] = source.Name
+		}
+	}
+	return origins
 }

@@ -134,7 +134,8 @@ func PlanSkillFork(ctx context.Context, source, id string, options Options) (*Sk
 		} else if plan.name, err = skills.InstallName(id, metadata, location); err != nil {
 			return err
 		}
-		if err := requireForkTarget(ctx, root, config, plan.name); err != nil {
+		folder, err := requireForkTarget(ctx, root, config, source, plan.name)
+		if err != nil {
 			return err
 		}
 		plan.listed = slices.Contains(config.Library.Skills.Listed(), source+":"+id)
@@ -171,7 +172,7 @@ func PlanSkillFork(ctx context.Context, source, id string, options Options) (*Sk
 					content = skills.Mark(content, rules.DraftMarker)
 				}
 			}
-			plan.files = append(plan.files, filetxn.File{Path: path.Join(skillsDirectory, plan.name, name), Content: content, Executable: slices.Contains(plan.skill.Executable, name)})
+			plan.files = append(plan.files, filetxn.File{Path: path.Join(folder, name), Content: content, Executable: slices.Contains(plan.skill.Executable, name)})
 		}
 		plan.followsReleases = declared.Ref.IsZero()
 		return nil
@@ -221,18 +222,19 @@ func forkSource(config rules.Configuration, name, id string) (rules.Source, erro
 	return source, nil
 }
 
-// requireForkTarget fails when the library already has the skill name in .trailguide/skills/, or another fork
-// already installs that skill.
-func requireForkTarget(ctx context.Context, root *os.Root, config rules.Configuration, name string) error {
+// requireForkTarget returns the path in the library of the folder of the fork name of a skill from source, in
+// source's origin folder, such as .trailguide/skills/pstack/show-me-your-work. It fails when the library already
+// has a skill named name in any origin folder, or another fork already installs that skill.
+func requireForkTarget(ctx context.Context, root *os.Root, config rules.Configuration, source, name string) (string, error) {
 	id := skills.AuthoredID(name)
-	for _, source := range config.Sources {
-		for _, forked := range slices.Sorted(maps.Keys(source.SkillForks)) {
-			if source.SkillForks[forked].As == id {
-				return &ValidationError{Location: "sources." + source.Name + ".skills.forks." + forked + ".as", Problem: fmt.Sprintf("this fork already installs as %s, the new fork's folder, and each authored skill replaces one skill; remove that fork first", id)}
+	for _, declared := range config.Sources {
+		for _, forked := range slices.Sorted(maps.Keys(declared.SkillForks)) {
+			if declared.SkillForks[forked].As == id {
+				return "", &ValidationError{Location: "sources." + declared.Name + ".skills.forks." + forked + ".as", Problem: fmt.Sprintf("this fork already installs as %s, the new fork, and each authored skill replaces one skill; remove that fork first", id)}
 			}
 		}
 	}
-	return filetxn.RequireAbsent(ctx, root, path.Join(skillsDirectory, name))
+	return requireNoSkillNamed(ctx, root, source, name)
 }
 
 // forkedLibrarySkill returns data, the SKILL.md of skill, by its ID in source, whose metadata is metadata, read at
@@ -341,7 +343,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, p.options.ToolVersion, func() ([]filetxn.File, error) {
 		original, config, err := readLibraryConfiguration(ctx, root)
 		if err != nil {
 			return nil, err
@@ -349,7 +351,7 @@ func (p *SkillForkPlan) Commit(ctx context.Context, reason string) (AuthoringRes
 		if !bytes.Equal(original, p.configBytes) {
 			return nil, failure("concurrent-change", "the library's configuration changed after the fork was planned; run the command again", nil)
 		}
-		if err := requireForkTarget(ctx, root, config, p.name); err != nil {
+		if _, err := requireForkTarget(ctx, root, config, p.source, p.name); err != nil {
 			return nil, err
 		}
 		// The library repository is a project too, and the fork records where the skill came from, as a project's
