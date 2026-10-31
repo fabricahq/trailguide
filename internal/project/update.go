@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"os"
 	"path"
 	"path/filepath"
 	"slices"
@@ -37,6 +38,8 @@ type UpdatePlan struct {
 	// skillMerges each forked skill's merge, by source, skill ID, and the commit merged, so it's merged once.
 	forks       map[string]forkUpdate
 	skillMerges map[string]skillMerge
+	// workflow is the release the repository's library check workflow installs, when it pins one.
+	workflow *rules.ToolVersion
 	// personal holds the personal skill warnings for the skills the planned project installs, which Preview adds
 	// after the update's own.
 	personal []string
@@ -80,6 +83,12 @@ type UpdateResult struct {
 	// Applied is false for a preview, which wrote nothing and so lists no changed files.
 	Applied bool                   `json:"applied"`
 	Sources []imports.SourceUpdate `json:"sources"`
+	// SetsMinimumVersion is the release the update sets minTrailguideVersion to, this build's version, or empty when
+	// it leaves the field alone.
+	SetsMinimumVersion string `json:"setsMinTrailguideVersion,omitempty"`
+	// RaiseWarnings are the warnings about raising minTrailguideVersion, which Warnings also holds, so a terminal can
+	// show them before it asks to confirm the raise.
+	RaiseWarnings []string `json:"-"`
 	// FileChanges lists vendor and generated paths, config.yaml when the update wrote pins, exclusions, or basedOn
 	// versions, and the local files of each fork it replaced.
 	// Its warnings are the preview's until the update is applied, and then the installation's, each followed by
@@ -89,10 +98,14 @@ type UpdateResult struct {
 
 // Moves reports whether the update has anything to apply: a source's library-wide files or the commit its ref names,
 // a skill it adds, changes, or removes, or a rule of any row except pinned rules, retirements a pin keeps, and rows
-// the project decided to keep. A replaced row counts even when its imported copy stays, since applying it can replace
+// the project decided to keep, and a raise of minTrailguideVersion, which other people's older releases then refuse.
+// A replaced row counts even when its imported copy stays, since applying it can replace
 // the local rule's fork, and so does a forked skill whose source's changes merge into the fork, or that the update
 // merged them into.
 func (r UpdateResult) Moves() bool {
+	if r.SetsMinimumVersion != "" {
+		return true
+	}
 	for _, source := range r.Sources {
 		if source.SharedFiles != nil || source.Commit != nil || len(source.Skills) > 0 || len(source.Curated) > 0 {
 			return true
@@ -159,13 +172,20 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 	defer root.Close()
 	var state projectState
 	var guide []byte
-	err = filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+	var workflow *rules.ToolVersion
+	err = withWriter(ctx, root, options.ToolVersion, func(w *filetxn.Writer) error {
 		recovered = w.Recovered()
 		if state, err = readProject(ctx, root); err != nil {
 			return err
 		}
 		name, _ := projectGuide()
-		guide, err = filetxn.ReadOptional(ctx, root, name)
+		if guide, err = filetxn.ReadOptional(ctx, root, name); err != nil {
+			return err
+		}
+		// Only a raised minimum can make the workflow's release refuse the repository.
+		if _, raises := minimumRaise(state.config, options.ToolVersion); raises {
+			workflow, err = checkWorkflowRelease(ctx, root)
+		}
 		return err
 	})
 	if err != nil {
@@ -190,7 +210,7 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 		return nil, unchanged(err, recovered)
 	}
 	personal := personalSkillWarnings(options.Home, filepath.Dir(root.Name()), treeFiles(state.generated)[build.InstalledSkillsFile])
-	return &UpdatePlan{options: options, git: git, update: update, planned: state, guide: guide, recovered: recovered, personal: personal}, nil
+	return &UpdatePlan{options: options, git: git, update: update, planned: state, guide: guide, recovered: recovered, workflow: workflow, personal: personal}, nil
 }
 
 // Preview returns the planned update with each decided row marked, and the skills of the revision the decisions
@@ -215,7 +235,9 @@ func (p *UpdatePlan) Preview(ctx context.Context, decisions []UpdateDecision) (U
 	if err := p.mergeSkillForks(ctx, sources, skillForks); err != nil {
 		return UpdateResult{}, unchanged(err, p.recovered)
 	}
-	result := UpdateResult{Sources: sources, FileChanges: FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: append(append([]string{}, p.update.Warnings...), p.personal...), ExcludedSkillLinks: []build.ExcludedSkillLink{}, Recovered: p.recovered}}
+	raised := raisedMinimum(p.planned.config, p.options.ToolVersion)
+	raiseWarnings := p.workflowWarnings(raised)
+	result := UpdateResult{Sources: sources, SetsMinimumVersion: raised, RaiseWarnings: raiseWarnings, FileChanges: FileChanges{Added: []string{}, Changed: []string{}, Removed: []string{}, Warnings: append(append(append([]string{}, p.update.Warnings...), p.personal...), raiseWarnings...), ExcludedSkillLinks: []build.ExcludedSkillLink{}, Recovered: p.recovered}}
 	return result.withScriptsWarning(), nil
 }
 
@@ -251,7 +273,9 @@ func (p *UpdatePlan) Apply(ctx context.Context, decisions []UpdateDecision) (Upd
 	}
 	defer root.Close()
 	var changes FileChanges
-	err = filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+	// raised is the release the update set minTrailguideVersion to, or empty.
+	raised := ""
+	err = withWriter(ctx, root, p.options.ToolVersion, func(w *filetxn.Writer) error {
 		recovered = w.Recovered()
 		before, err := readProject(ctx, root)
 		if err != nil {
@@ -274,6 +298,16 @@ func (p *UpdatePlan) Apply(ctx context.Context, decisions []UpdateDecision) (Upd
 				return err
 			}
 		}
+		current := before.configBytes
+		if in.edited != nil {
+			current = in.edited
+		}
+		if version, ok := minimumRaise(in.config, p.options.ToolVersion); ok {
+			if in.edited, in.config, err = setMinimumVersion(current, version); err != nil {
+				return err
+			}
+			raised = version.String()
+		}
 		git := p.git
 		git.GroupMetadata = groupsWithoutLocalMetadata(before)
 		if in.imported, err = p.update.Import(ctx, in.config, git, forked); err != nil {
@@ -286,7 +320,9 @@ func (p *UpdatePlan) Apply(ctx context.Context, decisions []UpdateDecision) (Upd
 		return UpdateResult{}, unchanged(err, p.recovered || recovered)
 	}
 	changes.Recovered = p.recovered || recovered
-	result := UpdateResult{Applied: true, Sources: sources, FileChanges: changes}
+	raiseWarnings := p.workflowWarnings(raised)
+	changes.Warnings = append(changes.Warnings, raiseWarnings...)
+	result := UpdateResult{Applied: true, Sources: sources, SetsMinimumVersion: raised, RaiseWarnings: raiseWarnings, FileChanges: changes}
 	return result.withScriptsWarning(), nil
 }
 
@@ -594,6 +630,67 @@ func withSkillFiles(recorded map[string]library.Snapshot, vendor map[string][]by
 		result[name] = snapshot
 	}
 	return result
+}
+
+// minimumRaise returns version, this build's version, when the update should set config's minTrailguideVersion to it
+// because the field is missing or names an older release. It reports false when the field already names version or a
+// newer one, or when version is a development or prerelease build, which records no minimum.
+func minimumRaise(config rules.Configuration, version string) (rules.ToolVersion, bool) {
+	running, ok := rules.ReleaseVersion(version)
+	if !ok || (config.MinimumVersion != nil && config.MinimumVersion.Compare(running) >= 0) {
+		return rules.ToolVersion{}, false
+	}
+	return running, true
+}
+
+// checkWorkflowRelease returns the release that the library check workflow of the repository, the parent of root,
+// installs, or nil when it has none or its workflow pins none.
+func checkWorkflowRelease(ctx context.Context, root *os.Root) (*rules.ToolVersion, error) {
+	repository, err := filetxn.Open(ctx, filepath.Dir(root.Name()))
+	if err != nil {
+		return nil, err
+	}
+	defer repository.Close()
+	installed, pinned, err := library.CheckWorkflowRelease(ctx, repository)
+	if err != nil || !pinned {
+		return nil, err
+	}
+	return &installed, nil
+}
+
+// workflowWarnings returns the warning that raising minTrailguideVersion to raised leaves the repository's library
+// check workflow installing an older release, or none.
+func (p *UpdatePlan) workflowWarnings(raised string) []string {
+	if raised == "" || p.workflow == nil {
+		return nil
+	}
+	minimum, err := rules.ParseToolVersion(raised, rules.MinimumVersionField)
+	if err != nil || p.workflow.Compare(minimum) >= 0 {
+		return nil
+	}
+	return []string{library.CheckWorkflowRaiseWarning(*p.workflow, minimum)}
+}
+
+// raisedMinimum returns the release minimumRaise sets minTrailguideVersion to, as UpdateResult reports it, or empty.
+func raisedMinimum(config rules.Configuration, version string) string {
+	if raised, ok := minimumRaise(config, version); ok {
+		return raised.String()
+	}
+	return ""
+}
+
+// setMinimumVersion returns the configuration bytes data with minTrailguideVersion set to version, and their parsed
+// configuration.
+func setMinimumVersion(data []byte, version rules.ToolVersion) ([]byte, rules.Configuration, error) {
+	edited, err := rules.SetConfigurationMinimumVersion(data, version)
+	if err != nil {
+		return nil, rules.Configuration{}, err
+	}
+	config, err := rules.ParseConfigurationYAML(edited)
+	if err != nil {
+		return nil, rules.Configuration{}, err
+	}
+	return edited, config, nil
 }
 
 // editConfiguration applies each source's pins, exclusions, and basedOn versions to the configuration bytes,

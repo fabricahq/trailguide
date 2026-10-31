@@ -76,6 +76,12 @@ func readRepositoryFile(t *testing.T, options Options, name string) string {
 	return string(data)
 }
 
+// withRaisedMinimum returns config, a configuration's text, with the minTrailguideVersion that update writes for test
+// builds, version 1.2.3, after schemaVersion.
+func withRaisedMinimum(config string) string {
+	return strings.Replace(config, "schemaVersion: 2\n", "schemaVersion: 2\nminTrailguideVersion: 1.2.3\n", 1)
+}
+
 // exists reports whether name, a path from the project's repository root, exists.
 func exists(t *testing.T, options Options, name string) bool {
 	t.Helper()

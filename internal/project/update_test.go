@@ -474,7 +474,7 @@ func TestUpdate_ScopedUpdateThatKeepsItsRuleLeavesTheSharedFiles(t *testing.T) {
 	}
 	keep := []UpdateDecision{{Source: "team", Rule: "techs/go/errors", Kind: DecisionKeep, Reason: "Not yet."}}
 	preview, err := plan.Preview(context.Background(), keep)
-	if err != nil || preview.Sources[0].SharedFiles != nil || preview.Moves() {
+	if err != nil || preview.Sources[0].SharedFiles != nil || movesSources(preview) {
 		t.Fatalf("keeping the only moved rule still moves shared files: %+v, %v", preview.Sources, err)
 	}
 	if _, err := plan.Apply(ctx, keep); err != nil {

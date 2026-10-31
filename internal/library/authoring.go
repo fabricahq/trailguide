@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -44,6 +45,10 @@ func (r AuthoringResult) Written() []string { return append(slices.Clone(r.Added
 // Options locates the library itself, independently of any consumer project.
 type Options struct {
 	Directory string
+	// ToolVersion is this build's version. Commands fail with upgrade-required when the library's minTrailguideVersion
+	// is newer; a development or prerelease build, or an empty one, skips the check. Initialize also records it and
+	// fails unless it's a complete version.
+	ToolVersion string
 	// Git runs Git in the library's own repository, to read its library releases; zero values use Git from PATH.
 	Git gitexec.Options
 	// Curated reads the sources the library curates skills from, so check can find their skills; nil leaves them
@@ -74,24 +79,40 @@ type RuleOptions struct {
 //go:embed library-guide.md
 var libraryReadme string
 
-// checkWorkflow runs trailguide library check on pull requests; checkWorkflowFor fills in checkWorkflowVersion.
+// checkWorkflow runs trailguide library check on pull requests, with the release the repository's
+// minTrailguideVersion names, or the latest release when it names none.
 //
 //go:embed check-workflow.yml
-var checkWorkflow string
-
-// checkWorkflowVersion marks where checkWorkflow's install step sets the Trail Guide version it installs.
-const checkWorkflowVersion = "TRAILGUIDE_VERSION"
-
-// latestVersion is the shell command that the install step of a development build's workflow runs to find the
-// version of the latest Trail Guide release, without its v prefix.
-const latestVersion = `$(gh release view --repo fabricahq/trailguide --json tagName --jq '.tagName | ltrimstr("v")')`
-
-// developmentVersion prefixes the versions of builds that no release published: development builds and
-// unpublished candidates, such as 0.0.0-development and 0.0.0-dev.g0123456789ab.
-const developmentVersion = "0.0.0-"
+var checkWorkflow []byte
 
 // checkWorkflowPath is the GitHub Actions workflow library init writes.
 const checkWorkflowPath = ".github/workflows/trailguide.yml"
+
+// pinnedWorkflowVersion matches the install step line of a check workflow that a release build of an earlier trailguide
+// wrote, which pins the release it installs.
+var pinnedWorkflowVersion = regexp.MustCompile(`(?m)^[ \t]*version=([0-9]+\.[0-9]+\.[0-9]+)[ \t]*$`)
+
+// CheckWorkflowRelease returns the Trail Guide release that the check workflow in the repository at root installs,
+// reporting false when the repository has no check workflow or its workflow pins no release, such as one that
+// installs the release minTrailguideVersion names.
+func CheckWorkflowRelease(ctx context.Context, root *os.Root) (rules.ToolVersion, bool, error) {
+	data, err := readOptionalBelow(ctx, root, checkWorkflowPath)
+	if err != nil || data == nil {
+		return rules.ToolVersion{}, false, err
+	}
+	match := pinnedWorkflowVersion.FindSubmatch(data)
+	if match == nil {
+		return rules.ToolVersion{}, false, nil
+	}
+	version, ok := rules.ReleaseVersion(string(match[1]))
+	return version, ok, nil
+}
+
+// CheckWorkflowRaiseWarning returns the warning that a raise of the repository's minTrailguideVersion to raised
+// leaves its check workflow, which installs installed, refusing the library, so its next check fails.
+func CheckWorkflowRaiseWarning(installed, raised rules.ToolVersion) string {
+	return fmt.Sprintf("%s installs trailguide %s, which refuses this repository once minTrailguideVersion is %s, so its next check fails; change its version=%s line to version=%s.", checkWorkflowPath, installed, raised, installed, raised)
+}
 
 // openLibrary opens the library repository's root, enforcing the same final-root no-link policy as project
 // authoring. It fails, closing the root, when the repository is in the library layout before version 2 or keeps
@@ -122,7 +143,36 @@ func openLibrary(ctx context.Context, options Options, create bool) (*os.Root, e
 		root.Close()
 		return nil, err
 	}
+	if err := requireToolVersion(ctx, root, options.ToolVersion); err != nil {
+		root.Close()
+		return nil, err
+	}
 	return root, nil
+}
+
+// editIn is filetxn.EditIn, except that prepare runs only once requireToolVersion accepts version for the
+// configuration as the writer found it, after recovering an interrupted command, which can restore a configuration
+// that requires a newer release.
+func editIn(ctx context.Context, writer, root *os.Root, version string, prepare func() ([]filetxn.File, error)) (filetxn.Changes, error) {
+	return filetxn.EditIn(ctx, writer, root, func() ([]filetxn.File, error) {
+		if err := requireToolVersion(ctx, root, version); err != nil {
+			return nil, err
+		}
+		return prepare()
+	})
+}
+
+// requireToolVersion fails with upgrade-required when rules.UpgradeRequired refuses version, this build's version, for
+// the library's configuration, before anything else reads the configuration, whose fields this version may not know.
+func requireToolVersion(ctx context.Context, root *os.Root, version string) error {
+	data, err := filetxn.ReadOptional(ctx, root, manifestPath)
+	if err != nil {
+		return err
+	}
+	if problem, required := rules.UpgradeRequired(data, version); required {
+		return failure("upgrade-required", problem, nil)
+	}
+	return nil
 }
 
 // manifestPath is where the manifest lives in the library's repository.
@@ -212,12 +262,12 @@ func defaultLibraryName(folder string) string {
 // Initialize creates missing scaffolding and explicit terms without overwriting existing terms, README, or check
 // workflow. It adds a library section to .trailguide/config.yaml, creating the configuration when it's missing and
 // keeping an existing one's sources and comments; an existing library section stays unchanged. The new section's
-// name is name, or, when name is empty, the library folder's name when that is a valid library name. The workflow
-// installs trailguideVersion, an unprefixed version such as 0.2.0, from the Trail Guide release tagged with it, or
-// the latest release for a 0.0.0- development build.
-func Initialize(ctx context.Context, options Options, name string, terms *Terms, trailguideVersion string) (AuthoringResult, error) {
-	workflow, err := checkWorkflowFor(trailguideVersion)
-	if err != nil {
+// name is name, or, when name is empty, the library folder's name when that is a valid library name. A new
+// configuration from a release build records options.ToolVersion as its minTrailguideVersion. The workflow installs
+// the release that minTrailguideVersion names when it runs, so it follows the raises project update makes, or the
+// latest release when the configuration names none, as one a development build wrote doesn't.
+func Initialize(ctx context.Context, options Options, name string, terms *Terms) (AuthoringResult, error) {
+	if err := requireCompleteVersion(options.ToolVersion); err != nil {
 		return AuthoringResult{}, err
 	}
 	root, err := openLibrary(ctx, options, true)
@@ -231,7 +281,7 @@ func Initialize(ctx context.Context, options Options, name string, terms *Terms,
 	}
 	defer dir.Close()
 	var license *trailguide.LicenseDeclaration
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, options.ToolVersion, func() ([]filetxn.File, error) {
 		var files []filetxn.File
 		existing, err := filetxn.ReadOptional(ctx, root, manifestPath)
 		if err != nil {
@@ -266,11 +316,16 @@ func Initialize(ctx context.Context, options Options, name string, terms *Terms,
 				section.License = map[string]any{"spdxExpression": terms.SPDXExpression, "file": "LICENSE.md", "notices": notices}
 			}
 			if existing == nil {
+				minimum := ""
+				if version, release := rules.ReleaseVersion(options.ToolVersion); release {
+					minimum = version.String()
+				}
 				manifest, err = yamlText(struct {
-					SchemaVersion int            `yaml:"schemaVersion"`
-					Sources       map[string]any `yaml:"sources"`
-					Library       any            `yaml:"library"`
-				}{2, map[string]any{}, section})
+					SchemaVersion  int            `yaml:"schemaVersion"`
+					MinimumVersion string         `yaml:"minTrailguideVersion,omitempty"`
+					Sources        map[string]any `yaml:"sources"`
+					Library        any            `yaml:"library"`
+				}{2, minimum, map[string]any{}, section})
 			} else {
 				manifest, err = rules.AppendConfigurationLibrary(existing, section)
 			}
@@ -303,7 +358,7 @@ func Initialize(ctx context.Context, options Options, name string, terms *Terms,
 			return nil, err
 		}
 		if existingWorkflow == nil {
-			files = append(files, filetxn.File{Path: checkWorkflowPath, Content: workflow})
+			files = append(files, filetxn.File{Path: checkWorkflowPath, Content: checkWorkflow})
 		}
 		return withSkillsGuide(ctx, root, files)
 	})
@@ -320,19 +375,13 @@ func Initialize(ctx context.Context, options Options, name string, terms *Terms,
 	return result, err
 }
 
-// checkWorkflowFor returns the check workflow pinned to version, which must be a complete semantic version
-// without a v prefix, so it can't change the workflow's structure. Its install step downloads and verifies only
-// that version's archive. A development build has no release to pin, so its workflow finds the latest release's
-// version first and then installs exactly that one.
-func checkWorkflowFor(version string) ([]byte, error) {
+// requireCompleteVersion fails with invalid-version unless version, the running build's, is a complete semantic
+// version without a v prefix, such as 0.2.0 or 0.0.0-development.
+func requireCompleteVersion(version string) error {
 	if canonical, err := rules.TagVersion(version, "version"); err != nil || canonical != version {
-		return nil, failure("invalid-version", "Trail Guide version "+strconv.Quote(version)+" is not a complete semantic version", err)
+		return failure("invalid-version", "Trail Guide version "+strconv.Quote(version)+" is not a complete semantic version", err)
 	}
-	installed := version
-	if strings.HasPrefix(version, developmentVersion) {
-		installed = latestVersion
-	}
-	return []byte(strings.ReplaceAll(checkWorkflow, checkWorkflowVersion, installed)), nil
+	return nil
 }
 
 // readOptionalBelow reads a file whose parent directories may be missing; nil means the file is absent.
@@ -359,7 +408,7 @@ func editLibrary(ctx context.Context, options Options, group string, prepare fun
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, options.ToolVersion, func() ([]filetxn.File, error) {
 		if _, _, err := libraryManifest(ctx, root); err != nil {
 			return nil, err
 		}

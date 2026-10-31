@@ -31,7 +31,10 @@ func TestLibraryCommands_RefuseTheLayoutBeforeVersion2(t *testing.T) {
 		"practices":          {"practices", ":\n\n  practices  ->  .trailguide/rules/practices\n\nRule IDs and versions don't change."},
 	} {
 		commands := map[string]func(Options) error{
-			"init":  func(options Options) error { _, err := Initialize(ctx, options, "", nil, "1.2.3"); return err },
+			"init": func(options Options) error {
+				_, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil)
+				return err
+			},
 			"check": func(options Options) error { _, err := Check(ctx, options); return err },
 			"group": func(options Options) error {
 				_, err := AddGroup(ctx, "techs/rust", trailguide.GroupMetadata{Name: "Rust", Description: "Rust guidance.", WhenToRead: "When editing Rust."}, options)
@@ -55,7 +58,7 @@ func TestLibraryCommands_RefuseTheLayoutBeforeVersion2(t *testing.T) {
 			t.Run(name+"/"+command, func(t *testing.T) {
 				options := Options{Directory: t.TempDir()}
 				if command != "init" {
-					if _, err := Initialize(ctx, options, "", nil, "1.2.3"); err != nil {
+					if _, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil); err != nil {
 						t.Fatal(err)
 					}
 				}

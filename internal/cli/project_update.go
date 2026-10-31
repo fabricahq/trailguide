@@ -200,18 +200,28 @@ func forkedSkillID(id string) bool {
 	return skills.ValidateID(skill, id) == nil
 }
 
+// updateIntroduction is the preview a terminal shows before it asks about the update: the sources' changes, the
+// minimum raise and its warnings, and the scripts warning, so people read what the update breaks and the scripts it
+// brings before they decide.
+func updateIntroduction(preview project.UpdateResult) string {
+	var intro strings.Builder
+	formatUpdatePreview(&intro, preview.Sources)
+	formatMinimumRaise(&intro, preview)
+	for _, warning := range preview.RaiseWarnings {
+		fmt.Fprintf(&intro, "\nWarning: %s\n", warning)
+	}
+	if warning := preview.ScriptsWarning(); warning != "" {
+		fmt.Fprintf(&intro, "\nWarning: %s\n", warning)
+	}
+	return intro.String()
+}
+
 // askUpdateDecisions shows the preview and asks about each major change, retirement, new rule, and replaced rule the
 // flags didn't decide, naming the local files that replacing each fork of plan overwrites. It returns the flags'
 // decisions followed by one for each rule kept, excluded, or whose fork is replaced. The preview stays in
 // f.introduction when there is nothing to ask.
 func askUpdateDecisions(f *authoringFlags, plan *project.UpdatePlan, preview project.UpdateResult, decisions []project.UpdateDecision) ([]project.UpdateDecision, error) {
-	var intro strings.Builder
-	formatUpdatePreview(&intro, preview.Sources)
-	// The scripts warning comes before the questions, so people read the scripts before they decide.
-	if warning := preview.ScriptsWarning(); warning != "" {
-		fmt.Fprintf(&intro, "\nWarning: %s\n", warning)
-	}
-	f.introduction = intro.String()
+	f.introduction = updateIntroduction(preview)
 	for _, source := range preview.Sources {
 		for _, row := range source.Rules {
 			// A pin keeps a rule where it is, except that a fork can still follow the newest version.
@@ -380,6 +390,7 @@ func updateReport(result project.UpdateResult, cancelled, shown bool, location u
 	var out strings.Builder
 	if !shown {
 		formatUpdatePreview(&out, result.Sources)
+		formatMinimumRaise(&out, result)
 	}
 	// An update that applied nothing, not even a refresh of the managed guide, reads like a preview with nothing to
 	// apply.
@@ -412,6 +423,22 @@ func updateReport(result project.UpdateResult, cancelled, shown bool, location u
 		out.WriteString("No rule updates are available. " + written + "\n")
 	}
 	return commandReport{value: result, human: out.String()}
+}
+
+// formatMinimumRaise says, after the preview's sources, that the update raises minTrailguideVersion, which other
+// people's older Trail Guide releases then refuse.
+func formatMinimumRaise(out *strings.Builder, result project.UpdateResult) {
+	if result.SetsMinimumVersion == "" {
+		return
+	}
+	if out.Len() > 0 {
+		out.WriteByte('\n')
+	}
+	verb := "Sets"
+	if result.Applied {
+		verb = "Set"
+	}
+	fmt.Fprintf(out, "%s minTrailguideVersion to %s in .trailguide/config.yaml, so older releases\nof trailguide refuse this project.\n", verb, result.SetsMinimumVersion)
 }
 
 // updateKindWidth fits the longest change name, replaced.

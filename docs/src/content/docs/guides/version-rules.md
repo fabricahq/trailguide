@@ -464,7 +464,7 @@ The job needs only permission to push tags. It tags as Trail Guide Bot, set thro
 
 ## Check changes in CI
 
-`trailguide library init` creates `.github/workflows/trailguide.yml`, which runs `trailguide library check` on every pull request, using the Trail Guide version that created it:
+`trailguide library init` creates `.github/workflows/trailguide.yml`, which runs `trailguide library check` on every pull request, using the oldest release the library allows, which its `minTrailguideVersion` names:
 
 ```yaml
 name: Trail Guide
@@ -485,15 +485,17 @@ jobs:
       - run: trailguide library check
 ```
 
-The install step downloads that version's Linux archive and `SHA256SUMS` from the Trail Guide GitHub Release page, verifies that Trail Guide's release workflow built `SHA256SUMS`, and installs the archive only when `SHA256SUMS` lists that exact archive with its checksum. A release whose files were replaced, even with another genuine release's, fails the step instead of installing the wrong version. The step prints the version it installed, such as `Installed Trail Guide 0.2.0.`, in the job's log and summary.
+The install step reads `minTrailguideVersion` from `.trailguide/config.yaml`, or finds the latest release's version when the configuration names none, such as one a development build created. It reads the field with `yq`, which GitHub's Ubuntu runners include, so any YAML spelling that Trail Guide accepts works, such as a quoted key or a flow mapping. It downloads that version's Linux archive and `SHA256SUMS` from the Trail Guide GitHub Release page, verifies that Trail Guide's release workflow built `SHA256SUMS`, and installs the archive only when `SHA256SUMS` lists that exact archive with its checksum. A release whose files were replaced, even with another genuine release's, fails the step instead of installing the wrong version. The step prints the version it installed, such as `Installed Trail Guide 0.2.0.`, in the job's log and summary.
 
-The workflow keeps using that version until you change it; rerunning `trailguide library init` never changes an existing workflow. To check with a newer Trail Guide, such as one that checks a feature your library started using, [upgrade Trail Guide](/start-here/install/#upgrade), delete `.github/workflows/trailguide.yml`, and run `trailguide library init` again, which writes the workflow for the version you run. Review the difference and commit it.
+To check with a newer Trail Guide, such as one that checks a feature your library started using, [upgrade Trail Guide](/start-here/install/#upgrade) and run `trailguide project update`, which raises `minTrailguideVersion` to the version you run; CI uses it from that pull request on. Rerunning `trailguide library init` never changes an existing workflow.
+
+A workflow written by Trail Guide 0.8.0 or earlier pins the version that created it, in a `version=` line of its install step. When an update raises the minimum past that version, its preview warns that the next check fails and names the line to change. To switch to a workflow that follows the minimum, delete `.github/workflows/trailguide.yml`, run `trailguide library init`, and review the difference before you commit it.
 
 `trailguide library check` needs every tag and the full history to compare rules with the latest library release, so the workflow checks out with `fetch-depth: 0`.
 
-### Raise the pinned version before publishing skills
+### Raise the minimum before publishing skills
 
-A Trail Guide version without skill support doesn't check skills, and a library release it publishes records no skill versions. Before you add your library's first skill, upgrade Trail Guide and rewrite the workflow as described above, so CI checks the skill and every library release records it. Publish library releases with the same version or later.
+A Trail Guide version without skill support doesn't check skills, and a library release it publishes records no skill versions. Before you add your library's first skill, upgrade Trail Guide and raise the minimum as described above, so CI checks the skill and every library release records it. Publish library releases with the same version or later.
 
 If an older Trail Guide does publish a library release after your library has skills, its release record has no `skills` field. Trail Guide then takes skill versions from the newest library release that has one, and warns projects and authors that it did; see [Skills in the release record](/reference/rule-versions/#skills-in-the-release-record). Your next library release, published with a current Trail Guide, records the skills again.
 
