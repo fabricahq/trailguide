@@ -9,23 +9,35 @@ A skill uses the [Agent Skills](https://agentskills.io) format. Trail Guide adds
 
 ## Skill folders
 
-A repository's authored skills live in `.trailguide/skills/`, one folder per skill, beside `rules/`. [Project files](/reference/files/) shows the whole layout.
+A repository's authored skills live in `.trailguide/skills/`, beside `rules/`, one folder per skill, inside a folder for the skill's **origin**. [Project files](/reference/files/) shows the whole layout. In a library named `engineering` that forks a skill from its source `pstack`:
 
 ```text
 skills/
-  build-feature/
-    SKILL.md
-    references/
-      slicing.md
-    scripts/
-      verify.sh
-  review-tests/
-    SKILL.md
+  README.md
+  engineering/
+    build-feature/
+      SKILL.md
+      references/
+        slicing.md
+      scripts/
+        verify.sh
+    review-tests/
+      SKILL.md
+  pstack/
+    show-me-your-work/
+      SKILL.md
 ```
+
+The origin folder says where a skill comes from:
+
+- **The repository's own skills** go in `skills/<library.name>/` in a library, such as `skills/engineering/`, and in `skills/local/` in a project that isn't a library. See [Library name](/reference/library-schema/#library-name).
+- **A fork** of a source's skill goes in the folder named for that source, such as `skills/pstack/`, the source whose `skills.forks` records it. See [Fork a skill](/reference/configuration/#fork-a-skill).
+
+The origin folder isn't part of the skill's [ID](#skill-ids), so moving a skill between origins, such as when you remove its fork entry, doesn't change its ID.
 
 Each skill folder holds a `SKILL.md` file and anything the skill bundles. The Agent Skills format suggests `scripts/` for code the agent runs, `references/` for documents it reads when needed, and `assets/` for templates and other files it uses, but any layout inside the folder works. The `assets/` folder inside a skill belongs to the skill; it isn't a rule asset directory, and the shared `.trailguide/assets/` directory isn't part of any skill.
 
-`skills/` holds only skill folders, and is flat: a skill folder can't contain another skill's `SKILL.md`, and it can't contain `_group.yaml`. Skills don't belong to rule groups, so a skill folder is never inside `rules/`.
+`skills/` holds only origin folders and an optional `README.md`, and each origin folder holds only skill folders. A skill folder can't contain another skill's `SKILL.md`, and it can't contain `_group.yaml`. Two skills can't share a name, even in different origin folders. A skill in the wrong origin folder fails validation with a message that names the folder to move it to. Skills don't belong to rule groups, so a skill folder is never inside `rules/`.
 
 ### Git-tracked files
 
@@ -43,7 +55,7 @@ Markdown files in a skill folder, including `SKILL.md`, must be UTF-8, so their 
 
 ## Skill IDs
 
-A skill's ID is its folder's path in the repository that holds it. For a skill a repository authors, that's its path in the Trail Guide directory, `skills/<name>`, such as `skills/build-feature`. For a skill in a [non-library source](#skills-from-non-library-sources), it's the folder's path from the repository root, such as `skills/engineering/to-spec`. A skill's identity is its repository plus its ID, so two sources that reach the same repository name the same skill.
+For a skill a repository authors, its ID is `skills/<name>`, such as `skills/build-feature`, whichever [origin folder](#skill-folders) holds it. For a skill in a [non-library source](#skills-from-non-library-sources), it's the folder's path from the repository root, such as `skills/engineering/to-spec`. A skill's identity is its repository plus its ID, so two sources that reach the same repository name the same skill.
 
 In a project, an ID from a source is qualified by the source name the project chose, such as `fabrica:skills/build-feature`. A skill a library curates adds the curated source's name, such as `fabrica:mattpocock:skills/engineering/to-spec`. An authored skill's ID has no source name. See [Source names and IDs](/reference/configuration/#source-names-and-ids).
 
@@ -185,7 +197,7 @@ When your skill's `agents/openai.yaml` sets only `interface.display_name`, `shor
 
 ## Links
 
-A skill's Markdown can link to web pages, to its own files, and to other files in its repository: a sibling skill it compares itself with, a shared checklist in `assets/`, or a diagram outside `.trailguide/`. Write each link as a path relative to the file it's in, such as `references/slicing.md`, `../redesign/SKILL.md`, or `../../assets/review-checklist.md`, so it works while you read the repository. Installed copies keep working too: when a project installs the skill, Trail Guide keeps a copy of every file its links reach, from the same revision, and changes the installed links to point at those copies. See [Files a skill links to](/concepts/skill/#files-a-skill-links-to).
+A skill's Markdown can link to web pages, to its own files, and to other files in its repository: a sibling skill it compares itself with, a shared checklist in `assets/`, or a diagram outside `.trailguide/`. Write each link as a path relative to the file it's in, such as `references/slicing.md`, `../redesign/SKILL.md` for a sibling in the same [origin folder](#skill-folders), `../../pstack/show-me-your-work/SKILL.md` for one in another, or `../../../assets/review-checklist.md`, so it works while you read the repository. Installed copies keep working too: when a project installs the skill, Trail Guide keeps a copy of every file its links reach, from the same revision, and changes the installed links to point at those copies. See [Files a skill links to](/concepts/skill/#files-a-skill-links-to).
 
 Trail Guide reads Markdown links, images, and reference definitions in every Markdown file of the skill, and in every Markdown file those links reach, so a link from a linked file is kept too. Links in inline code, code blocks, and prose aren't links, and links in raw HTML aren't followed. External URLs, links that start with `#` or `?`, and other addresses with a scheme, such as `mailto:`, stay as they are and are never downloaded. Files other than Markdown, such as scripts, aren't read for links.
 
@@ -198,7 +210,7 @@ A local link must name a file in the skill's repository. It fails when it names:
 
 A linked file can be anywhere else in the repository, including a folder at the repository root that has the name of one in `.trailguide/`, such as `assets/notes.md`. A project keeps each linked file from outside `.trailguide/` under `_repository/` in its copy of the library, at its path from the repository root, so it never takes the place of one of the library's own files. A linked file outside the skill folder isn't a skill: a project keeps it to read and never installs it in an agent's skills folder. That holds for a sibling skill a project excludes too: the project keeps the files the link reaches for reading, without installing the skill, and warns about it.
 
-A project's own skills, in its `.trailguide/skills/`, including forks that replace a source's skill, follow the same rules, checked against the project's files as the command leaves them, with or without skill targets. A link to a sibling folder, such as `../review/SKILL.md`, names the skill installed as `review`, whether it's another of the project's skills or one a source supplies, so a fork keeps its links to its source's skills that the project installs. A link into a skill target folder, such as `../../../.claude/skills/review/SKILL.md`, must also name a skill the command installs, and a link into `.trailguide/_managed/vendor/` fails, since sync replaces those files. A link to a file Trail Guide generates, such as `.trailguide/_managed/generated/SKILLS.md`, must name one the command writes; Trail Guide writes that file's own links, so the check doesn't follow them. Their installed links point at the project's file where it is, or at the installed copy of another of the project's skills. When a linked file changes while the command runs, it fails with `concurrent-change` and writes nothing.
+A project's own skills, in its `.trailguide/skills/`, including forks that replace a source's skill, follow the same rules, checked against the project's files as the command leaves them, with or without skill targets. A link to a sibling folder, such as `../review/SKILL.md`, names the skill in that folder of the same origin folder. For a fork in `.trailguide/skills/<source>/`, that's the skill the project installs from the source as `review` when the project has no skill of its own there, so a fork keeps its links to its source's skills that the project installs. A link into a skill target folder, such as `../../../../.claude/skills/review/SKILL.md`, must also name a skill the command installs, and a link into `.trailguide/_managed/vendor/` fails, since sync replaces those files. A link to a file Trail Guide generates, such as `.trailguide/_managed/generated/SKILLS.md`, must name one the command writes; Trail Guide writes that file's own links, so the check doesn't follow them. Their installed links point at the project's file where it is, or at the installed copy of another of the project's skills. When a linked file changes while the command runs, it fails with `concurrent-change` and writes nothing.
 
 ## Licenses
 
@@ -211,9 +223,9 @@ A library's license, declared in its [manifest](/reference/library-schema/#licen
 ```text
 $ trailguide library check
 Error: skills don't pass library check:
-  - skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/test-behaviour-not-implementation, which isn't a rule in this library
-  - skills/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library
-  - skills/build-feature/SKILL.md: trailguide-skill-type is design; use playbook or review, or leave it out
+  - skills/engineering/build-feature/SKILL.md: trailguide-rules-used names practices/testing/test-behaviour-not-implementation, which isn't a rule in this library
+  - skills/engineering/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library
+  - skills/engineering/build-feature/SKILL.md: trailguide-skill-type is design; use playbook or review, or leave it out
 ```
 
 Check fails with these problems:
@@ -228,47 +240,54 @@ Check fails with these problems:
 | A dependency that only unreachable dependencies use | `library.skills.dependencies lists skills/lint, but only other dependencies that no project would install name it in trailguide-skills-used, and a dependency installs only with the skills that use it, so no project would install it. Name it in the trailguide-skills-used of a skill a project can choose, or move it or a dependency that uses it to a level` |
 | A listed skill that doesn't exist | `library.skills.recommended names skills/fix-bugs, which isn't a skill in this library` |
 | A curated skill whose source isn't in `sources`, or that the source doesn't have at its `ref` | `library.skills.offered names mattpocock:skills/productivity/grill, which mattpocock doesn't have at main` |
-| A folder name that breaks the [name grammar](#skill-ids) | `skills/Build_Feature: a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen` |
-| A skill folder without `SKILL.md` | `skills/build-feature: expected SKILL.md in the skill folder` |
-| A skill inside another skill's folder | `skills/build-feature/steps/SKILL.md: a skill folder can't contain another skill; move it to its own folder in skills/` |
-| Rule group metadata in a skill folder | `skills/build-feature/_group.yaml: a skill folder can't contain group metadata` |
-| A symbolic link, submodule, or Git LFS pointer | `skills/build-feature/scripts/verify.sh: symbolic links, submodules, and Git LFS pointers aren't supported in a skill folder` |
-| A Markdown file that isn't UTF-8 | `skills/build-feature/references/slicing.md: expected UTF-8 Markdown` |
-| No frontmatter at the start of `SKILL.md` | `skills/build-feature/SKILL.md: expected YAML frontmatter at the start of the file` |
-| Invalid YAML, such as a duplicate key or an alias | `skills/build-feature/SKILL.md: ` followed by the YAML problem and its line |
-| A blank body | `skills/build-feature/SKILL.md: expected instructions after the frontmatter` |
-| An unfinished draft | `skills/build-feature/SKILL.md: complete the draft and remove its trailguide:draft marker` |
-| An unknown top-level field | `skills/build-feature/SKILL.md: unknown field version; SKILL.md accepts name, description, license, compatibility, allowed-tools, and metadata` |
-| A missing or blank `name` or `description` | `skills/build-feature/SKILL.md: description is required` |
-| A `name` that differs from the folder name | `skills/build-feature/SKILL.md: name is build-features, but the folder is build-feature; they must match` |
-| A `description` over 1,024 characters | `skills/build-feature/SKILL.md: description is 1,310 characters; use at most 1,024` |
-| A `compatibility` over 500 characters, or blank | `skills/build-feature/SKILL.md: compatibility is 612 characters; use at most 500` |
-| A field or `metadata` value that isn't a string | `skills/build-feature/SKILL.md: metadata.trailguide-skill-type must be a string` |
-| A reserved `trailguide-` key Trail Guide doesn't define | `skills/build-feature/SKILL.md: metadata.trailguide-groups isn't a Trail Guide key; use trailguide-skill-type, trailguide-rules-used, or trailguide-skills-used` |
-| A type that isn't on the canonical list | `skills/build-feature/SKILL.md: trailguide-skill-type is design; use playbook or review, or leave it out` |
-| A cited rule that doesn't exist | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/test-behaviour-not-implementation, which isn't a rule in this library` |
-| A cited rule with a source name or `.md` | `skills/build-feature/SKILL.md: trailguide-rules-used names fabrica:practices/testing/test-behavior-not-implementation; cite a rule by its ID in this library, such as practices/testing/test-behavior-not-implementation` |
-| A cited rule that a library release or a pending change note retired, with a replacement | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/check-retry-backoff, which is retired and replaced by practices/testing/verify-retries; cite the replacement` |
-| A cited rule that was retired without a replacement | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/code-design/comment-intent, which is retired; remove it` |
-| An ID listed twice | `skills/build-feature/SKILL.md: trailguide-rules-used names practices/testing/verify-retries twice` |
-| A used skill that doesn't exist | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library` |
-| A used curated skill that `library.skills` doesn't list | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropic:skills/skill-creator, which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too` |
-| A used curated skill whose source name `library.skills` doesn't use | `skills/add-skill/SKILL.md: trailguide-skills-used names anthropik:skills/skill-creator, but library.skills lists no skill from a source named anthropik; the library curates skills from anthropic. Correct the source name, or name a skill of this library as skills/<name>` |
-| A curated skill named without its source name | `skills/add-skill/SKILL.md: trailguide-skills-used names skills/skill-creator, which isn't a skill in this library; the library curates anthropic:skills/skill-creator, so name it that way` |
-| A used skill that is retired | `skills/build-feature/SKILL.md: trailguide-skills-used names skills/triage-bug, which is retired and replaced by skills/fix-bug; use the replacement`, or `which is retired; remove it` when nothing replaces it |
-| A skill that uses itself | `skills/build-feature/SKILL.md: trailguide-skills-used names the skill itself` |
-| Skills that use each other in a cycle | `skills/build-feature/SKILL.md: trailguide-skills-used forms a cycle: skills/build-feature -> skills/tdd -> skills/build-feature` |
-| A local link to a file the library doesn't have, including one Git ignores, or a link from a file a skill's links reach, with code `reference-missing` | `.trailguide/skills/build-feature/SKILL.md: links to references/slices.md (.trailguide/skills/build-feature/references/slices.md), which the library doesn't have. Add the file, or fix the link; projects that install the skill keep a copy of every file its links reach.` |
-| A link to a folder, a symbolic link, a rule file, or another file a project can't keep, with code `reference-unsupported` | `.trailguide/skills/build-feature/SKILL.md: links to ../../rules/practices/testing/verify-retries.md (.trailguide/rules/practices/testing/verify-retries.md), which is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Cite a rule with trailguide-rules-used instead of linking to it, or move the file out of .trailguide/.` |
-| An absolute link, or one that leaves the repository, with code `reference-escapes` | `.trailguide/skills/build-feature/SKILL.md: links to /etc/checklist.md, which is an absolute path, so it depends on where the files are read rather than on the repository. Link with a path relative to the file.` |
+| A file directly in `skills/`, other than `README.md` | `skills/notes.md: skills/ holds a folder for each origin, each holding skill folders, and its README.md; move this file into a skill's folder` |
+| A skill folder directly in `skills/` | `skills/build-feature: a skill's folder sits in the folder for its origin, so move it to skills/engineering/build-feature/` |
+| An origin folder named for neither the library nor a source it forks from | `skills/acme: an origin folder is named for the repository's own skills, engineering, or for a source a fork comes from; move its skills to the folder for their origin` |
+| A file directly in an origin folder | `skills/engineering/notes.md: an origin folder holds only skill folders; move this file into a skill's folder` |
+| A folder name that breaks the [name grammar](#skill-ids) | `skills/engineering/Build_Feature: a skill's folder name is its name, which uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen; rename the folder` |
+| A skill folder without `SKILL.md` | `skills/engineering/build-feature: missing SKILL.md; each folder in an origin folder is a skill, so add its SKILL.md or move the folder out of skills/` |
+| Two skills with the same name in different origin folders | `skills/pstack/build-feature: skills/engineering/build-feature is also a skill named build-feature, and a skill's name is its ID, skills/build-feature; rename one of them` |
+| A fork outside its source's folder | `skills/engineering/show-me-your-work: this skill forks a skill of the source pstack, so it sits in that source's folder; move it to skills/pstack/show-me-your-work/` |
+| A skill in a source's folder that forks none of its skills | `skills/pstack/review: this skill forks no skill of the source pstack, so it's one of the repository's own skills; move it to skills/engineering/review/, or record the fork in sources.pstack.skills.forks` |
+| A skill inside another skill's folder | `skills/engineering/build-feature/steps/SKILL.md: a skill folder can't contain another skill; move it to its own folder in skills/` |
+| Rule group metadata in a skill folder | `skills/engineering/build-feature/_group.yaml: a skill folder can't contain group metadata` |
+| A symbolic link, submodule, or Git LFS pointer | `skills/engineering/build-feature/scripts/verify.sh: symbolic links, submodules, and Git LFS pointers aren't supported in a skill folder` |
+| A Markdown file that isn't UTF-8 | `skills/engineering/build-feature/references/slicing.md: expected UTF-8 Markdown` |
+| No frontmatter at the start of `SKILL.md` | `skills/engineering/build-feature/SKILL.md: expected YAML frontmatter at the start of the file` |
+| Invalid YAML, such as a duplicate key or an alias | `skills/engineering/build-feature/SKILL.md: ` followed by the YAML problem and its line |
+| A blank body | `skills/engineering/build-feature/SKILL.md: expected instructions after the frontmatter` |
+| An unfinished draft | `skills/engineering/build-feature/SKILL.md: complete the draft and remove its trailguide:draft marker` |
+| An unknown top-level field | `skills/engineering/build-feature/SKILL.md: unknown field version; SKILL.md accepts name, description, license, compatibility, allowed-tools, and metadata` |
+| A missing or blank `name` or `description` | `skills/engineering/build-feature/SKILL.md: description is required` |
+| A `name` that differs from the folder name | `skills/engineering/build-feature/SKILL.md: name is build-features, but the folder is build-feature; they must match` |
+| A `description` over 1,024 characters | `skills/engineering/build-feature/SKILL.md: description is 1,310 characters; use at most 1,024` |
+| A `compatibility` over 500 characters, or blank | `skills/engineering/build-feature/SKILL.md: compatibility is 612 characters; use at most 500` |
+| A field or `metadata` value that isn't a string | `skills/engineering/build-feature/SKILL.md: metadata.trailguide-skill-type must be a string` |
+| A reserved `trailguide-` key Trail Guide doesn't define | `skills/engineering/build-feature/SKILL.md: metadata.trailguide-groups isn't a Trail Guide key; use trailguide-skill-type, trailguide-rules-used, or trailguide-skills-used` |
+| A type that isn't on the canonical list | `skills/engineering/build-feature/SKILL.md: trailguide-skill-type is design; use playbook or review, or leave it out` |
+| A cited rule that doesn't exist | `skills/engineering/build-feature/SKILL.md: trailguide-rules-used names practices/testing/test-behaviour-not-implementation, which isn't a rule in this library` |
+| A cited rule with a source name or `.md` | `skills/engineering/build-feature/SKILL.md: trailguide-rules-used names fabrica:practices/testing/test-behavior-not-implementation; cite a rule by its ID in this library, such as practices/testing/test-behavior-not-implementation` |
+| A cited rule that a library release or a pending change note retired, with a replacement | `skills/engineering/build-feature/SKILL.md: trailguide-rules-used names practices/testing/check-retry-backoff, which is retired and replaced by practices/testing/verify-retries; cite the replacement` |
+| A cited rule that was retired without a replacement | `skills/engineering/build-feature/SKILL.md: trailguide-rules-used names practices/code-design/comment-intent, which is retired; remove it` |
+| An ID listed twice | `skills/engineering/build-feature/SKILL.md: trailguide-rules-used names practices/testing/verify-retries twice` |
+| A used skill that doesn't exist | `skills/engineering/build-feature/SKILL.md: trailguide-skills-used names skills/tdd-loop, which isn't a skill in this library` |
+| A used curated skill that `library.skills` doesn't list | `skills/engineering/add-skill/SKILL.md: trailguide-skills-used names anthropic:skills/skill-creator, which isn't a skill the library curates; list it in library.skills, at a level or as a dependency, so projects that install the skill can install it too` |
+| A used curated skill whose source name `library.skills` doesn't use | `skills/engineering/add-skill/SKILL.md: trailguide-skills-used names anthropik:skills/skill-creator, but library.skills lists no skill from a source named anthropik; the library curates skills from anthropic. Correct the source name, or name a skill of this library as skills/<name>` |
+| A curated skill named without its source name | `skills/engineering/add-skill/SKILL.md: trailguide-skills-used names skills/skill-creator, which isn't a skill in this library; the library curates anthropic:skills/skill-creator, so name it that way` |
+| A used skill that is retired | `skills/engineering/build-feature/SKILL.md: trailguide-skills-used names skills/triage-bug, which is retired and replaced by skills/fix-bug; use the replacement`, or `which is retired; remove it` when nothing replaces it |
+| A skill that uses itself | `skills/engineering/build-feature/SKILL.md: trailguide-skills-used names the skill itself` |
+| Skills that use each other in a cycle | `skills/engineering/build-feature/SKILL.md: trailguide-skills-used forms a cycle: skills/build-feature -> skills/tdd -> skills/build-feature` |
+| A local link to a file the library doesn't have, including one Git ignores, or a link from a file a skill's links reach, with code `reference-missing` | `.trailguide/skills/engineering/build-feature/SKILL.md: links to references/slices.md (.trailguide/skills/engineering/build-feature/references/slices.md), which the library doesn't have. Add the file, or fix the link; projects that install the skill keep a copy of every file its links reach.` |
+| A link to a folder, a symbolic link, a rule file, or another file a project can't keep, with code `reference-unsupported` | `.trailguide/skills/engineering/build-feature/SKILL.md: links to ../../../rules/practices/testing/verify-retries.md (.trailguide/rules/practices/testing/verify-retries.md), which is a file in .trailguide/ that isn't a skill's file or a shared asset in .trailguide/assets/, such as a rule, which installed skills cite instead of linking. Cite a rule with trailguide-rules-used instead of linking to it, or move the file out of .trailguide/.` |
+| An absolute link, or one that leaves the repository, with code `reference-escapes` | `.trailguide/skills/engineering/build-feature/SKILL.md: links to /etc/checklist.md, which is an absolute path, so it depends on where the files are read rather than on the repository. Link with a path relative to the file.` |
 | A skill that reuses the ID of a retired skill | `skills/triage-bug reuses the ID of a skill that release/5 retired. Retired IDs can't be reused; give the skill a new ID.` |
 
 After the first library release, check also compares every skill with the latest library release and fails, with the code `change-notes`, when a skill's change notes don't match its changes, exactly as for rules. See [Change notes](/reference/rule-versions/#change-notes) and [library check](/reference/cli/#library-check).
 
 Check warns, without failing, when:
 
-- A skill's `license` differs from the library's declared SPDX expression: `skills/build-feature/SKILL.md: license is Apache-2.0, but the library declares MIT. The library's license applies to its skills; make them match.`
-- A skill declares a `license` and the library declares none: `skills/build-feature/SKILL.md: license is MIT, but the library declares no license. Declare the library's terms in library.license.`
+- A skill's `license` differs from the library's declared SPDX expression: `skills/engineering/build-feature/SKILL.md: license is Apache-2.0, but the library declares MIT. The library's license applies to its skills; make them match.`
+- A skill declares a `license` and the library declares none: `skills/engineering/build-feature/SKILL.md: license is MIT, but the library declares no license. Declare the library's terms in library.license.`
 - A file in a skill folder is neither tracked nor ignored by Git: `skills/build-feature/scripts/new-check.sh isn't tracked by Git, so it isn't part of the skill. Add it with git add, or ignore it.`
 - A skill ships its own `agents/openai.yaml` that sets only the text the metadata keys generate: `skills/add-skill/agents/openai.yaml: it sets only interface text, which Trail Guide generates for each project from SKILL.md. Set metadata.display-name, short-description, and default-prompt in SKILL.md instead, then delete this file.` See [Text agents show](#text-agents-show).
 
@@ -294,7 +313,7 @@ Don't edit installed copies: sync rewrites them, and `trailguide project check` 
 
 ## Skills in a project
 
-A repository that isn't a library authors skills in the same `.trailguide/skills/<name>/` folders, with the same format, and two differences:
+A repository that isn't a library authors skills in `.trailguide/skills/local/<name>/`, and its forks in `.trailguide/skills/<source>/<name>/`, with the same format, and two differences:
 
 - They can cite rules and call skills from the project's sources, by project ID with the source name, because a project can use several sources: `fabrica:practices/testing/test-behavior-not-implementation` or `fabrica:skills/tdd`. Bare IDs, such as `practices/architecture/follow-bounded-contexts`, name the repository's own rules and skills. Trail Guide takes each cited rule, and installs each called skill, from the source it names.
 - They have no versions and need no change notes.

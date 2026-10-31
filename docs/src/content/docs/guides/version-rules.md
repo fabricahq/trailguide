@@ -69,7 +69,7 @@ A project can also pin a rule to a version, with a reason, while the rest moves 
 
 ## Skill versions
 
-Each skill in a library has its own version too, recorded in the same library releases, with the same change notes, commands, and retirements as rules. A skill version covers the skill's whole folder, `.trailguide/skills/<name>/`: every file Git tracks in it, and each file's executable bit. See [What a version covers](/reference/rule-versions/#what-a-version-covers).
+Each skill in a library has its own version too, recorded in the same library releases, with the same change notes, commands, and retirements as rules. A skill version covers the skill's whole folder, `.trailguide/skills/<origin>/<name>/`: every file Git tracks in it, and each file's executable bit. See [What a version covers](/reference/rule-versions/#what-a-version-covers).
 
 A rule's version describes its obligation. A skill's version describes what the skill produces and requires: the steps an agent takes, the inputs it needs, and the rules and skills it depends on.
 
@@ -259,7 +259,7 @@ A skill can only be replaced by a skill, and a rule only by a rule. Remove the r
 
 ### Change a shared file, rule group description, or skill level
 
-Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-schema/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
+Files in the library's shared `.trailguide/assets/` directory, such as a diagram, rule group descriptions in `_group.yaml`, and the manifest in `.trailguide/config.yaml`, with its [skill levels](/reference/library-schema/#skill-levels) and skill forks, are library-wide files. They aren't part of any rule or skill version, so changing them needs no change note. `trailguide library check` lists the ones that changed, and the next library release publishes them, even if no rule changed. Files in a skill's folder, `.trailguide/skills/<origin>/<name>/`, are never library-wide: they belong only to the skill's version, so changing one needs a note for the skill.
 
 The release notes still name a skill whose level changes, such as offered to recommended, and a skill that becomes a fork or whose fork moves to another `basedOn` commit, so projects can see what the change means for them, even when the skill's files didn't change.
 

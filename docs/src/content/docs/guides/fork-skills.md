@@ -20,7 +20,7 @@ trailguide project add skill \
   --non-interactive
 ```
 
-The command copies the skill your project installs into `.trailguide/skills/fix-bug/` and records the fork under the source in `.trailguide/config.yaml`:
+The command copies the skill your project installs into `.trailguide/skills/fabrica/fix-bug/`, in the folder named for the source it came from, and records the fork under the source in `.trailguide/config.yaml`:
 
 ```yaml
 sources:
@@ -33,7 +33,7 @@ sources:
           reason: We fix bugs behind a feature flag first.
 ```
 
-- `as` is your skill, the folder under `.trailguide/skills/` that agents get in place of the source's skill.
+- `as` is your skill, `skills/<name>`, which agents get in place of the source's skill. Its folder is `.trailguide/skills/<source>/<name>/`, so anyone browsing `.trailguide/skills/` sees that it's a fork and where it came from.
 - `basedOn` is the commit the fork copied. It's how Trail Guide tells your edits apart from the source's later changes.
 - `reason` tells the next person why your project doesn't use the source's skill as it is.
 
@@ -43,7 +43,7 @@ The fork rewrites the skill's citations of other skills and rules to project IDs
 
 ## Edit and install your fork
 
-Edit `.trailguide/skills/fix-bug/SKILL.md` and any other files in its folder, then install the result:
+Edit `.trailguide/skills/fabrica/fix-bug/SKILL.md` and any other files in its folder, then install the result:
 
 ```sh
 trailguide project build

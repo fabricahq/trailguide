@@ -203,7 +203,7 @@ func TestEditConfigurationSourceForksFromASourceWithoutSkills(t *testing.T) {
 }
 
 func TestReplaceLibrarySkillKeepsItsLevel(t *testing.T) {
-	input := "schemaVersion: 2\nsources:\n  pocock:\n    repository: https://example.invalid/pocock.git\nlibrary:\n  schemaVersion: 1\n  skills:\n    # Everyone deploys.\n    required: [pocock:skills/ops/deploy, skills/review]\n"
+	input := "schemaVersion: 2\nsources:\n  pocock:\n    repository: https://example.invalid/pocock.git\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    # Everyone deploys.\n    required: [pocock:skills/ops/deploy, skills/review]\n"
 	out, err := rules.ReplaceLibrarySkill([]byte(input), "pocock:skills/ops/deploy", "skills/deploy")
 	if err != nil {
 		t.Fatal(err)

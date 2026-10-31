@@ -27,7 +27,7 @@ import (
 // by library path.
 func libraryFiles() map[string][]byte {
 	return map[string][]byte{
-		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":"LICENSE","notices":["NOTICE"]}}}`),
+		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":"LICENSE","notices":["NOTICE"]}}}`),
 		"LICENSE":     []byte("Original license\r\n"), "NOTICE": []byte("Original notice\r\n"),
 		"techs/go/_group.yaml":             []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When editing Go."}`),
 		"techs/go/errors.md":               []byte("---\ntitle: Return errors\nimpact: HIGH\nimpactDescription: Preserve failures.\nwhenToRead: When calling functions.\n---\n# Return errors\n\n[Shared](/assets/guide.md)\n"),
@@ -71,7 +71,7 @@ func libraryConfig(t *testing.T, repository string) rules.Configuration {
 func TestImportLibraryOriginalBytes(t *testing.T) {
 	files := libraryFiles()
 	f := newLibraryFixture(t, files)
-	files["config.yaml"] = []byte(`{"library":{"license":{"file":"LICENSE","notices":["NOTICE"]},"schemaVersion":1},"sources":{}}` + "\n")
+	files["config.yaml"] = []byte(`{"library":{"license":{"file":"LICENSE","notices":["NOTICE"]},"name":"library","schemaVersion":2},"sources":{}}` + "\n")
 	config := libraryConfig(t, f.Repository)
 	imported, err := ImportLibraries(context.Background(), config, nil, Options{GitPath: f.GitPath, Environment: f.Environment})
 	if err != nil {
@@ -265,10 +265,10 @@ func TestGitTreeAndRetainedLimits(t *testing.T) {
 func TestImportRejectsALibraryWhoseRulesAndSkillsTogetherExceedTheRetainedLimit(t *testing.T) {
 	files := libraryFiles()
 	blob := bytes.Repeat([]byte("x"), maxBlobBytes)
-	files[".trailguide/skills/big/SKILL.md"] = []byte("---\nname: big\ndescription: Carry large files.\n---\n# Big\n")
+	files[".trailguide/skills/library/big/SKILL.md"] = []byte("---\nname: big\ndescription: Carry large files.\n---\n# Big\n")
 	for i := range maxRetainedBytes / maxBlobBytes / 2 {
 		files[fmt.Sprintf("techs/go/assets/errors/big-%d.bin", i)] = blob
-		files[fmt.Sprintf(".trailguide/skills/big/big-%d.bin", i)] = blob
+		files[fmt.Sprintf(".trailguide/skills/library/big/big-%d.bin", i)] = blob
 	}
 	f := newLibraryFixture(t, files)
 	raw, _ := json.Marshal(map[string]any{"schemaVersion": 2, "sources": map[string]any{"team": map[string]any{"repository": f.Repository, "ref": "v1.2.0", "rules": map[string]any{"include": []string{"techs/go/*"}}, "skills": map[string]any{"include": []string{"skills/big"}}}}})

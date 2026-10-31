@@ -27,7 +27,7 @@ func newForkFixture(t *testing.T) forkFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                   []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":                   []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		"techs/go/_group.yaml":          []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":            updateRule("Read [the guide](../../../assets/guide.md)."),
 		"practices/testing/_group.yaml": []byte(`{"name":"Testing","description":"Tests.","whenToRead":"When testing."}`),

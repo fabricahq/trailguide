@@ -157,7 +157,7 @@ var (
 		return id + "'s asset directory, " + rules.RuleAssetDirectory(id+".md") + ", still exists. Delete it before recording the retirement."
 	}}
 	skillChange = changeKind{noun: "skill", exists: skillExists, leftover: skillFolderExists, removal: func(id string) string {
-		return id + "'s folder, " + skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/") + "/, still exists. Delete it before recording the retirement."
+		return id + "'s folder, " + strings.TrimPrefix(id, skills.Directory+"/") + "/, still exists in an origin folder of " + skillsDirectory + "/. Delete it before recording the retirement."
 	}}
 )
 
@@ -169,25 +169,59 @@ func changeKindOf(id string) changeKind {
 	return ruleChange
 }
 
-// skillExists reports whether skill id's SKILL.md is an ordinary file in the library.
+// skillExists reports whether skill id's SKILL.md is an ordinary file in the library, in any origin folder.
 func skillExists(root *os.Root, id string) (bool, error) {
-	info, err := root.Lstat(skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/") + "/" + skills.File)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-		return false, nil
-	}
+	folders, err := skillFolderPaths(root, id)
 	if err != nil {
 		return false, err
 	}
-	return info.Mode().IsRegular(), nil
+	for _, folder := range folders {
+		info, err := root.Lstat(folder + "/" + skills.File)
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		if info.Mode().IsRegular() {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
-// skillFolderExists reports whether skill id's folder exists, with or without a SKILL.md.
+// skillFolderExists reports whether skill id's folder exists in any origin folder, with or without a SKILL.md.
 func skillFolderExists(root *os.Root, id string) (bool, error) {
-	_, err := root.Lstat(skillsDirectory + "/" + strings.TrimPrefix(id, skills.Directory+"/"))
+	folders, err := skillFolderPaths(root, id)
+	return len(folders) > 0, err
+}
+
+// skillFolderPaths returns, in name order, the path in the library of each entry named for skill id in an origin
+// folder of skills/, the folders directly in it. A library without skills/ has none.
+func skillFolderPaths(root *os.Root, id string) ([]string, error) {
+	name := strings.TrimPrefix(id, skills.Directory+"/")
+	entries, err := fs.ReadDir(root.FS(), skillsDirectory)
 	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-		return false, nil
+		return nil, nil
 	}
-	return err == nil, err
+	if err != nil {
+		return nil, err
+	}
+	folders := []string{}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		folder := skillsDirectory + "/" + entry.Name() + "/" + name
+		_, err := root.Lstat(folder)
+		switch {
+		case err == nil:
+			folders = append(folders, folder)
+		case !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR):
+			return nil, err
+		}
+	}
+	return folders, nil
 }
 
 // checkChange validates a request against the working tree and the latest library release reachable from HEAD.
@@ -457,7 +491,7 @@ func unknownSkill(id string, published bool) string {
 	if published {
 		message += " To record its retirement, add --retire."
 	} else {
-		message += " Add its folder, with a SKILL.md, in " + skillsDirectory + "/."
+		message += " Add its folder, with a SKILL.md, in the origin folder of " + skillsDirectory + "/ it belongs in."
 	}
 	return message
 }

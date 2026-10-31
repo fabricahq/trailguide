@@ -19,12 +19,12 @@ func dependencyLibrary(t *testing.T) *gitfixture.Fixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                              []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"offered":["skills/add-skill","skills/deploy"],"dependencies":["skills/format-skill"]}}}`),
-		"techs/go/_group.yaml":                     []byte(projectMetadata),
-		"techs/go/errors.md":                       []byte(projectRule),
-		".trailguide/skills/add-skill/SKILL.md":    usingSkill("add-skill", "skills/format-skill"),
-		".trailguide/skills/format-skill/SKILL.md": usingSkill("format-skill"),
-		".trailguide/skills/deploy/SKILL.md":       usingSkill("deploy"),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"offered":["skills/add-skill","skills/deploy"],"dependencies":["skills/format-skill"]}}}`),
+		"techs/go/_group.yaml": []byte(projectMetadata),
+		"techs/go/errors.md":   []byte(projectRule),
+		".trailguide/skills/library/add-skill/SKILL.md":    usingSkill("add-skill", "skills/format-skill"),
+		".trailguide/skills/library/format-skill/SKILL.md": usingSkill("format-skill"),
+		".trailguide/skills/library/deploy/SKILL.md":       usingSkill("deploy"),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +99,7 @@ func TestSync_RefusesADependencyTheProjectNames(t *testing.T) {
 func TestSync_InstallsACuratedDependencyOnlyWithTheSkillsThatUseIt(t *testing.T) {
 	ctx := context.Background()
 	listed := "    offered: [skills/add-skill]\n    dependencies: [pocock:skills/productivity/grilling]\n"
-	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
+	authored := map[string][]byte{".trailguide/skills/library/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
 	b := newCuratingWith(t, listed, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["*"]}}}}`)
 	if _, err := Sync(ctx, b.options, b.git); err != nil {
 		t.Fatal(err)
@@ -120,7 +120,7 @@ func TestSync_InstallsACuratedDependencyOnlyWithTheSkillsThatUseIt(t *testing.T)
 
 func TestSync_RefusesACuratedDependencyTheProjectNames(t *testing.T) {
 	listed := "    offered: [skills/add-skill]\n    dependencies: [pocock:skills/productivity/grilling]\n"
-	authored := map[string][]byte{".trailguide/skills/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
+	authored := map[string][]byte{".trailguide/skills/library/add-skill/SKILL.md": usingSkill("add-skill", "pocock:skills/productivity/grilling")}
 	b := newCuratingWith(t, listed, authored, `{"schemaVersion":2,"skillTargets":["claude"],"sources":{"team":{"repository":TEAM,"skills":{"include":["pocock:skills/productivity/grilling"]}}}}`)
 	_, err := Sync(context.Background(), b.options, b.git)
 	if err == nil || !strings.Contains(err.Error(), "names pocock:skills/productivity/grilling, which the library lists in library.skills.dependencies") || !strings.Contains(err.Error(), "Include a skill that uses it instead, skills/add-skill") {

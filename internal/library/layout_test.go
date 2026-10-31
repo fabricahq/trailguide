@@ -31,7 +31,7 @@ func TestLibraryCommands_RefuseTheLayoutBeforeVersion2(t *testing.T) {
 		"practices":          {"practices", ":\n\n  practices  ->  .trailguide/rules/practices\n\nRule IDs and versions don't change."},
 	} {
 		commands := map[string]func(Options) error{
-			"init":  func(options Options) error { _, err := Initialize(ctx, options, nil, "1.2.3"); return err },
+			"init":  func(options Options) error { _, err := Initialize(ctx, options, "", nil, "1.2.3"); return err },
 			"check": func(options Options) error { _, err := Check(ctx, options); return err },
 			"group": func(options Options) error {
 				_, err := AddGroup(ctx, "techs/rust", trailguide.GroupMetadata{Name: "Rust", Description: "Rust guidance.", WhenToRead: "When editing Rust."}, options)
@@ -55,7 +55,7 @@ func TestLibraryCommands_RefuseTheLayoutBeforeVersion2(t *testing.T) {
 			t.Run(name+"/"+command, func(t *testing.T) {
 				options := Options{Directory: t.TempDir()}
 				if command != "init" {
-					if _, err := Initialize(ctx, options, nil, "1.2.3"); err != nil {
+					if _, err := Initialize(ctx, options, "", nil, "1.2.3"); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -273,7 +273,7 @@ func legacyFiles() map[string][]byte {
 // relative link one more ../, and commits the move.
 func moveLibrary(t *testing.T, fixture *gitfixture.Fixture, dir string) {
 	t.Helper()
-	moved := map[string][]byte{"rule-library.yaml": nil, ".trailguide/config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n")}
+	moved := map[string][]byte{"rule-library.yaml": nil, ".trailguide/config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n")}
 	for name, data := range legacyFiles() {
 		if first, _, _ := strings.Cut(name, "/"); first == "techs" || first == "practices" || first == "assets" {
 			moved[name] = nil
@@ -337,13 +337,13 @@ func TestCheck_ComparesAMovedLibraryWithALibraryReleaseMadeBeforeTheMove(t *test
 func TestCheck_ListsTheManifestOnlyWhenItsLibrarySectionChanges(t *testing.T) {
 	ctx := context.Background()
 	_, options := authorClone(t, libraryFiles(), releaseOne)
-	edit(t, options.Directory, map[string]string{"config.yaml": "# The repository's project and library.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary: {schemaVersion: 1}\n"})
+	edit(t, options.Directory, map[string]string{"config.yaml": "# The repository's project and library.\nschemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary: {schemaVersion: 2, name: library}\n"})
 	result, err := Check(ctx, options)
 	if err != nil || len(result.PendingRelease.LibraryFiles) != 0 {
 		t.Fatalf("got %+v, %v; want no library-wide change", result.PendingRelease, err)
 	}
 	edit(t, options.Directory, map[string]string{
-		"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n",
+		"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n",
 		"LICENSE.md":  "MIT License\n",
 	})
 	result, err = Check(ctx, options)
@@ -357,7 +357,7 @@ func TestCheck_ListsTheManifestOnlyWhenItsLibrarySectionChanges(t *testing.T) {
 // settings beside a curated source, keep the digest, so a library release doesn't list the manifest for them, and
 // a changed curated ref or schema version changes it.
 func TestManifestDigest_FollowsOnlyThePublishedContract(t *testing.T) {
-	const section = "library:\n  schemaVersion: 1\n  skills: {offered: [helper:skills/help]}\n"
+	const section = "library:\n  schemaVersion: 2\n  name: library\n  skills: {offered: [helper:skills/help]}\n"
 	const helper = "  helper:\n    repository: https://github.com/acme/helper.git\n    ref: main\n"
 	base := manifestDigest([]byte("schemaVersion: 2\nsources:\n" + helper + section))
 	for name, config := range map[string]string{
@@ -371,7 +371,8 @@ func TestManifestDigest_FollowsOnlyThePublishedContract(t *testing.T) {
 	for name, config := range map[string]string{
 		"a curated ref":        "schemaVersion: 2\nsources:\n" + strings.Replace(helper, "main", "v2.0.0", 1) + section,
 		"a curated repository": "schemaVersion: 2\nsources:\n" + strings.Replace(helper, "acme/helper", "acme/assist", 1) + section,
-		"the library schema":   "schemaVersion: 2\nsources:\n" + helper + strings.Replace(section, "schemaVersion: 1", "schemaVersion: 2", 1),
+		"the library schema":   "schemaVersion: 2\nsources:\n" + helper + strings.Replace(section, "schemaVersion: 2", "schemaVersion: 3", 1),
+		"the library name":     "schemaVersion: 2\nsources:\n" + helper + strings.Replace(section, "name: library", "name: acme", 1),
 	} {
 		if got := manifestDigest([]byte(config)); got == base {
 			t.Errorf("%s kept the digest", name)

@@ -4,6 +4,7 @@ package build
 import (
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // Library supplies a validated selected catalog and its caller-verified snapshot record: the revision that
@@ -74,8 +75,9 @@ type Options struct {
 	IndexMaxLines int
 	// GroupInlineMaxBytes defaults to 8 KiB when nil; zero forces summary-only group pages.
 	GroupInlineMaxBytes *int
-	// LocalSkills holds the project's authored skills by ID, skills/<name>, each with its files.
-	LocalSkills map[string]SkillFiles
+	// LocalSkills holds the project's authored skills by ID, skills/<name>, each with its origin folder and files,
+	// as skills.Read finds them.
+	LocalSkills map[string]skills.Skill[[]byte]
 }
 
 // Generate applies adoption policies and renders the complete generated file tree.

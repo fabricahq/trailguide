@@ -214,10 +214,11 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		targets[filetxn.LocalRuleAssets(fork.file)] = assetFiles
 	}
 	for _, fork := range in.skillForks {
-		folder := skills.AuthoredID(fork.name)
+		folder := skillFolderPath(fork.source, fork.name)
+		inside := skills.Folder(fork.source, fork.name) + "/"
 		previous := map[string][]byte{}
 		for name, data := range treeFiles(before.skills) {
-			if relative, ok := strings.CutPrefix(name, fork.name+"/"); ok {
+			if relative, ok := strings.CutPrefix(name, inside); ok {
 				previous[path.Join(folder, relative)] = data
 			}
 		}
@@ -230,7 +231,7 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		wasExecutable := map[string]bool{}
 		if before.skills != nil {
 			for _, name := range before.skills.Executable {
-				if relative, ok := strings.CutPrefix(name, fork.name+"/"); ok {
+				if relative, ok := strings.CutPrefix(name, inside); ok {
 					wasExecutable[relative] = true
 				}
 			}
@@ -244,8 +245,8 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 		changes.Added = append(changes.Added, forkChanges.Added...)
 		changes.Changed = append(changes.Changed, forkChanges.Changed...)
 		changes.Removed = append(changes.Removed, forkChanges.Removed...)
-		targets[filetxn.AuthoredSkill(fork.name)] = fork.files.Files
-		executable[filetxn.AuthoredSkill(fork.name)] = fork.files.Executable
+		targets[filetxn.AuthoredSkill(fork.source, fork.name)] = fork.files.Files
+		executable[filetxn.AuthoredSkill(fork.source, fork.name)] = fork.files.Executable
 	}
 	slices.Sort(changes.Added)
 	slices.Sort(changes.Changed)
@@ -287,8 +288,8 @@ func install(ctx context.Context, root *os.Root, w *filetxn.Writer, before proje
 	return changes, nil
 }
 
-// mergedSkills returns authored, the project's authored skills, with the folder of each of forks holding its merged
-// files instead.
+// mergedSkills returns authored, the project's authored skills, with the folder of each of forks, in the origin
+// folder of its source, holding its merged files instead.
 func mergedSkills(authored *filetxn.Tree, forks []skillForkUpdate) *filetxn.Tree {
 	result := &filetxn.Tree{Files: map[string][]byte{}, Directories: []string{}, Executable: []string{}}
 	if authored != nil {
@@ -297,7 +298,7 @@ func mergedSkills(authored *filetxn.Tree, forks []skillForkUpdate) *filetxn.Tree
 		result.Executable = slices.Clone(authored.Executable)
 	}
 	for _, fork := range forks {
-		prefix := fork.name + "/"
+		prefix := skills.Folder(fork.source, fork.name) + "/"
 		inFork := func(name string) bool { return strings.HasPrefix(name, prefix) }
 		maps.DeleteFunc(result.Files, func(name string, _ []byte) bool { return inFork(name) })
 		result.Directories = slices.DeleteFunc(result.Directories, inFork)

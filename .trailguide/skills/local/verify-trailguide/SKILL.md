@@ -15,7 +15,7 @@ The feature map in [features/README.md](features/README.md) lists the user-facin
 
 ## Launch
 
-Run `tg-lab new` from the trailguide checkout you want to verify; run the other commands wherever a step says, usually in a lab project. `tg-lab` is at `.trailguide/skills/verify-trailguide/scripts/tg-lab`, beside this file in every installed copy. Below, `tg-lab` means that path.
+Run `tg-lab new` from the trailguide checkout you want to verify; run the other commands wherever a step says, usually in a lab project. `tg-lab` is at `.trailguide/skills/local/verify-trailguide/scripts/tg-lab`, beside this file in every installed copy. Below, `tg-lab` means that path.
 
 ```sh
 tg-lab new

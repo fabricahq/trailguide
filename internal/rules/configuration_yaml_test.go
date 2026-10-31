@@ -255,7 +255,7 @@ sources:
     repository: 'https://github.com/acme/existing.git' # keep the selected library
     rules: {include: ['*']}
 `)
-	out, err := rules.AppendConfigurationLibrary(input, map[string]any{"schemaVersion": 1, "license": map[string]any{"spdxExpression": "MIT", "file": "LICENSE.md", "notices": []string{}}})
+	out, err := rules.AppendConfigurationLibrary(input, map[string]any{"schemaVersion": 2, "name": "library", "license": map[string]any{"spdxExpression": "MIT", "file": "LICENSE.md", "notices": []string{}}})
 	if err != nil {
 		t.Fatal(err)
 	}

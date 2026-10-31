@@ -228,7 +228,7 @@ func TestUpdate_ALibrarySourceOnABranchMovesToItsNewestCommitAndWarns(t *testing
 		t.Fatalf("sync recorded %s; want main's newest commit %s", got, want)
 	}
 	moved, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
-		".trailguide/skills/review/SKILL.md":             []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		".trailguide/skills/library/review/SKILL.md":     []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
 		librarytree.RepositoryPath("techs/go/errors.md"): []byte(strings.Replace(projectRule, "Return errors to the caller.", "Return errors to the caller, wrapped.", 1)),
 	})
 	if err != nil {
@@ -302,7 +302,7 @@ func TestUpdate_ALibrarySourceOnABareTagStaysWhereSyncKeepsIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Review carefully", map[string][]byte{
-		".trailguide/skills/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
+		".trailguide/skills/library/review/SKILL.md": []byte(strings.Replace(reviewSkill, "# Review", "# Review carefully", 1)),
 	}); err != nil {
 		t.Fatal(err)
 	}

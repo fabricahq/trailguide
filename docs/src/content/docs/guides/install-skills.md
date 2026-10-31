@@ -158,7 +158,7 @@ Sometimes a skill links to a file your project can't deliver: the file doesn't e
 
 ```text
 $ trailguide project sync
-Error: sources.fabrica: .trailguide/skills/redesign/references/steps.md: links to gone.md (.trailguide/skills/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/redesign/references/steps.md.
+Error: sources.fabrica: .trailguide/skills/fabrica/redesign/references/steps.md: links to gone.md (.trailguide/skills/fabrica/redesign/references/gone.md) at commit 4c1d2e3..., which the revision doesn't have. The source's maintainer can fix it, and trailguide library check reports it to them. Until then, stop including the skill that links to it, or exclude it. The link is reached through .trailguide/skills/review/SKILL.md -> .trailguide/skills/redesign/SKILL.md -> .trailguide/skills/fabrica/redesign/references/steps.md.
 ```
 
 Choose the repair the message lists. When the file is missing from the source, the source's maintainer fixes the link; `trailguide library check` reports it in their library.
@@ -278,7 +278,7 @@ trailguide project add skill \
   --non-interactive
 ```
 
-The command copies the version your project installs into `.trailguide/skills/fix-bug/`, and records the fork under the source:
+The command copies the version your project installs into `.trailguide/skills/fabrica/fix-bug/`, the folder for forks of the `fabrica` source's skills, and records the fork under the source:
 
 ```yaml
 skills:
@@ -302,7 +302,7 @@ trailguide project add skill review-migration \
   --non-interactive
 ```
 
-The command writes a draft `.trailguide/skills/review-migration/SKILL.md`. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Links in the skill can name any file in your repository, such as `../../../docs/schema.md`; build fails when one names a file that isn't there, and points the installed copy's links at the same files. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
+The command writes a draft `.trailguide/skills/local/review-migration/SKILL.md`; `local/` holds the skills your project writes itself. Authored skills have no versions; they change when you edit them. In `trailguide-rules-used`, an authored skill cites rules by project ID, such as `fabrica:practices/testing/test-behavior-not-implementation` or `practices/testing/test-project-contracts` for one of your own, because it can cite rules from any source. Write its steps and remove the `trailguide:draft` marker, then run `trailguide project build` to install it; build fails while the marker is there. Links in the skill can name any file in your repository, such as `../../../../docs/schema.md`; build fails when one names a file that isn't there, and points the installed copy's links at the same files. Follow [Write a skill](/guides/write-skills/) for how to write one that works.
 
 ## Personal skills with the same name
 

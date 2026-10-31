@@ -30,7 +30,7 @@ func ruleText(guidance string) string {
 // libraryFiles is a library with one group, rule a with its own asset, and rule b.
 func libraryFiles() map[string][]byte {
 	return map[string][]byte{
-		"config.yaml":                           []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n"),
+		"config.yaml":                           []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 2, name: library}\n"),
 		"practices/testing/_group.yaml":         []byte("name: Testing\ndescription: Testing guidance.\nwhenToRead: When testing.\n"),
 		"practices/testing/a.md":                []byte(ruleText("Test the retry limit.")),
 		"practices/testing/assets/a/example.go": []byte("package example\n"),
@@ -522,7 +522,7 @@ func TestCheck_RejectsFilesThatArentNotesInChanges(t *testing.T) {
 // license edit as a rule change.
 func TestCheck_RejectsTermsInsideARulesVersion(t *testing.T) {
 	files := libraryFiles()
-	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    file: .trailguide/rules/practices/testing/assets/a/LICENSE\n    notices: []\n")
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    file: .trailguide/rules/practices/testing/assets/a/LICENSE\n    notices: []\n")
 	files["practices/testing/assets/a/LICENSE"] = []byte("Terms.\n")
 	for name, tags := range map[string][]string{"before the first library release": nil, "after a library release": {releaseOne}} {
 		t.Run(name, func(t *testing.T) {
