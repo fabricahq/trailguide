@@ -410,7 +410,7 @@ sources: {}
 
 You don't need to maintain it. `trailguide project init` and `trailguide library init` write the version that created the configuration, and `trailguide project update` raises it to the version that ran the update, never lowering it, in the same step that writes the lock. Because a raise makes everyone else upgrade, the update's preview lists it, such as `Sets minTrailguideVersion to 0.10.0 in .trailguide/config.yaml`, and asks you to confirm it even when nothing else changes. Sync, build, and check never change it. A library's check workflow installs the release it names, so CI moves with it. Raise it by hand when you want everyone off an older release sooner, such as one with a bug that affects your repository.
 
-Every project and library command reads `minTrailguideVersion` before anything else in the configuration, and again after it recovers an interrupted command, so a configuration with settings or values an older release doesn't know still gets a clear answer. An older release fails with `upgrade-required` and writes nothing:
+Every project and library command reads `minTrailguideVersion` before anything else in the configuration, and again after it recovers an interrupted command, so a configuration with settings or values an older release doesn't know still gets a clear answer. An older release fails with `upgrade-required` and writes nothing of its own, though recovering an interrupted command may already have restored or finished that command's files:
 
 ```text
 Error: .trailguide/config.yaml: minTrailguideVersion is 0.10.0, but this is trailguide 0.9.2; upgrade trailguide to 0.10.0 or newer, then run the command again.

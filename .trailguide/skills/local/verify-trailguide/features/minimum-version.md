@@ -1,6 +1,6 @@
 # Minimum Trail Guide version
 
-A project or library records the oldest Trail Guide release that may work on it as `minTrailguideVersion` in `.trailguide/config.yaml`. `project init` and `library init` write the running release, `project update` raises it to the running release and never lowers it, and every command run by an older release fails with `upgrade-required` and writes nothing. Development and prerelease builds neither write nor check the field. The `AGENTS.md` section's begin marker no longer names a version, so builds by different releases agree on it.
+A project or library records the oldest Trail Guide release that may work on it as `minTrailguideVersion` in `.trailguide/config.yaml`. `project init` and `library init` write the running release, `project update` raises it to the running release and never lowers it, and every command run by an older release fails with `upgrade-required` and writes nothing. Development and prerelease builds neither write nor check the field. The `AGENTS.md` section's begin marker no longer names a version in a new section. A section that 0.8.0 or earlier wrote keeps the version its marker names, because those releases reject a marker without one, and later releases ignore it, so builds by different releases agree on it.
 
 ## Sub-features
 
@@ -11,7 +11,7 @@ A project or library records the oldest Trail Guide release that may work on it 
 - `min-refuse` fails build, check, sync, update, and list from an older release with `upgrade-required`, naming both versions, and writes nothing.
 - `min-library` refuses library commands from an older release, while consumers of that library, on any release, are unaffected.
 - `min-workflow` writes a library check workflow that installs the minimum, and warns on update when an older workflow pins a release the raise refuses.
-- `min-marker` rewrites an `AGENTS.md` begin marker that names a version once, then leaves it unchanged across releases.
+- `min-marker` keeps the version an `AGENTS.md` begin marker names, so 0.8.0 still reads a section a newer release refreshed.
 
 ## How to get to it (user POV)
 
@@ -36,7 +36,7 @@ Preconditions:
 - **Legacy release.** Run `TG_LAB=<lab> tg-lab run min-refuse-legacy -- trailguide-0.8.0 project check`. It fails with `Error: unknown field minTrailguideVersion.` and `Location: configuration`, which the configuration reference quotes.
 - **Library.** In a library remote, run `TG_LAB=<lab> tg-lab run min-library-init -- trailguide-0.10.0 library init --spdx MIT --license-file FILE --non-interactive`, add a skill, and commit. `TG_LAB=<lab> tg-lab run min-library-workflow -- grep -n minTrailguideVersion .github/workflows/trailguide.yml` shows the install step reading the minimum from the configuration. `TG_LAB=<lab> tg-lab run min-library-refuse -- trailguide-0.9.0 library check --json` fails with `upgrade-required`. A project on `trailguide-0.9.0`, and one on `trailguide-0.8.0`, that adds the library with `--ref main` syncs it with exit 0.
 - **Pinned workflow.** In the library, replace the install step's `version=$(sed ...)` line and its `if` block with `version=0.9.0`, as Trail Guide 0.8.0 wrote, and commit. Run `TG_LAB=<lab> tg-lab run min-workflow-warn -- trailguide-0.11.0 project update`, from `tg-lab version 0.11.0`. The preview raises the minimum to `0.11.0` and warns that `.github/workflows/trailguide.yml installs trailguide 0.9.0` and names the `version=` line to change. `git status --short` is empty.
-- **Marker.** In a project initialized by `trailguide-0.8.0`, whose `AGENTS.md` begin marker reads `<!-- trailguide:begin 0.8.0 sha256:... -->`, run `TG_LAB=<lab> tg-lab run min-marker-check -- trailguide-0.9.0 project check`. It exits 1 and lists `AGENTS.md` as holding an outdated section. Run `TG_LAB=<lab> tg-lab run min-marker -- trailguide-0.9.0 project build` and `git diff -- AGENTS.md`: only the marker changes, to `<!-- trailguide:begin sha256:... -->` with the same hash. Commit; `trailguide-0.10.0 project check` and the lab's `trailguide project check` then exit 0.
+- **Marker.** In a project initialized by `trailguide-0.8.0`, whose `AGENTS.md` begin marker reads `<!-- trailguide:begin 0.8.0 sha256:... -->`, commit the project. `TG_LAB=<lab> tg-lab run min-marker-check -- trailguide-0.9.0 project check` exits 0, and `TG_LAB=<lab> tg-lab run min-marker -- trailguide-0.9.0 project build` leaves `git status --short` empty. `trailguide-0.8.0 project check` then exits 0, without `agents-section-invalid`. In a project initialized by `trailguide-0.9.0`, the begin marker reads `<!-- trailguide:begin sha256:... -->`.
 
 ## Gotchas
 

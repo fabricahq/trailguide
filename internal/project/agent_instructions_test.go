@@ -14,7 +14,7 @@ var agentInstructions = regexp.MustCompile("(?ms)^```markdown\\n(## Skills and R
 
 // TestAgentInstructions_MatchTheSection fails when the docs drift from the section Trail Guide writes.
 func TestAgentInstructions_MatchTheSection(t *testing.T) {
-	section := renderAgentsSection(".trailguide")
+	section := renderAgentsSection(".trailguide", "")
 	lines := strings.SplitAfter(section, "\n")
 	want := strings.Join(lines[1:len(lines)-2], "")
 	for _, name := range []string{

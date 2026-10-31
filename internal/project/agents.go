@@ -33,9 +33,9 @@ var agentsSectionTemplate string
 // The section is fenced by these markers. The begin marker records the first 16 hexadecimal digits of the SHA-256 of
 // the lines between the markers, so a refresh can tell an unedited section, which it replaces when the text changed,
 // from a hand edit, which it refuses to overwrite. Trail Guide 0.8 and earlier also wrote their version before the
-// digest; the marker still matches, and the next refresh drops it.
+// digest and reject a marker without one, so a refresh keeps the version a marker names.
 var (
-	agentsBeginMarker = regexp.MustCompile(`^<!-- trailguide:begin (?:\S+ )?sha256:([0-9a-f]{16}) -->$`)
+	agentsBeginMarker = regexp.MustCompile(`^<!-- trailguide:begin (?:(\S+) )?sha256:([0-9a-f]{16}) -->$`)
 	agentsEndMarker   = regexp.MustCompile(`^<!-- trailguide:end -->$`)
 )
 
@@ -48,10 +48,13 @@ type AgentsChange struct {
 }
 
 // renderAgentsSection returns the section, markers included, for a project whose Trail Guide directory is named
-// directory, such as .trailguide.
-func renderAgentsSection(directory string) string {
+// directory, such as .trailguide. version is the version an existing begin marker names, or empty for none.
+func renderAgentsSection(directory, version string) string {
 	inner := strings.ReplaceAll(agentsSectionTemplate, ".trailguide/", directory+"/")
-	return fmt.Sprintf("<!-- trailguide:begin sha256:%s -->\n%s<!-- trailguide:end -->\n", agentsDigest(inner), inner)
+	if version != "" {
+		version += " "
+	}
+	return fmt.Sprintf("<!-- trailguide:begin %ssha256:%s -->\n%s<!-- trailguide:end -->\n", version, agentsDigest(inner), inner)
 }
 
 func agentsDigest(text string) string {
@@ -64,6 +67,8 @@ type agentsSection struct {
 	lines      []string
 	begin, end int
 	edited     bool
+	// version is the Trail Guide version the begin marker names, which only 0.8 and earlier wrote.
+	version string
 }
 
 // inspectAgentsSection finds the section in existing, failing with agents-section-invalid when its markers are
@@ -97,7 +102,8 @@ func inspectAgentsSection(existing string) (agentsSection, error) {
 	if s.begin != -1 {
 		marker := agentsBeginMarker.FindStringSubmatch(strings.TrimRight(s.lines[s.begin], "\r\n"))
 		// A checkout that converts line endings to CRLF keeps an unedited section.
-		s.edited = agentsDigest(strings.ReplaceAll(strings.Join(s.lines[s.begin+1:s.end], ""), "\r\n", "\n")) != marker[1]
+		s.edited = agentsDigest(strings.ReplaceAll(strings.Join(s.lines[s.begin+1:s.end], ""), "\r\n", "\n")) != marker[2]
+		s.version = marker[1]
 	}
 	return s, nil
 }
@@ -169,12 +175,12 @@ func planAgentsSection(ctx context.Context, root *os.Root, config rules.Configur
 	}
 	plan.previous = data
 	directory := filepath.Base(root.Name())
-	want := renderAgentsSection(directory)
 	existing := string(data)
 	s, err := inspectAgentsSection(existing)
 	if err != nil {
 		return plan, err
 	}
+	want := renderAgentsSection(directory, s.version)
 	var content, action string
 	switch {
 	case !s.found() && strings.Contains(existing, directory+"/"+librarytree.Generated+"/RULES.md"):

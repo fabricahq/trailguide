@@ -182,7 +182,10 @@ func PlanUpdate(ctx context.Context, options Options, git imports.Options, targe
 		if guide, err = filetxn.ReadOptional(ctx, root, name); err != nil {
 			return err
 		}
-		workflow, err = checkWorkflowRelease(ctx, root)
+		// Only a raised minimum can make the workflow's release refuse the repository.
+		if _, raises := minimumRaise(state.config, options.ToolVersion); raises {
+			workflow, err = checkWorkflowRelease(ctx, root)
+		}
 		return err
 	})
 	if err != nil {
