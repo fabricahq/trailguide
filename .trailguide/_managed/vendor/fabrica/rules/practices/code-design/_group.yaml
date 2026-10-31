@@ -1,3 +1,3 @@
 name: Code design
-description: Structure functions, modules, and folders so operations read clearly, computation stays separate from effects, and each feature's code stays together.
-whenToRead: When planning, implementing, refactoring, or reviewing function, module, or folder structure.
+description: Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
+whenToRead: Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
