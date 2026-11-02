@@ -3,7 +3,6 @@ name: principle-laziness-protocol
 description: "Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading. Bias toward deletion and the smallest change that solves the problem."
 disable-model-invocation: true
 ---
-<!-- trailguide:installed fabrica:pstack:pstack/skills/principle-laziness-protocol 699e1e7488c53c05ca13409f40da83cd37682091. Do not edit; trailguide project sync replaces this copy. -->
 
 # Laziness Protocol
 

@@ -165,11 +165,11 @@ Version: 1.0.0
 
 **Read full rule:** [Preserve caller-owned data](../../rules/fabrica/techs/typescript/preserve-caller-owned-data.md)
 
-### Make properties and parameters required, and name them
+### Require caller-owned inputs and document defaults
 
 Rule ID: `fabrica:techs/typescript/require-properties-and-name-parameters`
 
-Version: 1.0.0
+Version: 2.0.0
 
 **When to read:** Before planning, writing, changing, or reviewing TypeScript object types or function signatures, especially ones with many optional properties or several positional parameters.
 
@@ -177,7 +177,7 @@ Version: 1.0.0
 
 **Why it matters:** Optional-heavy types and long positional parameter lists hide which inputs are needed and let calls pass the wrong value in the wrong place.
 
-**Read full rule:** [Make properties and parameters required, and name them](../../rules/fabrica/techs/typescript/require-properties-and-name-parameters.md)
+**Read full rule:** [Require caller-owned inputs and document defaults](../../rules/fabrica/techs/typescript/require-properties-and-name-parameters.md)
 
 ### Import types with import type
 

@@ -62,6 +62,10 @@ At the end of the run, before handing back, check the log told the truth. Read t
 
 Correct the log, not the story. The audit never edits or removes a row, even an invented one. When a row records neither a real decision nor a real action, or its claim or evidence is wrong, add a row that supersedes it with what actually happened and a pointer that resolves. This audit does not check rows outside this run's stretches. If this run's own work shows one of them is wrong, supersede it like any wrong call.
 
+## Preserve lasting design knowledge
+
+Before handing back, inspect the decisions for invariants, contracts, and reasons a future maintainer needs to preserve. Put each beside its owning code, or in one discoverable design note when it spans modules, and add an evidence pointer to that location in the log. State the current requirement and reason, leaving the sequence of attempts in the log. Verify the explanation against the implementation. Done when no lasting design constraint exists only in this working log or a commit message.
+
 ## Cross-model review of the trail
 
 Before handing back, spawn a subagent on a different model family from the one that did the work, such as a Codex model to review a Claude model's work, or a Claude model to review Codex's. Self-review is not a substitute. When the harness can't run another family, a fresh subagent on the same model is the fallback, and the Attention section says so. The subagent reads the audit trail and the run's transcript, or without one, the evidence the rows point to, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky.

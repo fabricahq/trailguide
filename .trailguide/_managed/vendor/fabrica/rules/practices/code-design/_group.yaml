@@ -1,3 +1,3 @@
 name: Code design
-description: Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
-whenToRead: Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
+description: Design meaningful interfaces and caller contracts, keep implementation decisions with their owners, remove unnecessary error cases, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
+whenToRead: Before planning, implementing, refactoring, or reviewing interfaces, API and failure contracts, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.

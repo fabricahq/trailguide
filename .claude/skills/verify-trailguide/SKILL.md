@@ -4,7 +4,7 @@ description: Drive the trailguide CLI the way a user does, in a disposable lab w
 metadata:
   trailguide-skill-type: playbook
 ---
-<!-- trailguide:installed skills/verify-trailguide. Do not edit; edit .trailguide/skills/verify-trailguide/ instead. -->
+<!-- trailguide:installed skills/verify-trailguide. Do not edit; edit .trailguide/skills/local/verify-trailguide/ instead. -->
 
 # Verify trailguide
 
@@ -16,7 +16,7 @@ The feature map in [features/README.md](features/README.md) lists the user-facin
 
 ## Launch
 
-Run `tg-lab new` from the trailguide checkout you want to verify; run the other commands wherever a step says, usually in a lab project. `tg-lab` is at `.trailguide/skills/verify-trailguide/scripts/tg-lab`, beside this file in every installed copy. Below, `tg-lab` means that path.
+Run `tg-lab new` from the trailguide checkout you want to verify; run the other commands wherever a step says, usually in a lab project. `tg-lab` is at `.trailguide/skills/local/verify-trailguide/scripts/tg-lab`, beside this file in every installed copy. Below, `tg-lab` means that path.
 
 ```sh
 tg-lab new
@@ -31,6 +31,8 @@ TG_LAB=/tmp/trailguide-verify/run-20261030T050000Z-abcd/lab tg-lab doctor
 Set `TG_LAB_ROOT` to create runs somewhere other than `${TMPDIR:-/tmp}/trailguide-verify`.
 
 Rebuild with a new `tg-lab new` after you change the code. A lab's binary never changes.
+
+The lab's `trailguide` is a development build, which skips release-only behavior such as checking `minTrailguideVersion`. To drive a release, run `TG_LAB=<lab> tg-lab version 0.9.0 [CHECKOUT]`: it builds CHECKOUT, by default the lab's checkout, as release 0.9.0 and puts it on the lab's PATH as `trailguide-0.9.0`. Build an older release from a worktree of its tag.
 
 ## Doctor
 
@@ -84,4 +86,4 @@ It deletes the lab, which holds the binary, the private HOME, and every reposito
 
 ## Helpers
 
-- `scripts/tg-lab` (executable). Run it with no arguments for usage. Commands: `new [CHECKOUT]`, `doctor`, `remote NAME`, `project NAME`, `commit DIR MESSAGE`, `exec -- COMMAND...`, `run LABEL -- COMMAND...`, `cleanup`.
+- `scripts/tg-lab` (executable). Run it with no arguments for usage. Commands: `new [CHECKOUT]`, `doctor`, `version VERSION [CHECKOUT]`, `remote NAME`, `project NAME`, `commit DIR MESSAGE`, `exec -- COMMAND...`, `run LABEL -- COMMAND...`, `cleanup`.

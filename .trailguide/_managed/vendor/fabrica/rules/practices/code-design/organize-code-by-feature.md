@@ -19,6 +19,7 @@ Move code to a shared location only when a second feature uses it.
 - Give each feature, such as a page or domain area, its own folder with its components, hooks, utilities, API calls, and tests.
 - Keep a shared folder, such as `common` or `shared`, for code that more than one feature actually uses, and keep it small.
 - Move code from a feature folder to the shared folder when a second feature needs it, not in anticipation.
+  This is a placement rule: a module may already have a general interface that hides its implementation and serves current needs within one feature.
 - In frameworks with file-based routing, keep route files thin and put the feature's implementation in its feature folder.
 - Import files within the same feature with relative paths, so the feature can move without editing its internal imports.
   Import from other features and shared code with the project's path aliases.

@@ -26,6 +26,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 - UI proof includes an ARIA snapshot and a screenshot with the app identity visible.
 - CLI proof includes the command, stdout, stderr, and exit code.
 - Mutation proof includes a read-only second view of the stored value.
+- Judge each step by what the user should be able to tell and the end state, never by comparing output verbatim. Exact output that users or scripts rely on, such as `notes create --format json`, is checked by the project's tests; name them, and when output a script would notice has no test, report it. Report output that reaches the right end state but would mislead or confuse the user.
 - Record the feature ID and entry point used with every artifact.
 - Report an unreachable path with the attempted command and the unmet precondition.
 - Do not report a skipped entry point as verified through a different path.
@@ -36,12 +37,12 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 1. `Sub-features` lists short IDs with one line for each behavior.
 2. `How to get to it (user POV)` lists every user entry point.
-3. `Driving it with <harness>` starts with `Preconditions:` and uses labeled bullets that pair each user action with an exact command and observable result.
+3. `Driving it with <harness>` starts with `Preconditions:` and uses labeled bullets that pair each user action with an exact command, the observable end state, and what the user should be able to tell from it.
 4. `Gotchas` lists traps that can waste or invalidate a verification run.
 
 Keep implementation details out of the map. Name only user paths, stable handles, required state, commands, and observable proof.
 
 ## Features
 
-- [Create a note](./create-note.md) covers browser and CLI creation, cancellation, persistence, and cleanup.
-- [Search notes](./search.md) covers toolbar, keyboard, and CLI search with matching, empty, and clear states.
+- [Create a note](create-note.md) covers browser and CLI creation, cancellation, persistence, and cleanup.
+- [Search notes](search.md) covers toolbar, keyboard, and CLI search with matching, empty, unavailable, and clear states.

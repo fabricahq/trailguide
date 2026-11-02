@@ -12,7 +12,7 @@ attribution:
 ## Separate pure computation from effects
 
 Give each data transformation one responsibility, and make its result depend only on its explicit inputs, without mutating them, reading hidden mutable state, or causing effects.
-Keep effects, such as network requests, storage, and UI updates, in the code that calls the computation.
+Keep effects, such as network requests, storage, and UI updates, in the code that calls the computation, which may be inside the same module behind a complete operation.
 
 ### Implementation
 
@@ -20,6 +20,8 @@ Keep effects, such as network requests, storage, and UI updates, in the code tha
 - Return new values instead of mutating inputs.
 - Put I/O at the edges: load data, call the pure function, then save or render the result.
 - A function whose job is an effect, such as `saveDraft`, does not need to be pure; the aim is to separate the parts that can be.
+- Keep format knowledge, invariants, and required sequencing behind the module that owns them.
+  A public operation may combine I/O with private pure computations; callers need not coordinate those computations or pass intermediate representations solely to make the internals testable.
 
 ### Rationale
 
@@ -29,6 +31,8 @@ Hidden inputs make the same call return different results, and hidden mutations 
 This practice applies in any language; the TypeScript example illustrates it.
 
 ### Examples
+
+#### Application: A transformation with hidden inputs
 
 **Incorrect (counterexample):**
 
@@ -53,9 +57,26 @@ function formatLabels(items: ReadonlyArray<Item>, locale: string): Array<string>
 }
 ```
 
+#### Application: A complete operation with a pure implementation step
+
+A manifest module owns how a stored manifest becomes validated declarations.
+
+**Incorrect (counterexample):**
+
+Every caller reads the file, parses its JSON, validates its declarations, and resolves their paths in the required order.
+The functions are individually testable, but callers must know the manifest's representation and assembly sequence.
+
+**Correct:**
+
+Expose `loadManifest(path)` with a contract for the validated result and failures.
+Inside that module, read the file and pass its contents to a pure parser and validator.
+Test the complete operation through its interface; test complex parsing separately through its own contract when useful.
+Keep a parser independently available when callers actually need to parse in-memory content.
+
 ### Validation
 
 Check that data transformations take their inputs as parameters, leave them unchanged, and perform no I/O.
 Test such functions with plain values and no mocks.
 
 A function whose purpose is an effect, such as writing to storage, is not a violation.
+Check public callers as well: separating computation must not make them repeat format knowledge or implementation sequencing that the module should own.
