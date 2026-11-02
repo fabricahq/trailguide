@@ -22,17 +22,35 @@ import (
 
 // authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, as
 // skills.Read finds them in the origin folders config's skill origins give them: the library's name or local for the
-// project's own skills, and the source's name for a fork. It fails for the first problem skills.Read reports. A nil
-// tree has none.
+// project's own skills, and the source's name for a fork. When every problem skills.Read reports is a skill folder
+// directly in skills/, as Trail Guide 0.8 and earlier kept them, it fails with skillFolderMoves; otherwise it fails
+// for the first problem. A nil tree has none.
 func authoredSkills(config rules.Configuration, tree *filetxn.Tree) (map[string]skills.Skill[[]byte], error) {
 	if tree == nil {
 		return map[string]skills.Skill[[]byte]{}, nil
 	}
-	found, problems := skills.Read(tree.Files, tree.Executable, tree.Directories, config.SkillOrigins())
-	if len(problems) > 0 {
-		return nil, &ValidationError{Location: ".trailguide/" + problems[0].Location, Problem: problems[0].Problem}
+	origins := config.SkillOrigins()
+	found, problems := skills.Read(tree.Files, tree.Executable, tree.Directories, origins)
+	if len(problems) == 0 {
+		return found, nil
 	}
-	return found, nil
+	moves := make([][2]string, 0, len(problems))
+	for _, problem := range problems {
+		if problem.MoveTo == "" {
+			return nil, &ValidationError{Location: ".trailguide/" + problems[0].Location, Problem: problems[0].Problem}
+		}
+		moves = append(moves, [2]string{".trailguide/" + problem.Location + "/", ".trailguide/" + problem.MoveTo + "/"})
+	}
+	return nil, &ValidationError{Location: ".trailguide/" + skills.Directory + "/", Problem: skillFolderMoves(origins.Own, moves)}
+}
+
+// skillFolderMoves tells a project whose skill folders sit directly in skills/ that each belongs in the folder for its
+// origin, own for the project's own skills, listing each of moves, a folder and where it belongs, from the
+// repository root, and what to do once they're moved.
+func skillFolderMoves(own string, moves [][2]string) string {
+	return fmt.Sprintf("this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: %s/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:\n\n", own) +
+		moveList(moves, 0) +
+		"\n\nA skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so each link from it to a file outside its folder needs one more ../, such as ../../../assets/checklist.md, unless the link is to a skill you moved into the same folder."
 }
 
 // skillFolderPath returns the path, in the Trail Guide directory, of the folder of skill name in the origin folder

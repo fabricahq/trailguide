@@ -86,11 +86,11 @@ func projectUpdateCommand(options Options, output *commandOutput) *cobra.Command
 				f.introduction += answeredSkills(shown, preview)
 			}
 			f.introduction += "\n"
-			answer, err := askChoice(f, "Apply the update?", [2]string{"yes", "no"})
+			apply, err := askYesNo(f, "Apply the update?")
 			if err != nil {
 				return location.promptFailure(err)
 			}
-			if answer != "yes" {
+			if !apply {
 				output.report = updateReport(preview, true, true, location)
 				return nil
 			}
@@ -230,45 +230,43 @@ func askUpdateDecisions(f *authoringFlags, plan *project.UpdatePlan, preview pro
 			}
 			// Each question names its rule on a line of its own, so prompts stay short enough not to wrap.
 			name := source.Name + ":" + row.ID
+			// Every question asks whether to take the change now, so yes and no mean the same in each.
 			var context, question, reasonLabel string
-			var choices [2]string
 			switch row.Change {
 			case imports.UpdateMajor:
-				choices = [2]string{"adopt", "keep"}
 				context = fmt.Sprintf("%s: major change, %s -> %s.", name, row.From, row.To)
-				question = fmt.Sprintf("Adopt it, or keep %s?", row.From)
-				reasonLabel = "Reason for keeping it:"
+				question = fmt.Sprintf("Adopt %s?", row.To)
+				reasonLabel = fmt.Sprintf("Reason for keeping %s:", row.From)
 			case imports.UpdateRetired:
-				choices = [2]string{"drop", "keep"}
 				context = fmt.Sprintf("%s: retired.", name)
-				question = fmt.Sprintf("Drop it, or keep %s?", row.From)
-				reasonLabel = "Reason for keeping it:"
+				question = "Drop it?"
+				reasonLabel = fmt.Sprintf("Reason for keeping %s:", row.From)
 			case imports.UpdateNew:
-				choices = [2]string{"add", "exclude"}
 				context = fmt.Sprintf("%s: new rule, %s.", name, row.To)
-				question = "Add it, or exclude it?"
+				question = "Add it?"
 				reasonLabel = "Reason for excluding it:"
 			case imports.UpdateReplaced:
 				version := row.ReviewedVersion()
-				choices = [2]string{"later", "replace"}
 				context = fmt.Sprintf("%s: replaced by %s, with library changes up to %s.", name, row.LocalRule, version)
 				if replaced := plan.ReplacedFiles(row.LocalRule); len(replaced) > 0 {
 					context += fmt.Sprintf("\nReplacing your rule with a fork of %s replaces or removes:\n  %s", version, strings.Join(replaced, "\n  "))
 				}
-				question = fmt.Sprintf("Review later, or replace your local rule with %s?", version)
+				question = fmt.Sprintf("Replace your rule with a fork of %s now?", version)
 			default:
 				continue
 			}
 			f.introduction += "\n" + context + "\n"
-			answer, err := askChoice(f, question, choices)
+			take, err := askYesNo(f, question)
 			if err != nil {
 				return nil, err
 			}
-			if answer == choices[0] {
+			if row.Change == imports.UpdateReplaced {
+				if take {
+					decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionUpdateFork})
+				}
 				continue
 			}
-			if row.Change == imports.UpdateReplaced {
-				decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionUpdateFork})
+			if take {
 				continue
 			}
 			reason, err := f.askValidated(reasonLabel, func(value string) error {
@@ -291,11 +289,11 @@ func askUpdateDecisions(f *authoringFlags, plan *project.UpdatePlan, preview pro
 				continue
 			}
 			f.introduction += fmt.Sprintf("\n%s:%s: forked as %s. Merging the source's changes up to commit %s\ninto it finds no text conflicts with your edits. Changes to different lines can\nstill contradict each other, so review the merged skill.\n", source.Name, row.ID, row.LocalSkill, shortCommit(row.To))
-			answer, err := askChoice(f, "Review later, or merge them into your skill?", [2]string{"later", "merge"})
+			merge, err := askYesNo(f, "Merge them into your skill now?")
 			if err != nil {
 				return nil, err
 			}
-			if answer == "merge" {
+			if merge {
 				decisions = append(decisions, project.UpdateDecision{Source: source.Name, Rule: row.ID, Kind: project.DecisionMergeFork})
 			}
 		}
@@ -312,19 +310,21 @@ func forkedSkillRows(source imports.SourceUpdate) []imports.ReplacedSkillUpdate 
 	return rows
 }
 
-// askChoice asks question until the answer is one of the two choices, or its first letter, ignoring case.
-func askChoice(f *authoringFlags, question string, choices [2]string) (string, error) {
-	var chosen string
-	_, err := f.askValidated(fmt.Sprintf("%s [%s/%s]:", question, choices[0], choices[1]), func(value string) error {
-		for _, choice := range choices {
-			if strings.EqualFold(value, choice) || strings.EqualFold(value, choice[:1]) {
-				chosen = choice
-				return nil
-			}
+// askYesNo asks question until the answer is yes or no, or y or n, ignoring case, and reports whether it was yes.
+func askYesNo(f *authoringFlags, question string) (bool, error) {
+	var yes bool
+	_, err := f.askValidated(question+" [yes/no]:", func(value string) error {
+		switch strings.ToLower(value) {
+		case "yes", "y":
+			yes = true
+		case "no", "n":
+			yes = false
+		default:
+			return fmt.Errorf("%q isn't an answer to this question; answer yes or no, or y or n for short", value)
 		}
-		return fmt.Errorf("%q isn't one of the answers; answer %s or %s, or %s or %s for short", value, choices[0], choices[1], choices[0][:1], choices[1][:1])
+		return nil
 	})
-	return chosen, err
+	return yes, err
 }
 
 // answersSummary lists the rows the user's answers decided: each kept rule with the version a new pin keeps it

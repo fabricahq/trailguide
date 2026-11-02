@@ -446,15 +446,15 @@ func TestUpdate_RefusesToUpdateTheForkOfARetiredRule(t *testing.T) {
 	}
 }
 
-// TestUpdate_LaterLeavesTheForkInATerminal: answering later applies the rest of the update and leaves the local rule
+// TestUpdate_LaterLeavesTheForkInATerminal: answering no to replacing the fork applies the rest of the update and leaves the local rule
 // and its exclusion as they were.
 func TestUpdate_LaterLeavesTheForkInATerminal(t *testing.T) {
 	u := newUpdateFixture(t)
 	steps := []terminalfixture.Step{
-		{Prompt: "[adopt/keep]:", Answer: "adopt"},
-		{Prompt: "[add/exclude]:", Answer: "add"},
-		{Prompt: "[drop/keep]:", Answer: "drop"},
-		{Prompt: "Review later, or replace your local rule with 1.1.0? [later/replace]:", Answer: "l"},
+		{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "yes"},
+		{Prompt: "Add it? [yes/no]:", Answer: "yes"},
+		{Prompt: "Drop it? [yes/no]:", Answer: "yes"},
+		{Prompt: "Replace your rule with a fork of 1.1.0 now? [yes/no]:", Answer: "n"},
 		{Prompt: "Apply the update? [yes/no]:", Answer: "yes"},
 	}
 	result, err := terminalfixture.RunWithEnvironment(context.Background(), u.binary, u.directory, u.fixture.Environment, []string{"project", "update"}, steps)
@@ -475,33 +475,33 @@ func TestUpdate_LaterLeavesTheForkInATerminal(t *testing.T) {
 func TestUpdate_AsksInATerminal(t *testing.T) {
 	u := newUpdateFixture(t)
 	steps := []terminalfixture.Step{
-		{Prompt: "team:techs/go/errors: major change, 1.0.0 -> 2.0.0.\r\nAdopt it, or keep 1.0.0? [adopt/keep]:", Answer: "maybe"},
-		{Prompt: "\"maybe\" isn't one of the answers; answer adopt or keep, or a or k for short", Answer: "keep"},
-		{Prompt: "Reason for keeping it:", Answer: "Waiting on review."},
-		{Prompt: "team:techs/go/verify: new rule, 1.0.0.\r\nAdd it, or exclude it? [add/exclude]:", Answer: "e"},
+		{Prompt: "team:techs/go/errors: major change, 1.0.0 -> 2.0.0.\r\nAdopt 2.0.0? [yes/no]:", Answer: "maybe"},
+		{Prompt: "\"maybe\" isn't an answer to this question; answer yes or no, or y or n for short", Answer: "n"},
+		{Prompt: "Reason for keeping 1.0.0:", Answer: "Waiting on review."},
+		{Prompt: "team:techs/go/verify: new rule, 1.0.0.\r\nAdd it? [yes/no]:", Answer: "n"},
 		{Prompt: "Reason for excluding it:", Answer: "Covered locally."},
-		{Prompt: "team:techs/go/retry: retired.\r\nDrop it, or keep 1.0.0? [drop/keep]:", Answer: "drop"},
-		{Prompt: "team:techs/go/loaders: replaced by rules/techs/go/use-data-loaders.md, with library changes up to 1.1.0.\r\nReplacing your rule with a fork of 1.1.0 replaces or removes:\r\n  rules/techs/go/use-data-loaders.md\r\nReview later, or replace your local rule with 1.1.0? [later/replace]:", Answer: "r"},
+		{Prompt: "team:techs/go/retry: retired.\r\nDrop it? [yes/no]:", Answer: "yes"},
+		{Prompt: "team:techs/go/loaders: replaced by rules/techs/go/use-data-loaders.md, with library changes up to 1.1.0.\r\nReplacing your rule with a fork of 1.1.0 replaces or removes:\r\n  rules/techs/go/use-data-loaders.md\r\nReplace your rule with a fork of 1.1.0 now? [yes/no]:", Answer: "y"},
 		{Prompt: "Apply the update? [yes/no]:", Answer: "yes"},
 	}
 	result, err := terminalfixture.RunWithEnvironment(context.Background(), u.binary, u.directory, u.fixture.Environment, []string{"project", "update"}, steps)
 	if err != nil || result.ExitCode != 0 {
 		t.Fatalf("exit %d, %v\n%s", result.ExitCode, err, result.Transcript)
 	}
-	beforePrompts, _, prompted := strings.Cut(strings.ReplaceAll(result.Transcript, "\r\n", "\n"), "Adopt it, or keep")
+	beforePrompts, _, prompted := strings.Cut(strings.ReplaceAll(result.Transcript, "\r\n", "\n"), "Adopt 2.0.0?")
 	// A status line says what the command waits on before it reads the libraries.
 	if !prompted || !strings.HasPrefix(beforePrompts, "Reading library releases...\n"+updatePreview) {
 		t.Fatalf("the status and the complete preview didn't come before the first prompt:\n%s", result.Transcript)
 	}
 	// The preview with the answers applied comes after the last question and before the confirmation.
 	transcript := strings.ReplaceAll(result.Transcript, "\r\n", "\n")
-	afterQuestions := transcript[strings.LastIndex(transcript, "Review later, or replace your local rule"):]
+	afterQuestions := transcript[strings.LastIndex(transcript, "Replace your rule with a fork"):]
 	revised, _, confirmation := strings.Cut(afterQuestions, "Apply the update? [yes/no]:")
 	if !confirmation || !strings.Contains(revised, "Your answers:\n  Keep team:techs/go/errors at 1.0.0.\n    Reason: Waiting on review.\n  Exclude team:techs/go/verify.\n    Reason: Covered locally.\n  Replace your rule for team:techs/go/loaders with a fork of 1.1.0:\n    Replaces rules/techs/go/use-data-loaders.md\n") || strings.Contains(revised, "  major ") {
 		t.Fatalf("the answers, without the preview again, didn't come before the confirmation:\n%s", result.Transcript)
 	}
 	// Reading the forked version after the answers, and fetching the update after the confirmation, each say so.
-	if _, afterAnswer, _ := strings.Cut(transcript, "[later/replace]: r\n"); !strings.HasPrefix(afterAnswer, "Reading forked rule versions...\n") {
+	if _, afterAnswer, _ := strings.Cut(transcript, "now? [yes/no]: y\n"); !strings.HasPrefix(afterAnswer, "Reading forked rule versions...\n") {
 		t.Fatalf("no status before reading the fork:\n%s", result.Transcript)
 	}
 	if _, afterConfirmation, _ := strings.Cut(transcript, "Apply the update? [yes/no]: yes\n"); !strings.HasPrefix(afterConfirmation, "Fetching the update...\n") {
@@ -539,16 +539,16 @@ func TestUpdate_AsksInATerminal(t *testing.T) {
 // TestUpdate_TerminalCancellationWritesNothing covers declining, interrupting, and ending input.
 func TestUpdate_TerminalCancellationWritesNothing(t *testing.T) {
 	u := newUpdateFixture(t)
-	first := terminalfixture.Step{Prompt: "Adopt it, or keep 1.0.0? [adopt/keep]:", Answer: "adopt"}
+	first := terminalfixture.Step{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "yes"}
 	for _, test := range []struct {
 		name  string
 		steps []terminalfixture.Step
 		code  int
 		text  string
 	}{
-		{"decline", []terminalfixture.Step{first, {Prompt: "[add/exclude]:", Answer: "add"}, {Prompt: "[drop/keep]:", Answer: "drop"}, {Prompt: "[later/replace]:", Answer: "later"}, {Prompt: "Apply the update? [yes/no]:", Answer: "no"}}, 0, "Update cancelled. No files were written."},
-		{"interrupt", []terminalfixture.Step{first, {Prompt: "[add/exclude]:", Interrupt: true}}, 130, ""},
-		{"end of input", []terminalfixture.Step{first, {Prompt: "[add/exclude]:", EOF: true}}, 2, ""},
+		{"decline", []terminalfixture.Step{first, {Prompt: "Add it? [yes/no]:", Answer: "yes"}, {Prompt: "Drop it? [yes/no]:", Answer: "yes"}, {Prompt: "now? [yes/no]:", Answer: "no"}, {Prompt: "Apply the update? [yes/no]:", Answer: "no"}}, 0, "Update cancelled. No files were written."},
+		{"interrupt", []terminalfixture.Step{first, {Prompt: "Add it? [yes/no]:", Interrupt: true}}, 130, ""},
+		{"end of input", []terminalfixture.Step{first, {Prompt: "Add it? [yes/no]:", EOF: true}}, 2, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			before := projectFileContents(t, u.directory)
@@ -648,10 +648,10 @@ func TestUpdate_AsksAboutAPinnedForkInATerminal(t *testing.T) {
 	u := newUpdateFixture(t)
 	u.write(t, "config.yaml", "# Team rules\nschemaVersion: 2\nsources:\n  team:\n    repository: "+u.fixture.Repository+"\n    ref: release/1\n    rules:\n      include:\n        - techs/go/*\n      pins:\n        - id: techs/go/backoff\n          version: \"1.0.0\"\n          reason: 'Waiting on #45.'\n        - id: techs/go/loaders\n          version: \"1.0.0\"\n          reason: Not yet.\n      exclude:\n        - id: techs/go/loaders\n          reason: Ours covers our data layer.\n          replacedBy: techs/go/use-data-loaders\n")
 	steps := []terminalfixture.Step{
-		{Prompt: "[adopt/keep]:", Answer: "adopt"},
-		{Prompt: "[add/exclude]:", Answer: "add"},
-		{Prompt: "[drop/keep]:", Answer: "drop"},
-		{Prompt: "Review later, or replace your local rule with 1.1.0? [later/replace]:", Answer: "replace"},
+		{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "yes"},
+		{Prompt: "Add it? [yes/no]:", Answer: "yes"},
+		{Prompt: "Drop it? [yes/no]:", Answer: "yes"},
+		{Prompt: "Replace your rule with a fork of 1.1.0 now? [yes/no]:", Answer: "yes"},
 		{Prompt: "Apply the update? [yes/no]:", Answer: "yes"},
 	}
 	result, err := terminalfixture.RunWithEnvironment(context.Background(), u.binary, u.directory, u.fixture.Environment, []string{"project", "update"}, steps)
@@ -676,15 +676,15 @@ func TestUpdateDetails_NamesTheLocalRuleThatAlreadyReplacesARetiredRulesReplacem
 // and an interrupted one each say that recovery came first.
 func TestUpdate_NeverSaysNoFilesWereWrittenAfterRecovering(t *testing.T) {
 	recovered := "first recovered an interrupted earlier command"
-	first := terminalfixture.Step{Prompt: "Adopt it, or keep 1.0.0? [adopt/keep]:", Answer: "adopt"}
+	first := terminalfixture.Step{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "yes"}
 	for _, test := range []struct {
 		name  string
 		steps []terminalfixture.Step
 		code  int
 	}{
 		{"preview", nil, 0},
-		{"decline", []terminalfixture.Step{first, {Prompt: "[add/exclude]:", Answer: "add"}, {Prompt: "[drop/keep]:", Answer: "drop"}, {Prompt: "[later/replace]:", Answer: "later"}, {Prompt: "Apply the update? [yes/no]:", Answer: "no"}}, 0},
-		{"interrupt", []terminalfixture.Step{first, {Prompt: "[add/exclude]:", Interrupt: true}}, 130},
+		{"decline", []terminalfixture.Step{first, {Prompt: "Add it? [yes/no]:", Answer: "yes"}, {Prompt: "Drop it? [yes/no]:", Answer: "yes"}, {Prompt: "now? [yes/no]:", Answer: "no"}, {Prompt: "Apply the update? [yes/no]:", Answer: "no"}}, 0},
+		{"interrupt", []terminalfixture.Step{first, {Prompt: "Add it? [yes/no]:", Interrupt: true}}, 130},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			u := newUpdateFixture(t)

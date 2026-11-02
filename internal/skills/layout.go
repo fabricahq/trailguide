@@ -149,6 +149,10 @@ func (o Origins) For(name string) string {
 // directory, such as skills/pstack/show-me-your-work.
 type LayoutProblem struct {
 	Location, Problem string
+	// MoveTo is set only for a skill folder directly in skills/, as Trail Guide 0.8 and earlier kept them: the path,
+	// relative to the Trail Guide directory, of the origin folder's skill folder that the skill belongs in, so a
+	// caller can list every such move at once.
+	MoveTo string
 }
 
 // LayoutProblems returns every problem in a skills/ folder whose file and directory paths, relative to skills/, are
@@ -172,7 +176,9 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 			add(file, "skills/ holds a folder for each origin, each holding skill folders, and its "+Guide+"; move this file into a skill's folder")
 		case len(parts) == 2 && parts[1] == File:
 			topLevel[parts[0]] = true
-			add(parts[0], fmt.Sprintf("a skill's folder sits in the folder for its origin, so move it to %s/", Directory+"/"+Folder(origins.For(parts[0]), parts[0])))
+			to := Directory + "/" + Folder(origins.For(parts[0]), parts[0])
+			add(parts[0], fmt.Sprintf("a skill's folder sits in the folder for its origin, so move it to %s/", to))
+			problems[len(problems)-1].MoveTo = to
 		case len(parts) == 2:
 			topLevel[parts[0]] = true
 			add(file, "an origin folder holds only skill folders; move this file into a skill's folder")

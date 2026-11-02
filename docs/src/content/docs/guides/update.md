@@ -141,15 +141,15 @@ When you confirm, the update applies exactly the changes the preview showed, and
 
 You may have [replaced a library rule with your own rule](/guides/select-rules/#replace-a-rule), often by forking it: copying the library's rule into your project so you can edit it. Your rule doesn't follow the library, so when the library changes the original, the preview flags it as `replaced` and lists what changed. Update never touches your rule on its own; you choose one of two ways to bring it up to date.
 
-**Take the library's newest version, discarding your edits.** Choose this when you never edited your fork, or no longer need your edits. In a terminal, answer `replace` when the update asks about the rule; it first names the files it would replace or remove. In a script, pass `--update-fork team:<rule>` with `--yes`. Either way, your rule becomes a fresh fork of the newest version, exactly as [forking](/reference/cli/#fork-a-library-rule) that version would write it, its asset directory is replaced, and Trail Guide records the version you're now based on. Your edits are overwritten, so commit them first. See [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
+**Take the library's newest version, discarding your edits.** Choose this when you never edited your fork, or no longer need your edits. In a terminal, answer yes when the update asks whether to replace your rule; it first names the files it would replace or remove. In a script, pass `--update-fork team:<rule>` with `--yes`. Either way, your rule becomes a fresh fork of the newest version, exactly as [forking](/reference/cli/#fork-a-library-rule) that version would write it, its asset directory is replaced, and Trail Guide records the version you're now based on. Your edits are overwritten, so commit them first. See [Replace a fork with the newest version](/reference/cli/#replace-a-fork-with-the-newest-version).
 
 **Keep your edits and merge by hand.** Copy the library's changes you want into your rule. Then set the rule's `basedOn` in `.trailguide/config.yaml` to the version you merged. `basedOn` is how Trail Guide knows which library changes your rule already has: later previews list only the changes after it. Trail Guide never moves `basedOn` itself, because only you know whether you took the changes in.
 
-A [forked skill](/guides/fork-skills/) is different: its update keeps your edits. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed, and says whether merging them into your fork finds text conflicts. When it finds none, answer `merge`, or pass `--merge-fork fabrica:<skill>`, and Trail Guide merges the changes into your fork and moves its `basedOn`. When it finds conflicts, merge by hand and set `basedOn` yourself. See [Fork a skill](/guides/fork-skills/#merge-the-sources-changes).
+A [forked skill](/guides/fork-skills/) is different: its update keeps your edits. When the source's copy changes, the preview lists the skill as `replaced` with the files that changed, and says whether merging them into your fork finds text conflicts. When it finds none, answer yes when a terminal update asks whether to merge them, or pass `--merge-fork fabrica:<skill>`, and Trail Guide merges the changes into your fork and moves its `basedOn`. When it finds conflicts, merge by hand and set `basedOn` yourself. See [Fork a skill](/guides/fork-skills/#merge-the-sources-changes).
 
 ### New rules: add or exclude
 
-When a library adds a rule to a rule group you include, your project takes it by default. If the rule doesn't fit your project, you can turn it down with an [exclusion](/guides/select-rules/#exclude-a-rule): a line in `.trailguide/config.yaml` that leaves the rule out, with the reason why, so later updates don't offer it again. In a terminal, the update asks about each new rule and asks for the reason if you exclude it. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes`.
+When a library adds a rule to a rule group you include, your project takes it by default. If the rule doesn't fit your project, you can turn it down with an [exclusion](/guides/select-rules/#exclude-a-rule): a line in `.trailguide/config.yaml` that leaves the rule out, with the reason why, so later updates don't offer it again. In a terminal, the update asks whether to add each new rule; answer no to exclude it, and it asks for the reason. In a script, pass `--exclude team:<rule> --reason '…'` with `--yes`.
 
 ### Apply an update in a script or CI
 
@@ -342,7 +342,7 @@ sources:
 
 There are three ways to add one:
 
-- **During the update.** In a terminal, `trailguide project update` asks whether to take each major change or keep the current version, and whether to drop each retired rule or keep it. Choose to keep it, give a reason, and the command writes the pin.
+- **During the update.** In a terminal, `trailguide project update` asks whether to adopt each major change, and whether to drop each retired rule. Answer no to keep the rule at its current version, give a reason, and the command writes the pin.
 - **With `--keep`.** Pin rules as part of the update, without prompts:
 
   ```sh

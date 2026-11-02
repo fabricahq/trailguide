@@ -248,13 +248,13 @@ func TestUpdate_ShowsTheScriptsAnswersChooseBeforeConfirming(t *testing.T) {
 		want   string
 	}{
 		{"keeping errors adds a script", []string{"team:techs/go/errors", "team:techs/go/naming"}, []terminalfixture.Step{
-			{Prompt: "Adopt it, or keep 1.0.0? [adopt/keep]:", Answer: "keep"},
-			{Prompt: "Reason for keeping it:", Answer: "Not yet."},
-			{Prompt: "Adopt it, or keep 1.0.0? [adopt/keep]:", Answer: "adopt"},
+			{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "no"},
+			{Prompt: "Reason for keeping 1.0.0:", Answer: "Not yet."},
+			{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "yes"},
 		}, false, keepErrors},
 		{"keeping naming drops the script", []string{"team:techs/go/naming"}, []terminalfixture.Step{
-			{Prompt: "Adopt it, or keep 1.0.0? [adopt/keep]:", Answer: "keep"},
-			{Prompt: "Reason for keeping it:", Answer: "Not yet."},
+			{Prompt: "Adopt 2.0.0? [yes/no]:", Answer: "no"},
+			{Prompt: "Reason for keeping 1.0.0:", Answer: "Not yet."},
 		}, true, keepNaming},
 	} {
 		t.Run(run.name, func(t *testing.T) {

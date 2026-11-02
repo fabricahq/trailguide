@@ -265,7 +265,8 @@ func (s projectState) records() (sourceRecords, error) {
 }
 
 // readProject validates configuration and retains every authored and managed byte used for change detection. It
-// fails when local/ has appeared since the project opened, so the input recheck refuses it too.
+// fails when local/ has appeared since the project opened, so the input recheck refuses it too, and when skills/
+// doesn't have the layout authoredSkills reads.
 func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 	if err := requireNoLocalFolder(ctx, root); err != nil {
 		return projectState{}, err
@@ -292,6 +293,10 @@ func readProject(ctx context.Context, root *os.Root) (projectState, error) {
 			return projectState{}, err
 		}
 		*item.value = tree
+	}
+	// A skill in the wrong folder fails every later step, so an update reports it before asking any question.
+	if _, err := authoredSkills(config, state.skills); err != nil {
+		return projectState{}, err
 	}
 	return state, nil
 }

@@ -421,7 +421,7 @@ func TestBuild_RejectsInvalidAuthoredSkills(t *testing.T) {
 		code     string
 	}{
 		"file directly in skills":       {map[string]string{"skills/notes.md": "x"}, ".trailguide/skills/notes.md", ""},
-		"skill directly in skills":      {map[string]string{"skills/tidy/SKILL.md": "---\nname: tidy\n---\n"}, ".trailguide/skills/tidy", ""},
+		"skill directly in skills":      {map[string]string{"skills/tidy/SKILL.md": "---\nname: tidy\n---\n"}, ".trailguide/skills/", ""},
 		"file directly in local":        {map[string]string{"skills/local/notes.md": "x"}, ".trailguide/skills/local/notes.md", ""},
 		"unknown origin folder":         {map[string]string{"skills/team/tidy/SKILL.md": "---\nname: tidy\n---\n"}, ".trailguide/skills/team", ""},
 		"folder without SKILL.md":       {map[string]string{"skills/local/tidy/notes.md": "x"}, ".trailguide/skills/local/tidy", ""},
@@ -448,6 +448,39 @@ func TestBuild_RejectsInvalidAuthoredSkills(t *testing.T) {
 			var validation errs.ValidationError
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location {
 				t.Fatalf("got %v; want a validation error at %s", err, test.location)
+			}
+		})
+	}
+}
+
+// TestProjectCommands_ListEverySkillFolderToMoveIntoItsOrigin runs build and plans an update in a project that
+// keeps its skills directly in skills/, as Trail Guide 0.8 did: one of its own, and a fork of a source's skill. Both
+// fail with every move listed from the repository root, and the update fails before its preview, so a terminal asks
+// no question it would then throw away.
+func TestProjectCommands_ListEverySkillFolderToMoveIntoItsOrigin(t *testing.T) {
+	ctx := context.Background()
+	root := openTestProject(t)
+	options := Options{Directory: filepath.Dir(root.Name())}
+	if _, err := Initialize(ctx, options); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "config.yaml", "schemaVersion: 2\nsources:\n  pstack:\n    repository: https://example.invalid/pstack.git\n    ref: main\n    skills:\n      include: [skills/show]\n      forks:\n        skills/show:\n          as: skills/show\n          reason: We review our own way.\n")
+	writeFixture(t, root, "skills/review-loop/SKILL.md", "---\nname: review-loop\n---\n")
+	writeFixture(t, root, "skills/show/SKILL.md", "---\nname: show\n---\n")
+	want := `this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: local/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:
+
+  .trailguide/skills/review-loop/  ->  .trailguide/skills/local/review-loop/
+  .trailguide/skills/show/         ->  .trailguide/skills/pstack/show/
+
+A skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so each link from it to a file outside its folder needs one more ../, such as ../../../assets/checklist.md, unless the link is to a skill you moved into the same folder.`
+	for name, run := range map[string]func() error{
+		"build":  func() error { _, err := Build(ctx, options); return err },
+		"update": func() error { _, err := PlanUpdate(ctx, options, imports.Options{}, nil, nil); return err },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var validation *ValidationError
+			if err := run(); !errors.As(err, &validation) || validation.Location != ".trailguide/skills/" || validation.Problem != want {
+				t.Fatalf("got %v", err)
 			}
 		})
 	}

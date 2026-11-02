@@ -74,7 +74,7 @@ The update never changes your fork unless you ask. If you confirm the rest of th
 
 ## Merge the source's changes
 
-To merge, answer `merge` when a terminal update asks about the skill, or pass `--merge-fork` in a script:
+To merge, answer yes when a terminal update asks whether to merge the changes into your skill, or pass `--merge-fork` in a script:
 
 ```sh
 trailguide project update fabrica --yes --merge-fork fabrica:skills/fix-bug
