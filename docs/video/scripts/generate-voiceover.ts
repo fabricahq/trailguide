@@ -31,7 +31,7 @@ type Alignment = {
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (value === undefined || value === '') {
-    throw new Error(`Set ${name} to generate the voiceover. See video/README.md.`);
+    throw new Error(`Set ${name} to generate the voiceover. See docs/video/README.md.`);
   }
   return value;
 }

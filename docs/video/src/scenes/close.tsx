@@ -13,7 +13,7 @@ export function Close(props: SceneProps) {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 40, textAlign: 'center' }}>
         <Reveal at={0}>
           <Img
-            src={new URL('../../../docs/public/brand/logos/trailguide-horizontal-dark.svg', import.meta.url).href}
+            src={new URL('../../../public/brand/logos/trailguide-horizontal-dark.svg', import.meta.url).href}
             alt="Trailguide"
             style={{ display: 'block', width: 680, height: (680 * 72) / 302 }}
           />
