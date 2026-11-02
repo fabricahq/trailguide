@@ -677,7 +677,7 @@ func readRecordSkills(record sourceRecord, where string, paths map[string][]byte
 		if !ok && !(isCuratedSkill(id) && !record.Skills[id].Included) || ok && available.Level != snapshot.Skills[id].Level {
 			return invalidSnapshot(location, "expected one of availableSkills, with the same level")
 		}
-		if _, ok := paths[library.SkillFolder(id)+"/"+skills.File]; !ok {
+		if _, ok := paths[library.SkillFolderIn(paths, id)+"/"+skills.File]; !ok {
 			return invalidSnapshot(location, "missing the skill's SKILL.md from inventory")
 		}
 		usedBy := record.Skills[id].UsedBy
@@ -693,12 +693,32 @@ func readRecordSkills(record sourceRecord, where string, paths map[string][]byte
 	}
 	snapshot.Executable = []string{}
 	for i, file := range record.Executable {
-		if _, ok := paths[file]; !ok || i > 0 && record.Executable[i-1] >= file || !snapshot.IsSkillFile(file) {
+		if _, ok := paths[file]; !ok || i > 0 && record.Executable[i-1] >= file || !isSkillFileIn(paths, snapshot.Skills, file) {
 			return invalidSnapshot(where+".executable", "expected distinct skill files from the inventory in sorted order")
 		}
 		snapshot.Executable = append(snapshot.Executable, file)
 	}
 	return nil
+}
+
+// isSkillFileIn reports whether file is in the folder, among paths, of one of installed, as Snapshot.IsSkillFile
+// does once the snapshot has its files.
+func isSkillFileIn(paths map[string][]byte, installed map[string]library.ImportedSkill, file string) bool {
+	for id := range installed {
+		if strings.HasPrefix(file, library.SkillFolderIn(paths, id)+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// idFolder returns the folder skill id's ID names, in a snapshot whose skills sit at their IDs: the ID, or
+// curated/<source>/<ID> for a curated skill.
+func idFolder(id string) string {
+	if source, skill, curated := library.SplitCurated(id); curated {
+		return library.CuratedDirectory + "/" + source + "/" + skill
+	}
+	return id
 }
 
 // readRecordSkillLevels validates the levels of the skills recorded at location, by ID: a library's skills,
@@ -730,7 +750,7 @@ func readRecordSkillLevels(records map[string]*string, location string, nonLibra
 			}
 		}
 		for other := range records {
-			if strings.HasPrefix(library.SkillFolder(id), library.SkillFolder(other)+"/") {
+			if strings.HasPrefix(idFolder(id), idFolder(other)+"/") {
 				return nil, invalidSnapshot(where, "a skill's folder can't be inside another skill's folder, "+other)
 			}
 		}
@@ -857,7 +877,7 @@ func matchSkillUses(source rules.Source, snapshot library.Snapshot) error {
 	uses := map[string][]string{}
 	included := []string{}
 	for _, id := range slices.Sorted(maps.Keys(snapshot.Skills)) {
-		file := library.SkillFolder(id) + "/" + skills.File
+		file := snapshot.SkillFolder(id) + "/" + skills.File
 		metadata, err := skills.ReadMetadata(snapshot.Files[file], librarytree.Vendor+"/"+source.Name+"/"+file)
 		if err != nil {
 			return err

@@ -51,6 +51,7 @@ Replace them with libraries, rules, and skills your project can access.
 | Field | Meaning |
 | --- | --- |
 | `schemaVersion` | Required. `2`. See [No backward compatibility](#no-backward-compatibility). |
+| `minTrailguideVersion` | Optional. The oldest Trail Guide release that may work on this repository, such as `0.9.0`. Init writes it and update raises it. See [Minimum Trail Guide version](#minimum-trail-guide-version). |
 | `skillTargets` | Optional. Where installed copies of skills go: an array of `claude` (`.claude/skills/`) and `agents` (`.agents/skills/`). Missing means `[]`. See [Skill targets](#skill-targets). |
 | `manageAgentsFile` | Optional. `true`, the default, has init, build, sync, and update keep a Trail Guide section in the repository's `AGENTS.md`, and check verify it. `false` leaves `AGENTS.md` alone. See [AGENTS.md section](#agentsmd-section). |
 | `sources` | Map of stable source names to sources. Use an empty object for a repository that uses only its authored rules and skills. |
@@ -222,11 +223,11 @@ sources:
 | Field | Meaning |
 | --- | --- |
 | *(key)* | The ID of the source's skill, such as `skills/engineering/fix-bug`, or of a skill the source's library [curates](#curated-skills), such as `mattpocock:skills/to-spec`. |
-| `as` | Required. The ID of your authored skill in `skills/`, `skills/<name>`, installed in place of the source's skill under its own name. |
+| `as` | Required. The ID of your authored skill, `skills/<name>`, installed in place of the source's skill under its own name. Its folder is `.trailguide/skills/<source>/<name>/`, in the folder named for the source it forks. |
 | `reason` | Required non-blank text explaining why the repository uses its own skill. |
 | `basedOn` | Optional. The full 40-character commit SHA, in quotes, of the source's copy your skill was made from. For a curated skill, it's a commit of the repository the library curates it from. Leave it out for a skill you wrote from scratch. |
 
-[Forking a skill](/reference/cli/#fork-a-skill) copies it into `skills/` and writes the entry for you, with the commit it copied as `basedOn`. To fork one by hand, copy its folder into `.trailguide/skills/<name>/`, correct its frontmatter, and add the entry.
+[Forking a skill](/reference/cli/#fork-a-skill) copies it into `.trailguide/skills/<source>/<name>/` and writes the entry for you, with the commit it copied as `basedOn`. To fork one by hand, copy its folder there, correct its frontmatter, and add the entry. A fork sits in its source's folder so anyone browsing `.trailguide/skills/` can see where it came from; see [Skill folders](/reference/skill-format/#skill-folders).
 
 A fork needs no `skills.include` entry. The source supplies each skill it forks from its recorded revision, whatever `include` selects, so updates can compare it with your fork, and never installs it, nor the skills only the source's copy uses: your fork's own `trailguide-skills-used` decides what it needs. A source can exist only for its forks. If the source deletes the skill, your fork stays installed, even when `include` still names the skill, and the next update says the source no longer has it.
 
@@ -397,6 +398,28 @@ sources: {}
 
 Commands then neither write nor check `AGENTS.md`. They don't remove a section they wrote earlier: delete it yourself, along with its markers, and tell your agent to read `.trailguide/_managed/generated/RULES.md` in your own words.
 
+## Minimum Trail Guide version
+
+Everyone who works on a repository runs their own copy of Trail Guide, and a newer release can write configuration, the lock, or generated files that an older one reads differently. `minTrailguideVersion` names the oldest release that may work on the repository:
+
+```yaml
+schemaVersion: 2
+minTrailguideVersion: 0.10.0
+sources: {}
+```
+
+You don't need to maintain it. `trailguide project init` and `trailguide library init` write the version that created the configuration, and `trailguide project update` raises it to the version that ran the update, never lowering it, in the same step that writes the lock. Because a raise makes everyone else upgrade, the update's preview lists it, such as `Sets minTrailguideVersion to 0.10.0 in .trailguide/config.yaml`, and asks you to confirm it even when nothing else changes. Sync, build, and check never change it. A library's check workflow installs the release it names, so CI moves with it. Raise it by hand when you want everyone off an older release sooner, such as one with a bug that affects your repository.
+
+Every project and library command reads `minTrailguideVersion` before anything else in the configuration, and again after it recovers an interrupted command, so a configuration with settings or values an older release doesn't know still gets a clear answer. An older release fails with `upgrade-required` and writes nothing of its own, though recovering an interrupted command may already have restored or finished that command's files:
+
+```text
+Error: .trailguide/config.yaml: minTrailguideVersion is 0.10.0, but this is trailguide 0.9.2; upgrade trailguide to 0.10.0 or newer, then run the command again.
+```
+
+Upgrade Trail Guide, as [Install Trail Guide](/start-here/install/) describes, and run the command again. Development and prerelease builds don't check the field and never write it.
+
+Releases that predate the field, such as 0.8.0, can't give that answer: they reject it like any field they don't know, with `Error: unknown field minTrailguideVersion.` and `Location: configuration`. The fix is the same: upgrade Trail Guide.
+
 ## Library manifest
 
 The `library` section makes a repository a library. It publishes the repository's authored rules, rule groups, skills, and assets, and sets the level of each skill it offers:
@@ -409,7 +432,8 @@ sources:
     repository: https://github.com/mattpocock/skills.git
     ref: main
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: fabrica
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -425,14 +449,15 @@ library:
 
 | Field | Meaning |
 | --- | --- |
-| `library.schemaVersion` | Required. `1`, the [library schema version](/reference/library-schema/#schema-version) the library publishes. Unrelated to the top-level `schemaVersion`. |
+| `library.schemaVersion` | Required. `2`, the [library schema version](/reference/library-schema/#schema-version) the library publishes. Unrelated to the top-level `schemaVersion`. |
+| `library.name` | Required. The library's [name](/reference/library-schema/#library-name), a source name such as `fabrica`, which names the folder of its own skills, `.trailguide/skills/<name>/`. It can't be `local` or the name of one of the library's sources. |
 | `library.license` | Optional. The terms that cover everything the library publishes. See [License metadata](/reference/library-schema/#license-metadata). |
 | `library.skills.required` | Skills every project that uses the library installs. |
 | `library.skills.recommended` | Skills a project installs when it includes `recommended`. |
 | `library.skills.offered` | Skills a project installs when it names them or includes `"*"`. |
 | `library.skills.dependencies` | Skills a project installs only with the library's skills that call them; see [Dependencies](#dependencies). |
 
-A `library` section with only `schemaVersion: 1` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
+A `library` section with only `schemaVersion: 2` and `name` makes a repository a library with no levels and no declared license. Each level, and `dependencies`, is an optional list. Each entry is either an authored skill's ID, such as `skills/ship-service`, or a curated skill, `<source>:<skill-id>`, where `<source>` names an entry in this repository's own `sources`. A skill can appear in one list only. An authored skill that no list names is offered.
 
 `trailguide library check` validates the manifest, and fails when two listed skills, authored or curated, have the same install name, so projects never inherit a clash from one library. See [Library schema](/reference/library-schema/).
 
@@ -464,7 +489,8 @@ sources:
     skills:
       include: [skills/skill-creator] # installs it in this repository
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: fabrica
   skills:
     recommended: [skills/add-skill]
     dependencies: [anthropic:skills/skill-creator] # installs only with add-skill
@@ -473,7 +499,7 @@ library:
 `add-skill` names the curated skill by the ID `library.skills` lists it under:
 
 ```markdown
-<!-- fabricahq/.trailguide: .trailguide/skills/add-skill/SKILL.md -->
+<!-- fabricahq/.trailguide: .trailguide/skills/fabrica/add-skill/SKILL.md -->
 ---
 name: add-skill
 description: Add a skill to this library.
@@ -543,7 +569,7 @@ Trail Guide does not infer a host's web interface from its name. See [How source
 ## Source names and IDs
 
 Choose stable source names such as `fabrica` or `acme`.
-Names must match `[a-z][a-z0-9-]*`. `techs` and `practices` are reserved, because authored rules use those names in `_managed/generated/rules/`.
+Names must match `[a-z][a-z0-9-]*`. `techs` and `practices` are reserved, because authored rules use those names in `_managed/generated/rules/`, and so is `local`, which names a project's own skills and rules.
 Declare each repository once.
 
 Inside a source's configuration, rule and skill IDs are relative to that source, without its name. Everywhere else, in generated files, provenance, review findings, and commands such as `trailguide project update fabrica:skills/build-feature`, an included rule or skill has a **project ID** that starts with its source name:
@@ -558,7 +584,7 @@ skills/fix-bug
 ```
 
 - A rule ID is the rule's path in its repository's `rules/` folder, without `.md`.
-- A skill ID is the skill folder's path: `skills/<name>` for a library's skills, and the folder's path from the repository root for a non-library source's, such as `skills/engineering/to-spec`.
+- A skill ID is `skills/<name>` for a skill a repository authors, in a library or a project, whatever [origin folder](/reference/skill-format/#skill-folders) holds it, and the folder's path from the repository root for a non-library source's skill, such as `skills/engineering/to-spec`.
 - A curated skill's project ID adds the curated source's name after the library's, as the manifest lists it. It keeps that ID when the project declares the curated repository as its own source, which only decides the commit the skill comes from.
 - Authored rules and skills have no source name.
 
@@ -653,7 +679,7 @@ There's no upgrade command. Rewrite the file by hand:
 ## Version boundaries
 
 The top-level `schemaVersion` describes this configuration. A library's [`library.schemaVersion`](/reference/library-schema/#schema-version) describes what it publishes, and projects that import the library ignore its top-level `schemaVersion`, so this schema can change without breaking a library's consumers.
-The caller-supplied `toolVersion` identifies the tool that generated the output.
+[`minTrailguideVersion`](#minimum-trail-guide-version) says which Trail Guide releases may work on the repository; the files Trail Guide writes don't record the release that wrote them.
 
 Each source's `ref` and pins state which versions the project wants: `ref` names the library release or revision, and every rule without a pin follows the source's lock, which `trailguide project update` moves together with `ref`.
 The lockfile records each included rule's and skill's version, library release, and commit, or a non-library source's commit, used by offline commands. It is output Trail Guide owns, not a second version the project chooses.

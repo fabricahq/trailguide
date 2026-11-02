@@ -40,7 +40,7 @@ Ask what the skill's main job is: a playbook changes the work, and a review judg
 
 ## Create the skill
 
-Skills you author live in `.trailguide/skills/`, in a library and in a project alike.
+Skills you author live in `.trailguide/skills/`, in a library and in a project alike, inside a folder for each skill's origin: `skills/<library.name>/` for a library's own skills, `skills/local/` for a project's, and `skills/<source>/` for forks of a source's skills. The commands below choose the folder for you; see [Skill folders](/reference/skill-format/#skill-folders).
 
 ### In a library
 
@@ -52,7 +52,7 @@ trailguide library add skill fix-bug \
   --type playbook
 ```
 
-This writes `.trailguide/skills/fix-bug/SKILL.md`, with your name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. `trailguide library check` fails until you replace the body and remove the marker.
+This writes `.trailguide/skills/<library.name>/fix-bug/SKILL.md`, such as `.trailguide/skills/fabrica/fix-bug/SKILL.md`, with your name, description, and type in its frontmatter, and a body with the `trailguide:draft` marker. `trailguide library check` fails until you replace the body and remove the marker.
 
 The folder's path becomes the skill's ID, `skills/fix-bug`, and its name becomes the folder name of every installed copy, unless a project renames it. Use 1 to 64 lowercase letters, digits, and hyphens, and keep the name stable once projects install the skill; see [Skill IDs](/reference/skill-format/#skill-ids).
 
@@ -68,7 +68,7 @@ trailguide project add skill release-checklist \
   --type playbook
 ```
 
-This writes `.trailguide/skills/release-checklist/SKILL.md`. A skill in a repository that isn't a library has no version. It can cite rules from your sources by project ID, with the source name, such as `fabrica:practices/testing/verify-retry-limits`, and your own rules by their bare ID, such as `practices/release/tag-from-main`.
+This writes `.trailguide/skills/local/release-checklist/SKILL.md`. A skill in a repository that isn't a library has no version. It can cite rules from your sources by project ID, with the source name, such as `fabrica:practices/testing/verify-retry-limits`, and your own rules by their bare ID, such as `practices/release/tag-from-main`.
 
 To change a skill you include from a source for one project, fork it instead of starting over:
 
@@ -77,7 +77,7 @@ trailguide project add skill --from fabrica:skills/fix-bug \
   --reason 'We fix bugs behind a feature flag first.'
 ```
 
-The fork copies the version the project installs into `.trailguide/skills/fix-bug/`, rewrites its citations to project IDs, and records it under the source's `skills.forks`, so the fork installs in place of the source's skill. A required skill can't be forked. See [Fork a skill](/guides/fork-skills/) for editing a fork and merging the source's later changes into it. A skill your library source curates from another repository forks the same way, such as `--from fabrica:mattpocock:skills/to-spec`.
+The fork copies the version the project installs into `.trailguide/skills/fabrica/fix-bug/`, rewrites its citations to project IDs, and records it under the source's `skills.forks`, so the fork installs in place of the source's skill. A required skill can't be forked. See [Fork a skill](/guides/fork-skills/) for editing a fork and merging the source's later changes into it. A skill your library source curates from another repository forks the same way, such as `--from fabrica:mattpocock:skills/to-spec`.
 
 In a library, fork a skill from one of the library's sources, such as a third party's skill you want to publish with your own changes:
 
@@ -86,9 +86,9 @@ trailguide library add skill --from pstack:pstack/skills/show-me-your-work \
   --reason 'We ask for evidence before every claim.'
 ```
 
-The fork copies the skill at the revision the source's `ref` names into `.trailguide/skills/show-me-your-work/`, and records the source, the skill, and the commit it copied in `config.yaml`. When you move the source's `ref`, `trailguide library check` lists what the source changed in the original since that commit. See [library add skill](/reference/cli/#fork-a-skill-into-the-library).
+The fork copies the skill at the revision the source's `ref` names into `.trailguide/skills/pstack/show-me-your-work/`, and records the source, the skill, and the commit it copied in `config.yaml`. When you move the source's `ref`, `trailguide library check` lists what the source changed in the original since that commit. See [library add skill](/reference/cli/#fork-a-skill-into-the-library).
 
-A source can exist only to track forks. Projects that use your library never read its `sources`, so declaring a third party's repository to fork from it doesn't offer that repository to them; they get only the forks, through `library.skills`. Keep the source declared for as long as you want check to compare your forks with it, and move its `ref` to compare with a newer revision. To stop tracking a fork, delete its `skills.forks` entry, and the source once nothing else uses it; the fork stays a skill of your own.
+A source can exist only to track forks. Projects that use your library never read its `sources`, so declaring a third party's repository to fork from it doesn't offer that repository to them; they get only the forks, through `library.skills`. Keep the source declared for as long as you want check to compare your forks with it, and move its `ref` to compare with a newer revision. To stop tracking a fork, delete its `skills.forks` entry, and the source once nothing else uses it, and move the skill's folder into the folder for your own skills, such as with `git mv .trailguide/skills/pstack/show-me-your-work .trailguide/skills/fabrica/`; the fork stays a skill of your own, with the same ID.
 
 ## Write the steps
 
@@ -138,7 +138,7 @@ All three are optional. When a project installs the skill, Trail Guide writes th
 
 ## Example: a playbook
 
-This original example is a complete playbook in a library, `.trailguide/skills/fix-bug/SKILL.md`:
+This original example is a complete playbook in a library named `fabrica`, `.trailguide/skills/fabrica/fix-bug/SKILL.md`:
 
 ```markdown
 ---
@@ -190,7 +190,7 @@ Each step has one outcome, names the rules it applies, and says what to do when 
 
 ## Example: a review
 
-A review skill states what it examines, the criteria, and what it reports, and leaves the work unchanged. This is `.trailguide/skills/review-tests/SKILL.md` in the same library:
+A review skill states what it examines, the criteria, and what it reports, and leaves the work unchanged. This is `.trailguide/skills/fabrica/review-tests/SKILL.md` in the same library:
 
 ```markdown
 ---
@@ -224,8 +224,8 @@ Check validates the folder, the frontmatter, the `trailguide-` keys, the rules a
 
 ```text
 Error: skills don't pass library check:
-  - skills/fix-bug/SKILL.md: trailguide-rules-used names practices/testing/reproduce-bug-with-a-failing-test, which isn't a rule in this library
-  - skills/fix-bug/SKILL.md: trailguide-skill-type is workflow; use playbook or review, or leave it out
+  - skills/fabrica/fix-bug/SKILL.md: trailguide-rules-used names practices/testing/reproduce-bug-with-a-failing-test, which isn't a rule in this library
+  - skills/fabrica/fix-bug/SKILL.md: trailguide-skill-type is workflow; use playbook or review, or leave it out
 ```
 
 [Validation](/reference/skill-format/#validation) lists every check and its message.
@@ -240,7 +240,8 @@ In a library, decide how strongly projects should take the skill, and list it in
 
 ```yaml
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: fabrica
   skills:
     required: [skills/ship-service]
     recommended: [skills/fix-bug, skills/review-tests]
@@ -305,7 +306,7 @@ skills:
   skills/fix-bug: new
 ```
 
-In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own and adding a `skills.forks` entry for the source's skill with `as: skills/<name>`; see [Configuration](/reference/configuration/#fork-a-skill). To remove one of your own skills, delete its folder and any `skills.forks` entry that names it as `as`, then run `trailguide project build`.
+In a project, replace a skill you include from a source by forking it with `trailguide project add skill --from`, or by writing your own in `.trailguide/skills/<source>/<name>/` and adding a `skills.forks` entry for the source's skill with `as: skills/<name>`; see [Configuration](/reference/configuration/#fork-a-skill). To remove one of your own skills, delete its folder and any `skills.forks` entry that names it as `as`, then run `trailguide project build`.
 
 ## Next steps
 

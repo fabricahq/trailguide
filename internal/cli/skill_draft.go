@@ -70,8 +70,8 @@ func (f *authoringFlags) collectSkill(cmd *cobra.Command, name string) (string, 
 
 // askDescription prompts for a skill's description when --description wasn't given, after the plan checked the
 // skill's folder.
-func (f *authoringFlags) askDescription(name string, isLibrary bool) (string, error) {
-	f.introduction = skillIntroduction(name, isLibrary)
+func (f *authoringFlags) askDescription(folder string, isLibrary bool) (string, error) {
+	f.introduction = skillIntroduction(folder, isLibrary)
 	if !f.command.Flags().Changed("description") {
 		if !f.interactive() {
 			return "", usage(fmt.Errorf("--description is required: pass it as a flag, since without a terminal, or with --json or --non-interactive, the command can't ask for it"))
@@ -85,11 +85,12 @@ func (f *authoringFlags) askDescription(name string, isLibrary bool) (string, er
 	return f.value("description"), nil
 }
 
-// skillIntroduction explains, before the description prompt, where the skill goes and what a description says.
-func skillIntroduction(name string, isLibrary bool) string {
-	heading := "Adding a skill at: .trailguide/skills/" + name + "/"
+// skillIntroduction explains, before the description prompt, where the skill goes, folder, its path in the
+// repository, and what a description says.
+func skillIntroduction(folder string, isLibrary bool) string {
+	heading := "Adding a skill at: " + folder + "/"
 	if !isLibrary {
-		heading = "Adding a project-only skill at: .trailguide/skills/" + name + "/\n\nThis skill belongs to this project."
+		heading = "Adding a project-only skill at: " + folder + "/\n\nThis skill belongs to this project."
 	}
 	return heading + `
 

@@ -3,6 +3,7 @@
 package library
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -11,10 +12,10 @@ import (
 	"testing"
 )
 
-// TestInitialize_WritesTheDocumentedCheckWorkflow pins the running version and matches the guide's workflow outside the install step.
+// TestInitialize_WritesTheDocumentedCheckWorkflow matches the guide's workflow outside the install step.
 func TestInitialize_WritesTheDocumentedCheckWorkflow(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
-	result, err := Initialize(context.Background(), options, nil, "0.2.0")
+	result, err := Initialize(context.Background(), withToolVersion(options, "0.2.0"), "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,9 +28,6 @@ func TestInitialize_WritesTheDocumentedCheckWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := string(data)
-	if !strings.Contains(workflow, "\n          version=0.2.0\n") || strings.Contains(workflow, checkWorkflowVersion) {
-		t.Fatalf("workflow isn't pinned to v0.2.0:\n%s", workflow)
-	}
 	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
 	if err != nil {
 		t.Fatal(err)
@@ -46,23 +44,48 @@ func TestInitialize_WritesTheDocumentedCheckWorkflow(t *testing.T) {
 	}
 }
 
-// TestInitialize_PinsReleasesAndInstallsTheLatestForDevelopmentBuilds, which no release published.
-func TestInitialize_PinsReleasesAndInstallsTheLatestForDevelopmentBuilds(t *testing.T) {
-	latest := `version=$(gh release view --repo fabricahq/trailguide --json tagName --jq '.tagName | ltrimstr("v")')`
-	for version, installed := range map[string]string{
-		"0.2.0":                   "version=0.2.0",
-		"0.3.0-rc.1":              "version=0.3.0-rc.1",
-		"0.0.0-development":       latest,
-		"0.0.0-dev.g0123456789ab": latest,
-	} {
+// TestInitialize_WritesOneWorkflowForEveryBuild, since the workflow reads the release to install from the
+// configuration when it runs.
+func TestInitialize_WritesOneWorkflowForEveryBuild(t *testing.T) {
+	for _, version := range []string{"0.2.0", "0.3.0-rc.1", "0.0.0-development"} {
 		options := Options{Directory: t.TempDir()}
-		if _, err := Initialize(context.Background(), options, nil, version); err != nil {
+		if _, err := Initialize(context.Background(), withToolVersion(options, version), "", nil); err != nil {
 			t.Fatal(version, err)
 		}
 		data, err := os.ReadFile(filepath.Join(options.Directory, ".github/workflows/trailguide.yml"))
-		if err != nil || !strings.Contains(string(data), "\n          "+installed+"\n") {
-			t.Fatalf("%s: want %q in:\n%s", version, installed, data)
+		if err != nil || !bytes.Equal(data, checkWorkflow) {
+			t.Fatalf("%s: %v\n%s", version, err, data)
 		}
+	}
+}
+
+// TestCheckWorkflowRelease reads the release a workflow from an earlier trailguide pins, and none from the
+// current workflow.
+func TestCheckWorkflowRelease(t *testing.T) {
+	for workflow, want := range map[string]string{
+		"run: |\n          version=0.9.0\n          archive=x\n": "0.9.0",
+		"run: |\n          version=0.9.0-rc.1\n":                 "",
+		string(checkWorkflow):                                    "",
+	} {
+		directory := t.TempDir()
+		edit(t, directory, map[string]string{".github/workflows/trailguide.yml": workflow})
+		root, err := os.OpenRoot(directory)
+		if err != nil {
+			t.Fatal(err)
+		}
+		version, ok, err := CheckWorkflowRelease(context.Background(), root)
+		root.Close()
+		if err != nil || ok != (want != "") || ok && version.String() != want {
+			t.Errorf("%q: %v %v %v, want %q", workflow, version, ok, err, want)
+		}
+	}
+	root, err := os.OpenRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	if _, ok, err := CheckWorkflowRelease(context.Background(), root); ok || err != nil {
+		t.Fatalf("no workflow: %v %v", ok, err)
 	}
 }
 
@@ -71,7 +94,7 @@ func TestInitialize_KeepsAnExistingWorkflow(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
 	custom := "name: Custom\n"
 	edit(t, options.Directory, map[string]string{".github/workflows/trailguide.yml": custom})
-	result, err := Initialize(context.Background(), options, nil, "0.2.0")
+	result, err := Initialize(context.Background(), withToolVersion(options, "0.2.0"), "", nil)
 	if err != nil || strings.Contains(strings.Join(result.Written(), "\n"), "trailguide.yml") {
 		t.Fatal(result, err)
 	}
@@ -84,7 +107,7 @@ func TestInitialize_KeepsAnExistingWorkflow(t *testing.T) {
 func TestInitialize_RejectsVersionsThatArentReleaseTags(t *testing.T) {
 	for _, version := range []string{"v0.2.0", "0.2", "0.2.0 && curl example.invalid", ""} {
 		options := Options{Directory: filepath.Join(t.TempDir(), "library")}
-		if _, err := Initialize(context.Background(), options, nil, version); errorCode(err) != "invalid-version" {
+		if _, err := Initialize(context.Background(), withToolVersion(options, version), "", nil); errorCode(err) != "invalid-version" {
 			t.Fatalf("%q: %v", version, err)
 		}
 		if _, err := os.Stat(options.Directory); !os.IsNotExist(err) {

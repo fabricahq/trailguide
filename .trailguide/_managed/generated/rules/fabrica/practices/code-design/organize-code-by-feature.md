@@ -5,7 +5,7 @@
 
 Rule ID: `fabrica:practices/code-design/organize-code-by-feature`
 
-Version: 1.0.0
+Version: 1.1.0
 
 **When to read:** Before planning, writing, moving, or reviewing where files live in a project, such as adding a feature, creating shared components or utilities, or choosing import paths.
 
@@ -23,6 +23,7 @@ Move code to a shared location only when a second feature uses it.
 - Give each feature, such as a page or domain area, its own folder with its components, hooks, utilities, API calls, and tests.
 - Keep a shared folder, such as `common` or `shared`, for code that more than one feature actually uses, and keep it small.
 - Move code from a feature folder to the shared folder when a second feature needs it, not in anticipation.
+  This is a placement rule: a module may already have a general interface that hides its implementation and serves current needs within one feature.
 - In frameworks with file-based routing, keep route files thin and put the feature's implementation in its feature folder.
 - Import files within the same feature with relative paths, so the feature can move without editing its internal imports.
   Import from other features and shared code with the project's path aliases.
@@ -72,7 +73,7 @@ A small project with a few files in one folder is not a violation.
 
 ## Source and attribution
 
-**Rule source:** [Original rule](https://github.com/fabricahq/public-library/blob/568e32f46cc3bf557ab90e82b8df6d661b839112/practices/code-design/organize-code-by-feature.md)
+**Rule source:** [Original rule](https://github.com/fabricahq/public-library/blob/f938937ece02629a35f7a1b8d554654c679e8738/.trailguide/rules/practices/code-design/organize-code-by-feature.md)
 
 **Attribution:** [Adapted from mkosir TypeScript Style Guide guidance \(organize-projects-by-feature, colocate-code-by-feature, use-relative-imports-within-feature; MIT, notice retained in NOTICE.md\): merged the colocation, feature-organization, and relative-import rules, moved them to code design, restructured to the rule template, and replaced the long example trees with one comparison.](<https://github.com/mkosir/typescript-style-guide/blob/86bebd58a987e23277dba02028c0ee2d6ffb5073/website/src/pages/index.mdx>)
 

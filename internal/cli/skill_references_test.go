@@ -16,11 +16,11 @@ import (
 func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		".trailguide/skills/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md).\n"),
-		".trailguide/skills/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
-		".trailguide/skills/redesign/steps.md": []byte("# Steps\n"),
-		".trailguide/skills/broken/SKILL.md":   []byte("---\nname: broken\ndescription: Broken.\n---\nSee [Redesign](../redesign/SKILL.md) and [gone](../gone/SKILL.md).\n"),
+		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		".trailguide/skills/library/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md).\n"),
+		".trailguide/skills/library/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
+		".trailguide/skills/library/redesign/steps.md": []byte("# Steps\n"),
+		".trailguide/skills/library/broken/SKILL.md":   []byte("---\nname: broken\ndescription: Broken.\n---\nSee [Redesign](../redesign/SKILL.md) and [gone](../gone/SKILL.md).\n"),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +51,7 @@ func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) 
 		}
 	}
 	installed, err := os.ReadFile(filepath.Join(directory, ".claude/skills/attack/SKILL.md"))
-	if err != nil || !strings.Contains(string(installed), "[Redesign](../../../.trailguide/_managed/generated/references/team/skills/redesign/SKILL.md)") {
+	if err != nil || !strings.Contains(string(installed), "[Redesign](../../../.trailguide/_managed/generated/references/team/skills/library/redesign/SKILL.md)") {
 		t.Fatalf("installed attack:\n%s\n%v", installed, err)
 	}
 	configure("broken")
@@ -60,10 +60,10 @@ func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) 
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatal(out, err)
 	}
-	if code != 1 || result.Error == nil || result.Error.Code != "reference-missing" || result.Error.Kind != "validation" || result.Error.Location != "sources.team: .trailguide/skills/broken/SKILL.md" || !strings.Contains(result.Error.Message, "links to ../gone/SKILL.md (.trailguide/skills/gone/SKILL.md) at commit ") {
+	if code != 1 || result.Error == nil || result.Error.Code != "reference-missing" || result.Error.Kind != "validation" || result.Error.Location != "sources.team: .trailguide/skills/library/broken/SKILL.md" || !strings.Contains(result.Error.Message, "links to ../gone/SKILL.md (.trailguide/skills/library/gone/SKILL.md) at commit ") {
 		t.Fatalf("exit %d, response %s", code, out)
 	}
-	if reference := result.Error.Reference; reference == nil || reference.Destination != "../gone/SKILL.md" || reference.Target != ".trailguide/skills/gone/SKILL.md" || len(reference.Chain) != 1 {
+	if reference := result.Error.Reference; reference == nil || reference.Destination != "../gone/SKILL.md" || reference.Target != ".trailguide/skills/library/gone/SKILL.md" || len(reference.Chain) != 1 {
 		t.Fatalf("reference = %+v", result.Error.Reference)
 	}
 	if _, err := os.Stat(filepath.Join(directory, ".claude/skills/attack/SKILL.md")); err != nil {
@@ -74,11 +74,11 @@ func TestSkillReferences_BuildAndCheckOfflineAndReportBrokenLinks(t *testing.T) 
 func TestSkillReferences_WarnAboutAnExcludedSkillInHumanAndJSONOutput(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		".trailguide/skills/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md) and [the guide](../../../docs/guide.md).\n"),
-		".trailguide/skills/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
-		".trailguide/skills/redesign/steps.md": []byte("# Steps\n"),
-		"docs/guide.md":                        []byte("# Guide\n\nAlso [Redesign](../.trailguide/skills/redesign/SKILL.md).\n"),
+		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		".trailguide/skills/library/attack/SKILL.md":   []byte("---\nname: attack\ndescription: Attack.\n---\nCompare [Redesign](../redesign/SKILL.md) and [the guide](../../../../docs/guide.md).\n"),
+		".trailguide/skills/library/redesign/SKILL.md": []byte("---\nname: redesign\ndescription: Redesign.\n---\nSee [the steps](steps.md).\n"),
+		".trailguide/skills/library/redesign/steps.md": []byte("# Steps\n"),
+		"docs/guide.md": []byte("# Guide\n\nAlso [Redesign](../.trailguide/skills/library/redesign/SKILL.md).\n"),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestSkillReferences_WarnAboutAnExcludedSkillInHumanAndJSONOutput(t *testing
 	if len(result.Value.Warnings) != 1 || !strings.HasPrefix(result.Value.Warnings[0], warning) {
 		t.Errorf("JSON warnings = %q", result.Value.Warnings)
 	}
-	if links := result.Value.ExcludedSkillLinks; len(links) != 1 || links[0].Skill != "team:skills/attack" || links[0].Excluded != "team:skills/redesign" || strings.Join(links[0].Chain, " ") != ".trailguide/skills/attack/SKILL.md .trailguide/skills/redesign/SKILL.md" || links[0].Uses {
+	if links := result.Value.ExcludedSkillLinks; len(links) != 1 || links[0].Skill != "team:skills/attack" || links[0].Excluded != "team:skills/redesign" || strings.Join(links[0].Chain, " ") != ".trailguide/skills/library/attack/SKILL.md .trailguide/skills/library/redesign/SKILL.md" || links[0].Uses {
 		t.Errorf("JSON excluded skill links = %+v", links)
 	}
 	if _, err := os.Stat(filepath.Join(directory, ".claude/skills/redesign")); !os.IsNotExist(err) {

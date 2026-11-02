@@ -93,13 +93,17 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if input.skills, err = git.trackedSkills(ctx, input.skills); err != nil {
 		return checkedLibrary{}, err
 	}
-	if err = requireLeveledSkills(input.skills, input.tree.Files[librarytree.Manifest]); err != nil {
+	found, err := librarySkills(input.skills, input.tree.Files[librarytree.Manifest])
+	if err != nil {
 		return checkedLibrary{}, err
 	}
-	if input.references, err = requireSkillReferences(ctx, root, git, input.skills); err != nil {
+	if err = requireLeveledSkills(found, input.tree.Files[librarytree.Manifest]); err != nil {
 		return checkedLibrary{}, err
 	}
-	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], input.skills, curated)
+	if input.references, err = requireSkillReferences(ctx, root, git, input.skills, found); err != nil {
+		return checkedLibrary{}, err
+	}
+	curatedCalls, err := requireCuratedSkills(ctx, input.tree.Files[librarytree.Manifest], found, curated)
 	if err != nil {
 		return checkedLibrary{}, err
 	}
@@ -119,7 +123,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		}
 	}
 	slices.Sort(current)
-	currentSkills := versionedSkills(input.skills)
+	currentSkills := slices.Sorted(maps.Keys(found))
 	result.SkillCount = len(currentSkills)
 	changes, warnings, err := git.compare(ctx, input.tree.Files, current, input.notes, input.skills, currentSkills)
 	if err != nil {
@@ -140,8 +144,8 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if declaration != nil {
 		curatedSkills, dependencies = declaration.Skills.Curated(), declaration.Skills.Dependencies
 	}
-	problems := skillProblems(input.skills, current, curatedSkills, changes)
-	if problems = append(problems, uncalledDependencies(input.skills, dependencies, curatedCalls)...); len(problems) > 0 {
+	problems := skillProblems(found, current, curatedSkills, changes)
+	if problems = append(problems, uncalledDependencies(found, dependencies, curatedCalls)...); len(problems) > 0 {
 		return checkedLibrary{}, failure("invalid-skill", "skills don't pass library check:\n  - "+strings.Join(problems, "\n  - "), nil)
 	}
 	plan, err := changes.plan()
@@ -162,7 +166,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 		result.Warnings = append(result.Warnings, "The license has no SPDX expression. Declare the library terms explicitly.")
 	}
 	result.Warnings = append(result.Warnings, warnings...)
-	result.Warnings = append(result.Warnings, interfaceFileWarnings(input.skills)...)
+	result.Warnings = append(result.Warnings, interfaceFileWarnings(found)...)
 	if err = ctx.Err(); err != nil {
 		return checkedLibrary{}, err
 	}
@@ -402,8 +406,8 @@ func requireLibraryUnchanged(ctx context.Context, root *os.Root, before checkInp
 }
 
 // requireLeveledSkills fails when manifest, the library's configuration, gives a level to an own skill the library
-// doesn't have: a folder in tree, the library's skills/ folder, with a SKILL.md.
-func requireLeveledSkills(tree *filetxn.Tree, manifest []byte) error {
+// doesn't have: one of found, the library's skills by ID.
+func requireLeveledSkills(found map[string]skills.Skill[[]byte], manifest []byte) error {
 	declaration, err := rules.ParseLibraryManifest(manifest, manifestPath)
 	if err != nil || declaration == nil {
 		return err
@@ -413,9 +417,9 @@ func requireLeveledSkills(tree *filetxn.Tree, manifest []byte) error {
 		if strings.Contains(id, ":") {
 			continue
 		}
-		if _, ok := tree.Files[strings.TrimPrefix(id, skills.Directory+"/")+"/"+skills.File]; tree == nil || !ok {
-			file := librarytree.Directory + "/" + id + "/" + skills.File
-			return &ValidationError{Location: manifestPath + ": " + declaration.Skills.Field(id), Problem: id + " names no skill of the library, because " + file + " doesn't exist; add the skill, or remove it from the list"}
+		if _, ok := found[id]; !ok {
+			name := strings.TrimPrefix(id, skills.Directory+"/")
+			return &ValidationError{Location: manifestPath + ": " + declaration.Skills.Field(id), Problem: id + " names no skill of the library, because no origin folder of " + skillsDirectory + "/ holds a skill named " + name + "; add the skill, or remove it from the list"}
 		}
 	}
 	return nil

@@ -35,7 +35,7 @@ func generateUsing(t *testing.T, snapshot map[string]library.ImportedSkill, file
 		team.Snapshot.Files[id+"/SKILL.md"] = data
 	}
 	libraries["team"] = team
-	return Generate(config, libraries, nil, Options{LocalSkills: local})
+	return Generate(config, libraries, nil, Options{LocalSkills: locate(config, local)})
 }
 
 func TestGenerateShowsWhichSkillsEachSkillUsesAndWhyItIsInstalled(t *testing.T) {
@@ -75,23 +75,23 @@ func TestGenerateRejectsAnAuthoredSkillThatUsesASkillTheProjectDoesNotInstall(t 
 		problem  string
 	}{
 		"a missing authored skill": {
-			map[string]SkillFiles{"skills/release": authored("release", "skills/tag")}, "skills/release/SKILL.md",
+			map[string]SkillFiles{"skills/release": authored("release", "skills/tag")}, "skills/local/release/SKILL.md",
 			"trailguide-skills-used names skills/tag, which isn't a skill in .trailguide/skills/; write the skill, or name a source's skill with its source name, such as fabrica:skills/tag",
 		},
 		"an unknown source": {
-			map[string]SkillFiles{"skills/release": authored("release", "other:skills/build")}, "skills/release/SKILL.md",
+			map[string]SkillFiles{"skills/release": authored("release", "other:skills/build")}, "skills/local/release/SKILL.md",
 			"trailguide-skills-used names other:skills/build, but the configuration has no source named other; add the source, or correct the source name",
 		},
 		"a source's skill the project doesn't install": {
-			map[string]SkillFiles{"skills/release": authored("release", "team:skills/tdd")}, "skills/release/SKILL.md",
+			map[string]SkillFiles{"skills/release": authored("release", "team:skills/tdd")}, "skills/local/release/SKILL.md",
 			"trailguide-skills-used names team:skills/tdd, which the project doesn't install; add skills/tdd to sources.team.skills.include, then run trailguide project sync",
 		},
 		"a curated skill the library doesn't list": {
-			map[string]SkillFiles{"skills/release": authored("release", "team:anthropic:skills/skill-creator")}, "skills/release/SKILL.md",
+			map[string]SkillFiles{"skills/release": authored("release", "team:anthropic:skills/skill-creator")}, "skills/local/release/SKILL.md",
 			"trailguide-skills-used names team:anthropic:skills/skill-creator, which library team doesn't curate at the revision the project installs; remove it, or declare the skill's repository as a source of your own and name the skill with that source's name",
 		},
 		"authored skills in a cycle": {
-			map[string]SkillFiles{"skills/release": authored("release", "skills/tag"), "skills/tag": authored("tag", "skills/release")}, "skills/release/SKILL.md",
+			map[string]SkillFiles{"skills/release": authored("release", "skills/tag"), "skills/tag": authored("tag", "skills/release")}, "skills/local/release/SKILL.md",
 			"trailguide-skills-used forms a cycle: skills/release -> skills/tag -> skills/release. A skill installs with every skill it uses, so uses can't form a cycle; remove one of them",
 		},
 	}
@@ -125,7 +125,7 @@ func TestGenerateRedirectsAUseOfAnExcludedSkillToItsReplacement(t *testing.T) {
 	}
 	libraries["team"] = team
 	local := map[string]SkillFiles{"skills/our-tdd": {Files: map[string][]byte{"SKILL.md": skillFile("our-tdd")}, Executable: []string{}}}
-	output, err := Generate(config, libraries, nil, Options{LocalSkills: local})
+	output, err := Generate(config, libraries, nil, Options{LocalSkills: locate(config, local)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -77,7 +77,7 @@ func ListSkills(ctx context.Context, options Options) (SkillListing, error) {
 	if err != nil {
 		return SkillListing{}, err
 	}
-	authored, err := authoredSkills(state.skills)
+	authored, err := authoredSkills(state.config, state.skills)
 	if err != nil {
 		return SkillListing{}, err
 	}

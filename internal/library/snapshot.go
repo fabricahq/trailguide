@@ -43,7 +43,7 @@ type Snapshot struct {
 	// Files maps each library path to its original bytes, excluding _source.json, except config.yaml, which holds
 	// what the library publishes of its manifest, as rules.PublishedManifest gives it. The snapshot holds one version
 	// of each imported rule, so every file is stored at its library path. Each skill's files are stored in the
-	// folder SkillFolder names, such as skills/build-feature/SKILL.md.
+	// folder SkillFolder names, such as skills/acme/build-feature/SKILL.md.
 	Files map[string][]byte `json:"files"`
 	// NonLibrary reports that the source's repository has no library manifest at Commit, so the snapshot holds only
 	// skills, at their paths in the repository, and no rules, release, or catalog files.
@@ -95,13 +95,34 @@ func SplitCurated(id string) (source, skill string, curated bool) {
 	return strings.Cut(id, ":")
 }
 
-// SkillFolder returns the folder, in Files, that holds the files of skill id: its ID for a skill the source itself
-// publishes, and curated/<source>/<ID> for a curated one.
-func SkillFolder(id string) string {
-	if source, skill, curated := SplitCurated(id); curated {
-		return CuratedDirectory + "/" + source + "/" + skill
+// SkillFolder returns the folder, in Files, that holds the files of skill id, as SkillFolderIn finds it.
+func (s Snapshot) SkillFolder(id string) string { return SkillFolderIn(s.Files, id) }
+
+// SkillFolderIn returns the folder, among the paths of files, a snapshot's files or any subset that holds the
+// skill's SKILL.md, that holds the files of skill id. A library's skill, skills/<name>, sits in the origin folder
+// its library put it in, skills/<origin>/<name>, as the library's Trail Guide directory has it, or directly in
+// skills/ for a library of library schema version 1; any other skill sits at its ID. A curated skill's folder is
+// that folder of its ID in the curated repository, inside curated/<source>/.
+func SkillFolderIn[V any](files map[string]V, id string) string {
+	prefix, skill := "", id
+	if source, inner, curated := SplitCurated(id); curated {
+		prefix, skill = CuratedDirectory+"/"+source+"/", inner
 	}
-	return id
+	name, authored := strings.CutPrefix(skill, skills.Directory+"/")
+	if _, flat := files[prefix+skill+"/"+skills.File]; flat || !authored || strings.Contains(name, "/") {
+		return prefix + skill
+	}
+	origins := []string{}
+	for file := range files {
+		inside, _ := strings.CutPrefix(file, prefix+skills.Directory+"/")
+		if origin, rest, nested := strings.Cut(inside, "/"); nested && rest == name+"/"+skills.File && inside != file {
+			origins = append(origins, origin)
+		}
+	}
+	if len(origins) == 0 {
+		return prefix + skill
+	}
+	return prefix + skills.Directory + "/" + slices.Min(origins) + "/" + name
 }
 
 // ImportedSkill records one installed skill from a source.
@@ -142,7 +163,7 @@ func HiddenSkill(id string) bool {
 func (s Snapshot) SkillFiles(id string) map[string][]byte {
 	files := map[string][]byte{}
 	for name, data := range s.Files {
-		if relative, ok := strings.CutPrefix(name, SkillFolder(id)+"/"); ok {
+		if relative, ok := strings.CutPrefix(name, s.SkillFolder(id)+"/"); ok {
 			files[relative] = data
 		}
 	}
@@ -177,7 +198,7 @@ func (s Snapshot) CuratedFrom(name string) Snapshot {
 func (s Snapshot) SkillExecutable(id string) []string {
 	executable := []string{}
 	for _, name := range s.Executable {
-		if relative, ok := strings.CutPrefix(name, SkillFolder(id)+"/"); ok {
+		if relative, ok := strings.CutPrefix(name, s.SkillFolder(id)+"/"); ok {
 			executable = append(executable, relative)
 		}
 	}
@@ -187,7 +208,7 @@ func (s Snapshot) SkillExecutable(id string) []string {
 // IsSkillFile reports whether file, a path in Files, belongs to one of the snapshot's skills.
 func (s Snapshot) IsSkillFile(file string) bool {
 	for id := range s.Skills {
-		if strings.HasPrefix(file, SkillFolder(id)+"/") {
+		if strings.HasPrefix(file, s.SkillFolder(id)+"/") {
 			return true
 		}
 	}

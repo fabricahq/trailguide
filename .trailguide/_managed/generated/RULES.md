@@ -25,9 +25,9 @@ Before planning, implementing, reviewing, testing, or diagnosing, complete these
 
 ### Code design
 
-**Description:** Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
+**Description:** Design meaningful interfaces and caller contracts, keep implementation decisions with their owners, remove unnecessary error cases, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
 
-**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
+**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, API and failure contracts, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
 
 **Open group:** [Code design](groups/practices/code-design.md)
 

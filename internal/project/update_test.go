@@ -333,7 +333,7 @@ func twoLibraryProject(t *testing.T) (Options, imports.Options) {
 	fixtures := map[string]*gitfixture.Fixture{}
 	for _, name := range []string{"alpha", "beta"} {
 		f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+			"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 			"techs/go/_group.yaml": []byte(projectMetadata),
 			"techs/go/errors.md":   []byte(strings.Replace(projectRule, "# Return errors", "# Return errors, from "+name, 1)),
 			"techs/go/retry.md":    []byte(projectRule),
@@ -474,7 +474,7 @@ func TestUpdate_ScopedUpdateThatKeepsItsRuleLeavesTheSharedFiles(t *testing.T) {
 	}
 	keep := []UpdateDecision{{Source: "team", Rule: "techs/go/errors", Kind: DecisionKeep, Reason: "Not yet."}}
 	preview, err := plan.Preview(context.Background(), keep)
-	if err != nil || preview.Sources[0].SharedFiles != nil || preview.Moves() {
+	if err != nil || preview.Sources[0].SharedFiles != nil || movesSources(preview) {
 		t.Fatalf("keeping the only moved rule still moves shared files: %+v, %v", preview.Sources, err)
 	}
 	if _, err := plan.Apply(ctx, keep); err != nil {

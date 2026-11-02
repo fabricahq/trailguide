@@ -45,7 +45,7 @@ func newUpdateFixtureWith(t *testing.T, binary string) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	files := map[string][]byte{
-		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
 		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 	}
 	names := []string{"backoff", "errors", "format", "loaders", "naming", "retry"}
@@ -747,12 +747,12 @@ func skillLevelSkill(name string) []byte {
 func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                        []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
-		"techs/go/_group.yaml":               []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
-		"techs/go/errors.md":                 updateRule("errors 1.0.0"),
-		".trailguide/skills/ship/SKILL.md":   skillLevelSkill("ship"),
-		".trailguide/skills/review/SKILL.md": skillLevelSkill("review"),
-		".trailguide/skills/deploy/SKILL.md": skillLevelSkill("deploy"),
+		"config.yaml":                                []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/ship"],"recommended":["skills/review"],"offered":["skills/deploy"]}}}`),
+		"techs/go/_group.yaml":                       []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
+		"techs/go/errors.md":                         updateRule("errors 1.0.0"),
+		".trailguide/skills/library/ship/SKILL.md":   skillLevelSkill("ship"),
+		".trailguide/skills/library/review/SKILL.md": skillLevelSkill("review"),
+		".trailguide/skills/library/deploy/SKILL.md": skillLevelSkill("deploy"),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -770,8 +770,8 @@ func TestUpdate_PreviewsEachLevelChangeOnTheSkillsRow(t *testing.T) {
 		t.Fatal(code, out, diagnostic)
 	}
 	second := map[string][]byte{
-		"config.yaml":                       []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"skills":{"required":["skills/audit"],"recommended":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`),
-		".trailguide/skills/audit/SKILL.md": skillLevelSkill("audit"),
+		"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","skills":{"required":["skills/audit"],"recommended":["skills/ship"],"offered":["skills/deploy","skills/review"]}}}`),
+		".trailguide/skills/library/audit/SKILL.md": skillLevelSkill("audit"),
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Change levels", gitfixture.Library(second)); err != nil {
 		t.Fatal(err)

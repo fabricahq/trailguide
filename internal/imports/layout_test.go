@@ -45,7 +45,7 @@ func movedHistory(t *testing.T) history {
 	}
 	moved := map[string][]byte{"rule-library.yaml": nil, "techs/go/_group.yaml": nil, "techs/go/a.md": nil, "techs/go/b.md": nil, "techs/go/c.md": nil, "assets/guide.md": nil}
 	maps.Copy(moved, gitfixture.Library(map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 2, name: library}\n"),
 		"techs/go/_group.yaml": groupMetadata,
 		"techs/go/a.md":        legacyRule("a 1.0.0", "/assets/guide.md"),
 		"techs/go/b.md":        legacyRule("b 1.0.0", "../../../assets/guide.md"),
@@ -138,7 +138,7 @@ func TestImport_RefusesARuleVersionWhoseLinksMovedWithTheLibrary(t *testing.T) {
 func TestImport_ReadsALibraryThatIsAlsoAProject(t *testing.T) {
 	ctx := context.Background()
 	f := newLibraryFixture(t, map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary:\n  schemaVersion: 1\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  upstream:\n    repository: https://github.com/acme/upstream.git\n    rules:\n      include: ['techs/*']\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    spdxExpression: MIT\n    file: LICENSE.md\n    notices: []\n"),
 		"LICENSE.md":           []byte("MIT License\n"),
 		"techs/go/_group.yaml": groupMetadata,
 		"techs/go/a.md":        versionedRule("a 1.0.0"),
@@ -163,7 +163,7 @@ func TestImport_ReadsALibraryThatIsAlsoAProject(t *testing.T) {
 	if got := slices.Sorted(maps.Keys(imported.Snapshot.Files)); !reflect.DeepEqual(got, want) || imported.Catalog.License == nil || *imported.Catalog.License.SPDXExpression != "MIT" {
 		t.Fatalf("files %v, want %v; license %+v", got, want, imported.Catalog.License)
 	}
-	manifest := `{"library":{"license":{"file":"LICENSE.md","notices":[],"spdxExpression":"MIT"},"schemaVersion":1},"sources":{}}` + "\n"
+	manifest := `{"library":{"license":{"file":"LICENSE.md","notices":[],"spdxExpression":"MIT"},"name":"library","schemaVersion":2},"sources":{}}` + "\n"
 	if got := string(imported.Snapshot.Files["config.yaml"]); got != manifest {
 		t.Fatalf("manifest %s, want only the library section: %s", got, manifest)
 	}
@@ -208,7 +208,7 @@ func legacyLibrary(t *testing.T, manifest string, files map[string][]byte) histo
 	for name := range release1 {
 		moved[name] = nil
 	}
-	release2 := map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n")}
+	release2 := map[string][]byte{"config.yaml": []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 2, name: library}\n")}
 	maps.Copy(release2, files)
 	release2["techs/go/_group.yaml"] = groupMetadata
 	maps.Copy(moved, gitfixture.Library(release2))

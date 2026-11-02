@@ -16,7 +16,7 @@ import (
 // newLibraryCommand registers library-specific location and explicit-input flags.
 func newLibraryCommand(use, description string, args cobra.PositionalArgs, options Options) (*cobra.Command, *authoringFlags) {
 	cmd := &cobra.Command{Use: use, Short: description, Args: args}
-	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory, git: gitexec.Options{GitPath: options.Git.GitPath, Environment: options.Git.Environment}, imports: options.Git}
+	flags := &authoringFlags{command: cmd, values: map[string]*singleString{}, directory: options.Directory, git: gitexec.Options{GitPath: options.Git.GitPath, Environment: options.Git.Environment}, imports: options.Git, version: options.Version}
 	cmd.PostRunE = flags.finishPrompts
 	flags.add(cmd, "directory", "Library directory (default Git root, or current directory outside Git)")
 	cmd.Flags().Bool("non-interactive", false, "Require explicit flags; never prompt")
@@ -30,7 +30,7 @@ func (f *authoringFlags) libraryOptions(ctx context.Context, initialize bool) (l
 		directory = f.file("directory")
 	}
 	directory, err := commandDirectory(ctx, directory, "library", initialize)
-	return library.Options{Directory: directory, Git: f.git, Curated: f.readCurated, ReadSkill: f.readSourceSkill, Forks: f.readForks}, err
+	return library.Options{Directory: directory, ToolVersion: f.version, Git: f.git, Curated: f.readCurated, ReadSkill: f.readSourceSkill, Forks: f.readForks}, err
 }
 
 // readSourceSkill reads a skill from a source the library declares, which a fork copies.
@@ -62,7 +62,7 @@ func addLibraryCommands(root *cobra.Command, options Options, output *commandOut
 // libraryInitCommand reads explicit publisher terms before creating library-owned files.
 func libraryInitCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd, f := newLibraryCommand("init", "Initialize a rule library without overwriting authored files", cobra.NoArgs, options)
-	for name, description := range map[string]string{"spdx": "Library SPDX expression", "license-file": "Existing UTF-8 license text", "notice-file": "Existing UTF-8 notice text"} {
+	for name, description := range map[string]string{"name": "Library name, which names the folder of its own skills; defaults to the library folder's name", "spdx": "Library SPDX expression", "license-file": "Existing UTF-8 license text", "notice-file": "Existing UTF-8 notice text"} {
 		f.add(cmd, name, description)
 	}
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
@@ -91,7 +91,7 @@ func libraryInitCommand(options Options, output *commandOutput) *cobra.Command {
 				terms.Notice = &notice
 			}
 		}
-		result, err := library.Initialize(cmd.Context(), target, terms, options.Version)
+		result, err := library.Initialize(cmd.Context(), target, f.value("name"), terms)
 		if err != nil {
 			return err
 		}

@@ -36,7 +36,7 @@ Preconditions:
 
 ## Gotchas
 
-- Paths in links are relative to the file that holds them. From `skills/alpha/references/checklist.md`, the repository root is `../../../`.
+- Paths in links are relative to the file that holds them. From `skills/alpha/references/checklist.md` in a non-library remote, the repository root is `../../../`; a library's skills sit one folder deeper, in `.trailguide/skills/<library.name>/`, so from `.trailguide/skills/lib/alpha/SKILL.md` it's `../../../../`.
 - After a failed first sync there is no lock, so the next sync takes the branch's newest commit. After a successful sync, only update moves the source.
 - The project must be committed before a failure for `git status` to prove nothing was written.
 - Error messages are prefixed with the source's config key, such as `sources.broken:`; quote them in full.

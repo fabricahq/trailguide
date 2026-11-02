@@ -91,7 +91,7 @@ Repeat `--rules` for each rule selector: a group prefix such as `techs/go/*`, wh
 
 #### Install skills
 
-Sync and build install each included skill, and each skill you author in `.trailguide/skills/<name>/SKILL.md`, into every skill target that `skillTargets` in `.trailguide/config.yaml` names: `claude` for `.claude/skills/` and `agents` for `.agents/skills/`. Commit the installed copies with the rest of the project. Don't edit them: sync and build replace them, and they never replace a folder in a skill target that Trail Guide didn't install. `.trailguide/_managed/generated/SKILLS.md` lists every skill, what it does, and where it's installed.
+Sync and build install each included skill, and each skill you author in `.trailguide/skills/local/<name>/SKILL.md`, or fork from a source into `.trailguide/skills/<source>/<name>/SKILL.md`, into every skill target that `skillTargets` in `.trailguide/config.yaml` names: `claude` for `.claude/skills/` and `agents` for `.agents/skills/`. Commit the installed copies with the rest of the project. Don't edit them: sync and build replace them, and they never replace a folder in a skill target that Trail Guide didn't install. `.trailguide/_managed/generated/SKILLS.md` lists every skill, what it does, and where it's installed.
 
 #### Keep a rule at its current version
 

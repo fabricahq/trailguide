@@ -51,7 +51,7 @@ func fixture(t *testing.T, files map[string]string) (string, *os.Root) {
 
 // validFiles provides original authored fixtures rather than production source material.
 func validFiles() map[string]string {
-	return map[string]string{"config.yaml": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`, "techs/go/_group.yaml": metadata, "techs/go/errors.md": document, "practices/testing/_group.yaml": metadata}
+	return map[string]string{"config.yaml": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`, "techs/go/_group.yaml": metadata, "techs/go/errors.md": document, "practices/testing/_group.yaml": metadata}
 }
 
 // TestLoadCatalog checks wildcard expansion, a wildcard combined with listed groups, empty groups, exact bytes, and
@@ -147,7 +147,7 @@ func TestLoadSymlinksAndCancellation(t *testing.T) {
 // TestLoadTermsAndLimits retains binary licenses and rejects files above the exact byte bound.
 func TestLoadTermsAndLimits(t *testing.T) {
 	files := validFiles()
-	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":"LICENSE","notices":["NOTICE"],"spdxExpression":"MIT"}}}`
+	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":"LICENSE","notices":["NOTICE"],"spdxExpression":"MIT"}}}`
 	files["LICENSE"] = "\xff\x00\r\n"
 	files["NOTICE"] = "Notice\r\n"
 	_, root := fixture(t, files)
@@ -170,7 +170,7 @@ func TestLoadRequiresDeclaredTerms(t *testing.T) {
 	for _, missing := range []string{"LICENSE", "NOTICE"} {
 		t.Run(missing, func(t *testing.T) {
 			files := map[string]string{
-				"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  license:\n    file: LICENSE\n    notices: [NOTICE]\n",
+				"config.yaml": "schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  license:\n    file: LICENSE\n    notices: [NOTICE]\n",
 				"LICENSE":     "", "NOTICE": "",
 			}
 			delete(files, missing)
@@ -186,7 +186,7 @@ func TestLoadRequiresDeclaredTerms(t *testing.T) {
 
 // TestLoadRejectsLegacyManifestName requires the manifest in the library section of .trailguide/config.yaml.
 func TestLoadRejectsLegacyManifestName(t *testing.T) {
-	_, root := fixture(t, map[string]string{"rule-library.json": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`, "rule-library.yaml": "formatVersion: 1\n"})
+	_, root := fixture(t, map[string]string{"rule-library.json": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`, "rule-library.yaml": "formatVersion: 1\n"})
 	got, err := library.Load(context.Background(), root, "team", rules.GroupSelection{Groups: []string{}})
 	var validation errs.ValidationError
 	if !errors.As(err, &validation) || validation.ValidationLocation() != ".trailguide/config.yaml" || !reflect.DeepEqual(got, library.Catalog{}) {
@@ -310,7 +310,7 @@ func TestLoadRejectsHardLinks(t *testing.T) {
 // TestLoadTermsDoNotCreateGroups excludes direct and nested declared terms from wildcard discovery.
 func TestLoadTermsDoNotCreateGroups(t *testing.T) {
 	for _, file := range []string{"techs/LICENSE", "techs/legal/LICENSE", "techs/legal/nested/NOTICE"} {
-		files := map[string]string{"config.yaml": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":"` + librarytree.RepositoryPath(file) + `","notices":[]}}}`, file: "terms"}
+		files := map[string]string{"config.yaml": `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":"` + librarytree.RepositoryPath(file) + `","notices":[]}}}`, file: "terms"}
 		_, root := fixture(t, files)
 		got, err := library.Load(context.Background(), root, "team", rules.GroupSelection{Pattern: "*"})
 		if err != nil || len(got.Groups) != 0 || string(got.SupportingFiles[file]) != "terms" {
@@ -318,7 +318,7 @@ func TestLoadTermsDoNotCreateGroups(t *testing.T) {
 		}
 	}
 	files := validFiles()
-	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":".trailguide/rules/techs/go/LICENSE","notices":[]}}}`
+	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":".trailguide/rules/techs/go/LICENSE","notices":[]}}}`
 	files["techs/go/LICENSE"] = "terms"
 	_, root := fixture(t, files)
 	got, err := library.Load(context.Background(), root, "team", rules.GroupSelection{Pattern: "techs/*"})
@@ -332,7 +332,7 @@ func TestMixedTermsDiscoveryCountsOnce(t *testing.T) {
 	files := validFiles()
 	document := files["techs/go/errors.md"]
 	delete(files, "techs/go/errors.md")
-	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":".trailguide/rules/techs/go/LICENSE","notices":[]}}}`
+	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":".trailguide/rules/techs/go/LICENSE","notices":[]}}}`
 	files["techs/go/LICENSE"] = "terms"
 	for i := range 5000 {
 		files[fmt.Sprintf("techs/go/r%d.md", i)] = document
@@ -353,7 +353,7 @@ func TestMixedTermsDiscoveryCountsOnce(t *testing.T) {
 func TestMetadataCanAlsoBeATerm(t *testing.T) {
 	files := validFiles()
 	delete(files, "techs/go/errors.md")
-	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1,"license":{"file":".trailguide/rules/techs/go/_group.yaml","notices":[]}}}`
+	files["config.yaml"] = `{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library","license":{"file":".trailguide/rules/techs/go/_group.yaml","notices":[]}}}`
 	_, root := fixture(t, files)
 	got, err := library.Load(context.Background(), root, "team", rules.GroupSelection{Pattern: "techs/*"})
 	if err != nil || len(got.Groups) != 1 {

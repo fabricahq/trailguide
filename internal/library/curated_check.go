@@ -6,9 +6,7 @@ import (
 	"context"
 	"maps"
 	"slices"
-	"strings"
 
-	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
@@ -32,19 +30,15 @@ type CuratedReader func(ctx context.Context, name string, source rules.CuratedSo
 // the same install name, which agents find skills by. read reads each curated source; nil skips the check. It returns
 // the IDs, as the manifest names them, of the curated skills that listed curated skills use in their own repository,
 // directly or through others, or nil when it skips the check.
-func requireCuratedSkills(ctx context.Context, manifest []byte, authored *filetxn.Tree, read CuratedReader) (map[string]bool, error) {
+func requireCuratedSkills(ctx context.Context, manifest []byte, authored map[string]skills.Skill[[]byte], read CuratedReader) (map[string]bool, error) {
 	declaration, err := rules.ParseLibraryManifest(manifest, manifestPath)
 	if err != nil || declaration == nil || read == nil {
 		return nil, err
 	}
 	// Every skill the library authors reaches projects, since one no level lists is offered.
 	names := map[string]string{}
-	if authored != nil {
-		for file := range authored.Files {
-			if name, found := strings.CutSuffix(file, "/"+skills.File); found && !strings.Contains(name, "/") {
-				names[name] = skills.AuthoredID(name)
-			}
-		}
+	for id, skill := range authored {
+		names[skill.Name] = id
 	}
 	listed := declaration.Skills.Curated()
 	wanted := map[string][]string{}

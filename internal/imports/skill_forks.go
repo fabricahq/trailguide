@@ -162,8 +162,9 @@ func (r *repository) skillAt(ctx context.Context, id, commit string) (map[string
 		return nil, false, nil
 	}
 	entries := map[string]treeEntry{}
+	prefix := library.SkillFolderIn(folder, id) + "/"
 	for name, entry := range folder {
-		entries[strings.TrimPrefix(name, id+"/")] = entry
+		entries[strings.TrimPrefix(name, prefix)] = entry
 	}
 	return entries, true, nil
 }

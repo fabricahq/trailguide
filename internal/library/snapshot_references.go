@@ -58,7 +58,7 @@ func (s Snapshot) ReferenceFiles(source string, delivered, excluded func(id stri
 			retention.Source, retention.Revision = "sources."+source+", curated from "+name, s.Curated[name].Commit
 		}
 		for _, id := range slices.Sorted(maps.Keys(s.Skills)) {
-			folder := SkillFolder(id)
+			folder := s.SkillFolder(id)
 			if s.OriginOf(folder+"/") != name {
 				continue
 			}

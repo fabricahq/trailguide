@@ -64,7 +64,8 @@ sources:
     repository: not a repository address
     rules: {include: [nothing/valid/*], newSelector: true}
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: library
   description: A field a later Trail Guide may add, which consumers can ignore.
 `)
 	directory, run := consumingProject(t, f)
@@ -78,7 +79,7 @@ library:
 		t.Fatalf("generated guidance lacks the library's group: %v\n%s", err, rules)
 	}
 	manifest, err := os.ReadFile(filepath.Join(directory, ".trailguide", "_managed", "vendor", "team", "config.yaml"))
-	want := `{"library":{"description":"A field a later Trail Guide may add, which consumers can ignore.","schemaVersion":1},"sources":{}}` + "\n"
+	want := `{"library":{"description":"A field a later Trail Guide may add, which consumers can ignore.","name":"library","schemaVersion":2},"sources":{}}` + "\n"
 	if err != nil || string(manifest) != want {
 		t.Fatalf("vendored manifest %s, %v; want only the published contract: %s", manifest, err, want)
 	}
@@ -94,9 +95,9 @@ func TestSync_ReportsAnInvalidOrUnsupportedLibrarySchema(t *testing.T) {
 	}{
 		{"no schema version", "library: {}\n", "validation", "", manifest + "library.schemaVersion"},
 		{"a malformed schema version", "library: {schemaVersion: latest}\n", "validation", "", manifest + "library.schemaVersion"},
-		{"another schema version", "library: {schemaVersion: 2, skills: {required: skills/everything}}\n", "operation", "unsupported-library-schema", ""},
-		{"invalid skill levels", "library: {schemaVersion: 1, skills: {required: skills/everything}}\n", "validation", "", manifest + "library.skills.required"},
-		{"an invalid curated ref", "sources:\n  helper: {repository: https://example.invalid/helper.git, ref: 'refs/remotes/origin/main'}\nlibrary: {schemaVersion: 1, skills: {offered: [helper:skills/help]}}\n", "validation", "", manifest + "sources.helper.ref"},
+		{"another schema version", "library: {schemaVersion: 3, skills: {required: skills/everything}}\n", "operation", "unsupported-library-schema", ""},
+		{"invalid skill levels", "library: {schemaVersion: 2, name: library, skills: {required: skills/everything}}\n", "validation", "", manifest + "library.skills.required"},
+		{"an invalid curated ref", "sources:\n  helper: {repository: https://example.invalid/helper.git, ref: 'refs/remotes/origin/main'}\nlibrary: {schemaVersion: 2, name: library, skills: {offered: [helper:skills/help]}}\n", "validation", "", manifest + "sources.helper.ref"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, run := consumingProject(t, formattedLibrary(t, "schemaVersion: 2\n"+test.library))
@@ -126,7 +127,7 @@ func TestLibraryCheck_RejectsWhatConsumersIgnore(t *testing.T) {
 		}
 	}
 	config := filepath.Join(dir, ".trailguide", "config.yaml")
-	if err := os.WriteFile(config, []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 1\n  description: Shared rules.\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("schemaVersion: 2\nsources: {}\nlibrary:\n  schemaVersion: 2\n  name: library\n  description: Shared rules.\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	out, _, code := runCLI(t, binary, dir, "library", "check", "--json")

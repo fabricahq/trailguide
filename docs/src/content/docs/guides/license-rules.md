@@ -36,7 +36,8 @@ The `library.license` section of the [manifest](/reference/library-schema/#the-m
 
 ```yaml
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: fabrica
   license:
     spdxExpression: MIT
     file: LICENSE.md
@@ -116,7 +117,7 @@ A library's license declaration covers its [skills](/concepts/skill/) as it cove
 The Agent Skills format gives `SKILL.md` an optional `license` field. In a library, that field is informational: the library's declaration in its manifest is what applies, and Trail Guide keeps the field unchanged. When the field differs from the library's `spdxExpression`, or the library declares no license, `trailguide library check` warns:
 
 ```text
-Warning: skills/build-feature/SKILL.md: license is Apache-2.0, but the library declares MIT. The library's license applies to its skills; make them match.
+Warning: skills/fabrica/build-feature/SKILL.md: license is Apache-2.0, but the library declares MIT. The library's license applies to its skills; make them match.
 ```
 
 Make the field match the library's expression, or leave it out. A skill whose material needs different terms belongs in a separate library, as a rule's would. A license or notice file inside a skill folder is part of the skill's content, not a declared library file; a library can't declare a file in a skill folder as its license or notice file.

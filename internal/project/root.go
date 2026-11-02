@@ -41,7 +41,47 @@ func openProject(ctx context.Context, options Options, create bool) (*os.Root, e
 		root.Close()
 		return nil, err
 	}
+	if err := requireToolVersion(ctx, root, options.ToolVersion); err != nil {
+		root.Close()
+		return nil, err
+	}
 	return root, nil
+}
+
+// withWriter is filetxn.WithWriter, except that operation runs only once requireToolVersion accepts version for the
+// configuration as the writer found it, after recovering an interrupted command, which can restore a configuration
+// that requires a newer release.
+func withWriter(ctx context.Context, root *os.Root, version string, operation func(*filetxn.Writer) error) error {
+	return filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+		if err := requireToolVersion(ctx, root, version); err != nil {
+			return err
+		}
+		return operation(w)
+	})
+}
+
+// edit is filetxn.Edit, except that prepare runs only once requireToolVersion accepts version for the configuration
+// as the writer found it, as withWriter checks it.
+func edit(ctx context.Context, root *os.Root, version string, prepare func() ([]filetxn.File, error)) (filetxn.Changes, error) {
+	return filetxn.Edit(ctx, root, func() ([]filetxn.File, error) {
+		if err := requireToolVersion(ctx, root, version); err != nil {
+			return nil, err
+		}
+		return prepare()
+	})
+}
+
+// requireToolVersion fails with upgrade-required when rules.UpgradeRequired refuses version, this build's version, for
+// the configuration's configuration, before anything else reads the configuration, whose fields this version may not know.
+func requireToolVersion(ctx context.Context, root *os.Root, version string) error {
+	data, err := filetxn.ReadOptional(ctx, root, configurationFile)
+	if err != nil {
+		return err
+	}
+	if problem, required := rules.UpgradeRequired(data, version); required {
+		return failure("upgrade-required", problem, nil)
+	}
+	return nil
 }
 
 // Directory returns the path of the Trail Guide directory of the project at root: .trailguide/, or .code-rules/ when

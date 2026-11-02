@@ -97,7 +97,7 @@ These references do not transfer ownership of the upstream material to Fabrica.
 
 The library curates skills from [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, at commit `699e1e7488c53c05ca13409f40da83cd37682091` of `cursor/plugins`. Projects fetch those skills from that repository, so the skills are not part of this library and its MIT declaration does not cover them. pstack's own MIT license covers them; it keeps the notice in [`pstack/LICENSE`](https://github.com/cursor/plugins/blob/699e1e7488c53c05ca13409f40da83cd37682091/pstack/LICENSE) rather than in each skill folder, so it is reproduced unchanged below.
 
-Four of the library's own skills draw on pstack, and the notice below also applies to the material they copy. `show-me-your-work` adapts pstack's skill of that name at commit `699e1e7488c53c05ca13409f40da83cd37682091`, changing the steps that read Cursor's transcripts and choose the review model, adding an outcome for harnesses that can't start a reviewer, and dropping its mentions of pstack skills the library doesn't install. `build` adapts steps from the Feature and Autonomous run playbooks of pstack's `poteto-mode` skill. `create-verification-skill`, including its feature-map examples, and `maintain-verification-skill` adapt the corresponding skills at the same pinned commit to use project-owned skill locations instead of Cursor-only paths; maintenance also bounds source reviews by the host's concurrency limit and supports sequential review. The bundled search example restores its query before capturing evidence.
+Four of the library's own skills draw on pstack, and the notice below also applies to the material they copy. `show-me-your-work` adapts pstack's skill of that name at commit `699e1e7488c53c05ca13409f40da83cd37682091`, changing the steps that read Cursor's transcripts and choose the review model, adding an outcome for harnesses that can't start a reviewer, and dropping its mentions of pstack skills the library doesn't install. `build` adapts steps from the Feature and Autonomous run playbooks of pstack's `poteto-mode` skill. `create-verification-skill`, including its feature-map examples, and `maintain-verification-skill` adapt the corresponding skills at the same pinned commit to use project-owned skill locations instead of Cursor-only paths; both also make a proof read the output as its user would and judge it by what the user should be able to tell, leaving exact output that users or scripts rely on to the project's automated tests; maintenance also bounds source reviews by the host's concurrency limit and supports sequential review. The bundled search example restores its query before capturing evidence, and adds an unavailable-search step that shows how output can reach the right end state and still mislead its user. `build`'s design decisions follow this library's interface and error-contract rules; it does not curate pstack's `principle-laziness-protocol`.
 
 MIT License
 
@@ -120,6 +120,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Software design reference
+
+The code-design rules and related build, comment, parameter, and component guidance draw on John Ousterhout's [A Philosophy of Software Design, second edition](https://web.stanford.edu/~ouster/cgi-bin/book.php), especially chapters 4-11, 13, 15, and 16. This library expresses those ideas in original guidance and examples; it does not reproduce the book's text or diagrams, and its MIT license does not cover the book.
 
 ## Testing philosophy reference
 

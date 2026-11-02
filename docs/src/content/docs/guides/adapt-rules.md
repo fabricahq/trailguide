@@ -41,7 +41,8 @@ Declare one license covering the whole library in the manifest, the `library` se
 schemaVersion: 2
 sources: {}
 library:
-  schemaVersion: 1
+  schemaVersion: 2
+  name: fabrica
   license:
     spdxExpression: MIT
     file: LICENSE.md

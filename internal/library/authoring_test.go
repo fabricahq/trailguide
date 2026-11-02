@@ -34,6 +34,12 @@ func initRepository(t *testing.T, dir string) {
 	}
 }
 
+// withToolVersion returns options for a build of version, which Initialize records as the minTrailguideVersion of a new configuration.
+func withToolVersion(options Options, version string) Options {
+	options.ToolVersion = version
+	return options
+}
+
 // TestInitRepository_IgnoresAnInheritedGitDir keeps tests run from a Git hook or rebase out of the enclosing repository.
 func TestInitRepository_IgnoresAnInheritedGitDir(t *testing.T) {
 	enclosing := t.TempDir()
@@ -60,7 +66,7 @@ func TestLibraryLifecycle(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
 	notice := "Notice\r\n"
 	terms := &Terms{SPDXExpression: "MIT", License: "Original terms\r\n", Notice: &notice}
-	result, err := Initialize(ctx, options, terms, "1.2.3")
+	result, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", terms)
 	if err != nil || len(result.Written()) != 6 {
 		t.Fatal(result, err)
 	}
@@ -72,11 +78,11 @@ func TestLibraryLifecycle(t *testing.T) {
 	if string(data) != terms.License {
 		t.Fatal("changed terms")
 	}
-	result, err = Initialize(ctx, options, nil, "1.2.3")
+	result, err = Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil)
 	if err != nil || len(result.Written()) != 0 {
 		t.Fatal(result, err)
 	}
-	if _, err = Initialize(ctx, options, terms, "1.2.3"); err == nil {
+	if _, err = Initialize(ctx, withToolVersion(options, "1.2.3"), "", terms); err == nil {
 		t.Fatal("overwrote terms")
 	}
 	metadata := trailguide.GroupMetadata{Name: "Go", Description: "Go guidance.", WhenToRead: "When editing Go."}
@@ -125,7 +131,7 @@ func TestLibraryCheckUnusedContent(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			ctx := context.Background()
 			options := Options{Directory: t.TempDir()}
-			if _, err := Initialize(ctx, options, nil, "1.2.3"); err != nil {
+			if _, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil); err != nil {
 				t.Fatal(err)
 			}
 			// write writes the file at library path name where the repository keeps it.
@@ -181,7 +187,7 @@ func TestLibraryCheckUnusedContent(t *testing.T) {
 func TestLibraryInitializationPreservesConflicts(t *testing.T) {
 	directory := t.TempDir()
 	os.WriteFile(filepath.Join(directory, "LICENSE.md"), []byte("existing terms"), 0600)
-	_, err := Initialize(context.Background(), Options{Directory: directory}, &Terms{SPDXExpression: "MIT", License: "different"}, "1.2.3")
+	_, err := Initialize(context.Background(), Options{Directory: directory, ToolVersion: "1.2.3"}, "", &Terms{SPDXExpression: "MIT", License: "different"})
 	if err == nil {
 		t.Fatal("accepted terms collision")
 	}
@@ -200,7 +206,7 @@ func TestLibraryCheckRejectsConcurrentEdits(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			directory := t.TempDir()
 			ctx := context.Background()
-			_, err := Initialize(ctx, Options{Directory: directory}, &Terms{SPDXExpression: "MIT", License: "Original terms"}, "1.2.3")
+			_, err := Initialize(ctx, Options{Directory: directory, ToolVersion: "1.2.3"}, "", &Terms{SPDXExpression: "MIT", License: "Original terms"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -233,7 +239,7 @@ func TestLibraryCheckRejectsConcurrentEdits(t *testing.T) {
 func TestCapturedLibraryIgnoresLaterEdits(t *testing.T) {
 	ctx := context.Background()
 	options := Options{Directory: t.TempDir()}
-	if _, err := Initialize(ctx, options, nil, "1.2.3"); err != nil {
+	if _, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	root, err := os.OpenRoot(options.Directory)
@@ -273,7 +279,7 @@ func TestCapturedLibraryIgnoresLaterEdits(t *testing.T) {
 // TestLibraryCheckBoundsUnusedAssets rejects oversized unreferenced content without modifying it.
 func TestLibraryCheckBoundsUnusedAssets(t *testing.T) {
 	options := Options{Directory: t.TempDir()}
-	if _, err := Initialize(context.Background(), options, nil, "1.2.3"); err != nil {
+	if _, err := Initialize(context.Background(), withToolVersion(options, "1.2.3"), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(options.Directory, librarytree.RepositoryPath("assets")), 0700); err != nil {
@@ -297,7 +303,7 @@ func TestLibraryCheckBoundsUnusedAssets(t *testing.T) {
 func TestLibraryRulePreservesGroup(t *testing.T) {
 	ctx := context.Background()
 	options := Options{Directory: t.TempDir()}
-	if _, err := Initialize(ctx, options, nil, "1.2.3"); err != nil {
+	if _, err := Initialize(ctx, withToolVersion(options, "1.2.3"), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	existing := trailguide.GroupMetadata{Name: "Go", Description: "Concurrent guidance.", WhenToRead: "When editing Go."}

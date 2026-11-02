@@ -8,26 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/fabricahq/trailguide/internal/filetxn"
 	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
-
-// versionedSkills returns, sorted, the IDs of the skills in tree, the library's skills/ folder, that have versions:
-// each folder with a valid skill name and a SKILL.md. skillProblems reports every other folder. A nil tree has none.
-func versionedSkills(tree *filetxn.Tree) []string {
-	ids := []string{}
-	if tree == nil {
-		return ids
-	}
-	for name := range tree.Files {
-		if folder, file, _ := strings.Cut(name, "/"); file == skills.File && skills.ValidName(folder) {
-			ids = append(ids, skills.AuthoredID(folder))
-		}
-	}
-	slices.Sort(ids)
-	return ids
-}
 
 // skillFolders returns the folder names in skills/ of skill IDs, skills/<name>.
 func skillFolders(ids []string) []string {

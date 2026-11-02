@@ -14,6 +14,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/errs"
 	"github.com/fabricahq/trailguide/internal/library"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 )
 
 // skillConfig parses a configuration with no sources and the skill targets in targets, a JSON list.
@@ -28,13 +29,13 @@ func skillConfig(t *testing.T, targets string) rules.Configuration {
 
 func TestGenerateInstallsAuthoredSkillsIntoEachTarget(t *testing.T) {
 	local := map[string]build.SkillFiles{"skills/tidy": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: tidy\ndescription: Tidy | code.\n---\n# Tidy\n"), "run.sh": []byte("#!/bin/sh\n")}, Executable: []string{"run.sh"}}}
-	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: local})
+	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: locate(skillConfig(t, `["claude","agents"]`), local)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, folder := range []string{".claude/skills/tidy", ".agents/skills/tidy"} {
 		installed, ok := output.Skills[folder]
-		if !ok || !strings.Contains(string(installed.Files["SKILL.md"]), "---\n<!-- trailguide:installed skills/tidy. Do not edit; edit .trailguide/skills/tidy/ instead. -->\n# Tidy") || !slices.Equal(installed.Executable, []string{"run.sh"}) {
+		if !ok || !strings.Contains(string(installed.Files["SKILL.md"]), "---\n<!-- trailguide:installed skills/tidy. Do not edit; edit .trailguide/skills/local/tidy/ instead. -->\n# Tidy") || !slices.Equal(installed.Executable, []string{"run.sh"}) {
 			t.Errorf("%s = %+v", folder, installed)
 		}
 	}
@@ -73,7 +74,7 @@ func TestGenerateRejectsASourceSkillAndAnAuthoredSkillWithOneInstallName(t *test
 		Catalog:  library.Catalog{Rules: []string{}, Groups: []library.Group{}, SupportingFiles: map[string][]byte{}},
 		Snapshot: library.Snapshot{NonLibrary: true, Commit: commit, Skills: map[string]library.ImportedSkill{"tools/shared": {}}, Files: map[string][]byte{"tools/shared/SKILL.md": skill}},
 	}
-	_, err = build.Generate(config, map[string]build.Library{"tools": tools}, nil, build.Options{LocalSkills: map[string]build.SkillFiles{"skills/shared": {Files: map[string][]byte{"SKILL.md": skill}}}})
+	_, err = build.Generate(config, map[string]build.Library{"tools": tools}, nil, build.Options{LocalSkills: locate(config, map[string]build.SkillFiles{"skills/shared": {Files: map[string][]byte{"SKILL.md": skill}}})})
 	var clash *build.ClashError
 	if !errors.As(err, &clash) || clash.Name != "shared" || clash.IDs != [2]string{"skills/shared", "tools:tools/shared"} {
 		t.Fatalf("got %v; want a clash of skills/shared and tools:tools/shared", err)
@@ -135,7 +136,7 @@ func skillSnapshot() map[string]build.Library {
 func TestGenerateInstallsAForkInPlaceOfTheSkillItForks(t *testing.T) {
 	config := replacementConfig(t, `"exclude":[{"id":"skills/fix","reason":"We fix in CI."}],"forks":{"skills/review":{"as":"skills/our-review","reason":"Ours.","basedOn":"`+strings.Repeat("b", 40)+`"}}`)
 	local := map[string]build.SkillFiles{"skills/our-review": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: our-review\ndescription: Our review.\n---\n# Review\n")}}}
-	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: local})
+	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: locate(config, local)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +158,7 @@ func TestGenerateInstallsAForkInPlaceOfTheSkillItForks(t *testing.T) {
 func TestGenerateKeepsAForkOfASkillItsSourceDeleted(t *testing.T) {
 	config := replacementConfig(t, `"forks":{"skills/plan":{"as":"skills/plan","reason":"Ours."}}`)
 	local := map[string]build.SkillFiles{"skills/plan": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: plan\ndescription: Plan.\n---\n# Plan\n")}}}
-	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: local})
+	output, err := build.Generate(config, skillSnapshot(), nil, build.Options{LocalSkills: locate(config, local)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +180,7 @@ func TestGenerateRejectsInvalidForks(t *testing.T) {
 		location, problem string
 	}{
 		"excluded missing skill": {replacementConfig(t, `"exclude":[{"id":"skills/plan","reason":"No."}]`), "sources.team.skills.exclude.skills/plan", "the source doesn't install skill skills/plan"},
-		"no authored skill":      {replacementConfig(t, `"forks":{"skills/review":{"as":"skills/missing","reason":"No."}}`), "sources.team.skills.forks.skills/review.as", "the project has no authored skill skills/missing; add .trailguide/skills/missing/SKILL.md"},
+		"no authored skill":      {replacementConfig(t, `"forks":{"skills/review":{"as":"skills/missing","reason":"No."}}`), "sources.team.skills.forks.skills/review.as", "the project has no authored skill skills/missing; add .trailguide/skills/team/missing/SKILL.md"},
 		"one replacing two":      {twoSources, "sources.team.skills.forks.skills/review.as", "skills/ours already replaces the skill sources.other.skills.forks.skills/fix names"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -187,7 +188,7 @@ func TestGenerateRejectsInvalidForks(t *testing.T) {
 			if len(test.config.Sources) > 1 {
 				libraries["other"] = libraries["team"]
 			}
-			_, err := build.Generate(test.config, libraries, nil, build.Options{LocalSkills: local})
+			_, err := build.Generate(test.config, libraries, nil, build.Options{LocalSkills: locate(test.config, local)})
 			var validation errs.ValidationError
 			if !errors.As(err, &validation) || validation.ValidationLocation() != test.location || !strings.Contains(validation.ValidationProblem(), test.problem) {
 				t.Fatalf("got %v; want %q at %s", err, test.problem, test.location)
@@ -264,7 +265,7 @@ func TestGenerateWritesTheCodexInterfaceFileOnlyIntoTheAgentsTarget(t *testing.T
 		"skills/add-skill": {Files: map[string][]byte{"SKILL.md": []byte("---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  display-name: \"Add Skill\"\n  default-prompt: \"Use $add-skill.\"\n---\n# Add\n")}},
 		"skills/tidy":      {Files: map[string][]byte{"SKILL.md": []byte("---\nname: tidy\ndescription: Tidy code.\n---\n# Tidy\n")}},
 	}
-	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: local})
+	output, err := build.Generate(skillConfig(t, `["claude","agents"]`), nil, nil, build.Options{LocalSkills: locate(skillConfig(t, `["claude","agents"]`), local)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,4 +309,15 @@ func TestGenerateKeepsTheCodexInterfaceFileASkillShips(t *testing.T) {
 	if got := string(output.Skills[".agents/skills/team-fix"].Files["agents/openai.yaml"]); !strings.HasSuffix(got, "  display_name: \"team-fix\"\n  short_description: \"Fix a bug\"\n  default_prompt: \"Use $team-fix to fix this bug, not $fix-flaky.\"\n") {
 		t.Errorf(".agents/skills/team-fix/agents/openai.yaml =\n%s", got)
 	}
+}
+
+// locate returns local, authored skills by ID, as build.Options.LocalSkills takes them: each in the origin folder that
+// config's skill origins give it, local for the project's own skills and the source's name for a fork.
+func locate(config rules.Configuration, local map[string]build.SkillFiles) map[string]skills.Skill[[]byte] {
+	result := map[string]skills.Skill[[]byte]{}
+	for id, files := range local {
+		name := strings.TrimPrefix(id, skills.Directory+"/")
+		result[id] = skills.Skill[[]byte]{Name: name, Origin: config.SkillOrigins().For(name), Files: files.Files, Executable: files.Executable}
+	}
+	return result
 }

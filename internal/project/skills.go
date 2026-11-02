@@ -13,62 +13,48 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/fabricahq/trailguide/internal/build"
 	"github.com/fabricahq/trailguide/internal/filetxn"
+	"github.com/fabricahq/trailguide/internal/rules"
 	"github.com/fabricahq/trailguide/internal/skills"
 )
 
-// authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, each with
-// its files by path in its folder, leaving out the folder's guide. It fails for any other file directly in skills/, a
-// folder name that breaks the skill name grammar, and a folder without a SKILL.md. A nil tree has none.
-func authoredSkills(tree *filetxn.Tree) (map[string]build.SkillFiles, error) {
-	result := map[string]build.SkillFiles{}
+// authoredSkills returns the authored skills in tree, the project's skills/ folder, by ID, skills/<name>, as
+// skills.Read finds them in the origin folders config's skill origins give them: the library's name or local for the
+// project's own skills, and the source's name for a fork. It fails for the first problem skills.Read reports. A nil
+// tree has none.
+func authoredSkills(config rules.Configuration, tree *filetxn.Tree) (map[string]skills.Skill[[]byte], error) {
 	if tree == nil {
-		return result, nil
+		return map[string]skills.Skill[[]byte]{}, nil
 	}
-	folders := []string{}
-	for _, directory := range tree.Directories {
-		if !strings.Contains(directory, "/") {
-			folders = append(folders, directory)
-		}
+	found, problems := skills.Read(tree.Files, tree.Executable, tree.Directories, config.SkillOrigins())
+	if len(problems) > 0 {
+		return nil, &ValidationError{Location: ".trailguide/" + problems[0].Location, Problem: problems[0].Problem}
 	}
-	for _, name := range slices.Sorted(maps.Keys(tree.Files)) {
-		folder, _, inFolder := strings.Cut(name, "/")
-		if !inFolder && name == skills.Guide {
-			continue
-		}
-		if !inFolder {
-			return nil, &ValidationError{Location: ".trailguide/skills/" + name, Problem: "skills/ holds one folder per skill, each with a SKILL.md; move this file into a skill's folder"}
-		}
-		if !slices.Contains(folders, folder) {
-			folders = append(folders, folder)
-		}
+	return found, nil
+}
+
+// skillFolderPath returns the path, in the Trail Guide directory, of the folder of skill name in the origin folder
+// origin, such as skills/local/release-checklist.
+func skillFolderPath(origin, name string) string {
+	return path.Join(skills.Directory, skills.Folder(origin, name))
+}
+
+// requireNoSkillNamed fails when the Trail Guide directory has the folder of skill name in the origin folder origin,
+// or a skill named name in any origin folder, since a skill's name is its ID.
+func requireNoSkillNamed(ctx context.Context, root *os.Root, origin, name string) error {
+	if err := filetxn.RequireAbsent(ctx, root, skillFolderPath(origin, name)); err != nil {
+		return err
 	}
-	slices.Sort(folders)
-	for _, folder := range folders {
-		location := ".trailguide/skills/" + folder + "/"
-		if !skills.ValidName(folder) {
-			return nil, &ValidationError{Location: location, Problem: "a skill's folder name is its name, which uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen; rename the folder"}
-		}
-		files := map[string][]byte{}
-		executable := []string{}
-		for name, data := range tree.Files {
-			if rel, ok := strings.CutPrefix(name, folder+"/"); ok {
-				files[rel] = data
-				if slices.Contains(tree.Executable, name) {
-					executable = append(executable, rel)
-				}
-			}
-		}
-		if _, ok := files[skills.File]; !ok {
-			return nil, &ValidationError{Location: location, Problem: "missing SKILL.md; each folder in skills/ is a skill, so add its SKILL.md or move the folder out of skills/"}
-		}
-		slices.Sort(executable)
-		result[skills.AuthoredID(folder)] = build.SkillFiles{Files: files, Executable: executable}
+	tree, err := filetxn.ReadTree(ctx, root, skills.Directory)
+	if err != nil || tree == nil {
+		return err
 	}
-	return result, nil
+	if other, taken := skills.DiscoverLayout(slices.Collect(maps.Keys(tree.Files)))[name]; taken {
+		return failure("already-exists", skillFolderPath(other, name)+": already a skill named "+name+", and a skill's name is its ID; choose a different name", nil)
+	}
+	return nil
 }
 
 // skillInstall is what a write does to the installed skill folders: the targets and executable files it passes to

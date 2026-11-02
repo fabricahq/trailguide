@@ -90,18 +90,22 @@ func TestLibraryGuideExamples(t *testing.T) {
 	}
 }
 
-// TestLibraryInit_PinsTheRunningVersionInTheCheckWorkflow installs the Trail Guide release that created the
-// workflow, or the latest release when a development build, with the default version, created it.
-func TestLibraryInit_PinsTheRunningVersionInTheCheckWorkflow(t *testing.T) {
-	for version, download := range map[string]string{"1.2.3": "\n          version=1.2.3\n", "": "\n          version=$(gh release view --repo fabricahq/trailguide "} {
+// TestLibraryInit_WritesACheckWorkflowThatInstallsTheMinimum, which a release build records and a development build
+// leaves out, so its workflow installs the latest release.
+func TestLibraryInit_WritesACheckWorkflowThatInstallsTheMinimum(t *testing.T) {
+	for version, minimum := range map[string]string{"1.2.3": "\nminTrailguideVersion: 1.2.3\n", "": ""} {
 		directory := t.TempDir()
 		var out, diagnostic strings.Builder
 		if code := Run(context.Background(), []string{"library", "init"}, Streams{Out: &out, Err: &diagnostic}, Options{Directory: directory, Version: version}); code != 0 {
 			t.Fatal(code, out.String(), diagnostic.String())
 		}
-		data, err := os.ReadFile(filepath.Join(directory, ".github", "workflows", "trailguide.yml"))
-		if err != nil || !strings.Contains(string(data), download) {
-			t.Fatalf("%q: %s %v", version, data, err)
+		workflow, err := os.ReadFile(filepath.Join(directory, ".github", "workflows", "trailguide.yml"))
+		if err != nil || !strings.Contains(string(workflow), "\n          version=$(yq -r '.minTrailguideVersion // \"\"' .trailguide/config.yaml)\n") {
+			t.Fatalf("%q: %s %v", version, workflow, err)
+		}
+		config, err := os.ReadFile(filepath.Join(directory, ".trailguide", "config.yaml"))
+		if err != nil || strings.Contains(string(config), "minTrailguideVersion") != (minimum != "") || minimum != "" && !strings.Contains(string(config), minimum) {
+			t.Fatalf("%q: config.yaml:\n%s %v", version, config, err)
 		}
 	}
 }

@@ -15,7 +15,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=TRAILGUIDE_VERSION
+          # Install the oldest release the library allows, or the latest release when it names none. yq, which GitHub's
+          # Ubuntu runners include, reads the field however the YAML spells it.
+          version=$(yq -r '.minTrailguideVersion // ""' .trailguide/config.yaml)
+          if [[ -z "$version" ]]; then
+            version=$(gh release view --repo fabricahq/trailguide --json tagName --jq '.tagName | ltrimstr("v")')
+          fi
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
           archive="trailguide_${version}_linux_amd64.tar.gz"
           dir="$RUNNER_TEMP/trailguide"

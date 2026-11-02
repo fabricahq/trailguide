@@ -19,7 +19,7 @@ func usingCurated(name string, used ...string) string {
 }
 
 // curatingLibraryConfig curates pocock's deploy skill.
-const curatingLibraryConfig = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 1\n  skills:\n    offered: [pocock:skills/ops/deploy, pocock:skills/grill]\n"
+const curatingLibraryConfig = "schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    offered: [pocock:skills/ops/deploy, pocock:skills/grill]\n"
 
 // TestLibraryCheck_ExplainsAUseOfASkillTheLibraryDoesNotCurate covers, in human and JSON output, the diagnostics for
 // a skill's use of a curated skill whose source name is wrong, and for a use that leaves out the curated skill's source.
@@ -95,10 +95,10 @@ func TestSync_WarnsWhenTheProjectExcludesACuratedSkillALibrarysSkillUses(t *test
 		t.Fatal(err)
 	}
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                           []byte(curatingLibraryConfig),
-		".trailguide/skills/add-skill/SKILL.md": []byte(usingCurated("add-skill", "pocock:skills/ops/deploy")),
-		"techs/go/_group.yaml":                  []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
-		"techs/go/errors.md":                    updateRule("errors 1.0.0"),
+		"config.yaml": []byte(curatingLibraryConfig),
+		".trailguide/skills/library/add-skill/SKILL.md": []byte(usingCurated("add-skill", "pocock:skills/ops/deploy")),
+		"techs/go/_group.yaml":                          []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
+		"techs/go/errors.md":                            updateRule("errors 1.0.0"),
 	}))
 	if err != nil {
 		t.Fatal(err)

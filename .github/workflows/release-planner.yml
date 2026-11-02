@@ -1,4 +1,4 @@
-# release-planner:generated v0.4.3 sha256:94682fc0d17b28bf. Do not edit; change .release-planner/config.yml and run release-planner install.
+# release-planner:generated v0.4.3 sha256:4734a055ad4790a3. Do not edit; change .release-planner/config.yml and run release-planner install.
 name: Release
 # A pull request that adds or edits release notes is validated, checked, and built before it
 # merges, and blocks at the start and end of its description report the release's status. Merging it
@@ -6,9 +6,9 @@ name: Release
 on:
   push:
     branches: ['main']
-    paths: ['releases/v*.md']
+    paths: ['_releases/v*.md']
   pull_request:
-    paths: ['releases/**', '.release-planner/**', '.github/workflows/release-planner.yml']
+    paths: ['_releases/**', '.release-planner/**', '.github/workflows/release-planner.yml']
   # Retry a failed publication by naming the commit the release pull request merged as.
   workflow_dispatch:
     inputs:

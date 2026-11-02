@@ -74,10 +74,11 @@ Choosing skills:
 
 A library marks each of its skills required, recommended, or offered. Its
 required skills install whatever you choose, so a source without --rules or
---skills installs only those. A library's skill IDs are its .trailguide/skills/
-folders, such as skills/build-feature. In another repository, a skill is any
-folder with a SKILL.md, named by its path from the repository root, such as
-tools/review; * takes every one outside folders whose names start with a dot.
+--skills installs only those. A library's skill IDs name the skill folders in
+its .trailguide/skills/ origin folders, such as skills/build-feature. In another
+repository, a skill is any folder with a SKILL.md, named by its path from the
+repository root, such as tools/review; * takes every one outside folders whose
+names start with a dot.
 
 Taking one revision:
   Without --ref, the source follows the library's newest library release when

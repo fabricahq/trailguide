@@ -1,17 +1,17 @@
 ---
 title: "Comment the role, the result, and the hidden constraint"
-whenToRead: "Before writing, changing, or reviewing TypeScript files, exported functions, types, components, or code whose purpose, behavior, or constraints are not obvious from names and types."
+whenToRead: "Before planning, writing, changing, or reviewing TypeScript files, exported functions, types, components, or code whose purpose, behavior, or constraints are not obvious from names and types."
 impact: "MEDIUM"
 impactDescription: "Missing or narrating comments force readers and agents to trace implementations to learn what files and functions do, and guessed rationales become false specifications."
 tags: "typescript, comments, tsdoc, documentation"
 attribution:
   - url: https://github.com/mkosir/typescript-style-guide/blob/86bebd58a987e23277dba02028c0ee2d6ffb5073/website/src/pages/index.mdx
-    description: "Adapted from mkosir TypeScript Style Guide guidance (comment-role-result-and-constraints; MIT, notice retained in NOTICE.md): restructured to the rule template; the guidance and examples are otherwise preserved."
+    description: "Adapted from mkosir TypeScript Style Guide guidance (comment-role-result-and-constraints; MIT, notice retained in NOTICE.md): restructured to the rule template and extended with contract-first design and high-level implementation explanations."
 ---
 
 ## Comment the role, the result, and the hidden constraint
 
-Write comments that save the reader work: a file comment stating the file's role, an export comment stating what callers receive, and a body comment only for a constraint that names and types cannot express.
+Write comments that save the reader work: a file comment stating the file's role, an export comment stating what callers receive, and a body comment for intent or constraints that names and types do not make clear.
 Do not narrate the code, and do not invent reasons you do not know.
 
 ### Implementation
@@ -24,8 +24,15 @@ Do not narrate the code, and do not invent reasons you do not know.
 - **Exported contract:** give every exported function, type, and component a doc comment stating what callers receive or can rely on, including rules the signature hides, such as ordering, case, locale, units, mutation, empty input, and failure modes.
   Describe behavior in plain language rather than naming the mechanism.
   Drop `@param` and `@returns` tags that repeat names and types; keep `@throws` only when it names the condition.
+- **Contract first:** draft the contract of a new or materially changed interface before its implementation.
+  Describe what callers can rely on without explaining the mechanism.
+  When a complete contract is difficult to explain simply, reconsider the interface rather than omitting its constraints.
+  Check the draft against the finished code and tests; a drafted promise is not evidence it is implemented.
 - **Private helpers:** prefer names and signatures that make purpose clear, and add a short comment only when behavior or constraints would otherwise require reading the implementation.
-- **Hidden constraints:** comment a body line only for a vendor quirk, legal requirement, workaround, or invariant the types cannot express, next to the value or operation it explains.
+- **Implementation intent:** explain the purpose of a major phase or non-obvious algorithm at a higher level than its statements.
+  Keep a cohesive block together when a phase comment makes its intent clear; a comment alone does not justify extracting a helper.
+  Obvious statements and short, self-explanatory loops need no narration.
+- **Hidden constraints:** explain a vendor quirk, legal requirement, workaround, or invariant the types cannot express, next to the value or operation it explains.
   When the constraint belongs to a constant, name the constant and put the comment there.
 - **Unknown reasons:** when the reason is not known, name the value and leave the rationale out, or point to the issue that will settle it.
   Point workarounds and TODOs at an issue, pull request, or upstream document.
@@ -33,7 +40,7 @@ Do not narrate the code, and do not invent reasons you do not know.
 
 ### Rationale
 
-A comment is an index entry, not a narration of the next line.
+A useful comment supplies the role, contract, intent, or constraint that the code leaves implicit.
 A file comment lets a reader decide whether to open a file, and an export comment tells a caller what they get without reading the body.
 Agent-written code tends to fail this by omission: files without headers, exports whose `@param` tags repeat the signature, and unexplained magic numbers.
 A guessed rationale is worse than none, because the next reader or agent treats it as a requirement.
@@ -126,9 +133,39 @@ export function sortFolders(folders: ReadonlyArray<Folder>): Array<Folder> {
 }
 ```
 
+#### Application: Explaining a phase inside a cohesive operation
+
+**Incorrect (counterexample):**
+
+```ts
+// Loop over candidates.
+for (const candidate of candidates) {
+  if (candidate.observedRevision !== revisions.get(candidate.id)) {
+    staleIds.add(candidate.id);
+  }
+}
+```
+
+The comment repeats the loop structure without explaining what the phase establishes.
+
+**Correct:**
+
+```ts
+// Collect revision conflicts for the caller's stale-preview report.
+for (const candidate of candidates) {
+  if (candidate.observedRevision !== revisions.get(candidate.id)) {
+    staleIds.add(candidate.id);
+  }
+}
+```
+
+The comment explains why the operation collects these IDs without narrating each comparison.
+
 ### Validation
 
-Check that each touched file has a role header, that each export's comment states its observable contract, and that body comments explain constraints rather than narrate.
+Check that each touched file has a role header, that each export's comment states its observable contract, and that body comments explain intent or constraints rather than narrate statements.
+For a new or materially changed interface, inspect its drafted contract and confirm the finished behavior matches it.
+Difficulty describing a contract is a reason to inspect its design, not to shorten the comment by dropping required information.
 Lint for presence, not content, with `eslint-plugin-jsdoc`: enable `require-file-overview`, `require-jsdoc` with `publicOnly`, and `require-description`, and disable `require-param` and `require-returns`.
 `require-file-overview` recognizes only the `@file` block form, so a project using `//` headers needs its own check.
 Review judges whether comments are accurate and useful.

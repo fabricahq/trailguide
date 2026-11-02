@@ -3,7 +3,7 @@ name: show-me-your-work
 description: "Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result). Local by default; commit it when a reviewer needs the trail to trust the result. Use for /show-me-your-work, autonomous or multi-phase runs, or work a human reviews after stepping away."
 disable-model-invocation: true
 ---
-<!-- trailguide:installed fabrica:skills/show-me-your-work 586301255f96d4b0a1f7c9e86b78fd55c8226f41. Do not edit; trailguide project sync replaces this copy. -->
+<!-- trailguide:installed fabrica:skills/show-me-your-work f938937ece02629a35f7a1b8d554654c679e8738. Do not edit; trailguide project sync replaces this copy. -->
 
 # Show me your work
 
@@ -62,6 +62,10 @@ At the end of the run, before handing back, check the log told the truth. Read t
 - A fork, pivot, or abandoned approach that shaped the work but isn't logged is a gap. Add it.
 
 Correct the log, not the story. The audit never edits or removes a row, even an invented one. When a row records neither a real decision nor a real action, or its claim or evidence is wrong, add a row that supersedes it with what actually happened and a pointer that resolves. This audit does not check rows outside this run's stretches. If this run's own work shows one of them is wrong, supersede it like any wrong call.
+
+## Preserve lasting design knowledge
+
+Before handing back, inspect the decisions for invariants, contracts, and reasons a future maintainer needs to preserve. Put each beside its owning code, or in one discoverable design note when it spans modules, and add an evidence pointer to that location in the log. State the current requirement and reason, leaving the sequence of attempts in the log. Verify the explanation against the implementation. Done when no lasting design constraint exists only in this working log or a commit message.
 
 ## Cross-model review of the trail
 

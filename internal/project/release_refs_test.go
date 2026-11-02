@@ -140,7 +140,7 @@ func TestSync_LatestReleaseKeepsTheRecordedReleaseUntilUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source := preview.Sources[0]; source.SetsRef != "" || source.SharedFiles == nil || source.SharedFiles.To != 2 || !preview.Moves() {
+	if source := preview.Sources[0]; source.SetsRef != "" || source.SharedFiles == nil || source.SharedFiles.To != 2 || !movesSources(preview) {
 		t.Fatalf("preview %+v", source)
 	}
 	if _, err := plan.Apply(ctx, nil); err != nil {

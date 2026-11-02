@@ -38,7 +38,7 @@ func TestCheck_ReportsEachInstalledSkillFolderThatDiffersFromItsSource(t *testin
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
+	writeFixture(t, root, "skills/local/check-release/SKILL.md", "---\nname: check-release\ndescription: Check a release.\n---\n# Check\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestCheck_ReportsEachInstalledSkillFolderThatDiffersFromItsSource(t *testin
 	if err := os.RemoveAll(repository(".agents/skills/review")); err != nil {
 		t.Fatal(err)
 	}
-	if err := root.RemoveAll("skills/check-release"); err != nil {
+	if err := root.RemoveAll("skills/local/check-release"); err != nil {
 		t.Fatal(err)
 	}
 	before, err := filetxn.ReadTree(ctx, root, ".")
@@ -94,7 +94,7 @@ func TestCheck_ReportsAGeneratedCodexInterfaceFileThatDrifted(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/add-skill/SKILL.md", "---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  display-name: Add Skill\n---\n# Add\n")
+	writeFixture(t, root, "skills/local/add-skill/SKILL.md", "---\nname: add-skill\ndescription: Add a skill.\nmetadata:\n  display-name: Add Skill\n---\n# Add\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestBuild_LinksAnAuthoredSkillToTheAuthoredRuleItCites(t *testing.T) {
 	ctx := context.Background()
 	root, options := localProject(t)
 	writeFixture(t, root, "config.yaml", `{"schemaVersion":2,"skillTargets":["claude"],"sources":{}}`)
-	writeFixture(t, root, "skills/tidy/SKILL.md", "---\nname: tidy\nmetadata:\n  trailguide-rules-used: techs/go/errors\n---\n# Tidy\n")
+	writeFixture(t, root, "skills/local/tidy/SKILL.md", "---\nname: tidy\nmetadata:\n  trailguide-rules-used: techs/go/errors\n---\n# Tidy\n")
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestCheck_FailsWhenAnAuthoredSkillCitesARuleItsLibraryRetired(t *testing.T)
 		t.Fatal(err)
 	}
 	defer root.Close()
-	writeFixture(t, root, "skills/fix/SKILL.md", "---\nname: fix\ndescription: Fix a bug.\nmetadata:\n  trailguide-rules-used: |\n    team:techs/go/errors\n---\n# Fix\n")
+	writeFixture(t, root, "skills/local/fix/SKILL.md", "---\nname: fix\ndescription: Fix a bug.\nmetadata:\n  trailguide-rules-used: |\n    team:techs/go/errors\n---\n# Fix\n")
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestCheck_FailsWhenAnAuthoredSkillCitesARuleItsLibraryRetired(t *testing.T)
 	}
 	const problem = "trailguide-rules-used names team:techs/go/errors, which its library retired; remove it from trailguide-rules-used, or cite the rule that replaces it"
 	applied, err := plan.Apply(ctx, nil)
-	if err != nil || !slices.Contains(applied.Warnings, "skills/fix/SKILL.md: "+problem) {
+	if err != nil || !slices.Contains(applied.Warnings, "skills/local/fix/SKILL.md: "+problem) {
 		t.Fatalf("update = %+v, %v; want a warning that the skill cites a retired rule", applied, err)
 	}
 	if installed := readRepositoryFile(t, options, ".claude/skills/fix/SKILL.md"); !strings.Contains(installed, "- `team:techs/go/errors`: retired by its library") {
@@ -191,14 +191,14 @@ func TestCheck_FailsWhenAnAuthoredSkillCitesARuleItsLibraryRetired(t *testing.T)
 	}
 	_, err = Check(ctx, options)
 	var validation errs.ValidationError
-	if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/fix/SKILL.md" || validation.ValidationProblem() != problem {
-		t.Fatalf("check = %v; want the retired rule named at skills/fix/SKILL.md", err)
+	if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/local/fix/SKILL.md" || validation.ValidationProblem() != problem {
+		t.Fatalf("check = %v; want the retired rule named at skills/local/fix/SKILL.md", err)
 	}
 	changes, err := Build(ctx, options)
-	if err != nil || !reflect.DeepEqual(changes.Warnings, []string{"skills/fix/SKILL.md: " + problem}) {
+	if err != nil || !reflect.DeepEqual(changes.Warnings, []string{"skills/local/fix/SKILL.md: " + problem}) {
 		t.Fatalf("build = %+v, %v", changes, err)
 	}
-	writeFixture(t, root, "skills/fix/SKILL.md", "---\nname: fix\ndescription: Fix a bug.\n---\n# Fix\n")
+	writeFixture(t, root, "skills/local/fix/SKILL.md", "---\nname: fix\ndescription: Fix a bug.\n---\n# Fix\n")
 	if _, err := Build(ctx, options); err != nil {
 		t.Fatal(err)
 	}
@@ -224,18 +224,18 @@ func TestSync_RejectsAnAuthoredSkillCitingARuleItsSourceDoesntHave(t *testing.T)
 	rejected := func(operation string, err error) {
 		t.Helper()
 		var validation errs.ValidationError
-		if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/fix/SKILL.md" || validation.ValidationProblem() != problem {
-			t.Fatalf("%s = %v; want the misspelled rule named at skills/fix/SKILL.md", operation, err)
+		if !errors.As(err, &validation) || validation.ValidationLocation() != "skills/local/fix/SKILL.md" || validation.ValidationProblem() != problem {
+			t.Fatalf("%s = %v; want the misspelled rule named at skills/local/fix/SKILL.md", operation, err)
 		}
 	}
-	writeFixture(t, root, "skills/fix/SKILL.md", citing("error"))
+	writeFixture(t, root, "skills/local/fix/SKILL.md", citing("error"))
 	_, err = Sync(ctx, options, git)
 	rejected("sync", err)
 	if exists(t, options, ".claude/skills/fix") {
 		t.Fatal("sync installed the skill it rejected")
 	}
 
-	writeFixture(t, root, "skills/fix/SKILL.md", citing("errors"))
+	writeFixture(t, root, "skills/local/fix/SKILL.md", citing("errors"))
 	if _, err := Sync(ctx, options, git); err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestSync_RejectsAnAuthoredSkillCitingARuleItsSourceDoesntHave(t *testing.T)
 	}
 	requireCurrent(t, options)
 
-	writeFixture(t, root, "skills/fix/SKILL.md", citing("error"))
+	writeFixture(t, root, "skills/local/fix/SKILL.md", citing("error"))
 	_, err = Build(ctx, options)
 	rejected("build", err)
 	_, err = Check(ctx, options)

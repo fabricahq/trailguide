@@ -133,18 +133,19 @@ func checkNewRule(ctx context.Context, root *os.Root, id string, options Options
 // SkillPlan identifies a new skill in the library's .trailguide/skills/; Commit rechecks that its folder is still
 // absent.
 type SkillPlan struct {
-	name     string
-	options  Options
-	released bool
+	name, folder string
+	options      Options
+	released     bool
 }
 
 // PlanSkill checks the skill's name and that the library has no skill folder by that name before collecting the
 // skill's description. In a Git repository, it also finds whether the library has a library release, so the new
 // skill needs a change note; it fails in a shallow clone, where that can't be known.
 func PlanSkill(ctx context.Context, name string, options Options) (*SkillPlan, error) {
-	released := false
+	released, folder := false, ""
 	options, err := planAuthoring(ctx, options, func(root *os.Root, options Options) error {
-		if err := checkNewSkill(ctx, root, name); err != nil {
+		var err error
+		if folder, err = newSkillFolder(ctx, root, name); err != nil {
 			return err
 		}
 		git, err := openLibraryGit(ctx, root.Name(), options.Git)
@@ -158,8 +159,11 @@ func PlanSkill(ctx context.Context, name string, options Options) (*SkillPlan, e
 	if err != nil {
 		return nil, err
 	}
-	return &SkillPlan{name, options, released}, nil
+	return &SkillPlan{name, folder, options, released}, nil
 }
+
+// Folder returns the path in the library of the planned skill's folder, such as .trailguide/skills/acme/fix-bug.
+func (p *SkillPlan) Folder() string { return p.folder }
 
 // NeedsChangeNote reports that the library had a library release when planning, so the new skill needs a change
 // note before library check passes.
@@ -185,14 +189,15 @@ func (p *SkillPlan) Commit(ctx context.Context, description, kind string) (Autho
 		return AuthoringResult{}, err
 	}
 	defer dir.Close()
-	changes, err := filetxn.EditIn(ctx, dir, root, func() ([]filetxn.File, error) {
+	changes, err := editIn(ctx, dir, root, p.options.ToolVersion, func() ([]filetxn.File, error) {
 		if _, _, err := libraryManifest(ctx, root); err != nil {
 			return nil, err
 		}
-		if err := checkNewSkill(ctx, root, p.name); err != nil {
+		folder, err := newSkillFolder(ctx, root, p.name)
+		if err != nil {
 			return nil, err
 		}
-		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(skillsDirectory, p.name, skills.File), Content: data}})
+		return withSkillsGuide(ctx, root, []filetxn.File{{Path: path.Join(folder, skills.File), Content: data}})
 	})
 	return authoringResult(changes, err)
 }
@@ -209,9 +214,51 @@ func draftSkill(name, description, kind string) ([]byte, error) {
 	return skills.Draft(name, description, kind, rules.DraftMarker)
 }
 
-func checkNewSkill(ctx context.Context, root *os.Root, name string) error {
+// newSkillFolder returns the path in the library of the folder of the library's own new skill name, in the origin
+// folder its library.name names, such as .trailguide/skills/acme/fix-bug. It fails when name isn't a valid skill
+// name, the library has no manifest, or it already has a skill named name in any origin folder.
+func newSkillFolder(ctx context.Context, root *os.Root, name string) (string, error) {
 	if !skills.ValidName(name) {
-		return &ValidationError{Location: "skill name", Problem: "a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen, such as fix-bug"}
+		return "", &ValidationError{Location: "skill name", Problem: "a skill name uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen, such as fix-bug"}
 	}
-	return filetxn.RequireAbsent(ctx, root, path.Join(skillsDirectory, name))
+	origins, err := skillOrigins(ctx, root)
+	if err != nil {
+		return "", err
+	}
+	return requireNoSkillNamed(ctx, root, origins.Own, name)
+}
+
+// skillOrigins returns the skill origins of the library's configuration, which says which origin folder of skills/
+// each skill belongs in. It fails when the library has no manifest, or its configuration is invalid.
+func skillOrigins(ctx context.Context, root *os.Root) (skills.Origins, error) {
+	data, err := readOptionalBelow(ctx, root, manifestPath)
+	if err != nil {
+		return skills.Origins{}, err
+	}
+	if data == nil {
+		return skills.Origins{}, failure("needs-init", "missing "+manifestPath+"; run trailguide library init first", nil)
+	}
+	config, err := rules.ParseConfigurationYAML(data)
+	if err != nil {
+		return skills.Origins{}, err
+	}
+	return config.SkillOrigins(), nil
+}
+
+// requireNoSkillNamed returns the path in the library of the folder of skill name in the origin folder origin. It
+// fails when that folder exists, or the library has a skill named name in any other origin folder, since a skill's
+// name is its ID.
+func requireNoSkillNamed(ctx context.Context, root *os.Root, origin, name string) (string, error) {
+	folder := path.Join(skillsDirectory, skills.Folder(origin, name))
+	if err := filetxn.RequireAbsent(ctx, root, folder); err != nil {
+		return "", err
+	}
+	existing, err := skillFolderPaths(root, skills.AuthoredID(name))
+	if err != nil {
+		return "", err
+	}
+	if len(existing) > 0 {
+		return "", failure("already-exists", existing[0]+": already a skill named "+name+", and a skill's name is its ID; choose a different name", nil)
+	}
+	return folder, nil
 }

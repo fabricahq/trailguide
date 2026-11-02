@@ -5,9 +5,9 @@
 
 **Group ID:** `practices/code-design`
 
-**Description:** Design meaningful interfaces, keep implementation decisions with their owners, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
+**Description:** Design meaningful interfaces and caller contracts, keep implementation decisions with their owners, remove unnecessary error cases, express operations clearly, separate computation from effects, colocate feature code, and record facts when they happen.
 
-**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
+**When to read this group:** Before planning, implementing, refactoring, or reviewing interfaces, API and failure contracts, responsibility boundaries, function or folder structure, or code whose behavior depends on what happened earlier.
 
 ## How to use this group
 
@@ -57,7 +57,7 @@ Version: 1.0.0
 
 Rule ID: `fabrica:practices/code-design/organize-code-by-feature`
 
-Version: 1.0.0
+Version: 1.1.0
 
 **When to read:** Before planning, writing, moving, or reviewing where files live in a project, such as adding a feature, creating shared components or utilities, or choosing import paths.
 
@@ -81,11 +81,25 @@ Version: 1.0.0
 
 **Read full rule:** [Record facts when they happen](../../rules/fabrica/practices/code-design/record-facts-when-they-happen.md)
 
+### Remove unnecessary error cases through contract design
+
+Rule ID: `fabrica:practices/code-design/remove-unnecessary-error-cases`
+
+Version: 1.0.0
+
+**When to read:** Before planning, writing, changing, or reviewing an operation's success and failure semantics, such as deletion, unsubscribe, empty collections, retries, or callers handling an already-satisfied request.
+
+**Impact:** MEDIUM-HIGH
+
+**Why it matters:** Unnecessary failures spread special-case handling across callers, while suppressing meaningful failures makes success reports unreliable.
+
+**Read full rule:** [Remove unnecessary error cases through contract design](../../rules/fabrica/practices/code-design/remove-unnecessary-error-cases.md)
+
 ### Separate pure computation from effects
 
 Rule ID: `fabrica:practices/code-design/separate-pure-computation-from-effects`
 
-Version: 1.0.0
+Version: 2.0.0
 
 **When to read:** Before planning, writing, changing, or reviewing functions that transform data, especially ones that also read global state, mutate their inputs, or perform I/O such as network, storage, or UI updates.
 

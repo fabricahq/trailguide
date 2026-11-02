@@ -6,6 +6,7 @@
   ],
   "exclude": [
     "dist",
-    "_tools"
+    "_tools",
+    "video"
   ]
 }

@@ -51,7 +51,7 @@ func importedProject(t *testing.T) (*os.Root, Options) {
 	commit := strings.Repeat("a", 40)
 	imported := snapshot{Repository: config.Sources[0].Repository, Ref: gitRef(t, "v1.0.0"), Commit: commit, Groups: []string{"techs/go"}, Selection: config.Sources[0].Groups, RuleSelection: []string{},
 		Rules: map[string]library.ImportedRule{"techs/go/errors": {Commit: commit}},
-		Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`), "techs/go/_group.yaml": []byte(projectMetadata), "techs/go/errors.md": []byte(projectRule)}}
+		Files: map[string][]byte{"config.yaml": []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`), "techs/go/_group.yaml": []byte(projectMetadata), "techs/go/errors.md": []byte(projectRule)}}
 	vendor, lock, err := encodeSnapshots(config, map[string]snapshot{"team": imported}, sourceRecords{})
 	if err != nil {
 		t.Fatal(err)
@@ -92,12 +92,11 @@ func TestOfflineBuildCheckAndRepeat(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Init wrote AGENTS.md's section without a version, so check reports it last, and build updates it.
-			last := len(stale.Problems) - 1
-			if len(changes.Added) != last || stale.Problems[last] != (Problem{Kind: OutdatedAgents, Path: "../AGENTS.md", Repair: Rebuild}) || changes.Agents == nil || *changes.Agents != (AgentsChange{Path: "AGENTS.md", Action: "updated"}) {
+			// Init wrote AGENTS.md's section, so only generated output is missing.
+			if len(changes.Added) != len(stale.Problems) || changes.Agents != nil {
 				t.Fatalf("build/check differ: %+v %+v", changes, stale)
 			}
-			for i, problem := range stale.Problems[:last] {
+			for i, problem := range stale.Problems {
 				if problem.Kind != MissingFile || problem.Path != "_managed/generated/"+changes.Added[i] || problem.Repair != Rebuild {
 					t.Fatalf("unexpected initial problem: %+v", problem)
 				}

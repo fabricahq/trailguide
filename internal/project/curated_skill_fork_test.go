@@ -63,7 +63,7 @@ func TestPlanSkillFork_ForksACuratedSkillAndUpdateListsItsSourcesChanges(t *test
 	if _, err := plan.Apply(ctx, []UpdateDecision{{Source: "team", Rule: "pocock:skills/ops/deploy", Kind: DecisionMergeFork}}); err != nil {
 		t.Fatal(err)
 	}
-	if script := readRepositoryFile(t, b.options, ".trailguide/skills/deploy/scripts/deploy.sh"); script != "#!/bin/sh\necho deploy safely\n" {
+	if script := readRepositoryFile(t, b.options, ".trailguide/skills/team/deploy/scripts/deploy.sh"); script != "#!/bin/sh\necho deploy safely\n" {
 		t.Fatalf("merged script = %q", script)
 	}
 	if config := readRepositoryFile(t, b.options, ".trailguide/config.yaml"); !strings.Contains(config, moved) {

@@ -108,15 +108,42 @@ func SetConfigurationSkillTargets(input []byte, targets []string) ([]byte, error
 		*existing = *list
 		return encodeConfiguration(document)
 	}
+	insertAfterSchemaVersion(root, "skillTargets", list)
+	return encodeConfiguration(document)
+}
+
+// SetConfigurationMinimumVersion sets minTrailguideVersion to version, replacing the field, or adding it after
+// schemaVersion, without dropping other comments or reordering entries. The complete resulting configuration is
+// validated before any bytes are returned.
+func SetConfigurationMinimumVersion(input []byte, version ToolVersion) ([]byte, error) {
+	document, data, err := decode.YAML(input, "configuration")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ParseConfiguration(data); err != nil {
+		return nil, err
+	}
+	root := document.Content[0]
+	if existing := mappingValue(root, MinimumVersionField); existing != nil {
+		// Changing only the value keeps the field's comments and quoting.
+		existing.Value = version.String()
+		return encodeConfiguration(document)
+	}
+	insertAfterSchemaVersion(root, MinimumVersionField, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: version.String()})
+	return encodeConfiguration(document)
+}
+
+// insertAfterSchemaVersion adds key and value to the top-level mapping root after schemaVersion, or first when it has
+// none, writing the mapping in block style.
+func insertAfterSchemaVersion(root *yaml.Node, key string, value *yaml.Node) {
 	at := 0
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		if root.Content[i].Value == "schemaVersion" {
 			at = i + 2
 		}
 	}
-	root.Content = slices.Insert(root.Content, at, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "skillTargets"}, list)
+	root.Content = slices.Insert(root.Content, at, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, value)
 	root.Style = 0
-	return encodeConfiguration(document)
 }
 
 // AppendConfigurationLibrary adds a library section, the manifest, holding value, such as an empty map or one with

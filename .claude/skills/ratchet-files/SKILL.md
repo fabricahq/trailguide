@@ -4,7 +4,7 @@ description: "Ratchet source file size so every file stays small enough for an a
 metadata:
   trailguide-skill-type: playbook
 ---
-<!-- trailguide:installed fabrica:skills/ratchet-files 586301255f96d4b0a1f7c9e86b78fd55c8226f41. Do not edit; trailguide project sync replaces this copy. -->
+<!-- trailguide:installed fabrica:skills/ratchet-files f938937ece02629a35f7a1b8d554654c679e8738. Do not edit; trailguide project sync replaces this copy. -->
 
 # Ratchet Files
 

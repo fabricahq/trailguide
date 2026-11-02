@@ -16,7 +16,7 @@ import (
 // librarySkillCommand registers library add skill: NAME creates a draft skill, and --from forks one under its name.
 func librarySkillCommand(options Options, output *commandOutput) *cobra.Command {
 	cmd, f := newLibraryCommand("skill NAME | --from SOURCE:SKILL", "Create a draft skill, or fork a skill from a source the library declares", skillArguments("fix-bug"), options)
-	cmd.Long = cmd.Short + ".\n\nWith NAME, writes .trailguide/skills/NAME/SKILL.md with the name, the description,\nand the type in its frontmatter, and a body with the trailguide:draft marker.\nComplete the steps and remove the marker; library check fails until you do. A\nnew skill is offered; to require or recommend it, add it to library.skills.\n\nWith --from, forks the skill to publish your own version of it. Copies the\nskill, with every file's executable bit, from the source's repository at the\nrevision its ref names now, or its newest library release without one, into\n.trailguide/skills/<name>/, where <name> is the skill's name. The skills its\nSKILL.md uses get the source's name, such as pstack:skills/tdd, so they name\nskills the library curates from the source. config.yaml gets an entry in the\nsource's skills.forks that names the fork with as, records the commit it copied\nas basedOn, and records your reason; when library.skills lists the skill as one\nthe library curates, the fork takes its place at the same level. trailguide library check then lists the source's later changes to the\nskill whenever its ref moves." + documentationHelp
+	cmd.Long = cmd.Short + ".\n\nWith NAME, writes .trailguide/skills/<library.name>/NAME/SKILL.md, in the folder\nfor the library's own skills, with the name, the description, and the type in\nits frontmatter, and a body with the trailguide:draft marker. Complete the steps\nand remove the marker; library check fails until you do. A new skill is offered;\nto require or recommend it, add it to library.skills.\n\nWith --from, forks the skill to publish your own version of it. Copies the\nskill, with every file's executable bit, from the source's repository at the\nrevision its ref names now, or its newest library release without one, into\n.trailguide/skills/<source>/<name>/, the folder for forks of the source's skills,\nwhere <name> is the skill's name. The skills its\nSKILL.md uses get the source's name, such as pstack:skills/tdd, so they name\nskills the library curates from the source. config.yaml gets an entry in the\nsource's skills.forks that names the fork with as, records the commit it copied\nas basedOn, and records your reason; when library.skills lists the skill as one\nthe library curates, the fork takes its place at the same level. trailguide library check then lists the source's later changes to the\nskill whenever its ref moves." + documentationHelp
 	f.addSkillFlags(cmd)
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
@@ -42,7 +42,7 @@ func librarySkillCommand(options Options, output *commandOutput) *cobra.Command 
 			if !f.interactive() {
 				return usage(fmt.Errorf("--reason is required: the fork replaces %s's %s, and the exclusion that records where it came from records why", from.Source, from.Skill))
 			}
-			f.introduction = fmt.Sprintf("Forking %s into:\n  .trailguide/skills/%s/\n\nconfig.yaml gets an exclusion that names the fork, records the commit it copies,\nand records your reason.\n\n", from, plan.Name())
+			f.introduction = fmt.Sprintf("Forking %s into:\n  .trailguide/skills/%s/%s/\n\nconfig.yaml gets an exclusion that names the fork, records the commit it copies,\nand records your reason.\n\n", from, from.Source, plan.Name())
 			if reason, err = f.askValidated("Why publish your own version instead of the source's skill?", func(value string) error { return validateAnswer("reason", value) }); err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ func createLibrarySkill(cmd *cobra.Command, f *authoringFlags, name string, outp
 	if err != nil {
 		return err
 	}
-	description, err := f.askDescription(name, true)
+	description, err := f.askDescription(plan.Folder(), true)
 	if err != nil {
 		return err
 	}

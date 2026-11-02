@@ -31,7 +31,7 @@ func newCuratedUpdateFixture(t *testing.T) (updateFixture, string, string) {
 		t.Fatal(err)
 	}
 	team, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 1\n  skills:\n    required: [pocock:skills/ops/deploy]\n"),
+		"config.yaml":          []byte("schemaVersion: 2\nsources:\n  pocock:\n    repository: git@fixture.invalid:pocock\n    ref: stable\nlibrary:\n  schemaVersion: 2\n  name: library\n  skills:\n    required: [pocock:skills/ops/deploy]\n"),
 		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
 		"techs/go/errors.md":   updateRule("errors 1.0.0"),
 	}))

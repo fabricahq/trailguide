@@ -23,19 +23,19 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                                          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		"techs/go/_group.yaml":                                 []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
-		"techs/go/errors.md":                                   updateRule("errors 1.0.0"),
-		".trailguide/skills/build-feature/SKILL.md":            []byte("---\nname: build-feature\ndescription: Build a feature from a spec.\n---\n# Build a feature\n"),
-		".trailguide/skills/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build\n"),
-		".trailguide/skills/build-feature/scripts/lint.sh":     []byte("#!/bin/sh\necho lint\n"),
-		".trailguide/skills/build-feature/references/notes.md": []byte("Notes.\n"),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
+		"techs/go/errors.md":   updateRule("errors 1.0.0"),
+		".trailguide/skills/library/build-feature/SKILL.md":            []byte("---\nname: build-feature\ndescription: Build a feature from a spec.\n---\n# Build a feature\n"),
+		".trailguide/skills/library/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build\n"),
+		".trailguide/skills/library/build-feature/scripts/lint.sh":     []byte("#!/bin/sh\necho lint\n"),
+		".trailguide/skills/library/build-feature/references/notes.md": []byte("Notes.\n"),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	chmodExecutable(t, f, ".trailguide/skills/build-feature/scripts/run.sh", ".trailguide/skills/build-feature/scripts/lint.sh")
+	chmodExecutable(t, f, ".trailguide/skills/library/build-feature/scripts/run.sh", ".trailguide/skills/library/build-feature/scripts/lint.sh")
 	if _, err := f.Commit(ctx, f.Worktree(), "First release", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -51,14 +51,14 @@ func newScriptUpdateFixture(t *testing.T) updateFixture {
 		t.Fatal(code, out, diagnostic)
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Change the scripts", gitfixture.Library(map[string][]byte{
-		"techs/go/errors.md":                                   updateRule("errors 1.1.0"),
-		".trailguide/skills/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build everything\n"),
-		".trailguide/skills/build-feature/scripts/setup.sh":    []byte("#!/bin/sh\necho setup\n"),
-		".trailguide/skills/build-feature/references/notes.md": []byte("More notes.\n"),
+		"techs/go/errors.md": updateRule("errors 1.1.0"),
+		".trailguide/skills/library/build-feature/scripts/run.sh":      []byte("#!/bin/sh\necho build everything\n"),
+		".trailguide/skills/library/build-feature/scripts/setup.sh":    []byte("#!/bin/sh\necho setup\n"),
+		".trailguide/skills/library/build-feature/references/notes.md": []byte("More notes.\n"),
 	})); err != nil {
 		t.Fatal(err)
 	}
-	chmodExecutable(t, f, ".trailguide/skills/build-feature/scripts/setup.sh")
+	chmodExecutable(t, f, ".trailguide/skills/library/build-feature/scripts/setup.sh")
 	if _, err := f.Commit(ctx, f.Worktree(), "Make setup.sh executable", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -165,11 +165,11 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	t.Helper()
 	ctx := context.Background()
 	f, err := gitfixture.New(ctx, gitfixture.Library(map[string][]byte{
-		"config.yaml":                               []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":1}}`),
-		"techs/go/_group.yaml":                      []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
-		"techs/go/errors.md":                        updateRule("errors 1.0.0"),
-		"techs/go/naming.md":                        updateRule("naming 1.0.0"),
-		".trailguide/skills/build-feature/SKILL.md": []byte("---\nname: build-feature\ndescription: Build a feature from a spec.\n---\n# Build a feature\n"),
+		"config.yaml":          []byte(`{"schemaVersion":2,"sources":{},"library":{"schemaVersion":2,"name":"library"}}`),
+		"techs/go/_group.yaml": []byte(`{"name":"Go","description":"Go guidance.","whenToRead":"When writing Go."}`),
+		"techs/go/errors.md":   updateRule("errors 1.0.0"),
+		"techs/go/naming.md":   updateRule("naming 1.0.0"),
+		".trailguide/skills/library/build-feature/SKILL.md": []byte("---\nname: build-feature\ndescription: Build a feature from a spec.\n---\n# Build a feature\n"),
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -191,11 +191,11 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Add a setup script", gitfixture.Library(map[string][]byte{
 		"techs/go/naming.md": updateRule("naming 2.0.0"),
-		".trailguide/skills/build-feature/scripts/setup.sh": []byte("#!/bin/sh\necho setup\n"),
+		".trailguide/skills/library/build-feature/scripts/setup.sh": []byte("#!/bin/sh\necho setup\n"),
 	})); err != nil {
 		t.Fatal(err)
 	}
-	chmodExecutable(t, f, ".trailguide/skills/build-feature/scripts/setup.sh")
+	chmodExecutable(t, f, ".trailguide/skills/library/build-feature/scripts/setup.sh")
 	if _, err := f.Commit(ctx, f.Worktree(), "Make setup.sh executable", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func newScriptRevisionFixture(t *testing.T) updateFixture {
 	}
 	if _, err := f.Commit(ctx, f.Worktree(), "Remove the setup script", gitfixture.Library(map[string][]byte{
 		"techs/go/errors.md": updateRule("errors 2.0.0"),
-		".trailguide/skills/build-feature/scripts/setup.sh": nil,
+		".trailguide/skills/library/build-feature/scripts/setup.sh": nil,
 	})); err != nil {
 		t.Fatal(err)
 	}

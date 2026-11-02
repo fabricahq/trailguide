@@ -1882,13 +1882,14 @@
   {
     "id": "configuration-library-empty",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\"}}",
     "location": "configuration",
     "expected": {
       "ok": true,
       "value": {
         "sources": [],
         "library": {
+          "name": "library",
           "license": null,
           "skills": {
             "required": [],
@@ -1903,13 +1904,14 @@
   {
     "id": "configuration-library-license",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"license\": {\"spdxExpression\": \"MIT\", \"file\": \"LICENSE.md\", \"notices\": [\".trailguide/assets/NOTICE.md\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"license\": {\"spdxExpression\": \"MIT\", \"file\": \"LICENSE.md\", \"notices\": [\".trailguide/assets/NOTICE.md\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": true,
       "value": {
         "sources": [],
         "library": {
+          "name": "library",
           "license": {
             "spdxExpression": "MIT",
             "files": [
@@ -1946,13 +1948,14 @@
   {
     "id": "configuration-library-skills",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"required\": [\"skills/ship\"], \"recommended\": [\"skills/review\", \"skills/build\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"required\": [\"skills/ship\"], \"recommended\": [\"skills/review\", \"skills/build\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": true,
       "value": {
         "sources": [],
         "library": {
+          "name": "library",
           "license": null,
           "skills": {
             "required": [
@@ -1972,7 +1975,7 @@
   {
     "id": "configuration-library-skills-unknown-level",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"mandatory\": [\"skills/ship\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"mandatory\": [\"skills/ship\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -1986,7 +1989,7 @@
   {
     "id": "configuration-library-skills-not-a-list",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"required\": \"skills/ship\"}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"required\": \"skills/ship\"}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2000,7 +2003,7 @@
   {
     "id": "configuration-library-skills-curated-undeclared-source",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"recommended\": [\"mattpocock:skills/to-spec\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"recommended\": [\"mattpocock:skills/to-spec\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2014,7 +2017,7 @@
   {
     "id": "configuration-library-skills-not-authored",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"offered\": [\"tools/review\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"offered\": [\"tools/review\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2028,7 +2031,7 @@
   {
     "id": "configuration-library-skills-two-levels",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"required\": [\"skills/ship\"], \"offered\": [\"skills/ship\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"required\": [\"skills/ship\"], \"offered\": [\"skills/ship\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2042,13 +2045,14 @@
   {
     "id": "configuration-library-skills-dependencies",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"recommended\": [\"skills/add-skill\"], \"dependencies\": [\"skills/lint-skill\", \"skills/format-skill\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"recommended\": [\"skills/add-skill\"], \"dependencies\": [\"skills/lint-skill\", \"skills/format-skill\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": true,
       "value": {
         "sources": [],
         "library": {
+          "name": "library",
           "license": null,
           "skills": {
             "required": [],
@@ -2068,7 +2072,7 @@
   {
     "id": "configuration-library-skills-dependency-at-a-level",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"offered\": [\"skills/format-skill\"], \"dependencies\": [\"skills/format-skill\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"offered\": [\"skills/format-skill\"], \"dependencies\": [\"skills/format-skill\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2082,7 +2086,7 @@
   {
     "id": "configuration-library-skills-repeated",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"skills\": {\"required\": [\"skills/ship\", \"skills/ship\"]}}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"skills\": {\"required\": [\"skills/ship\", \"skills/ship\"]}}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2096,7 +2100,7 @@
   {
     "id": "configuration-library-unknown",
     "operation": "configuration",
-    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 1, \"rules\": \"rules/\"}}",
+    "input": "{\"schemaVersion\": 2, \"sources\": {}, \"library\": {\"schemaVersion\": 2, \"name\": \"library\", \"rules\": \"rules/\"}}",
     "location": "configuration",
     "expected": {
       "ok": false,
@@ -2116,7 +2120,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library.schemaVersion: missing; add schemaVersion: 1, the library schema version this library publishes",
+        "message": "library.schemaVersion: missing; add schemaVersion: 2, the library schema version this library publishes",
         "location": "library.schemaVersion"
       }
     }
@@ -2130,7 +2134,7 @@
       "ok": false,
       "error": {
         "name": "ValidationError",
-        "message": "library.schemaVersion: expected the library schema version, a whole number such as 1",
+        "message": "library.schemaVersion: expected the library schema version, a whole number such as 2",
         "location": "library.schemaVersion"
       }
     }

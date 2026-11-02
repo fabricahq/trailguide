@@ -40,9 +40,10 @@ type RuleOptions struct {
 }
 
 // Initialize creates missing scaffolding and refreshes an unmodified managed guide; valid configuration and authored
-// files are preserved. A new configuration installs skills into both skill targets, claude and agents. It fails,
-// writing nothing, when the project still has a local/ folder, keeps vendor/ and generated/ where Trail Guide 0.7 and
-// earlier did, which only sync moves, or when AGENTS.md has an edited section or broken markers.
+// files are preserved. A new configuration installs skills into both skill targets, claude and agents, and, from a
+// release build, records options.ToolVersion as its minTrailguideVersion. It fails, writing nothing, when the project
+// still has a local/ folder, keeps vendor/ and generated/ where Trail Guide 0.7 and earlier did, which only sync
+// moves, or when AGENTS.md has an edited section or broken markers.
 // Then it adds or refreshes the Trail Guide section of the repository's AGENTS.md, as build does, listing the file among
 // the changed files, or the added ones when it created it; a failure there comes after the other files were written,
 // and running init again finishes it.
@@ -61,7 +62,7 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 		return AuthoringResult{}, err
 	}
 	defer root.Close()
-	changes, err := filetxn.Edit(ctx, root, func() ([]filetxn.File, error) {
+	changes, err := edit(ctx, root, options.ToolVersion, func() ([]filetxn.File, error) {
 		// The guide and the AGENTS.md section name _managed/, so a project sync hasn't moved there yet keeps both.
 		layout, err := readLayout(root)
 		if err != nil {
@@ -101,7 +102,7 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 			return nil, err
 		}
 		// Refuse an edited section or broken markers before writing anything; initializeAgents writes the section.
-		agents, err := planAgentsSection(ctx, root, config, options)
+		agents, err := planAgentsSection(ctx, root, config, options.ToolVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -113,6 +114,11 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 			data, err := rules.SetConfigurationSkillTargets([]byte("schemaVersion: 2\nsources: {}\n"), skillTargets)
 			if err != nil {
 				return nil, err
+			}
+			if version, release := rules.ReleaseVersion(options.ToolVersion); release {
+				if data, err = rules.SetConfigurationMinimumVersion(data, version); err != nil {
+					return nil, err
+				}
 			}
 			files = append(files, filetxn.File{Path: configurationFile, Content: data})
 		}
@@ -135,12 +141,12 @@ func InitializeWithSkillTargets(ctx context.Context, options Options, skillTarge
 // transaction, adding its path to result, unless its configuration turns off manageAgentsFile.
 func initializeAgents(ctx context.Context, root *os.Root, options Options, result AuthoringResult) (AuthoringResult, error) {
 	var changes FileChanges
-	err := filetxn.WithWriter(ctx, root, func(w *filetxn.Writer) error {
+	err := withWriter(ctx, root, options.ToolVersion, func(w *filetxn.Writer) error {
 		_, config, err := configuration(ctx, root)
 		if err != nil {
 			return err
 		}
-		agents, err := planAgentsSection(ctx, root, config, options)
+		agents, err := planAgentsSection(ctx, root, config, options.ToolVersion)
 		if err != nil {
 			return err
 		}
@@ -170,7 +176,7 @@ func editProject(ctx context.Context, options Options, prepare func(*os.Root, []
 		return AuthoringResult{}, err
 	}
 	defer root.Close()
-	changes, err := filetxn.Edit(ctx, root, func() ([]filetxn.File, error) {
+	changes, err := edit(ctx, root, options.ToolVersion, func() ([]filetxn.File, error) {
 		var files []filetxn.File
 		original, config, err := configuration(ctx, root)
 		if err != nil {

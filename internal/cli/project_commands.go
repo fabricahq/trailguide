@@ -76,7 +76,7 @@ func newProjectCommand(options Options, output *commandOutput) *cobra.Command {
 }
 
 func projectInitCommand(options Options, output *commandOutput) *cobra.Command {
-	initialize, f := newAuthoringCommand("init", "Set up Trail Guide in this project", cobra.NoArgs, options.Directory)
+	initialize, f := newAuthoringCommand("init", "Set up trailguide in this project", cobra.NoArgs, options)
 	initialize.Long = initialize.Short + "\n\nCreates the .trailguide/ directory at the Git repository root, with the project\nconfiguration, config.yaml, and a guide, README.md, that explains how to manage\nrules. It also adds a section to AGENTS.md that tells your coding agent to read\nthe rules, creating the file if needed. Run it from the repository root;\noutside Git, run it from the project root. Running it again keeps your\nconfiguration and rules, and refreshes an outdated, unedited guide and section.\n\nA new configuration installs skills into .claude/skills/ and .agents/skills/.\nChoose others with --skill-targets: repeat it for claude and agents, or pass\nnone to install no copies. On an existing configuration, init changes the skill\ntargets only when you pass --skill-targets.\n\nLearn more: https://trailguide.fabricahq.com/start-here/set-up-project/"
 	var skillTargets []string
 	initialize.Flags().StringArrayVar(&skillTargets, "skill-targets", nil, "Where to install skills (repeat): claude for .claude/skills/, agents for .agents/skills/, or none")
@@ -89,7 +89,6 @@ func projectInitCommand(options Options, output *commandOutput) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		target.ToolVersion = options.Version
 		result, err := project.InitializeWithSkillTargets(cmd.Context(), target, targets)
 		if err != nil {
 			return err
@@ -124,7 +123,7 @@ func parseSkillTargetFlags(values []string, passed bool) ([]string, error) {
 }
 
 func projectSourceCommand(options Options, output *commandOutput) *cobra.Command {
-	source, sf := newAuthoringCommand("source NAME", "Configure a source of rules and skills (without fetching)", requiredArgument("source name", "team", "The name identifies this source in your project configuration."), options.Directory)
+	source, sf := newAuthoringCommand("source NAME", "Configure a source of rules and skills (without fetching)", requiredArgument("source name", "team", "The name identifies this source in your project configuration."), options)
 	for name, description := range map[string]string{"repository": "Git repository URL", "ref": "Library release (release/N), latest-release, branch, tag, or full commit SHA to take the source from; defaults to the newest library release"} {
 		sf.add(source, name, description)
 	}
@@ -182,7 +181,7 @@ func newestReleaseRef(ctx context.Context, name, repository string, git imports.
 }
 
 func projectGroupCommand(options Options, output *commandOutput) *cobra.Command {
-	group, gf := newAuthoringCommand("group GROUP_PATH", "Create a project-only rule group", requiredArgument("group path", "practices/testing", "Use a category and group slug, such as practices/testing or techs/go."), options.Directory)
+	group, gf := newAuthoringCommand("group GROUP_PATH", "Create a project-only rule group", requiredArgument("group path", "practices/testing", "Use a category and group slug, such as practices/testing or techs/go."), options)
 	gf.addGroupFlags(group, "")
 	group.RunE = func(cmd *cobra.Command, args []string) error {
 		target, err := gf.options(cmd.Context(), false)
@@ -208,7 +207,7 @@ func projectGroupCommand(options Options, output *commandOutput) *cobra.Command 
 }
 
 func projectRuleCommand(options Options, output *commandOutput) *cobra.Command {
-	rule, rf := newAuthoringCommand("rule RULE_PATH", "Create a project-only rule or unfinished draft", requiredArgument("rule path", "practices/testing/my-rule", "Include the group path and rule slug, without .md."), options.Directory)
+	rule, rf := newAuthoringCommand("rule RULE_PATH", "Create a project-only rule or unfinished draft", requiredArgument("rule path", "practices/testing/my-rule", "Include the group path and rule slug, without .md."), options)
 	rf.addRuleFlags(rule)
 	rule.Long = strings.TrimSuffix(rule.Long, documentationHelp) + "\n\nTo fork one version of a library rule instead, copying it into this project so\nyou can change what it says, use --from LIBRARY@VERSION (e.g. team@1.3.0) with\nthe library rule's ID as RULE_PATH. When the project imports the rule from that\nlibrary, the fork replaces it, and --reason records why." + documentationHelp
 	rf.add(rule, "from", "Fork `LIBRARY@VERSION` of a library rule, such as team@1.3.0, instead of writing one")

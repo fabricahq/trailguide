@@ -25,6 +25,7 @@ import (
 	"github.com/fabricahq/trailguide/internal/librarytree"
 	"github.com/fabricahq/trailguide/internal/releasetag"
 	"github.com/fabricahq/trailguide/internal/rules"
+	"github.com/fabricahq/trailguide/internal/skills"
 	"github.com/fabricahq/trailguide/trailguide"
 )
 
@@ -514,19 +515,21 @@ func (g *libraryGit) hashRepositoryFiles(ctx context.Context, paths []string) (m
 	return hashes, nil
 }
 
-// changedSkills reports, for each of names, the folders of skills in tree, the tracked files of the working tree's
+// changedSkills reports, for each of names, the names of skills in tree, the tracked files of the working tree's
 // skills/ folder, that base, the skills/ folder of the library release skill versions come from, also has, whether the
 // skill's files differ from base's: in which files it has, in their content as Git would store it, or in their
-// executable bit.
+// executable bit. Each tree places a skill in its origin folder, or base directly in skills/ when an earlier library
+// schema version published it, so a skill that only moved to another origin folder is unchanged.
 func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntry, tree *filetxn.Tree, names []string) (map[string]bool, error) {
 	working := map[string][]string{}
 	paths := []string{}
+	var layout skills.Layout
 	if tree != nil {
-		for name := range tree.Files {
-			folder, _, _ := strings.Cut(name, "/")
-			if slices.Contains(names, folder) {
-				paths = append(paths, skillsDirectory+"/"+name)
-				working[folder] = append(working[folder], name)
+		layout = skills.DiscoverLayout(slices.Collect(maps.Keys(tree.Files)))
+		for file := range tree.Files {
+			if name, inside, ok := layout.Split(file); ok && slices.Contains(names, name) {
+				paths = append(paths, skillsDirectory+"/"+file)
+				working[name] = append(working[name], inside)
 			}
 		}
 	}
@@ -534,24 +537,27 @@ func (g *libraryGit) changedSkills(ctx context.Context, base map[string]treeEntr
 	if err != nil {
 		return nil, err
 	}
+	baseLayout := skills.DiscoverLayout(slices.Collect(maps.Keys(base)))
 	released := map[string][]string{}
-	for name := range base {
-		folder, _, _ := strings.Cut(name, "/")
-		released[folder] = append(released[folder], name)
+	for file := range base {
+		if name, inside, ok := baseLayout.Split(file); ok {
+			released[name] = append(released[name], inside)
+		}
 	}
 	changed := map[string]bool{}
-	for _, folder := range names {
-		files := working[folder]
+	for _, name := range names {
+		files := working[name]
 		slices.Sort(files)
-		previous := released[folder]
+		previous := released[name]
 		slices.Sort(previous)
-		changed[folder] = !slices.Equal(files, previous) || slices.ContainsFunc(files, func(name string) bool {
-			entry := base[name]
+		changed[name] = !slices.Equal(files, previous) || slices.ContainsFunc(files, func(inside string) bool {
+			file := layout.Path(name, inside)
+			entry := base[baseLayout.Path(name, inside)]
 			mode := "100644"
-			if slices.Contains(tree.Executable, name) {
+			if slices.Contains(tree.Executable, file) {
 				mode = "100755"
 			}
-			return entry.kind != "blob" || entry.mode != mode || entry.object != hashes[skillsDirectory+"/"+name]
+			return entry.kind != "blob" || entry.mode != mode || entry.object != hashes[skillsDirectory+"/"+file]
 		})
 	}
 	return changed, nil

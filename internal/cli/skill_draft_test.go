@@ -27,13 +27,13 @@ func TestLibraryAddSkill_CreatesADraftThatCheckRefusesUntilComplete(t *testing.T
 	if code != 0 || !strings.Contains(out, "Skill draft created.") || !strings.Contains(out, "add skills/fix-bug to library.skills") {
 		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
 	}
-	file := filepath.Join(directory, ".trailguide", "skills", "fix-bug", "SKILL.md")
+	file := filepath.Join(directory, ".trailguide", "skills", "library", "fix-bug", "SKILL.md")
 	data, err := os.ReadFile(file)
 	if err != nil || !strings.HasPrefix(string(data), draftSkill) {
 		t.Fatalf("SKILL.md %v:\n%s", err, data)
 	}
 	out, diagnostic, code = runCLI(t, binary, directory, "library", "check")
-	if code != 1 || !strings.Contains(diagnostic, "skills/fix-bug/SKILL.md: complete the draft and remove its trailguide:draft marker") {
+	if code != 1 || !strings.Contains(diagnostic, "skills/library/fix-bug/SKILL.md: complete the draft and remove its trailguide:draft marker") {
 		t.Fatalf("exit %d:\n%s%s", code, out, diagnostic)
 	}
 	if err := os.WriteFile(file, []byte(strings.Replace(string(data), "<!-- trailguide:draft -->\n", "", 1)), 0600); err != nil {
@@ -92,17 +92,17 @@ func TestProjectAddSkill_PromptsForTheDescriptionAndBuildRefusesTheDraft(t *test
 	}
 	steps := []terminalfixture.Step{{Prompt: "Description (what the skill does, then when to use it):", Answer: "   "}, {Prompt: "Description (what the skill does, then when to use it):", Answer: "Fix a reported bug: prove it with a regression test."}}
 	result, err := terminalfixture.Run(context.Background(), binary, directory, []string{"project", "add", "skill", "fix-bug", "--type", "playbook"}, steps)
-	if err != nil || result.ExitCode != 0 || !strings.Contains(result.Transcript, "Adding a project-only skill at: .trailguide/skills/fix-bug/") || !strings.Contains(result.Transcript, "the description is blank") {
+	if err != nil || result.ExitCode != 0 || !strings.Contains(result.Transcript, "Adding a project-only skill at: .trailguide/skills/local/fix-bug/") || !strings.Contains(result.Transcript, "the description is blank") {
 		t.Fatal(err, result)
 	}
-	data, err := os.ReadFile(filepath.Join(directory, ".trailguide", "skills", "fix-bug", "SKILL.md"))
+	data, err := os.ReadFile(filepath.Join(directory, ".trailguide", "skills", "local", "fix-bug", "SKILL.md"))
 	if err != nil || !strings.HasPrefix(string(data), draftSkill) {
 		t.Fatalf("SKILL.md %v:\n%s", err, data)
 	}
 	before := projectFileContents(t, directory)
 	for _, action := range []string{"build", "sync", "check"} {
 		out, diagnostic, code := runCLI(t, binary, directory, "project", action)
-		if code != 1 || !strings.Contains(diagnostic, "skills/fix-bug/SKILL.md") || !strings.Contains(diagnostic, "remove its trailguide:draft marker") {
+		if code != 1 || !strings.Contains(diagnostic, "skills/local/fix-bug/SKILL.md") || !strings.Contains(diagnostic, "remove its trailguide:draft marker") {
 			t.Fatalf("%s: exit %d:\n%s%s", action, code, out, diagnostic)
 		}
 	}
