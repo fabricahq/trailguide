@@ -206,6 +206,25 @@ func TestRelease_PublishesLibraryWideChangesWithoutRuleChanges(t *testing.T) {
 	}
 }
 
+// TestRelease_SaysWhenTheLibrarySchemaVersionChanges adds a Library schema section to the notes of a library release
+// whose manifest declares a different library schema version than the latest library release's, which this version
+// of Trail Guide can't otherwise read.
+func TestRelease_SaysWhenTheLibrarySchemaVersionChanges(t *testing.T) {
+	ctx := context.Background()
+	files := libraryFiles()
+	files["config.yaml"] = []byte("schemaVersion: 2\nsources: {}\nlibrary: {schemaVersion: 1}\n")
+	fixture, options := authorClone(t, files, releaseOne)
+	commitAndPush(t, fixture, options.Directory, map[string][]byte{"config.yaml": libraryFiles()["config.yaml"]})
+	result, err := Release(ctx, ReleaseRequest{Options: options})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Library release 2 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n## Library schema\n\nThis library release moves from library schema version 1 to version 2. Projects need a version of Trail Guide that reads library schema version 2 to take it, so upgrade Trail Guide before running `trailguide project update`. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version).\n\n<details>"
+	if !strings.HasPrefix(result.Notes, want) || !strings.HasPrefix(tagMessage(t, fixture, remoteDir(fixture), "release/2"), want) {
+		t.Fatalf("notes:\n%s\nwant prefix:\n%s", result.Notes, want)
+	}
+}
+
 // TestRelease_ListsRenamedAndRemovedLicenseFiles compares the license and notice files both library releases
 // declare, so a renamed license and a removed notice are listed under their old paths too.
 func TestRelease_ListsRenamedAndRemovedLicenseFiles(t *testing.T) {

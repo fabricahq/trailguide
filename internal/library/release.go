@@ -143,11 +143,11 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 	switch latest := checked.changes.history.latest; {
 	case unpushed == 0 && latest != nil && latest.commit == result.Commit:
 		// The remote already has this commit's library release; finish only what's missing.
-		skills, err := git.publishedSkillContext(ctx, latest)
+		manifest, err := git.publishedManifestContext(ctx, latest)
 		if err != nil {
 			return ReleaseResult{}, err
 		}
-		describe(&result, latest.record, latest.notes, skills)
+		describe(&result, latest.record, latest.notes, manifest)
 		result.Published = true
 		object = latest.object
 		if err = requireGitHubCLI(); err != nil {
@@ -165,7 +165,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 			if err = git.requireUnpublishedTag(ctx, unpushedTag, planned); err != nil {
 				return ReleaseResult{}, err
 			}
-			describe(&result, planned.record, planned.notes, checked.skills)
+			describe(&result, planned.record, planned.notes, checked.manifest)
 			object = unpushedTag.Object
 			if err = requireGitHubCLI(); err != nil {
 				return ReleaseResult{}, err
@@ -175,7 +175,7 @@ func Release(ctx context.Context, request ReleaseRequest) (ReleaseResult, error)
 		if planned.empty {
 			return result, nil
 		}
-		describe(&result, planned.record, planned.notes, checked.skills)
+		describe(&result, planned.record, planned.notes, checked.manifest)
 		// tagger stays empty on a dry run, which slightly underestimates the tag's size.
 		var tagger string
 		if !request.DryRun {
@@ -241,7 +241,7 @@ func planRelease(ctx context.Context, git *libraryGit, checked checkedLibrary, h
 		return plannedRelease{}, err
 	}
 	planned := plannedRelease{record: checked.plan.record(libraryFiles), empty: checked.plan.empty() && len(libraryFiles) == 0}
-	planned.notes = renderReleaseNotes(planned.record, checked.skills)
+	planned.notes = renderReleaseNotes(planned.record, checked.manifest)
 	if planned.message, err = releaseMessage(planned.notes, planned.record); err != nil {
 		return plannedRelease{}, err
 	}
@@ -272,12 +272,12 @@ func (g *libraryGit) requireUnpublishedTag(ctx context.Context, tag releasetag.T
 	return failure("release-tag-mismatch", name+" exists only in this clone, and it isn't the library release this commit publishes: its release notes or record differ from what trailguide library release computes from the change notes since the remote's latest library release. Only trailguide library release creates release tags; delete this one with git tag --delete "+name+", then run trailguide library release again.", nil)
 }
 
-// describe fills in what a library release publishes, with the skill levels and forks of skills.
-func describe(result *ReleaseResult, record trailguide.ReleaseRecord, notes string, skills skillContext) {
+// describe fills in what a library release publishes, with the skill levels and forks of manifest.
+func describe(result *ReleaseResult, record trailguide.ReleaseRecord, notes string, manifest manifestContext) {
 	result.Release = record.Release
 	result.Tag = "release/" + strconv.Itoa(record.Release)
 	result.Rules = releaseRules(record)
-	result.Skills = releaseSkills(record, skills)
+	result.Skills = releaseSkills(record, manifest)
 	result.LibraryFiles = record.LibraryFiles
 	result.Notes = notes
 }
