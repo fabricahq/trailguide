@@ -5,7 +5,7 @@ disable-model-invocation: true
 metadata:
   trailguide-skill-type: playbook
 ---
-<!-- trailguide:installed fabrica:skills/maintain-verification-skill f938937ece02629a35f7a1b8d554654c679e8738. Do not edit; trailguide project sync replaces this copy. -->
+<!-- trailguide:installed fabrica:skills/maintain-verification-skill 19c3ab93eddd3865b4c800915e8c0a5fb26a3f56. Do not edit; trailguide project sync replaces this copy. -->
 
 # Maintain a verification skill
 

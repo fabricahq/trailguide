@@ -19,7 +19,7 @@ metadata:
     pstack:pstack/skills/principle-sequence-verifiable-units
     skills/show-me-your-work
 ---
-<!-- trailguide:installed fabrica:skills/build f938937ece02629a35f7a1b8d554654c679e8738. Do not edit; trailguide project sync replaces this copy. -->
+<!-- trailguide:installed fabrica:skills/build 19c3ab93eddd3865b4c800915e8c0a5fb26a3f56. Do not edit; trailguide project sync replaces this copy. -->
 
 # Build
 

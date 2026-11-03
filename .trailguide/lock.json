@@ -17,7 +17,7 @@
         "skills/ratchet-files": {"level": "recommended"},
         "skills/show-me-your-work": {"level": "offered"}
       },
-      "commit": "f938937ece02629a35f7a1b8d554654c679e8738",
+      "commit": "19c3ab93eddd3865b4c800915e8c0a5fb26a3f56",
       "curated": {
         "pstack": {
           "commit": "699e1e7488c53c05ca13409f40da83cd37682091",
@@ -54,7 +54,7 @@
       ],
       "files": {
         "LICENSE.md": "58f9b79033cf651c5213465e6751b63ba00886247fdc11374a2b4dbe86f49c19",
-        "NOTICE.md": "0c47223ebe66617cad5bc54a1bf83d70fda3df86586664b6071f899b04122cb8",
+        "NOTICE.md": "55e5bd2d61b884526f147d96214c6d03f76877b1ec6dc2f2381efb1507ac0661",
         "assets/testing-philosophy.md": "dd19fa4b0f09ff3e1a9755e5a79c6a0102b040abea49d10020b349c1da0ce30b",
         "config.yaml": "cae1e6f9b409b4228f8ca478782895541acd10ada7c00f466f2c93e81da4e046",
         "practices/code-design/_group.yaml": "eaa95a35dabc44bb45e01c8c796282454509cad0b136f91cbd60c786b6b7399b",
@@ -85,11 +85,11 @@
         "practices/testing/test-bug-fixes-before-fixing.md": "959c09c041cda679ec1b152bf422110bf6ec97755dead06f9f275f2655ff64b8",
         "practices/testing/test-observable-behavior.md": "a80a62218320ed14020fe149d8983b6512adfef4627d13fcfc77cf6f3e830800",
         "skills/dzhng/ratchet-files/SKILL.md": "4ba32066262f67a0bccfae0b37512a61a9af89fbf2f3339082cb7446f30c9ac3",
-        "skills/dzhng/ratchet-files/scripts/check-file-size.mjs": "6e1fc8bc8b814f7c390275e04b148a9f12887f81bd7067f649049834e99e5cbc",
+        "skills/dzhng/ratchet-files/scripts/check-file-size.mjs": "9241cb1e00c81b9b09120eeabe96af8f8c67a5a3b6cd41d1c82a9825563c29a5",
         "skills/fabrica/build/SKILL.md": "547185dc234a8b6ce1dd183aac98587639d1c7ee332ca6ba662c89c5f5582376",
-        "skills/pstack/create-verification-skill/SKILL.md": "04cbd8f37a3cc6acb7818eb48b9eb984eea4688df1a00fbf7f5324eb9d98d1aa",
+        "skills/pstack/create-verification-skill/SKILL.md": "feb12b64a9b4a95abb0aa778a97e1dfea515bdbbd22d755e1782257b7d16afdb",
         "skills/pstack/create-verification-skill/references/feature-map-example/README.md": "69ea06268b3fd9f195be8fb6c3acb81c1da7ddd847cfa8c8845e315fb30180ed",
-        "skills/pstack/create-verification-skill/references/feature-map-example/create-note.md": "644a44c74f35d38c2feb7cd05a0121fdebbb623e8dc376c185b565a581d1ccf7",
+        "skills/pstack/create-verification-skill/references/feature-map-example/create-note.md": "d7367bf255682506318a820f21ac2a0e1e8ded3cb25470936f243a07f52e8b63",
         "skills/pstack/create-verification-skill/references/feature-map-example/search.md": "1f1914d9b74b9f5b76afb781ba4c82b9538ff46f05d51048292b28ba69c40915",
         "skills/pstack/maintain-verification-skill/SKILL.md": "66ca5c36e55f5fa942b36e8a08718fadd94afa038c42a5e3c6e6cebc565e1e24",
         "skills/pstack/show-me-your-work/SKILL.md": "829adc75e0f9904b949ebd43782ea56232c239eed0d3edd83166b56d5bf0edee",
@@ -141,16 +141,17 @@
         "techs/javascript",
         "techs/typescript"
       ],
-      "integrity": "sha256-KIAYhPz/lmP1IXGz/lAPSGSqfPKoDhSJfulgnDPWtwA=",
+      "integrity": "sha256-QDO3XC9q2W+eGmT50RYT4DMLDgHi72GW2HdgPRKy08s=",
       "kind": "library",
-      "ref": "release/8",
-      "release": 8,
+      "ref": "release/9",
+      "release": 9,
       "releaseCommits": {
         "1": "568e32f46cc3bf557ab90e82b8df6d661b839112",
         "2": "072c0302c75cec071811dee4748f45e1594b1c23",
         "3": "e0dede7473bf7af98ccc465147e180acbc923d24",
         "7": "586301255f96d4b0a1f7c9e86b78fd55c8226f41",
-        "8": "f938937ece02629a35f7a1b8d554654c679e8738"
+        "8": "f938937ece02629a35f7a1b8d554654c679e8738",
+        "9": "19c3ab93eddd3865b4c800915e8c0a5fb26a3f56"
       },
       "repository": "https://github.com/fabricahq/public-library.git",
       "retiredRules": [],
