@@ -4,7 +4,7 @@ skillTargets: [claude]
 sources:
   fabrica:
     repository: https://github.com/fabricahq/public-library.git
-    ref: release/8
+    ref: release/9
     skills:
       include: [recommended]
     rules:

@@ -80,7 +80,7 @@
       "targets": [
         ".claude/skills/build"
       ],
-      "digest": "1157d78108f11f7e82e85984594b3890e585ec122ebf1f3f88caea48ac550e7d"
+      "digest": "6bb2d2f4ff96d1802c25a3470ea2801440fac8231d77d8025daaa3160b981b85"
     },
     {
       "name": "create-verification-skill",
@@ -90,7 +90,7 @@
       "targets": [
         ".claude/skills/create-verification-skill"
       ],
-      "digest": "524cddeeca640a69af4ddddae2c80ff0e0ad39533d3ab66dd4db2cae6bacad0d"
+      "digest": "116a26b5bd31a1d72a1f5e531a3e0e1cc36ee156651766e2e76fcfa7639e0f49"
     },
     {
       "name": "maintain-verification-skill",
@@ -100,7 +100,7 @@
       "targets": [
         ".claude/skills/maintain-verification-skill"
       ],
-      "digest": "a8ca155a0809c5aeaa7cce2867f29b7192b70afc1315086ed3a97cfb9ec8dc79"
+      "digest": "73bde4299edb38c529a13a1f61a8d4565f9988e3abd0ef3990fa0d6126d5f962"
     },
     {
       "name": "ratchet-files",
@@ -110,7 +110,7 @@
       "targets": [
         ".claude/skills/ratchet-files"
       ],
-      "digest": "41fe03aecf7e304c9351e488d103b195a1de25b02fa816604f685ca9c644e902"
+      "digest": "beb8bcab13f8be1b42fca317e12f4420f9bf3a51d564809f6fd6c475a72085e7"
     },
     {
       "name": "show-me-your-work",
@@ -120,7 +120,7 @@
       "targets": [
         ".claude/skills/show-me-your-work"
       ],
-      "digest": "cdf1dcce384a56878020c48e569121ed7eee71600ecd74d4ca5980b194f30ac5"
+      "digest": "9fa566d5f84dd11a63d6e7738b5943dbaa92063a0e4b8d4c4dec93018e1b98f6"
     },
     {
       "name": "verify-trailguide",

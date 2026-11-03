@@ -5,7 +5,7 @@ disable-model-invocation: true
 metadata:
   trailguide-skill-type: playbook
 ---
-<!-- trailguide:installed fabrica:skills/create-verification-skill f938937ece02629a35f7a1b8d554654c679e8738. Do not edit; trailguide project sync replaces this copy. -->
+<!-- trailguide:installed fabrica:skills/create-verification-skill 19c3ab93eddd3865b4c800915e8c0a5fb26a3f56. Do not edit; trailguide project sync replaces this copy. -->
 
 # Create a verification skill
 
@@ -25,7 +25,7 @@ If the checkout doesn't build or start as-is, fix that first (or report it preci
 
 ## 2. Generate the skill
 
-Choose the authored skill directory before writing. In a Trail Guide project, use `.trailguide/skills/verify-<app>/` and run `trailguide project sync` after authoring to install it into the configured agent targets. Otherwise, use the repository's documented project-local skill location, or the active agent's supported project-local location when the repository has none. Call the chosen folder `<skill-dir>` below. Inspect any existing skill there before changing it; never overwrite an installed or generated copy when an authored source owns it.
+Choose the authored skill directory before writing. In a Trail Guide project, use `.trailguide/skills/local/verify-<app>/` (in a Trail Guide library, `.trailguide/skills/<library.name>/verify-<app>/`) and run `trailguide project sync` after authoring to install it into the configured agent targets. Otherwise, use the repository's documented project-local skill location, or the active agent's supported project-local location when the repository has none. Call the chosen folder `<skill-dir>` below. Inspect any existing skill there before changing it; never overwrite an installed or generated copy when an authored source owns it.
 
 Write `<skill-dir>/SKILL.md` with YAML frontmatter (`name: verify-<app>` and a `description` that names the app, the surface, and when to reach for it - without frontmatter the skill never registers) and these sections, each grounded in what the interview actually found (no placeholders left):
 

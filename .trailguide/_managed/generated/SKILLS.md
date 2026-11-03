@@ -12,7 +12,7 @@ A skill's level says how strongly the library that supplies it asks projects to 
 Apply when two or more fixes that share one premise have failed the same gate. Write the premise down and test it directly before you write another fix that assumes it.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-attack-the-premise`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-attack-the-premise/SKILL.md](../../../.claude/skills/principle-attack-the-premise/SKILL.md)
 
@@ -21,7 +21,7 @@ Apply when two or more fixes that share one premise have failed the same gate. W
 Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks. Build the tool that does it or proves it \(codemod, script, generator, or a skill your subagents follow\) instead of working by hand. The tool is the artifact a reviewer can rerun.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-build-the-lever`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-build-the-lever/SKILL.md](../../../.claude/skills/principle-build-the-lever/SKILL.md)
 
@@ -30,7 +30,7 @@ Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, 
 Apply when debugging. Trace each symptom back to the first place the system went wrong and fix it there. A guard is a fix only when the state it handles is legitimate.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-fix-root-causes`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-fix-root-causes/SKILL.md](../../../.claude/skills/principle-fix-root-causes/SKILL.md)
 
@@ -39,7 +39,7 @@ Apply when debugging. Trace each symptom back to the first place the system went
 Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents; keep summaries in the main thread, not raw payloads.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-guard-the-context-window`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-guard-the-context-window/SKILL.md](../../../.claude/skills/principle-guard-the-context-window/SKILL.md)
 
@@ -48,7 +48,7 @@ Apply when context is filling up: large outputs, long files, repeated reads, fan
 Apply when tempted to ask 'should I do X?' on reversible work.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-never-block-on-the-human`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-never-block-on-the-human/SKILL.md](../../../.claude/skills/principle-never-block-on-the-human/SKILL.md)
 
@@ -57,7 +57,7 @@ Apply when tempted to ask 'should I do X?' on reversible work.
 Apply after completing a task, before declaring done. Verify against the real artifact \(run the feature, read the actual value, inspect the diff\), not a proxy, self-report, or 'it compiles.'
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-prove-it-works`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-prove-it-works/SKILL.md](../../../.claude/skills/principle-prove-it-works/SKILL.md)
 
@@ -66,7 +66,7 @@ Apply after completing a task, before declaring done. Verify against the real ar
 Apply to multi-step work \(sweeps, migrations, runs of similar edits\) and to how you stack commits and PRs. Break work into small units that each end in a verifiable state, check each before the next, and order delivery so the sequence proves itself to a reviewer.
 
 - **Skill:** `fabrica:pstack:pstack/skills/principle-sequence-verifiable-units`, curated by `fabrica` from https://github.com/cursor/plugins.git, commit `699e1e7488c53c05ca13409f40da83cd37682091`
-- **Level:** dependency by `fabrica`, release 8, which installs it only with the skills that use it
+- **Level:** dependency by `fabrica`, release 9, which installs it only with the skills that use it
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/principle-sequence-verifiable-units/SKILL.md](../../../.claude/skills/principle-sequence-verifiable-units/SKILL.md)
 
@@ -74,8 +74,8 @@ Apply to multi-step work \(sweeps, migrations, runs of similar edits\) and to ho
 
 Build one planned slice of work while the person who planned it is away: settle the done condition, decide reversible calls yourself, work in small verified units, prove the result on the real app, and hand back a decision log. Use when asked to build, implement, or carry out a planned feature, improvement, or bug fix, or to work through a plan without check-ins.
 
-- **Skill:** `fabrica:skills/build`, from release/8, commit `f938937ece02629a35f7a1b8d554654c679e8738`
-- **Level:** recommended by `fabrica`, release 8
+- **Skill:** `fabrica:skills/build`, from release/9, commit `19c3ab93eddd3865b4c800915e8c0a5fb26a3f56`
+- **Level:** recommended by `fabrica`, release 9
 - **Type:** playbook
 - **Applies:** 5 rule(s), listed at the end of its installed SKILL.md
 - **Uses:** `principle-attack-the-premise`, `principle-build-the-lever`, `principle-fix-root-causes`, `principle-guard-the-context-window`, `principle-never-block-on-the-human`, `principle-prove-it-works`, `principle-sequence-verifiable-units`, `show-me-your-work`
@@ -86,8 +86,8 @@ Build one planned slice of work while the person who planned it is away: settle 
 
 Generate a project-local verification skill that drives your app the way a user does - any language, framework, or platform. Use for /create-verification-skill, "make a control skill for this repo", or when a project has no scripted way to prove UI/CLI/service behavior.
 
-- **Skill:** `fabrica:skills/create-verification-skill`, from release/8, commit `f938937ece02629a35f7a1b8d554654c679e8738`
-- **Level:** recommended by `fabrica`, release 8
+- **Skill:** `fabrica:skills/create-verification-skill`, from release/9, commit `19c3ab93eddd3865b4c800915e8c0a5fb26a3f56`
+- **Level:** recommended by `fabrica`, release 9
 - **Type:** playbook
 - **Installed because:** included
 - **Installed at:** [.claude/skills/create-verification-skill/SKILL.md](../../../.claude/skills/create-verification-skill/SKILL.md)
@@ -96,8 +96,8 @@ Generate a project-local verification skill that drives your app the way a user 
 
 Periodic pass that keeps a project's verification skill and feature map honest: parallel source readers per feature, one live session driving every feature, at most one PR of proven corrections. Use for /maintain-verification-skill or "audit the verify skill".
 
-- **Skill:** `fabrica:skills/maintain-verification-skill`, from release/8, commit `f938937ece02629a35f7a1b8d554654c679e8738`
-- **Level:** recommended by `fabrica`, release 8
+- **Skill:** `fabrica:skills/maintain-verification-skill`, from release/9, commit `19c3ab93eddd3865b4c800915e8c0a5fb26a3f56`
+- **Level:** recommended by `fabrica`, release 9
 - **Type:** playbook
 - **Installed because:** included
 - **Installed at:** [.claude/skills/maintain-verification-skill/SKILL.md](../../../.claude/skills/maintain-verification-skill/SKILL.md)
@@ -106,8 +106,8 @@ Periodic pass that keeps a project's verification skill and feature map honest: 
 
 Ratchet source file size so every file stays small enough for an agent to read whole: find every file over a token budget, split oversized files by concept, and set up the pre-commit ratchet that stops them from growing. Use when a commit is blocked because a file is over the size budget, when asked to find or split oversized/long/god files, when a file you need to change is too large to read in one pass, or when asked to add a file-size limit or hook to a repository.
 
-- **Skill:** `fabrica:skills/ratchet-files`, from release/8, commit `f938937ece02629a35f7a1b8d554654c679e8738`
-- **Level:** recommended by `fabrica`, release 8
+- **Skill:** `fabrica:skills/ratchet-files`, from release/9, commit `19c3ab93eddd3865b4c800915e8c0a5fb26a3f56`
+- **Level:** recommended by `fabrica`, release 9
 - **Type:** playbook
 - **Installed because:** included
 - **Installed at:** [.claude/skills/ratchet-files/SKILL.md](../../../.claude/skills/ratchet-files/SKILL.md)
@@ -116,8 +116,8 @@ Ratchet source file size so every file stays small enough for an agent to read w
 
 Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision \(what, why, evidence, result\). Local by default; commit it when a reviewer needs the trail to trust the result. Use for /show-me-your-work, autonomous or multi-phase runs, or work a human reviews after stepping away.
 
-- **Skill:** `fabrica:skills/show-me-your-work`, from release/8, commit `f938937ece02629a35f7a1b8d554654c679e8738`
-- **Level:** offered by `fabrica`, release 8
+- **Skill:** `fabrica:skills/show-me-your-work`, from release/9, commit `19c3ab93eddd3865b4c800915e8c0a5fb26a3f56`
+- **Level:** offered by `fabrica`, release 9
 - **Installed because:** used by `build`
 - **Installed at:** [.claude/skills/show-me-your-work/SKILL.md](../../../.claude/skills/show-me-your-work/SKILL.md)
 

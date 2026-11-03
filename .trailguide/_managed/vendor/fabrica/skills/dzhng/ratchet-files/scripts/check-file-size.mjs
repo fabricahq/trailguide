@@ -67,6 +67,10 @@ if (values.help) {
   process.exit(0);
 }
 const maxTokens = Number(values["max-tokens"]);
+if (!Number.isSafeInteger(maxTokens) || maxTokens <= 0) {
+  console.error(`--max-tokens must be a positive whole number, not ${values["max-tokens"]}.`);
+  process.exit(1);
+}
 const maxBytes = maxTokens * 4;
 
 const git = (args, input) =>
@@ -154,9 +158,16 @@ if (values.all) {
 }
 
 const origin = new Map();
-for (const line of git(["diff", "--cached", "--find-renames", "--name-status"]).split("\n")) {
-  const [status, from, to] = line.split("\t");
-  if (status?.startsWith("R")) origin.set(to, from);
+// -z keeps paths unquoted, so they match the staged paths exactly.
+const fields = git(["diff", "--cached", "--find-renames", "--name-status", "-z"]).split("\0");
+for (let i = 0; i < fields.length - 1; ) {
+  const status = fields[i];
+  if (status.startsWith("R") || status.startsWith("C")) {
+    if (status.startsWith("R")) origin.set(fields[i + 2], fields[i + 1]);
+    i += 3;
+  } else {
+    i += 2;
+  }
 }
 const failures = [];
 // Git reports the root with symlinks resolved (macOS /tmp is /private/tmp).
