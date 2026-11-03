@@ -25,10 +25,11 @@ go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 go test -race ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 -test ./...
 go build ./cmd/trailguide ./cmd/package-binaries
+go run ./cmd/trailguide project check
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck= -pyflakes=
 ```
 
-Tests exercise parsers, filesystem safety, Git imports, real CLI processes, generated agent instructions, and installation/upgrade/rollback. Parser regression fixtures live beside their Go tests. This repository's Go conventions, such as output and error ownership, Git safety, and comments, are local rules in the Go group of the [generated rules](.trailguide/_managed/generated/RULES.md).
+Tests exercise parsers, filesystem safety, Git imports, real CLI processes, generated agent instructions, and installation/upgrade/rollback. Parser regression fixtures live beside their Go tests. `project check` confirms that this repository's own rules, skills, and generated files are current; after changing them or the generator, run `go run ./cmd/trailguide project build`. This repository's Go conventions, such as output and error ownership, Git safety, and comments, are local rules in the Go group of the [generated rules](.trailguide/_managed/generated/RULES.md).
 
 [Security practices](_engineering/security-practices.md) define dependency pins, Renovate updates, vulnerability scans, and review requirements.
 
