@@ -57,7 +57,7 @@ Then trailguide project build names any link left broken.
 Location: .trailguide/skills/
 ```
 
-When the origin folder already holds a skill with the folder's name, such as `skills/local/review-loop/` beside `skills/review-loop/`, the command names both instead, since a skill's name is its ID: keep one, with any edits you want from the other, and delete the other.
+When the origin folder already holds a skill with the folder's name, such as `skills/local/review-loop/` beside `skills/review-loop/`, the command names both instead, since a skill's name is its ID: keep one, with any edits you want from the other, and delete the other. A skill whose name is its origin folder's, such as a skill named `local` in a project, can't move into its own folder directly: the command says to move it out of `skills/` first, then to `skills/local/local/`, before moving other skills into `skills/local/`.
 
 ### Git-tracked files
 

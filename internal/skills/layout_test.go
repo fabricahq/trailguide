@@ -60,6 +60,9 @@ func TestLayoutProblemsNamesTheFolderEachSkillBelongsIn(t *testing.T) {
 		"a skill directly in skills/ whose origin folder already has its name": {[]string{"fix/SKILL.md", "fix/README.md", "acme/fix/SKILL.md"}, nil, []skills.LayoutProblem{
 			{"skills/fix", "skills/acme/fix/ already holds a skill named fix, and a skill's name is its ID, so this folder can't move there; keep one of the two, with any edits you want from the other, and delete the other", ""},
 		}},
+		"a skill directly in skills/ with its origin folder's name": {[]string{"acme/SKILL.md"}, nil, []skills.LayoutProblem{
+			{"skills/acme", "a skill's folder sits in the folder for its origin, skills/acme/, which has this skill's name, so it can't move there directly: move it out of skills/ first, then to skills/acme/acme/, before moving any other skill into skills/acme/", ""},
+		}},
 		"a file directly in an origin folder": {[]string{"acme/notes.md"}, nil, []skills.LayoutProblem{
 			{"skills/acme/notes.md", "an origin folder holds only skill folders; move this file into a skill's folder", ""},
 		}},

@@ -184,6 +184,11 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 		case len(parts) == 2 && parts[1] == File:
 			topLevel[parts[0]] = true
 			to := Directory + "/" + Folder(origins.For(parts[0]), parts[0])
+			if origins.For(parts[0]) == parts[0] {
+				// The folder is its own origin folder, so the move would put it inside itself.
+				add(parts[0], fmt.Sprintf("a skill's folder sits in the folder for its origin, %s/, which has this skill's name, so it can't move there directly: move it out of skills/ first, then to %s/, before moving any other skill into %s/", Directory+"/"+parts[0], to, Directory+"/"+parts[0]))
+				continue
+			}
 			if withSkillFile[Folder(origins.For(parts[0]), parts[0])] {
 				// Moving it would put one skill inside the other, so neither copy can simply move.
 				add(parts[0], fmt.Sprintf("%s/ already holds a skill named %s, and a skill's name is its ID, so this folder can't move there; keep one of the two, with any edits you want from the other, and delete the other", to, parts[0]))
