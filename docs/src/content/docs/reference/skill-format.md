@@ -39,7 +39,7 @@ Each skill folder holds a `SKILL.md` file and anything the skill bundles. The Ag
 
 `skills/` holds only origin folders and an optional `README.md`, and each origin folder holds only skill folders. A skill folder can't contain another skill's `SKILL.md`, and it can't contain `_group.yaml`. Two skills can't share a name, even in different origin folders. A skill in the wrong origin folder fails validation with a message that names the folder to move it to. Skills don't belong to rule groups, so a skill folder is never inside `rules/`.
 
-Trail Guide 0.8 and earlier kept skill folders directly in `skills/`. Trail Guide doesn't move them. In a project that still keeps any there, every project command, including an update before its preview, fails and writes nothing, listing each folder and the origin folder it belongs in, from the repository root. Move each folder with every file it bundles:
+Trail Guide 0.8 and earlier kept skill folders directly in `skills/`. Trail Guide doesn't move them. In a project that still keeps any there, every project command, including an update before its preview, fails and writes nothing of its own, though recovering an interrupted earlier command may already have restored or finished that command's files. It lists each folder and the origin folder it belongs in, from the repository root. Move each folder with every file it bundles:
 
 ```text
 Error: this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: local/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:
@@ -56,6 +56,8 @@ Then trailguide project build names any link left broken.
 
 Location: .trailguide/skills/
 ```
+
+When the origin folder already holds a skill with the folder's name, such as `skills/local/review-loop/` beside `skills/review-loop/`, the command names both instead, since a skill's name is its ID: keep one, with any edits you want from the other, and delete the other.
 
 ### Git-tracked files
 

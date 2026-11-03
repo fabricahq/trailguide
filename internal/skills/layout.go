@@ -165,6 +165,13 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 	add := func(location, problem string) {
 		problems = append(problems, LayoutProblem{Location: Directory + "/" + location, Problem: problem})
 	}
+	// withSkillFile holds every folder, relative to skills/, that has a SKILL.md directly in it.
+	withSkillFile := map[string]bool{}
+	for _, file := range files {
+		if folder, ok := strings.CutSuffix(file, "/"+File); ok {
+			withSkillFile[folder] = true
+		}
+	}
 	// skillFiles maps each folder in an origin folder, origin/name, to whether it holds a SKILL.md.
 	skillFiles := map[string]bool{}
 	topLevel := map[string]bool{}
@@ -177,9 +184,14 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 		case len(parts) == 2 && parts[1] == File:
 			topLevel[parts[0]] = true
 			to := Directory + "/" + Folder(origins.For(parts[0]), parts[0])
+			if withSkillFile[Folder(origins.For(parts[0]), parts[0])] {
+				// Moving it would put one skill inside the other, so neither copy can simply move.
+				add(parts[0], fmt.Sprintf("%s/ already holds a skill named %s, and a skill's name is its ID, so this folder can't move there; keep one of the two, with any edits you want from the other, and delete the other", to, parts[0]))
+				continue
+			}
 			add(parts[0], fmt.Sprintf("a skill's folder sits in the folder for its origin, so move it to %s/", to))
 			problems[len(problems)-1].MoveTo = to
-		case len(parts) == 2 && hasSkillFile(files, parts[0]):
+		case len(parts) == 2 && withSkillFile[parts[0]]:
 			// A file a skill folder directly in skills/ bundles moves with that folder, whose problem covers it.
 			topLevel[parts[0]] = true
 		case len(parts) == 2:
@@ -203,7 +215,7 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 	allowed := slices.Collect(maps.Values(origins.Forks))
 	allowed = append(allowed, origins.Own)
 	for origin := range topLevel {
-		if !slices.Contains(allowed, origin) && !hasSkillFile(files, origin) {
+		if !slices.Contains(allowed, origin) && !withSkillFile[origin] {
 			add(origin, fmt.Sprintf("an origin folder is named for the repository's own skills, %s, or for a source a fork comes from; move its skills to the folder for their origin", origins.Own))
 		}
 	}
@@ -211,7 +223,7 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 	for _, folder := range slices.Sorted(maps.Keys(skillFiles)) {
 		origin, name, _ := strings.Cut(folder, "/")
 		switch {
-		case hasSkillFile(files, origin), !slices.Contains(allowed, origin):
+		case withSkillFile[origin], !slices.Contains(allowed, origin):
 			// The origin folder's own problem covers it.
 		case !ValidName(name):
 			add(folder, "a skill's folder name is its name, which uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen; rename the folder")
@@ -231,9 +243,4 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 	}
 	slices.SortFunc(problems, func(a, b LayoutProblem) int { return strings.Compare(a.Location, b.Location) })
 	return problems
-}
-
-// hasSkillFile reports whether files, paths relative to skills/, has a SKILL.md directly in folder.
-func hasSkillFile(files []string, folder string) bool {
-	return slices.Contains(files, folder+"/"+File)
 }
