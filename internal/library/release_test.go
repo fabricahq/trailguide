@@ -219,7 +219,7 @@ func TestRelease_SaysWhenTheLibrarySchemaVersionChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Library release 2 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n## Library schema\n\nThis library release moves from library schema version 1 to version 2. Projects need a version of Trail Guide that reads library schema version 2 to take it, so upgrade Trail Guide before running `trailguide project update`. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version).\n\n<details>"
+	want := "Library release 2 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n## Library schema\n\nThis library release moves from library schema version 1 to version 2. Before running `trailguide project update`, ensure your Trail Guide version supports library schema version 2. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version).\n\n<details>"
 	if !strings.HasPrefix(result.Notes, want) || !strings.HasPrefix(tagMessage(t, fixture, remoteDir(fixture), "release/2"), want) {
 		t.Fatalf("notes:\n%s\nwant prefix:\n%s", result.Notes, want)
 	}

@@ -206,7 +206,7 @@ func TestRenderReleaseNotes_CountsAndSectionsFollowTheChanges(t *testing.T) {
 func TestRenderReleaseNotes_SaysWhenTheLibrarySchemaVersionChanges(t *testing.T) {
 	later := trailguide.ReleaseRecord{Release: 3, Rules: map[string]trailguide.RuleVersion{}, LibraryFiles: []string{"config.yaml"}}
 	first := trailguide.ReleaseRecord{Release: 1, Rules: map[string]trailguide.RuleVersion{}, LibraryFiles: []string{"config.yaml"}}
-	advice := " Projects need a version of Trail Guide that reads library schema version 2 to take it, so upgrade Trail Guide before running `trailguide project update`. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version)."
+	advice := " Before running `trailguide project update`, ensure your Trail Guide version supports library schema version 2. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version)."
 	for _, test := range []struct {
 		name    string
 		record  trailguide.ReleaseRecord

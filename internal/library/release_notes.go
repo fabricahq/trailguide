@@ -220,14 +220,14 @@ func renderReleaseNotes(record trailguide.ReleaseRecord, context manifestContext
 }
 
 // schemaChange says that a library release moves from library schema version previous, or 0 for none declared, to
-// version next, and what projects need to take it.
+// version next, and what projects must check before they take it.
 func schemaChange(previous, next int) string {
 	version := strconv.Itoa(next)
 	sentence := "This library release moves from library schema version " + strconv.Itoa(previous) + " to version " + version + "."
 	if previous == 0 {
 		sentence = "This library release declares library schema version " + version + "; the previous library release declared none."
 	}
-	return sentence + " Projects need a version of Trail Guide that reads library schema version " + version + " to take it, so upgrade Trail Guide before running `trailguide project update`. See [Library schema](" + schemaDocs + ")."
+	return sentence + " Before running `trailguide project update`, ensure your Trail Guide version supports library schema version " + version + ". See [Library schema](" + schemaDocs + ")."
 }
 
 // schemaDocs is the documentation of library schema versions that release notes link to.
