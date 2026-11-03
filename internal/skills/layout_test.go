@@ -47,30 +47,40 @@ func TestLayoutProblemsNamesTheFolderEachSkillBelongsIn(t *testing.T) {
 	}{
 		"a valid layout": {[]string{"README.md", "acme/fix/SKILL.md", "pstack/show/SKILL.md"}, nil, []skills.LayoutProblem{}},
 		"a file directly in skills/": {[]string{"notes.md"}, nil, []skills.LayoutProblem{
-			{"skills/notes.md", "skills/ holds a folder for each origin, each holding skill folders, and its README.md; move this file into a skill's folder"},
+			{"skills/notes.md", "skills/ holds a folder for each origin, each holding skill folders, and its README.md; move this file into a skill's folder", ""},
 		}},
 		"a skill directly in skills/": {[]string{"fix/SKILL.md", "show/SKILL.md"}, nil, []skills.LayoutProblem{
-			{"skills/fix", "a skill's folder sits in the folder for its origin, so move it to skills/acme/fix/"},
-			{"skills/show", "a skill's folder sits in the folder for its origin, so move it to skills/pstack/show/"},
+			{"skills/fix", "a skill's folder sits in the folder for its origin, so move it to skills/acme/fix/", "skills/acme/fix"},
+			{"skills/show", "a skill's folder sits in the folder for its origin, so move it to skills/pstack/show/", "skills/pstack/show"},
+		}},
+		"a skill directly in skills/ with bundled files": {[]string{"fix/SKILL.md", "fix/README.md", "fix/references/steps.md", "show/SKILL.md"}, []string{"fix/references"}, []skills.LayoutProblem{
+			{"skills/fix", "a skill's folder sits in the folder for its origin, so move it to skills/acme/fix/", "skills/acme/fix"},
+			{"skills/show", "a skill's folder sits in the folder for its origin, so move it to skills/pstack/show/", "skills/pstack/show"},
+		}},
+		"a skill directly in skills/ whose origin folder already has its name": {[]string{"fix/SKILL.md", "fix/README.md", "acme/fix/SKILL.md"}, nil, []skills.LayoutProblem{
+			{"skills/fix", "skills/acme/fix/ already holds a skill named fix, and a skill's name is its ID, so this folder can't move there; keep one of the two, with any edits you want from the other, and delete the other", ""},
+		}},
+		"a skill directly in skills/ with its origin folder's name": {[]string{"acme/SKILL.md"}, nil, []skills.LayoutProblem{
+			{"skills/acme", "a skill's folder sits in the folder for its origin, skills/acme/, which has this skill's name, so it can't move there directly: move it out of skills/ first, then to skills/acme/acme/, before moving any other skill into skills/acme/", ""},
 		}},
 		"a file directly in an origin folder": {[]string{"acme/notes.md"}, nil, []skills.LayoutProblem{
-			{"skills/acme/notes.md", "an origin folder holds only skill folders; move this file into a skill's folder"},
+			{"skills/acme/notes.md", "an origin folder holds only skill folders; move this file into a skill's folder", ""},
 		}},
 		"an unknown origin": {[]string{"other/fix/SKILL.md"}, nil, []skills.LayoutProblem{
-			{"skills/other", "an origin folder is named for the repository's own skills, acme, or for a source a fork comes from; move its skills to the folder for their origin"},
+			{"skills/other", "an origin folder is named for the repository's own skills, acme, or for a source a fork comes from; move its skills to the folder for their origin", ""},
 		}},
 		"an invalid or incomplete skill folder": {[]string{"acme/Fix/SKILL.md", "acme/tidy/notes.md"}, []string{"acme/empty"}, []skills.LayoutProblem{
-			{"skills/acme/Fix", "a skill's folder name is its name, which uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen; rename the folder"},
-			{"skills/acme/empty", "missing SKILL.md; each folder in an origin folder is a skill, so add its SKILL.md or move the folder out of skills/"},
-			{"skills/acme/tidy", "missing SKILL.md; each folder in an origin folder is a skill, so add its SKILL.md or move the folder out of skills/"},
+			{"skills/acme/Fix", "a skill's folder name is its name, which uses 1 to 64 lowercase letters, digits, and hyphens, without a leading, trailing, or doubled hyphen; rename the folder", ""},
+			{"skills/acme/empty", "missing SKILL.md; each folder in an origin folder is a skill, so add its SKILL.md or move the folder out of skills/", ""},
+			{"skills/acme/tidy", "missing SKILL.md; each folder in an origin folder is a skill, so add its SKILL.md or move the folder out of skills/", ""},
 		}},
 		"a skill in the wrong origin": {[]string{"acme/show/SKILL.md", "pstack/fix/SKILL.md"}, nil, []skills.LayoutProblem{
-			{"skills/acme/show", "this skill forks a skill of the source pstack, so it sits in that source's folder; move it to skills/pstack/show/"},
-			{"skills/pstack/fix", "this skill forks no skill of the source pstack, so it's one of the repository's own skills; move it to skills/acme/fix/, or record the fork in sources.pstack.skills.forks"},
+			{"skills/acme/show", "this skill forks a skill of the source pstack, so it sits in that source's folder; move it to skills/pstack/show/", ""},
+			{"skills/pstack/fix", "this skill forks no skill of the source pstack, so it's one of the repository's own skills; move it to skills/acme/fix/, or record the fork in sources.pstack.skills.forks", ""},
 		}},
 		"two skills with one name": {[]string{"acme/show/SKILL.md", "pstack/show/SKILL.md"}, nil, []skills.LayoutProblem{
-			{"skills/acme/show", "this skill forks a skill of the source pstack, so it sits in that source's folder; move it to skills/pstack/show/"},
-			{"skills/pstack/show", "skills/acme/show is also a skill named show, and a skill's name is its ID, skills/show; rename one of them"},
+			{"skills/acme/show", "this skill forks a skill of the source pstack, so it sits in that source's folder; move it to skills/pstack/show/", ""},
+			{"skills/pstack/show", "skills/acme/show is also a skill named show, and a skill's name is its ID, skills/show; rename one of them", ""},
 		}},
 	}
 	for name, test := range tests {

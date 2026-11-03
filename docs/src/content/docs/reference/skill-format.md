@@ -39,6 +39,26 @@ Each skill folder holds a `SKILL.md` file and anything the skill bundles. The Ag
 
 `skills/` holds only origin folders and an optional `README.md`, and each origin folder holds only skill folders. A skill folder can't contain another skill's `SKILL.md`, and it can't contain `_group.yaml`. Two skills can't share a name, even in different origin folders. A skill in the wrong origin folder fails validation with a message that names the folder to move it to. Skills don't belong to rule groups, so a skill folder is never inside `rules/`.
 
+Trail Guide 0.8 and earlier kept skill folders directly in `skills/`. Trail Guide doesn't move them. In a project that still keeps any there, every project command, including an update before its preview, fails and writes nothing of its own, though recovering an interrupted earlier command may already have restored or finished that command's files. It lists each folder and the origin folder it belongs in, from the repository root. Move each folder with every file it bundles:
+
+```text
+Error: this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: local/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:
+
+  .trailguide/skills/review-loop/  ->  .trailguide/skills/local/review-loop/
+
+A skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so check each link from it to a file outside its folder:
+
+  - A link to a file that doesn't move needs one more ../, such as ../../../assets/checklist.md.
+  - A link to a skill that moves into the same origin folder stays as it is, such as ../review/SKILL.md.
+  - A link to a skill that moves into another origin folder names that folder, such as ../../pstack/show/SKILL.md.
+
+Then trailguide project build names any link left broken.
+
+Location: .trailguide/skills/
+```
+
+When the origin folder already holds a skill with the folder's name, such as `skills/local/review-loop/` beside `skills/review-loop/`, the command names both instead, since a skill's name is its ID: keep one, with any edits you want from the other, and delete the other. A skill whose name is its origin folder's, such as a skill named `local` in a project, can't move into its own folder directly: the command says to move it out of `skills/` first, then to `skills/local/local/`, before moving other skills into `skills/local/`.
+
 ### Git-tracked files
 
 A skill's content is the files Git tracks in its folder. Files Git ignores, such as `__pycache__/`, `node_modules/`, or `.venv/` that a skill's scripts create, are neither versioned nor installed. `trailguide library check` warns about a file in a skill folder that Git neither tracks nor ignores, because it isn't part of the skill until you commit it. A repository outside Git has no library releases, and Trail Guide reads every file in each skill folder.
