@@ -50,7 +50,11 @@ func authoredSkills(config rules.Configuration, tree *filetxn.Tree) (map[string]
 func skillFolderMoves(own string, moves [][2]string) string {
 	return fmt.Sprintf("this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: %s/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:\n\n", own) +
 		moveList(moves, 0) +
-		"\n\nA skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so each link from it to a file outside its folder needs one more ../, such as ../../../assets/checklist.md, unless the link is to a skill you moved into the same folder."
+		"\n\nA skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so check each link from it to a file outside its folder:\n\n" +
+		"  - A link to a file that doesn't move needs one more ../, such as ../../../assets/checklist.md.\n" +
+		"  - A link to a skill that moves into the same origin folder stays as it is, such as ../review/SKILL.md.\n" +
+		"  - A link to a skill that moves into another origin folder names that folder, such as ../../pstack/show/SKILL.md.\n\n" +
+		"Then trailguide project build names any link left broken."
 }
 
 // skillFolderPath returns the path, in the Trail Guide directory, of the folder of skill name in the origin folder

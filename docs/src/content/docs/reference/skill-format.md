@@ -39,14 +39,20 @@ Each skill folder holds a `SKILL.md` file and anything the skill bundles. The Ag
 
 `skills/` holds only origin folders and an optional `README.md`, and each origin folder holds only skill folders. A skill folder can't contain another skill's `SKILL.md`, and it can't contain `_group.yaml`. Two skills can't share a name, even in different origin folders. A skill in the wrong origin folder fails validation with a message that names the folder to move it to. Skills don't belong to rule groups, so a skill folder is never inside `rules/`.
 
-Trail Guide 0.8 and earlier kept skill folders directly in `skills/`. Trail Guide doesn't move them. In a project that still keeps any there, every project command, including an update before its preview, fails and writes nothing, listing each folder and the origin folder it belongs in, from the repository root:
+Trail Guide 0.8 and earlier kept skill folders directly in `skills/`. Trail Guide doesn't move them. In a project that still keeps any there, every project command, including an update before its preview, fails and writes nothing, listing each folder and the origin folder it belongs in, from the repository root. Move each folder with every file it bundles:
 
 ```text
 Error: this version of Trail Guide reads each skill in .trailguide/skills/ from a folder for its origin: local/ for this project's own skills, and a source's name for a fork of that source's skill. It doesn't move skills itself, so move each folder below, then run the command again:
 
   .trailguide/skills/review-loop/  ->  .trailguide/skills/local/review-loop/
 
-A skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so each link from it to a file outside its folder needs one more ../, such as ../../../assets/checklist.md, unless the link is to a skill you moved into the same folder.
+A skill's ID, such as skills/review, doesn't change, so config.yaml needs no edits. A moved skill sits one folder deeper, so check each link from it to a file outside its folder:
+
+  - A link to a file that doesn't move needs one more ../, such as ../../../assets/checklist.md.
+  - A link to a skill that moves into the same origin folder stays as it is, such as ../review/SKILL.md.
+  - A link to a skill that moves into another origin folder names that folder, such as ../../pstack/show/SKILL.md.
+
+Then trailguide project build names any link left broken.
 
 Location: .trailguide/skills/
 ```

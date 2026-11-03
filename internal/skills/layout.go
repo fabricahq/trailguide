@@ -179,6 +179,9 @@ func LayoutProblems(files, directories []string, origins Origins) []LayoutProble
 			to := Directory + "/" + Folder(origins.For(parts[0]), parts[0])
 			add(parts[0], fmt.Sprintf("a skill's folder sits in the folder for its origin, so move it to %s/", to))
 			problems[len(problems)-1].MoveTo = to
+		case len(parts) == 2 && hasSkillFile(files, parts[0]):
+			// A file a skill folder directly in skills/ bundles moves with that folder, whose problem covers it.
+			topLevel[parts[0]] = true
 		case len(parts) == 2:
 			topLevel[parts[0]] = true
 			add(file, "an origin folder holds only skill folders; move this file into a skill's folder")

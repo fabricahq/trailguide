@@ -53,6 +53,10 @@ func TestLayoutProblemsNamesTheFolderEachSkillBelongsIn(t *testing.T) {
 			{"skills/fix", "a skill's folder sits in the folder for its origin, so move it to skills/acme/fix/", "skills/acme/fix"},
 			{"skills/show", "a skill's folder sits in the folder for its origin, so move it to skills/pstack/show/", "skills/pstack/show"},
 		}},
+		"a skill directly in skills/ with bundled files": {[]string{"fix/SKILL.md", "fix/README.md", "fix/references/steps.md", "show/SKILL.md"}, []string{"fix/references"}, []skills.LayoutProblem{
+			{"skills/fix", "a skill's folder sits in the folder for its origin, so move it to skills/acme/fix/", "skills/acme/fix"},
+			{"skills/show", "a skill's folder sits in the folder for its origin, so move it to skills/pstack/show/", "skills/pstack/show"},
+		}},
 		"a file directly in an origin folder": {[]string{"acme/notes.md"}, nil, []skills.LayoutProblem{
 			{"skills/acme/notes.md", "an origin folder holds only skill folders; move this file into a skill's folder", ""},
 		}},
