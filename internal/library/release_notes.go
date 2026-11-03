@@ -65,9 +65,14 @@ type SkillForkChange struct {
 	PreviousBasedOn string `json:"previousBasedOn,omitempty"`
 }
 
-// skillContext is what release notes say about skills that their versions don't: levels and forks, which the
-// manifest, a library-wide file, sets. A zero skillContext knows no levels or forks.
-type skillContext struct {
+// manifestContext is what release notes say that versions don't, which the manifest, a library-wide file, sets:
+// skill levels and forks, and the library schema version. A zero manifestContext knows no levels, forks, or schema
+// versions.
+type manifestContext struct {
+	// schemaVersion is the library schema version the manifest declares after the library release, and
+	// previousSchemaVersion the one the latest library release's manifest declared, or 0 when it declared none or
+	// there was no latest library release.
+	schemaVersion, previousSchemaVersion int
 	// levels maps each of the library's own skills to its level after the library release, and previousLevels each
 	// to its level in the latest library release; previousLevels is nil when that library release had no
 	// library manifest with skill levels, so no level change is reported.
@@ -85,7 +90,7 @@ type skillFork struct {
 
 // releaseSkills lists, in ID order, each skill a release record changed, added, or retired, and each skill whose
 // level or fork context says changed without a new version.
-func releaseSkills(record trailguide.ReleaseRecord, context skillContext) []PendingSkill {
+func releaseSkills(record trailguide.ReleaseRecord, context manifestContext) []PendingSkill {
 	list := []PendingSkill{}
 	if record.Skills == nil {
 		return list
@@ -139,14 +144,15 @@ func releaseRules(record trailguide.ReleaseRecord) []PendingRule {
 }
 
 // renderReleaseNotes returns a library release's Markdown notes, without a trailing newline: a line counting
-// the rule and skill changes, a section for each kind of rule change that has entries, in the order new, major, minor,
+// the rule and skill changes, a Library schema section when a library release after the first declares a different
+// library schema version than the latest one, a section for each kind of rule change that has entries, in the order new, major, minor,
 // patch, and retired, so readers meet the rules they'd adopt before the changes to rules they have, a Skills section
 // for the skills releaseSkills lists with context, a sentence noting shared files when a library release after the
 // first also lists library-wide files, and collapsed tables of every rule's and every skill's version. Each rule and
 // skill is a list item with its summaries, one per change note, as nested items, except in the first library release,
 // whose rules and skills all have the same placeholder summary. Every paragraph and list item is one line.
 // Library-wide files are never listed.
-func renderReleaseNotes(record trailguide.ReleaseRecord, context skillContext) string {
+func renderReleaseNotes(record trailguide.ReleaseRecord, context manifestContext) string {
 	var out strings.Builder
 	skills := releaseSkills(record, context)
 	contextOnly := 0
@@ -156,6 +162,9 @@ func renderReleaseNotes(record trailguide.ReleaseRecord, context skillContext) s
 		}
 	}
 	out.WriteString(countLine(record, contextOnly))
+	if record.Release > 1 && context.schemaVersion != 0 && context.schemaVersion != context.previousSchemaVersion {
+		out.WriteString("\n\n## Library schema\n\n" + schemaChange(context.previousSchemaVersion, context.schemaVersion))
+	}
 	sections := []struct {
 		change  trailguide.Change
 		heading string
@@ -209,6 +218,20 @@ func renderReleaseNotes(record trailguide.ReleaseRecord, context skillContext) s
 	}
 	return out.String()
 }
+
+// schemaChange says that a library release moves from library schema version previous, or 0 for none declared, to
+// version next, and what projects must check before they take it.
+func schemaChange(previous, next int) string {
+	version := strconv.Itoa(next)
+	sentence := "This library release moves from library schema version " + strconv.Itoa(previous) + " to version " + version + "."
+	if previous == 0 {
+		sentence = "This library release declares library schema version " + version + "; the previous library release declared none."
+	}
+	return sentence + " Before running `trailguide project update`, ensure your Trail Guide version supports library schema version " + version + ". See [Library schema](" + schemaDocs + ")."
+}
+
+// schemaDocs is the documentation of library schema versions that release notes link to.
+const schemaDocs = "https://trailguide.fabricahq.com/reference/library-schema/#schema-version"
 
 // writeVersions writes a collapsed table of every rule's, or skill's, version, when there are any.
 func writeVersions(out *strings.Builder, noun string, versions map[string]trailguide.RuleVersion) {

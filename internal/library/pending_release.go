@@ -311,7 +311,7 @@ func (p releasePlan) record(libraryFiles []string) trailguide.ReleaseRecord {
 
 // preview lists each changed, new, and retired rule and skill in ID order, with each skill's level and fork from
 // context.
-func (p releasePlan) preview(context skillContext) PendingRelease {
+func (p releasePlan) preview(context manifestContext) PendingRelease {
 	record := p.record(nil)
 	return PendingRelease{Release: p.release, Rules: releaseRules(record), Skills: releaseSkills(record, context), LibraryFiles: []string{}}
 }

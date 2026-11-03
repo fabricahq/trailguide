@@ -68,14 +68,14 @@ func Check(ctx context.Context, options Options) (CheckResult, error) {
 }
 
 // checkedLibrary is a library that passed library check: what check read, how its rules and skills changed since
-// the latest library release, what the next library release would publish, and what its notes say about skill
-// levels and forks.
+// the latest library release, what the next library release would publish, and what its notes say about the
+// manifest: skill levels and forks, and the library schema version.
 type checkedLibrary struct {
-	result  CheckResult
-	input   checkInput
-	changes libraryChanges
-	plan    releasePlan
-	skills  skillContext
+	result   CheckResult
+	input    checkInput
+	changes  libraryChanges
+	plan     releasePlan
+	manifest manifestContext
 }
 
 // checkLibrary validates the library under root and its change notes against git's library releases; a nil
@@ -152,11 +152,11 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err != nil {
 		return checkedLibrary{}, err
 	}
-	skillNotes, err := git.releaseSkillContext(ctx, changes.history.latest, input.tree.Files[librarytree.Manifest], currentSkills)
+	manifestNotes, err := git.releaseManifestContext(ctx, changes.history.latest, input.tree.Files[librarytree.Manifest], currentSkills)
 	if err != nil {
 		return checkedLibrary{}, err
 	}
-	result.PendingRelease = plan.preview(skillNotes)
+	result.PendingRelease = plan.preview(manifestNotes)
 	if result.PendingRelease.LibraryFiles, err = git.pendingLibraryFiles(ctx, changes.history.latest, input.tree.Files, rules.LicensePaths(input.license)); err != nil {
 		return checkedLibrary{}, err
 	}
@@ -170,7 +170,7 @@ func checkLibrary(ctx context.Context, root *os.Root, git *libraryGit, curated C
 	if err = ctx.Err(); err != nil {
 		return checkedLibrary{}, err
 	}
-	return checkedLibrary{result: result, input: input, changes: changes, plan: plan, skills: skillNotes}, nil
+	return checkedLibrary{result: result, input: input, changes: changes, plan: plan, manifest: manifestNotes}, nil
 }
 
 // parseChangeNote validates one note's format.

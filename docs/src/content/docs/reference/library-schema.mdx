@@ -124,6 +124,8 @@ The configuration's top-level `schemaVersion` is a different version: it describ
 
 This version of Trail Guide reads and writes library schema version `2`, which added `library.name` and [origin folders](#skills). A library in schema version `1` keeps every skill directly in `skills/`; it fails with `unsupported-library-schema` until it moves to version `2`. A library without `library.schemaVersion`, or with one that isn't a whole number, fails with a validation error at `library.schemaVersion`. A library in another library schema version fails with `unsupported-library-schema`, which names both versions: upgrade Trail Guide to read a newer one. Trail Guide doesn't promise to read every earlier library schema version. It adds support for one when libraries still publish in it.
 
+When a library moves to a new library schema version, the release notes of its next library release say so in a **Library schema** section, so projects check that their Trail Guide supports it before they update; see [GitHub Release pages](/reference/rule-versions/#github-release-pages).
+
 #### What a library's consumers read
 
 A project that imports a library, and a catalog that lists it, reads only what the library publishes. It ignores the configuration's top-level `schemaVersion` and every project setting, such as `skillTargets`, the sources the library doesn't curate from, and a curated source's own `rules` and `skills`, so a library in a project schema the consumer's Trail Guide doesn't know is still readable. It validates everything it reads, including each curated source's `repository` and `ref`. The project's [vendor snapshot](/reference/files/) keeps only that published manifest, and offline builds read it the same way.

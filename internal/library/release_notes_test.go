@@ -44,7 +44,7 @@ const guideNotes = "Library release 4 changes 4 rules: 1 new, 1 major, 1 minor, 
 
 // TestRenderReleaseNotes_MatchesTheGuideExample keeps the generated page and the guide's example identical.
 func TestRenderReleaseNotes_MatchesTheGuideExample(t *testing.T) {
-	if notes := renderReleaseNotes(guideRecord(), skillContext{}); notes != guideNotes {
+	if notes := renderReleaseNotes(guideRecord(), manifestContext{}); notes != guideNotes {
 		t.Fatalf("notes:\n%s\nwant:\n%s", notes, guideNotes)
 	}
 	guide, err := os.ReadFile("../../docs/src/content/docs/guides/version-rules.md")
@@ -58,7 +58,7 @@ func TestRenderReleaseNotes_MatchesTheGuideExample(t *testing.T) {
 
 // guideSkillsRecord is the library release that changes only skills, which the version rules guide shows as a GitHub
 // Release page, and guideSkillsContext the levels its manifest gives them.
-func guideSkillsRecord() (trailguide.ReleaseRecord, skillContext) {
+func guideSkillsRecord() (trailguide.ReleaseRecord, manifestContext) {
 	record := guideRecord()
 	record.Release, record.Changes, record.Retired, record.LibraryFiles = 5, nil, nil, []string{"config.yaml"}
 	record.Skills = &trailguide.SkillRecord{
@@ -69,7 +69,7 @@ func guideSkillsRecord() (trailguide.ReleaseRecord, skillContext) {
 		},
 		Retired: map[string]trailguide.RetiredRule{"skills/triage-bug": {LastVersion: *version(1, 2, 0), ReplacedBy: "skills/fix-bug", Summaries: []string{"Covered by the fix-bug playbook, which also writes the regression test."}}},
 	}
-	context := skillContext{
+	context := manifestContext{
 		levels:         map[string]string{"skills/build-feature": "required", "skills/fix-bug": "recommended", "skills/review-tests": "recommended"},
 		previousLevels: map[string]string{"skills/build-feature": "required", "skills/fix-bug": "offered", "skills/review-tests": "offered"},
 	}
@@ -118,7 +118,7 @@ func TestRenderReleaseNotes_CountsSkillChangesBesideRuleChanges(t *testing.T) {
 		{first, "Library release 1 publishes 1 skill.\n\n## Skills\n\n- **skills/fix-bug** `1.0.0`, new, offered\n\n<details>"},
 		{unchanged, "Library release 6 changes no rules or skills. It updates shared files, such as group descriptions or shared assets.\n\n<details>\n<summary>All skill versions"},
 	} {
-		context := skillContext{levels: map[string]string{"skills/fix-bug": "offered", "skills/new": "offered"}}
+		context := manifestContext{levels: map[string]string{"skills/fix-bug": "offered", "skills/new": "offered"}}
 		if notes := renderReleaseNotes(test.record, context); !strings.HasPrefix(notes, test.want) {
 			t.Fatalf("notes:\n%s\nwant them to start with:\n%s", notes, test.want)
 		}
@@ -193,10 +193,53 @@ func TestRenderReleaseNotes_CountsAndSectionsFollowTheChanges(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if notes := renderReleaseNotes(test.record, skillContext{}); notes != test.want {
+			if notes := renderReleaseNotes(test.record, manifestContext{}); notes != test.want {
 				t.Fatalf("notes:\n%s\nwant:\n%s", notes, test.want)
 			}
 		})
+	}
+}
+
+// TestRenderReleaseNotes_SaysWhenTheLibrarySchemaVersionChanges adds a Library schema section after the count line
+// of a library release after the first whose library schema version differs from the latest library release's, and
+// none to the first library release or to one that keeps its library schema version.
+func TestRenderReleaseNotes_SaysWhenTheLibrarySchemaVersionChanges(t *testing.T) {
+	later := trailguide.ReleaseRecord{Release: 3, Rules: map[string]trailguide.RuleVersion{}, LibraryFiles: []string{"config.yaml"}}
+	first := trailguide.ReleaseRecord{Release: 1, Rules: map[string]trailguide.RuleVersion{}, LibraryFiles: []string{"config.yaml"}}
+	advice := " Before running `trailguide project update`, ensure your Trail Guide version supports library schema version 2. See [Library schema](https://trailguide.fabricahq.com/reference/library-schema/#schema-version)."
+	for _, test := range []struct {
+		name    string
+		record  trailguide.ReleaseRecord
+		context manifestContext
+		want    string
+	}{
+		{"upgrade", later, manifestContext{schemaVersion: 2, previousSchemaVersion: 1}, "Library release 3 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n## Library schema\n\nThis library release moves from library schema version 1 to version 2." + advice},
+		{"first declared", later, manifestContext{schemaVersion: 2}, "Library release 3 changes no rules. It updates shared files, such as group descriptions or shared assets.\n\n## Library schema\n\nThis library release declares library schema version 2; the previous library release declared none." + advice},
+		{"unchanged", later, manifestContext{schemaVersion: 2, previousSchemaVersion: 2}, "Library release 3 changes no rules. It updates shared files, such as group descriptions or shared assets."},
+		{"first library release", first, manifestContext{schemaVersion: 2}, "Library release 1 publishes no rules, only shared files, such as group descriptions or shared assets."},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if notes := renderReleaseNotes(test.record, test.context); notes != test.want {
+				t.Fatalf("notes:\n%s\nwant:\n%s", notes, test.want)
+			}
+		})
+	}
+}
+
+// TestDeclaredSchemaVersion_ReadsAnyLibrarySchemaVersion reads library.schemaVersion, or library.formatVersion from
+// before it was renamed, without validating the rest of the manifest, and 0 when the manifest declares neither.
+func TestDeclaredSchemaVersion_ReadsAnyLibrarySchemaVersion(t *testing.T) {
+	for manifest, want := range map[string]int{
+		"library: {schemaVersion: 2, name: library}\n": 2,
+		"library: {schemaVersion: 1, unknown: true}\n": 1,
+		"library: {formatVersion: 1}\n":                1,
+		"library: {license: {file: LICENSE.md}}\n":     0,
+		"schemaVersion: 2\nsources: {}\n":              0,
+		"library: [\n":                                 0,
+	} {
+		if got := declaredSchemaVersion([]byte(manifest)); got != want {
+			t.Errorf("declaredSchemaVersion(%q) = %d, want %d", manifest, got, want)
+		}
 	}
 }
 
