@@ -1,4 +1,4 @@
-<h1 align="center">Trail Guide</h1>
+<h1 align="center">Trailguide</h1>
 
 <h3 align="center">The package manager for your agent skills and&nbsp;rules.</h3>
 
@@ -16,18 +16,18 @@
 <p align="center">
   <a href="https://trailguide.fabricahq.com">Docs</a> ·
   <a href="#quick-start">Quick start</a> ·
-  <a href="https://trailguide.fabricahq.com/start-here/overview/">Why Trail Guide</a> ·
+  <a href="https://trailguide.fabricahq.com/start-here/overview/">Why Trailguide</a> ·
   <a href="https://trailguide.fabricahq.com/reference/cli/">CLI reference</a>
 </p>
 
 ---
 
-## What is Trail Guide?
+## What is Trailguide?
 
-Trail Guide is a **package manager** for your agent skills and engineering rules.
+Trailguide is a **package manager** for your agent skills and engineering rules.
 
 > [!NOTE]
-> Skill support isn't in a released version of Trail Guide yet. The released CLI manages rules; this README describes how skills will work.
+> Skill support isn't in a released version of Trailguide yet. The released CLI manages rules; this README describes how skills will work.
 
 That means you can:
 
@@ -43,7 +43,7 @@ That means you can:
 
 Most people already guide their agents with skills, the AI skills we all know, officially folders that follow the open [Agent Skills](https://agentskills.io) standard. They install skills from a teammate's repository, a vendor's collection, or the last project they worked on. Before long, it's hard to know where each skill came from, keep it up to date, share it across an organization, or use it with more than one agent.
 
-Pulling many files from versioned sources into a project, and keeping them up to date, is a familiar problem. Programming languages have solved it for more than 20 years with the humble package manager. Trail Guide applies that same approach to skills. Each project declares its sources in one configuration file, and Trail Guide records each skill's source and exact revision, updates it only when you ask, and writes it into the folders your agents read. Your organization can publish shared skills in its own `.trailguide` repository and require or recommend them for every project.
+Pulling many files from versioned sources into a project, and keeping them up to date, is a familiar problem. Programming languages have solved it for more than 20 years with the humble package manager. Trailguide applies that same approach to skills. Each project declares its sources in one configuration file, and Trailguide records each skill's source and exact revision, updates it only when you ask, and writes it into the folders your agents read. Your organization can publish shared skills in its own `.trailguide` repository and require or recommend them for every project.
 
 To publish skills, you put them in a **[library](https://trailguide.fabricahq.com/concepts/libraries/)**: a Git repository whose manifest lists the skills it offers, with a version for each skill and a change note for each change, so tools and projects can read exactly what you publish. For example, see the [Fabrica Public Rules Library](https://github.com/fabricahq/public-library).
 
@@ -51,9 +51,9 @@ To publish skills, you put them in a **[library](https://trailguide.fabricahq.co
 
 Skills are coarse-grained. They're good for playbooks, techniques, and coordinating a whole task, such as building a feature or reviewing a pull request. But a skill that bundles many practices makes it hard to use a subset of its guidance on a specific project.
 
-So Trail Guide adds **[rules](https://trailguide.fabricahq.com/concepts/rule/)**: one practice per Markdown file, optionally following the [Trail Guide rule template](https://trailguide.fabricahq.com/reference/rule-authoring/). Rules give guidance on **technologies** like Go or TypeScript, or on **practices** like testing, observability, or even writing good READMEs, and live in **rule groups**. **[Skills](https://trailguide.fabricahq.com/concepts/skill/)** cite the rules each step applies, so a project can exclude or replace one rule without forking the skill.
+So Trailguide adds **[rules](https://trailguide.fabricahq.com/concepts/rule/)**: one practice per Markdown file, optionally following the [Trailguide rule template](https://trailguide.fabricahq.com/reference/rule-authoring/). Rules give guidance on **technologies** like Go or TypeScript, or on **practices** like testing, observability, or even writing good READMEs, and live in **rule groups**. **[Skills](https://trailguide.fabricahq.com/concepts/skill/)** cite the rules each step applies, so a project can exclude or replace one rule without forking the skill.
 
-Trail Guide manages rules and skills together, for libraries that publish them, organizations that standardize on them, and projects that use them. You can write your own project-specific rules and skills, or take them from libraries.
+Trailguide manages rules and skills together, for libraries that publish them, organizations that standardize on them, and projects that use them. You can write your own project-specific rules and skills, or take them from libraries.
 
 As with packages for code, you can:
 
@@ -62,7 +62,7 @@ As with packages for code, you can:
 - **Build reproducibly.** Every imported rule is vendored at its exact version, and keeps its source and license terms.
 - **Catch drift in CI.** `trailguide project check` fails when generated files are out of date.
 
-Agents don't read every rule on every task. Trail Guide generates an index with a "when to read" cue for each rule group, so agents open only the rules that matter for the work at hand. It works with any agent that reads a project instruction file, such as Claude Code, Codex, Cursor, or Gemini CLI.
+Agents don't read every rule on every task. Trailguide generates an index with a "when to read" cue for each rule group, so agents open only the rules that matter for the work at hand. It works with any agent that reads a project instruction file, such as Claude Code, Codex, Cursor, or Gemini CLI.
 
 ### Rules can evolve
 
@@ -72,7 +72,7 @@ Because rules are files in Git, you can ask your agent to review a session and p
 
 ## Quick start
 
-### Set up Trail Guide
+### Set up Trailguide
 
 Install the standalone binary (macOS and Linux; no Go, Node.js, or Bun required):
 
@@ -86,7 +86,7 @@ Or install with [Homebrew](https://brew.sh/):
 brew install fabricahq/tap/trailguide
 ```
 
-Then set up Trail Guide from your repository root:
+Then set up Trailguide from your repository root:
 
 ```sh
 trailguide project init
@@ -148,9 +148,9 @@ Paths relative to .trailguide/_managed/generated:
 **Open group:** [Testing](groups/practices/testing.md)
 ```
 
-`trailguide project init` also added a section to `AGENTS.md`, creating the file if needed, that tells your agent to read `RULES.md` before planning, writing, or reviewing a change. Trail Guide keeps that section current and leaves the rest of the file to you. If your agent reads `CLAUDE.md` instead, add the line `@AGENTS.md` to it.
+`trailguide project init` also added a section to `AGENTS.md`, creating the file if needed, that tells your agent to read `RULES.md` before planning, writing, or reviewing a change. Trailguide keeps that section current and leaves the rest of the file to you. If your agent reads `CLAUDE.md` instead, add the line `@AGENTS.md` to it.
 
-Commit `.trailguide/` and `AGENTS.md`, and you're done. Now ask your agent for a change as you normally would; you don't need to mention Trail Guide in each request.
+Commit `.trailguide/` and `AGENTS.md`, and you're done. Now ask your agent for a change as you normally would; you don't need to mention Trailguide in each request.
 
 ➡️ The full walkthrough is in [Set up your first project](https://trailguide.fabricahq.com/start-here/set-up-project/).
 
@@ -186,16 +186,16 @@ sources:
 
 ➡️ [Create your first library](https://trailguide.fabricahq.com/start-here/create-library/) · [Include rules](https://trailguide.fabricahq.com/guides/select-rules/) · [Update rules and skills](https://trailguide.fabricahq.com/guides/update/)
 
-## What Trail Guide doesn't do
+## What Trailguide doesn't do
 
-- **It doesn't enforce your rules.** Trail Guide gives your agents the same rules for writing and reviewing code, but giving an agent a rule doesn't guarantee that it follows it. `trailguide project check` verifies your rule files, not your application code.
+- **It doesn't enforce your rules.** Trailguide gives your agents the same rules for writing and reviewing code, but giving an agent a rule doesn't guarantee that it follows it. `trailguide project check` verifies your rule files, not your application code.
 - **It doesn't resolve contradictions automatically.** If two rules disagree, you decide which to exclude or replace. [Resolve conflicting rules](https://trailguide.fabricahq.com/guides/conflicting-guidance/) gives you a prompt that has your agent find the conflicts and propose fixes for you to review.
-- **It doesn't manage personal skills.** Trail Guide installs skills into your repositories, not your home directory. It warns when a personal skill has the same name as one your project installs.
+- **It doesn't manage personal skills.** Trailguide installs skills into your repositories, not your home directory. It warns when a personal skill has the same name as one your project installs.
 - **It doesn't run on native Windows yet.** The Linux build is expected to work in WSL 2, but hasn't been tested end to end.
 
 ## Learn more
 
-- → [**What is Trail Guide?**](https://trailguide.fabricahq.com/start-here/overview/) The problem, and how skills, rules, rule groups, projects, and libraries fit together
+- → [**What is Trailguide?**](https://trailguide.fabricahq.com/start-here/overview/) The problem, and how skills, rules, rule groups, projects, and libraries fit together
 - → [**Install**](https://trailguide.fabricahq.com/start-here/install/) Versions, custom directories, checksum verification, and upgrades
 - → [**Write a rule**](https://trailguide.fabricahq.com/guides/write-rules/) Write rules agents can actually follow
 - → [**Configuration**](https://trailguide.fabricahq.com/reference/configuration/) Every field in `config.yaml`
@@ -207,4 +207,4 @@ Bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) co
 
 ## License
 
-Trail Guide is [MIT licensed](LICENSE.md). Rule libraries carry their own license terms, which Trail Guide preserves in each project that imports them.
+Trailguide is [MIT licensed](LICENSE.md). Rule libraries carry their own license terms, which Trailguide preserves in each project that imports them.
