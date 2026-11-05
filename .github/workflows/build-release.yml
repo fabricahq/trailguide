@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [linux_x64, macos]
-    runs-on: ${{ fromJSON(vars.CI_RUNNERS)[matrix.os] }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC)[matrix.os] }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,7 +43,7 @@ jobs:
 
   # One Linux runner cross-compiles all four OS/architecture archives into a single bundle.
   build:
-    runs-on: ${{ fromJSON(vars.CI_RUNNERS).linux }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC).linux }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

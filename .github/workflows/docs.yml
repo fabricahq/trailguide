@@ -13,7 +13,7 @@ jobs:
     concurrency:
       group: docs-check-${{ github.ref }}
       cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ${{ fromJSON(vars.CI_RUNNERS).linux }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC).linux }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,7 +42,7 @@ jobs:
   deploy:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ${{ fromJSON(vars.CI_RUNNERS).linux }}
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC).linux }}
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
