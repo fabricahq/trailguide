@@ -18,10 +18,11 @@ permissions:
 jobs:
   # Validate the exact release source on both supported operating systems.
   check:
+    # x64 Linux and arm64 macOS, so the release is tested natively on each architecture.
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+        os: [linux_x64, macos]
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC)[matrix.os] }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,7 +43,7 @@ jobs:
 
   # One Linux runner cross-compiles all four OS/architecture archives into a single bundle.
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC).linux }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

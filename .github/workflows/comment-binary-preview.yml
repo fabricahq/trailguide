@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   comment:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNERS_PUBLIC).linux }}
     steps:
       - name: Link the completed binary preview on its pull request
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
