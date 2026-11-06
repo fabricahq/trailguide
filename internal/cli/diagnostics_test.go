@@ -14,18 +14,20 @@ import (
 func TestHumanErrorDisplay(t *testing.T) {
 	binary := buildCLI(t)
 	for _, tc := range []struct {
-		name, term, noColor string
-		color               bool
+		name     string
+		terminal terminalfixture.Terminal
+		color    bool
 	}{
-		{"color", "xterm-256color", "", true},
-		{"no-color", "xterm-256color", "1", false},
-		{"dumb", "dumb", "", false},
-		{"unknown", "", "", false},
+		{"color", terminalfixture.Terminal{Type: "xterm-256color"}, true},
+		{"no-color", terminalfixture.Terminal{Type: "xterm-256color", NoColor: true}, false},
+		{"dumb", terminalfixture.Terminal{Type: "dumb"}, false},
+		{"unknown", terminalfixture.Terminal{}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("TERM", tc.term)
-			t.Setenv("NO_COLOR", tc.noColor)
-			result, err := terminalfixture.Run(context.Background(), binary, t.TempDir(), []string{"project", "add", "rule"}, nil)
+			// Redirected output stays plain even when the environment declares a color terminal.
+			t.Setenv("TERM", tc.terminal.Type)
+			t.Setenv("NO_COLOR", "")
+			result, err := tc.terminal.Run(context.Background(), binary, t.TempDir(), []string{"project", "add", "rule"}, nil)
 			if err != nil || result.ExitCode != 2 {
 				t.Fatal(err, result)
 			}
